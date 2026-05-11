@@ -1,7 +1,7 @@
 {
   "name": "Clicka.bg",
   "short_name": "Clicka",
-  "description": "Готов сайт с резервационна система за салони и beauty специалисти.",
+  "description": "Лична резервационна система и собствен сайт за салона ти — независимо от чужди платформи.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

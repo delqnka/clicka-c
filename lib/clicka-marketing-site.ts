@@ -5,9 +5,9 @@
 export const clickaMarketingSite = {
   name: 'clicka.bg',
   legal: 'Clicka',
-  title: 'clicka.bg — Твоят сайт и резервации 24/7',
+  title: 'clicka.bg — Твоята лична резервационна система, независима от платформи',
   description:
-    'Готов уебсайт за твоя бизнес с онлайн резервации. Клиентите са си твои. Без комисионна върху часовете.',
+    'Собствен сайт и онлайн резервации: часовете и клиентите са твои — без комисионна върху всеки час и без да зависиш от чужди платформи.',
   hero: {
     webm: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_HERO_VIDEO_WEBM) || '',
     mp4: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_HERO_VIDEO_MP4) || '',

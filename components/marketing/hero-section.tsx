@@ -23,17 +23,19 @@ export function HeroSection() {
           <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
           Уебсайт + резервации
         </p>
-        <motion.h1
-          className="max-w-[18ch] text-[clamp(2.25rem,5.5vw+0.5rem,3.75rem)] font-semibold leading-[0.98] tracking-[-0.05em] text-white"
-          id="hero-title"
-          initial={{ opacity: 1, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-        >
-          Твоят талант.
-          <span className="text-white/30"> / </span>
-          <span className="text-white/90">Дигитален дом.</span>
-        </motion.h1>
+        <div className="hero-h1-spotlights max-w-[min(100%,36rem)] sm:max-w-5xl">
+          <motion.h1
+            className="max-w-5xl text-[clamp(2rem,4.2vw+0.75rem,3.25rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-white sm:text-[clamp(2.125rem,4.5vw+0.5rem,3.5rem)]"
+            id="hero-title"
+            initial={{ opacity: 1, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            Твоята лична резервационна система.
+            <span className="text-white/30"> / </span>
+            <span className="text-white/90">Независима от платформи.</span>
+          </motion.h1>
+        </div>
         <motion.p
           className="mt-6 max-w-lg text-pretty text-base text-white/55"
           initial={{ opacity: 1, y: 12 }}
