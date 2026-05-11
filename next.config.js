@@ -7,16 +7,21 @@ function hostnameFromUrl(maybeUrl) {
   }
 }
 
+const r2Host = hostnameFromUrl(process.env.R2_PUBLIC_URL ?? '');
+
 const nextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        // Must be hostname only; env is typically a full URL.
-        hostname: hostnameFromUrl(process.env.R2_PUBLIC_URL ?? ''),
-        port: '',
-        pathname: '/**',
-      },
+      ...(r2Host
+        ? [
+            {
+              protocol: 'https',
+              hostname: r2Host,
+              port: '',
+              pathname: '/**',
+            },
+          ]
+        : []),
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
