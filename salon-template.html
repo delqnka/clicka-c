@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="{{PRIMARY_COLOR}}">
+  <title>{{SALON_NAME}} | Clicka.bg</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* ── CSS Variables ─────────────────────────── */
+    :root {
+      --primary:        {{PRIMARY_COLOR}};
+      --primary-light:  {{PRIMARY_COLOR_LIGHT}};
+      --text:           #1a1a1a;
+      --text-secondary: #6b7280;
+      --bg:             #ffffff;
+      --card-bg:        #f9fafb;
+      --border:         #e5e7eb;
+    }
+
+    /* ── Base ──────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #f3f4f6;
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    /* Center card on desktop */
+    #app {
+      background: var(--bg);
+      max-width: 430px;
+      min-height: 100vh;
+      margin: 0 auto;
+      position: relative;
+      box-shadow: 0 0 60px rgba(0,0,0,0.12);
+    }
+
+    /* ── Utility color classes ─────────────────── */
+    .bg-primary       { background-color: var(--primary)       !important; }
+    .bg-primary-light { background-color: var(--primary-light) !important; }
+    .text-primary     { color: var(--primary)                  !important; }
+    .border-primary   { border-color: var(--primary)           !important; }
+
+    /* ── Sticky Header ─────────────────────────── */
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Hero ──────────────────────────────────── */
+    .hero-cover {
+      aspect-ratio: 16 / 9;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, var(--primary) 0%, #9333ea 60%, #db2777 100%);
+    }
+
+    .hero-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-initial {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 96px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.18);
+      user-select: none;
+    }
+
+    /* ── Info Card ─────────────────────────────── */
+    .info-card {
+      margin: -24px 16px 0;
+      position: relative;
+      z-index: 10;
+      background: var(--bg);
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+      padding: 20px;
+    }
+
+    .salon-logo-wrap {
+      width: 68px;
+      height: 68px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 3px solid white;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--primary), #9333ea);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 28px;
+    }
+
+    .salon-logo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ── Generic Card ──────────────────────────── */
+    .card {
+      background: var(--bg);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    /* ── Section ───────────────────────────────── */
+    .section { padding: 0 16px; margin-bottom: 28px; }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 14px;
+    }
+
+    /* ── Service Card ──────────────────────────── */
+    .service-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      transition: box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .service-card:active {
+      box-shadow: 0 6px 24px rgba(0,0,0,0.10);
+      transform: scale(0.99);
+    }
+
+    /* ── Buttons ───────────────────────────────── */
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.18s, transform 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-primary:active { opacity: 0.88; transform: scale(0.97); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-outline:active { background: var(--primary-light); }
+
+    /* ── Header logo ───────────────────────────── */
+    .header-logo-box {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--primary), #9333ea);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .header-logo-box img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ── Stars ─────────────────────────────────── */
+    .stars { display: flex; gap: 2px; align-items: center; }
+
+    /* ── Team horizontal scroll ────────────────── */
+    .team-scroll {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding: 4px 16px 8px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .team-scroll::-webkit-scrollbar { display: none; }
+
+    .team-member { flex: 0 0 auto; text-align: center; width: 84px; }
+
+    .team-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--primary-light);
+      display: block;
+      margin: 0 auto;
+    }
+
+    .team-avatar-placeholder {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-light), var(--primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 700;
+      color: white;
+      border: 3px solid var(--primary-light);
+      margin: 0 auto;
+    }
+
+    /* ── Gallery ───────────────────────────────── */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 0 16px;
+    }
+
+    .gallery-item {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+      display: block;
+    }
+
+    .gallery-item:active img { transform: scale(1.06); }
+
+    /* ── Map ───────────────────────────────────── */
+    .map-container {
+      border-radius: 16px;
+      overflow: hidden;
+      height: 200px;
+      border: 1px solid var(--border);
+    }
+
+    .map-container iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    /* ── Working hours ─────────────────────────── */
+    .hours-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hours-row:last-child { border-bottom: none; }
+
+    .hours-row.today {
+      background: var(--primary-light);
+    }
+
+    .hours-row.today .day-name,
+    .hours-row.today .day-time { color: var(--primary); font-weight: 700; }
+
+    .day-name { font-size: 14px; color: var(--text); }
+    .day-time  { font-size: 14px; color: var(--text-secondary); }
+
+    /* ── Footer ────────────────────────────────── */
+    footer {
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      padding: 28px 16px 40px;
+    }
+
+    /* ── Floating phone button ─────────────────── */
+    .float-btn {
+      position: fixed;
+      bottom: 24px;
+      right: calc(50% - 215px + 16px);
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #25D366;
+      box-shadow: 0 4px 20px rgba(37,211,102,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    @media (max-width: 430px) {
+      .float-btn { right: 16px; }
+    }
+
+    .float-btn:active {
+      transform: scale(0.93);
+      box-shadow: 0 2px 10px rgba(37,211,102,0.35);
+    }
+
+    /* ── Overlay ───────────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.52);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.active { opacity: 1; pointer-events: all; }
+
+    /* ── Bottom sheet ──────────────────────────── */
+    .bottom-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%) translateY(110%);
+      width: 100%;
+      max-width: 430px;
+      background: var(--bg);
+      border-radius: 24px 24px 0 0;
+      z-index: 101;
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      max-height: 92dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    .bottom-sheet.active { transform: translateX(-50%) translateY(0); }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 16px auto 0;
+    }
+
+    /* ── Form inputs ───────────────────────────── */
+    .form-input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 16px;        /* 16px prevents iOS zoom */
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    /* ── Time slots grid ───────────────────────── */
+    .time-slots-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .time-slot {
+      padding: 10px 4px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .time-slot:active { transform: scale(0.95); }
+    .time-slot.selected {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* ── Price summary pill ────────────────────── */
+    .price-summary {
+      background: var(--primary-light);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* ── Error / Success ───────────────────────── */
+    .form-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: #dc2626;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .success-wrap {
+      text-align: center;
+      padding: 36px 20px 28px;
+    }
+
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: #d1fae5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    /* ── Loading spinner ───────────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    /* ── Fade-in scroll animations ─────────────── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.52s ease, transform 0.52s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Pill badge ────────────────────────────── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* ── Divider ───────────────────────────────── */
+    .section-divider {
+      height: 8px;
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- ══════════════════════════════════════════════════
+       1. STICKY HEADER
+  ══════════════════════════════════════════════════ -->
+  <header class="sticky-header">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; gap:10px;">
+      <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+        <div id="hdr-logo" class="header-logo-box"></div>
+        <span id="hdr-name" style="font-size:15px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{SALON_NAME}}</span>
+      </div>
+      <button class="btn-primary" onclick="openBooking(null)" style="padding:10px 18px; font-size:14px; flex-shrink:0;">
+        Резервирай
+      </button>
+    </div>
+  </header>
+
+
+  <!-- ══════════════════════════════════════════════════
+       2. HERO
+  ══════════════════════════════════════════════════ -->
+  <div class="hero-cover" id="hero-cover">
+    <div class="hero-initial" id="hero-initial"></div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+       3. SALON INFO CARD
+  ══════════════════════════════════════════════════ -->
+  <div style="padding:0 0 24px; position:relative; z-index:10;" class="fade-in">
+    <div class="info-card">
+      <div style="display:flex; gap:14px; align-items:flex-start;">
+        <div id="salon-logo" class="salon-logo-wrap"></div>
+        <div style="flex:1; min-width:0;">
+          <h1 style="font-size:20px; font-weight:800; color:var(--text); margin:0 0 2px; line-height:1.25;">{{SALON_NAME}}</h1>
+          <p style="font-size:13px; color:var(--text-secondary); margin:0 0 10px;">{{SALON_CATEGORY}}</p>
+
+          <!-- Rating row -->
+          <div style="display:flex; align-items:center; gap:7px; margin-bottom:12px;">
+            <div class="stars" id="star-rating"></div>
+            <span style="font-size:14px; font-weight:700; color:var(--text);">{{SALON_RATING}}</span>
+            <span style="font-size:13px; color:var(--text-secondary);">· отлично</span>
+          </div>
+
+          <!-- Meta info -->
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span style="font-size:13px; color:var(--text-secondary);">{{SALON_ADDRESS}}, {{SALON_CITY}}</span>
+            </div>
+            <a href="tel:{{SALON_PHONE}}" style="display:flex; align-items:center; gap:7px; text-decoration:none;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.46-.46a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 18.09z"/></svg>
+              <span style="font-size:13px; color:var(--primary); font-weight:500;">{{SALON_PHONE}}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick action row -->
+      <div style="display:flex; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <a href="tel:{{SALON_PHONE}}" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px; background:var(--card-bg); border-radius:10px; text-decoration:none; color:var(--text); font-size:13px; font-weight:600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.46-.46a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 18.09z"/></svg>
+          Обади се
+        </a>
+        <a href="https://instagram.com/{{INSTAGRAM_USERNAME}}" target="_blank" rel="noopener" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px; background:var(--card-bg); border-radius:10px; text-decoration:none; color:var(--text); font-size:13px; font-weight:600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          Instagram
+        </a>
+        <a href="https://facebook.com/{{FACEBOOK_USERNAME}}" target="_blank" rel="noopener" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px; background:var(--card-bg); border-radius:10px; text-decoration:none; color:var(--text); font-size:13px; font-weight:600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          Facebook
+        </a>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+       4. ЗА НАС
+  ══════════════════════════════════════════════════ -->
+  <div class="section-divider"></div>
+  <section class="section fade-in">
+    <h2 class="section-title">За нас</h2>
+    <p style="font-size:15px; line-height:1.75; color:var(--text-secondary); margin:0;">{{SALON_ABOUT}}</p>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       5. УСЛУГИ
+  ══════════════════════════════════════════════════ -->
+  <div class="section-divider"></div>
+  <section class="fade-in" style="margin-bottom:28px;">
+    <div style="padding:0 16px;">
+      <h2 class="section-title">Услуги</h2>
+    </div>
+    <div id="services-list" style="padding:0 16px; display:flex; flex-direction:column; gap:10px;"></div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       6. ЕКИП
+  ══════════════════════════════════════════════════ -->
+  <div class="section-divider"></div>
+  <section class="fade-in" style="margin-bottom:28px;">
+    <div style="padding:0 16px;">
+      <h2 class="section-title">Нашият екип</h2>
+    </div>
+    <div class="team-scroll" id="team-list"></div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       7. ГАЛЕРИЯ
+  ══════════════════════════════════════════════════ -->
+  <div class="section-divider"></div>
+  <section class="fade-in" style="margin-bottom:28px;">
+    <div style="padding:0 16px;">
+      <h2 class="section-title">Галерия</h2>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       8. ЛОКАЦИЯ
+  ══════════════════════════════════════════════════ -->
+  <div class="section-divider"></div>
+  <section class="section fade-in">
+    <h2 class="section-title">Локация</h2>
+    <div class="map-container">
+      <iframe
+        src="{{GOOGLE_MAPS_EMBED_URL}}"
+        allowfullscreen
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Карта — {{SALON_NAME}}">
+      </iframe>
+    </div>
+    <div style="display:flex; align-items:flex-start; gap:10px; margin-top:12px; padding:14px; background:var(--card-bg); border-radius:12px; border:1px solid var(--border);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:1px; flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span style="font-size:14px; color:var(--text); line-height:1.5;">{{SALON_ADDRESS}}, {{SALON_CITY}}</span>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       9. РАБОТНО ВРЕМЕ
+  ══════════════════════════════════════════════════ -->
+  <div class="section-divider"></div>
+  <section class="section fade-in">
+    <h2 class="section-title">Работно време</h2>
+    <div class="card" style="overflow:hidden; padding:0;">
+      <div id="hours-list"></div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       10. FOOTER
+  ══════════════════════════════════════════════════ -->
+  <div class="section-divider"></div>
+  <footer class="fade-in">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div id="footer-logo" class="header-logo-box" style="width:48px;height:48px;border-radius:14px;font-size:22px;margin:0 auto 12px;"></div>
+      <h3 style="font-size:17px; font-weight:700; margin:0 0 3px;">{{SALON_NAME}}</h3>
+      <p style="font-size:13px; color:var(--text-secondary); margin:0;">{{SALON_CATEGORY}}</p>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center; margin-bottom:24px;">
+      <a href="tel:{{SALON_PHONE}}" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-size:15px;font-weight:500;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.46-.46a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 18.09z"/></svg>
+        {{SALON_PHONE}}
+      </a>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+        <a href="https://instagram.com/{{INSTAGRAM_USERNAME}}" target="_blank" rel="noopener"
+           style="display:flex;align-items:center;gap:6px;padding:9px 16px;border:1.5px solid #E1306C;border-radius:10px;text-decoration:none;color:#E1306C;font-size:13px;font-weight:600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          @{{INSTAGRAM_USERNAME}}
+        </a>
+        <a href="https://facebook.com/{{FACEBOOK_USERNAME}}" target="_blank" rel="noopener"
+           style="display:flex;align-items:center;gap:6px;padding:9px 16px;border:1.5px solid #1877F2;border-radius:10px;text-decoration:none;color:#1877F2;font-size:13px;font-weight:600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          {{FACEBOOK_USERNAME}}
+        </a>
+      </div>
+    </div>
+
+    <div style="text-align:center; padding-top:16px; border-top:1px solid var(--border);"></div>
+  </footer>
+
+</div><!-- /#app -->
+
+
+<!-- ══════════════════════════════════════════════════
+     FLOATING PHONE BUTTON (WhatsApp green)
+══════════════════════════════════════════════════ -->
+<a href="tel:{{SALON_PHONE}}" class="float-btn" aria-label="Обади се">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.46-.46a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 18.09z"/>
+  </svg>
+</a>
+
+
+<!-- ══════════════════════════════════════════════════
+     BOOKING BOTTOM SHEET
+══════════════════════════════════════════════════ -->
+<div class="overlay" id="overlay" onclick="closeBooking()"></div>
+
+<div class="bottom-sheet" id="bottom-sheet" role="dialog" aria-modal="true" aria-label="Форма за резервация">
+  <div class="sheet-handle"></div>
+
+  <div style="padding:0 20px 4px;">
+    <!-- Sheet header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 0 20px;">
+      <h2 style="font-size:20px; font-weight:800; margin:0; color:var(--text);">Резервирай час</h2>
+      <button onclick="closeBooking()" aria-label="Затвори"
+              style="width:34px;height:34px;border-radius:50%;background:var(--card-bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── FORM ── -->
+  <div id="sheet-form" style="padding:0 20px 28px;">
+    <form id="booking-form" onsubmit="submitBooking(event)" novalidate>
+      <div style="display:flex; flex-direction:column; gap:18px;">
+
+        <!-- Name -->
+        <div>
+          <label class="form-label" for="f-name">Вашето име</label>
+          <input id="f-name" name="client_name" type="text" class="form-input"
+                 placeholder="Въведете вашето име" autocomplete="name" required>
+        </div>
+
+        <!-- Phone -->
+        <div>
+          <label class="form-label" for="f-phone">Телефон</label>
+          <input id="f-phone" name="client_phone" type="tel" class="form-input"
+                 placeholder="+359 88 888 8888" autocomplete="tel" required>
+        </div>
+
+        <!-- Service -->
+        <div>
+          <label class="form-label" for="f-service">Услуга</label>
+          <select id="f-service" name="service_index" class="form-input" required onchange="onServiceChange()">
+            <option value="">— Изберете услуга —</option>
+          </select>
+        </div>
+
+        <!-- Date -->
+        <div>
+          <label class="form-label" for="f-date">Дата</label>
+          <input id="f-date" name="date" type="date" class="form-input" required onchange="buildTimeSlots()">
+        </div>
+
+        <!-- Time slots -->
+        <div>
+          <label class="form-label">Час</label>
+          <div id="time-slots" class="time-slots-grid">
+            <p style="grid-column:1/-1; font-size:13px; color:var(--text-secondary); margin:0;">
+              Изберете дата, за да видите свободните часове
+            </p>
+          </div>
+          <input type="hidden" id="f-time" name="time" required>
+        </div>
+
+        <!-- Price summary -->
+        <div id="price-summary" class="price-summary" style="display:none;">
+          <div>
+            <p style="margin:0;font-size:14px;font-weight:600;color:var(--text);" id="ps-name">—</p>
+            <p style="margin:4px 0 0;font-size:12px;color:var(--text-secondary);" id="ps-duration">—</p>
+          </div>
+          <span style="font-size:22px;font-weight:800;color:var(--primary);" id="ps-price">—</span>
+        </div>
+
+        <!-- Error -->
+        <div id="form-error" class="form-error" style="display:none;"></div>
+
+        <!-- Submit -->
+        <button type="submit" id="submit-btn" class="btn-primary" style="width:100%;padding:16px;font-size:16px;border-radius:12px;">
+          Потвърди резервацията
+        </button>
+
+      </div>
+    </form>
+  </div>
+
+  <!-- ── SUCCESS ── -->
+  <div id="sheet-success" style="display:none;" class="success-wrap">
+    <div class="success-icon">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h3 style="font-size:22px;font-weight:800;margin:0 0 10px;color:var(--text);">Резервацията е приета!</h3>
+    <p id="success-text" style="color:var(--text-secondary);font-size:15px;line-height:1.65;margin:0 0 28px;"></p>
+    <button onclick="closeBooking()" class="btn-primary" style="width:100%;padding:16px;font-size:16px;border-radius:12px;">
+      Готово
+    </button>
+  </div>
+
+</div><!-- /.bottom-sheet -->
+
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+/* ─────────────────────────────────────────────────────
+   DATA PLACEHOLDERS
+   These are replaced by Clicka.bg before delivery.
+───────────────────────────────────────────────────── */
+const SALON_NAME     = '{{SALON_NAME}}';
+const SALON_SLUG     = '{{SALON_SLUG}}';
+const SALON_PHONE    = '{{SALON_PHONE}}';
+const SALON_RATING   = parseFloat('{{SALON_RATING}}') || 4.9;
+const COVER_IMAGE    = '{{COVER_IMAGE_URL}}';
+const LOGO_IMAGE     = '{{LOGO_IMAGE_URL}}';
+const API_BASE       = '{{API_BASE_URL}}';
+
+// JSON blocks — replaced with valid JSON strings by the platform, then parsed below
+const _RAW_HOURS   = '{{WORKING_HOURS_JSON}}';
+const _RAW_SERVICES = '{{SERVICES_JSON}}';
+const _RAW_TEAM    = '{{TEAM_JSON}}';
+const _RAW_GALLERY = '{{GALLERY_IMAGES_JSON}}';
+
+function _parseJSON(raw, fallback) {
+  try { return JSON.parse(raw); } catch { return fallback; }
+}
+
+let WORKING_HOURS = _parseJSON(_RAW_HOURS,   {});
+let SERVICES      = _parseJSON(_RAW_SERVICES, []);
+let TEAM          = _parseJSON(_RAW_TEAM,     []);
+let GALLERY       = _parseJSON(_RAW_GALLERY,  []);
+
+/* ─────────────────────────────────────────────────────
+   CONSTANTS
+───────────────────────────────────────────────────── */
+const DAY_KEYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const DAY_BG   = {
+  monday:    'Понеделник',
+  tuesday:   'Вторник',
+  wednesday: 'Сряда',
+  thursday:  'Четвъртък',
+  friday:    'Петък',
+  saturday:  'Събота',
+  sunday:    'Неделя',
+};
+
+/* ─────────────────────────────────────────────────────
+   DEMO / PREVIEW DATA
+   Loaded automatically when placeholders are unreplaced.
+───────────────────────────────────────────────────── */
+const DEMO = {
+  SALON_NAME:     'Салон Мими',
+  SALON_PHONE:    '+359 88 123 4567',
+  SALON_RATING:   4.9,
+  SALON_CATEGORY: 'Фризьорски салон',
+  SALON_CITY:     'София',
+  SALON_ADDRESS:  'ул. Витоша 42',
+  SALON_ABOUT:    'Добре дошли в Салон Мими — вашето уютно място за красота и релакс в сърцето на София. Нашият опитен екип се грижи за вас с индивидуален подход, качествени продукти и страст към занаята.',
+  COVER_IMAGE:    '',
+  LOGO_IMAGE:     '',
+  WORKING_HOURS: {
+    monday:    { open: '09:00', close: '18:00', closed: false },
+    tuesday:   { open: '09:00', close: '18:00', closed: false },
+    wednesday: { open: '09:00', close: '18:00', closed: false },
+    thursday:  { open: '09:00', close: '18:00', closed: false },
+    friday:    { open: '09:00', close: '18:00', closed: false },
+    saturday:  { open: '10:00', close: '16:00', closed: false },
+    sunday:    { closed: true },
+  },
+  SERVICES: [
+    { name: 'Подстригване',          duration_min: 45, price: 25 },
+    { name: 'Боядисване',            duration_min: 90, price: 50 },
+    { name: 'Маникюр',               duration_min: 60, price: 30 },
+  ],
+  TEAM: [
+    { name: 'Мими Иванова', role: 'Собственик & стилист', photo_url: '' },
+    { name: 'Петя Георгиева', role: 'Маникюрист',         photo_url: '' },
+  ],
+  GALLERY: [],
+};
+
+function isUnreplaced(val) {
+  return typeof val === 'string' && val.startsWith('{{') && val.endsWith('}}');
+}
+
+/* ─────────────────────────────────────────────────────
+   BOOT
+───────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  // If the platform has not yet replaced placeholders, load demo data so the
+  // preview renders instead of showing a white/broken screen.
+  if (isUnreplaced(SALON_NAME)) {
+    Object.assign(window, {
+      SALON_NAME:   DEMO.SALON_NAME,
+      SALON_PHONE:  DEMO.SALON_PHONE,
+      SALON_RATING: DEMO.SALON_RATING,
+      COVER_IMAGE:  DEMO.COVER_IMAGE,
+      LOGO_IMAGE:   DEMO.LOGO_IMAGE,
+      API_BASE:     '',
+      WORKING_HOURS: DEMO.WORKING_HOURS,
+      SERVICES:      DEMO.SERVICES,
+      TEAM:          DEMO.TEAM,
+      GALLERY:       DEMO.GALLERY,
+    });
+
+    // Also patch static HTML placeholders in the DOM
+    document.querySelectorAll('*').forEach(el => {
+      if (el.children.length === 0 && el.textContent.includes('{{')) {
+        el.textContent = el.textContent
+          .replace(/\{\{SALON_NAME\}\}/g,     DEMO.SALON_NAME)
+          .replace(/\{\{SALON_CATEGORY\}\}/g, DEMO.SALON_CATEGORY)
+          .replace(/\{\{SALON_RATING\}\}/g,   DEMO.SALON_RATING)
+          .replace(/\{\{SALON_CITY\}\}/g,     DEMO.SALON_CITY)
+          .replace(/\{\{SALON_PHONE\}\}/g,    DEMO.SALON_PHONE)
+          .replace(/\{\{SALON_ABOUT\}\}/g,    DEMO.SALON_ABOUT);
+      }
+      ['href', 'src', 'action'].forEach(attr => {
+        if (el.hasAttribute(attr) && el.getAttribute(attr).includes('{{')) {
+          el.setAttribute(attr, el.getAttribute(attr)
+            .replace(/\{\{SALON_PHONE\}\}/g,         DEMO.SALON_PHONE)
+            .replace(/\{\{INSTAGRAM_USERNAME\}\}/g,  'salonmimi')
+            .replace(/\{\{FACEBOOK_USERNAME\}\}/g,   'salonmimi')
+            .replace(/\{\{GOOGLE_MAPS_EMBED_URL\}\}/g, ''));
+        }
+      });
+    });
+  }
+
+  renderLogos();
+  renderHero();
+  renderStars();
+  renderServices();
+  renderTeam();
+  renderGallery();
+  renderHours();
+  initBookingForm();
+  observeFadeIns();
+});
+
+/* ─────────────────────────────────────────────────────
+   RENDER — LOGOS
+───────────────────────────────────────────────────── */
+function logoHTML(size, radius, fontSize) {
+  const initial = (SALON_NAME || 'S').charAt(0).toUpperCase();
+  if (LOGO_IMAGE && !LOGO_IMAGE.includes('{{')) {
+    return `<img src="${LOGO_IMAGE}" alt="${escHtml(SALON_NAME)}"
+              style="width:${size}px;height:${size}px;border-radius:${radius}px;object-fit:cover;display:block;"
+              onerror="this.outerHTML=logoFallback(${size},${radius},${fontSize},'${initial}')">`;
+  }
+  return `<span style="font-size:${fontSize}px;font-weight:800;color:#fff;">${initial}</span>`;
+}
+
+function renderLogos() {
+  const initial = (SALON_NAME || 'S').charAt(0).toUpperCase();
+  ['hdr-logo','footer-logo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (LOGO_IMAGE && !LOGO_IMAGE.includes('{{')) {
+      el.innerHTML = `<img src="${LOGO_IMAGE}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"
+                          onerror="this.parentElement.innerHTML='${initial}'">`;
+    } else {
+      el.textContent = initial;
+    }
+  });
+
+  const sl = document.getElementById('salon-logo');
+  if (LOGO_IMAGE && !LOGO_IMAGE.includes('{{')) {
+    sl.innerHTML = `<img src="${LOGO_IMAGE}" alt="${escHtml(SALON_NAME)}" style="width:100%;height:100%;object-fit:cover;"
+                        onerror="this.parentElement.textContent='${initial}'">`;
+  } else {
+    sl.textContent = initial;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   RENDER — HERO
+───────────────────────────────────────────────────── */
+function renderHero() {
+  const cover = document.getElementById('hero-cover');
+  const initEl = document.getElementById('hero-initial');
+  if (COVER_IMAGE && !COVER_IMAGE.includes('{{')) {
+    const img = new Image();
+    img.src = COVER_IMAGE;
+    img.alt = SALON_NAME + ' обложка';
+    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
+    img.onerror = () => img.remove();
+    cover.appendChild(img);
+  }
+  initEl.textContent = (SALON_NAME || 'S').charAt(0).toUpperCase();
+}
+
+/* ─────────────────────────────────────────────────────
+   RENDER — STARS
+───────────────────────────────────────────────────── */
+function renderStars() {
+  const el = document.getElementById('star-rating');
+  let html = '';
+  const r = Math.min(5, Math.max(0, SALON_RATING));
+  for (let i = 1; i <= 5; i++) {
+    const filled = i <= Math.floor(r);
+    const half   = !filled && i <= Math.ceil(r) && (r % 1) >= 0.5;
+    if (filled) {
+      html += starSVG('#f59e0b');
+    } else if (half) {
+      html += `<svg width="16" height="16" viewBox="0 0 24 24">
+        <defs><linearGradient id="hg${i}"><stop offset="50%" stop-color="#f59e0b"/><stop offset="50%" stop-color="#d1d5db"/></linearGradient></defs>
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="url(#hg${i})"/>
+      </svg>`;
+    } else {
+      html += starSVG('#e5e7eb');
+    }
+  }
+  el.innerHTML = html;
+}
+
+function starSVG(fill) {
+  return `<svg width="16" height="16" viewBox="0 0 24 24">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+             fill="${fill}" stroke="none"/>
+  </svg>`;
+}
+
+/* ─────────────────────────────────────────────────────
+   RENDER — SERVICES
+───────────────────────────────────────────────────── */
+function renderServices() {
+  const el = document.getElementById('services-list');
+  if (!SERVICES || !SERVICES.length) {
+    el.innerHTML = `<p style="color:var(--text-secondary);font-size:14px;padding:8px 0;">
+      Услугите ще бъдат добавени скоро.</p>`;
+    return;
+  }
+
+  el.innerHTML = SERVICES.map((s, i) => `
+    <div class="service-card">
+      <div style="flex:1;">
+        <p style="font-size:15px;font-weight:600;color:var(--text);margin:0 0 5px;">${escHtml(s.name)}</p>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span style="font-size:13px;color:var(--text-secondary);">${s.duration_min} мин.</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
+        <span style="font-size:17px;font-weight:700;color:var(--text);">${s.price} €</span>
+        <button class="btn-outline" onclick="openBooking(${i})">Резервирай</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ─────────────────────────────────────────────────────
+   RENDER — TEAM
+───────────────────────────────────────────────────── */
+function renderTeam() {
+  const el = document.getElementById('team-list');
+  if (!TEAM || !TEAM.length) {
+    el.innerHTML = `<p style="color:var(--text-secondary);font-size:14px;padding:0 16px;">
+      Информацията за екипа скоро ще бъде добавена.</p>`;
+    return;
+  }
+
+  el.innerHTML = TEAM.map(m => {
+    const init = (m.name || '?').charAt(0).toUpperCase();
+    const avatar = (m.photo_url && !m.photo_url.includes('{{'))
+      ? `<img src="${escHtml(m.photo_url)}" alt="${escHtml(m.name)}" class="team-avatar"
+              onerror="this.outerHTML='<div class=&quot;team-avatar-placeholder&quot;>${init}</div>'">`
+      : `<div class="team-avatar-placeholder">${init}</div>`;
+    return `
+      <div class="team-member">
+        ${avatar}
+        <p style="font-size:13px;font-weight:600;color:var(--text);margin:8px 0 2px;
+                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(m.name)}</p>
+        <p style="font-size:12px;color:var(--text-secondary);margin:0;
+                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(m.role)}</p>
+      </div>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────────────
+   RENDER — GALLERY
+───────────────────────────────────────────────────── */
+const GRAD_PALETTE = [
+  'linear-gradient(135deg,#667eea,#764ba2)',
+  'linear-gradient(135deg,#f093fb,#f5576c)',
+  'linear-gradient(135deg,#4facfe,#00f2fe)',
+  'linear-gradient(135deg,#43e97b,#38f9d7)',
+  'linear-gradient(135deg,#fa709a,#fee140)',
+  'linear-gradient(135deg,#a18cd1,#fbc2eb)',
+];
+
+function renderGallery() {
+  const el = document.getElementById('gallery-grid');
+  if (!GALLERY || !GALLERY.length) {
+    el.innerHTML = GRAD_PALETTE.map(g =>
+      `<div class="gallery-item" style="background:${g};"></div>`
+    ).join('');
+    return;
+  }
+
+  el.innerHTML = GALLERY.map((url, i) => `
+    <div class="gallery-item" style="background:${GRAD_PALETTE[i % GRAD_PALETTE.length]};">
+      <img src="${escHtml(url)}" alt="Снимка ${i+1}" loading="lazy"
+           onerror="this.style.display='none'">
+    </div>
+  `).join('');
+}
+
+/* ─────────────────────────────────────────────────────
+   RENDER — WORKING HOURS
+───────────────────────────────────────────────────── */
+function renderHours() {
+  const el = document.getElementById('hours-list');
+  const todayKey = DAY_KEYS[new Date().getDay()];
+  const order = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+  el.innerHTML = order.map(day => {
+    const h = WORKING_HOURS[day];
+    const isToday = day === todayKey;
+    const closed = !h || h.closed;
+    const timeStr = closed
+      ? `<span style="color:#dc2626;font-weight:500;">Почивен ден</span>`
+      : `${h.open} – ${h.close}`;
+    return `
+      <div class="hours-row${isToday ? ' today' : ''}">
+        <span class="day-name" style="${isToday ? 'color:var(--primary);font-weight:700;' : ''}">
+          ${isToday ? '● ' : ''}${DAY_BG[day]}
+        </span>
+        <span class="day-time" style="${isToday ? 'color:var(--primary);' : ''}">${timeStr}</span>
+      </div>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────────────
+   BOOKING — INIT FORM
+───────────────────────────────────────────────────── */
+function initBookingForm() {
+  const sel = document.getElementById('f-service');
+  if (SERVICES && SERVICES.length) {
+    SERVICES.forEach((s, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${s.name}  —  ${s.price} €`;
+      sel.appendChild(opt);
+    });
+  }
+
+  // Set min date = today, max = +60 days
+  const dateEl = document.getElementById('f-date');
+  const today = new Date();
+  dateEl.min = isoDate(today);
+  const max = new Date(); max.setDate(max.getDate() + 60);
+  dateEl.max = isoDate(max);
+}
+
+/* ─────────────────────────────────────────────────────
+   BOOKING — OPEN / CLOSE
+───────────────────────────────────────────────────── */
+let _selectedTime = null;
+
+function openBooking(serviceIdx) {
+  // Reset
+  document.getElementById('booking-form').reset();
+  _selectedTime = null;
+  document.getElementById('f-time').value = '';
+  document.getElementById('time-slots').innerHTML =
+    '<p style="grid-column:1/-1;font-size:13px;color:var(--text-secondary);margin:0;">Изберете дата, за да видите свободните часове</p>';
+  document.getElementById('price-summary').style.display = 'none';
+  document.getElementById('form-error').style.display = 'none';
+  document.getElementById('submit-btn').innerHTML = 'Потвърди резервацията';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('sheet-form').style.display = 'block';
+  document.getElementById('sheet-success').style.display = 'none';
+
+  if (serviceIdx !== null && serviceIdx !== undefined && SERVICES[serviceIdx]) {
+    document.getElementById('f-service').value = serviceIdx;
+    onServiceChange();
+  }
+
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('bottom-sheet').classList.add('active');
+  document.body.style.overflow = 'hidden';
+
+  // Scroll sheet to top
+  document.getElementById('bottom-sheet').scrollTop = 0;
+}
+
+function closeBooking() {
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('bottom-sheet').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Close on Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBooking(); });
+
+/* ─────────────────────────────────────────────────────
+   BOOKING — SERVICE CHANGE
+───────────────────────────────────────────────────── */
+function onServiceChange() {
+  const idx = document.getElementById('f-service').value;
+  const ps  = document.getElementById('price-summary');
+  if (idx === '' || !SERVICES[idx]) { ps.style.display = 'none'; return; }
+  const s = SERVICES[idx];
+  document.getElementById('ps-name').textContent     = s.name;
+  document.getElementById('ps-duration').textContent = `${s.duration_min} минути`;
+  document.getElementById('ps-price').textContent    = `${s.price} €`;
+  ps.style.display = 'flex';
+}
+
+/* ─────────────────────────────────────────────────────
+   BOOKING — TIME SLOTS
+───────────────────────────────────────────────────── */
+function buildTimeSlots() {
+  const dateVal = document.getElementById('f-date').value;
+  const container = document.getElementById('time-slots');
+  const hidden = document.getElementById('f-time');
+
+  _selectedTime = null;
+  hidden.value = '';
+
+  if (!dateVal) return;
+
+  const d = new Date(dateVal + 'T12:00:00');
+  const dayKey = DAY_KEYS[d.getDay()];
+  const h = WORKING_HOURS[dayKey];
+
+  if (!h || h.closed) {
+    container.innerHTML = '<p style="grid-column:1/-1;font-size:13px;color:#dc2626;font-weight:500;margin:0;">Почивен ден — салонът не работи</p>';
+    return;
+  }
+
+  const slots = generateSlots(h.open, h.close, 30);
+
+  if (!slots.length) {
+    container.innerHTML = '<p style="grid-column:1/-1;font-size:13px;color:var(--text-secondary);margin:0;">Няма свободни часове за този ден</p>';
+    return;
+  }
+
+  container.innerHTML = slots.map(t =>
+    `<div class="time-slot" data-time="${t}" onclick="selectSlot(this, '${t}')">${t}</div>`
+  ).join('');
+}
+
+function generateSlots(openStr, closeStr, stepMin) {
+  const [oh, om] = openStr.split(':').map(Number);
+  const [ch, cm] = closeStr.split(':').map(Number);
+  const start = oh * 60 + om;
+  const end   = ch * 60 + cm - stepMin; // last slot ends at close
+  const slots = [];
+  for (let t = start; t <= end; t += stepMin) {
+    slots.push(`${pad(Math.floor(t/60))}:${pad(t%60)}`);
+  }
+  return slots;
+}
+
+function selectSlot(el, time) {
+  document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  _selectedTime = time;
+  document.getElementById('f-time').value = time;
+}
+
+/* ─────────────────────────────────────────────────────
+   BOOKING — SUBMIT
+───────────────────────────────────────────────────── */
+async function submitBooking(e) {
+  e.preventDefault();
+
+  const errorEl = document.getElementById('form-error');
+  errorEl.style.display = 'none';
+
+  if (!_selectedTime) {
+    showError('Моля, изберете час за вашата резервация.');
+    return;
+  }
+
+  const form  = e.target;
+  const data  = new FormData(form);
+  const idx   = data.get('service_index');
+  const svc   = SERVICES[idx] || {};
+  const dateV = data.get('date');
+
+  const payload = {
+    clientName:      String(data.get('client_name') || '').trim(),
+    clientPhone:     String(data.get('client_phone') || '').trim(),
+    // Email is optional; if we add the input later, this will auto-start working.
+    clientEmail:     String(data.get('client_email') || '').trim() || undefined,
+    serviceName:     svc.name || '',
+    servicePrice:    typeof svc.price === 'number' ? svc.price : 0,
+    serviceDuration: typeof svc.duration_min === 'number' ? svc.duration_min : 0,
+    date:            dateV,
+    time:            _selectedTime,
+  };
+
+  const btn = document.getElementById('submit-btn');
+  btn.innerHTML = '<div class="spinner"></div>';
+  btn.disabled  = true;
+
+  try {
+    const base = (API_BASE && !API_BASE.includes('{{')) ? API_BASE : '';
+    const slug = (SALON_SLUG && !SALON_SLUG.includes('{{')) ? SALON_SLUG : '';
+    const url = `${base}/api/bookings${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      let msg = `Грешка ${res.status}`;
+      try { const j = await res.json(); msg = j.error || j.message || msg; } catch {}
+      throw new Error(msg);
+    }
+
+    const dateLabel = new Date(dateV + 'T12:00:00').toLocaleDateString('bg-BG', {
+      weekday: 'long', day: 'numeric', month: 'long'
+    });
+
+    document.getElementById('success-text').innerHTML =
+      `<strong>${escHtml(payload.serviceName)}</strong><br>
+       ${dateLabel} в ${_selectedTime} ч.<br>
+       <span style="font-size:13px;">Ще се свържем с вас на ${escHtml(payload.clientPhone)}</span>`;
+
+    document.getElementById('sheet-form').style.display    = 'none';
+    document.getElementById('sheet-success').style.display = 'block';
+    document.getElementById('bottom-sheet').scrollTop = 0;
+
+  } catch (err) {
+    showError(err.message || 'Възникна грешка. Моля, обадете ни се директно по телефон.');
+    btn.innerHTML = 'Потвърди резервацията';
+    btn.disabled  = false;
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('form-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ─────────────────────────────────────────────────────
+   SCROLL ANIMATIONS — IntersectionObserver
+───────────────────────────────────────────────────── */
+function observeFadeIns() {
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
+    return;
+  }
+  const obs = new IntersectionObserver(
+    entries => entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        obs.unobserve(entry.target);
+      }
+    }),
+    { threshold: 0.08, rootMargin: '0px 0px -24px 0px' }
+  );
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+}
+
+/* ─────────────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────────────── */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function isoDate(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+</script>
+</body>
+</html>
