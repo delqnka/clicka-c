@@ -25,7 +25,7 @@ export function HeroSection() {
         </p>
         <div className="hero-h1-spotlights max-w-[min(100%,36rem)] sm:max-w-5xl">
           <motion.h1
-            className="max-w-5xl text-[clamp(2rem,4.2vw+0.75rem,3.25rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-white sm:text-[clamp(2.125rem,4.5vw+0.5rem,3.5rem)]"
+            className="hero-h1-title max-w-5xl text-[clamp(2rem,4.2vw+0.75rem,3.25rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-white sm:text-[clamp(2.125rem,4.5vw+0.5rem,3.5rem)]"
             id="hero-title"
             initial={{ opacity: 1, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -35,9 +35,17 @@ export function HeroSection() {
             <span className="text-white/30"> / </span>
             <span className="text-white/90">Независима от платформи.</span>
           </motion.h1>
+          <motion.p
+            className="mt-3 text-sm font-medium tracking-tight text-white sm:text-[0.9375rem]"
+            initial={{ opacity: 1, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            0 % комисионна
+          </motion.p>
         </div>
         <motion.p
-          className="mt-6 max-w-lg text-pretty text-base text-white/55"
+          className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-white/55"
           initial={{ opacity: 1, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.18, ease: [0.25, 0.1, 0.25, 1] }}

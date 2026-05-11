@@ -601,14 +601,14 @@ footer {
   mask-image: linear-gradient(180deg, white 0%, transparent 80%);
 }
 
-/* Hero H1 — две меки „прожекторни“ петна (accent), без да покриват текста */
+/* Hero H1 — прожектори отляво/дясно към заглавието (accent + мек лъч) */
 .hero-h1-spotlights {
   position: relative;
   isolation: isolate;
   margin-top: 0.25rem;
   margin-bottom: 0.25rem;
-  padding-top: 0.35rem;
-  padding-bottom: 0.5rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.65rem;
 }
 
 .hero-h1-spotlights::before,
@@ -617,28 +617,53 @@ footer {
   position: absolute;
   pointer-events: none;
   z-index: 0;
-  width: min(92vw, 480px);
-  height: min(100vw, 520px);
-  top: -35%;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse 48% 42% at 50% 50%,
-    rgba(0, 163, 255, 0.42) 0%,
-    rgba(0, 163, 255, 0.12) 38%,
-    transparent 72%
-  );
-  filter: blur(42px);
+  width: min(110vw, 560px);
+  height: 140%;
+  top: -55%;
   mix-blend-mode: screen;
-  opacity: 0.5;
+  opacity: 0.62;
+  filter: blur(38px);
+  background:
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      rgba(0, 163, 255, 0.14) 42%,
+      rgba(0, 163, 255, 0.06) 58%,
+      transparent 78%
+    ),
+    radial-gradient(
+      ellipse 42% 38% at 50% 65%,
+      rgba(0, 163, 255, 0.55) 0%,
+      rgba(0, 163, 255, 0.18) 45%,
+      transparent 72%
+    );
 }
 
 .hero-h1-spotlights::before {
-  left: -8%;
+  left: -22%;
+  transform-origin: 20% 0%;
+  transform: rotate(-11deg) scale(1);
   animation: heroSpotLeft 11s ease-in-out infinite alternate;
 }
 
 .hero-h1-spotlights::after {
-  right: -12%;
+  right: -26%;
+  transform-origin: 80% 0%;
+  transform: rotate(11deg) scale(1.02);
+  background:
+    linear-gradient(
+      255deg,
+      transparent 0%,
+      rgba(0, 163, 255, 0.14) 42%,
+      rgba(0, 163, 255, 0.06) 58%,
+      transparent 78%
+    ),
+    radial-gradient(
+      ellipse 42% 38% at 50% 65%,
+      rgba(0, 163, 255, 0.55) 0%,
+      rgba(0, 163, 255, 0.18) 45%,
+      transparent 72%
+    );
   animation: heroSpotRight 13s ease-in-out infinite alternate;
   animation-delay: -4s;
 }
@@ -648,25 +673,31 @@ footer {
   z-index: 1;
 }
 
+.hero-h1-spotlights .hero-h1-title {
+  text-shadow:
+    0 0 28px rgba(0, 0, 0, 0.55),
+    0 2px 20px rgba(0, 0, 0, 0.45);
+}
+
 @keyframes heroSpotLeft {
   0% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.38;
+    transform: rotate(-13deg) translate(-1%, 0) scale(1);
+    opacity: 0.48;
   }
   100% {
-    transform: translate(6%, 4%) scale(1.06);
-    opacity: 0.58;
+    transform: rotate(-8deg) translate(4%, 3%) scale(1.05);
+    opacity: 0.68;
   }
 }
 
 @keyframes heroSpotRight {
   0% {
-    transform: translate(0, 0) scale(1.02);
-    opacity: 0.42;
+    transform: rotate(13deg) translate(1%, 0) scale(1.02);
+    opacity: 0.5;
   }
   100% {
-    transform: translate(-5%, 6%) scale(1.08);
-    opacity: 0.62;
+    transform: rotate(8deg) translate(-3%, 4%) scale(1.07);
+    opacity: 0.72;
   }
 }
 
@@ -674,6 +705,6 @@ footer {
   .hero-h1-spotlights::before,
   .hero-h1-spotlights::after {
     animation: none;
-    opacity: 0.45;
+    opacity: 0.55;
   }
 }
