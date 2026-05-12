@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { getHostAwareSalonPath, getPlatformPublicUrl } from '@/lib/domain-routing';
 
@@ -45,6 +45,53 @@ async function readJson(res: Response) {
   }
 }
 
+type DomainInstruction = {
+  type?: string;
+  host?: string;
+  value?: string;
+  reason?: string | null;
+};
+
+function getDomainMeta(site: AdminSitePayload) {
+  const config = (site.domainConfig ?? {}) as Record<string, unknown>;
+  const dnsInstructions = Array.isArray(config.dnsInstructions)
+    ? (config.dnsInstructions as DomainInstruction[])
+    : [];
+  const verificationInstructions = Array.isArray(config.verificationInstructions)
+    ? (config.verificationInstructions as DomainInstruction[])
+    : [];
+
+  return {
+    dnsInstructions,
+    verificationInstructions,
+    configuredBy:
+      typeof config.configuredBy === 'string' ? config.configuredBy : '',
+    misconfigured:
+      typeof config.misconfigured === 'boolean' ? config.misconfigured : null,
+    verified: config.verified === true,
+    checkedAt: typeof config.checkedAt === 'string' ? config.checkedAt : '',
+  };
+}
+
+function isPendingDomainStatus(status: string) {
+  return ['pending_dns', 'pending_verification'].includes(status);
+}
+
+function formatDomainStatus(status: string) {
+  switch (status) {
+    case 'active':
+      return 'Активен';
+    case 'pending_verification':
+      return 'Чака верификация';
+    case 'pending_dns':
+      return 'Чака DNS';
+    case 'error':
+      return 'Грешка';
+    default:
+      return status || 'Не е свързан';
+  }
+}
+
 export default function AdminDashboardClient({
   slug,
   ownerEmail,
@@ -64,6 +111,7 @@ export default function AdminDashboardClient({
   const sitePath = getHostAwareSalonPath({ host: currentHost, slug });
   const claimPath = getHostAwareSalonPath({ host: currentHost, slug, path: 'claim' });
   const signInPath = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
+  const domainMeta = getDomainMeta(site);
 
   const filteredBookings = useMemo(() => {
     if (statusFilter === 'all') return bookings;
@@ -222,14 +270,69 @@ export default function AdminDashboardClient({
         domainStatus: data.domainStatus,
         domainConfig: {
           dnsInstructions: data.dnsInstructions,
+          verificationInstructions: data.verificationInstructions,
+          configuredBy: data.configuredBy,
+          misconfigured: data.misconfigured,
+          verified: data.verified,
           provider: data.provider,
           providerDetails: data.providerDetails,
+          checkedAt: new Date().toISOString(),
         },
       }));
-      setNotice('Домейнът е записан. Добави DNS записите и изчакай верификация.');
+      setNotice(
+        data.domainStatus === 'active'
+          ? 'Домейнът е активен.'
+          : 'Домейнът е записан. Добави DNS записите и изчакай верификация.'
+      );
     } catch (err: unknown) {
       if (err instanceof Error && err.message === 'Пренасочване…') return;
       setError(err instanceof Error ? err.message : 'Грешка');
+    } finally {
+      setBusyKey('');
+    }
+  }
+
+  async function refreshDomainStatus(silent = false) {
+    if (!site.customDomain) return;
+    if (!silent) {
+      setError('');
+      setNotice('');
+    }
+    setBusyKey('domain-refresh');
+    try {
+      const res = await fetch('/api/domain-connect', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      const data = await guardResponse(res);
+      setSite(prev => ({
+        ...prev,
+        customDomain: data.customDomain,
+        domainStatus: data.domainStatus,
+        domainConfig: {
+          dnsInstructions: data.dnsInstructions,
+          verificationInstructions: data.verificationInstructions,
+          configuredBy: data.configuredBy,
+          misconfigured: data.misconfigured,
+          verified: data.verified,
+          provider: data.provider,
+          providerDetails: data.providerDetails,
+          checkedAt: new Date().toISOString(),
+        },
+      }));
+      if (!silent) {
+        setNotice(
+          data.domainStatus === 'active'
+            ? 'Домейнът е вече активен.'
+            : 'Статусът на домейна е обновен.'
+        );
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'Пренасочване…') return;
+      if (!silent) {
+        setError(err instanceof Error ? err.message : 'Грешка');
+      }
     } finally {
       setBusyKey('');
     }
@@ -243,6 +346,19 @@ export default function AdminDashboardClient({
       window.location.href = signInPath;
     }
   }
+
+  useEffect(() => {
+    if (activeTab !== 'domain') return;
+    if (!site.customDomain) return;
+    if (!isPendingDomainStatus(site.domainStatus)) return;
+    if (busyKey === 'domain' || busyKey === 'domain-refresh') return;
+
+    const timeout = window.setTimeout(() => {
+      void refreshDomainStatus(true);
+    }, 6000);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeTab, site.customDomain, site.domainStatus, busyKey]);
 
   async function updateBookingStatus(bookingId: string, status: BookingStatus) {
     setError('');
@@ -349,10 +465,6 @@ export default function AdminDashboardClient({
       setBusyKey('');
     }
   }
-
-  const domainInstructions = Array.isArray((site.domainConfig as { dnsInstructions?: unknown[] } | null)?.dnsInstructions)
-    ? (((site.domainConfig as { dnsInstructions?: unknown[] }).dnsInstructions ?? []) as Array<Record<string, unknown>>)
-    : [];
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff', color: '#000', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -761,9 +873,19 @@ export default function AdminDashboardClient({
               title="Домейн"
               description="Всеки сайт получава автоматично свой адрес под clicka.bg. Тук можеш да свържеш и собствен домейн като override."
               action={
-                <button type="button" onClick={connectDomain} style={primaryButtonStyle} disabled={busyKey === 'domain'}>
-                  {busyKey === 'domain' ? 'Свързваме…' : 'Свържи домейн'}
-                </button>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button type="button" onClick={connectDomain} style={primaryButtonStyle} disabled={busyKey === 'domain'}>
+                    {busyKey === 'domain' ? 'Свързваме…' : 'Свържи домейн'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void refreshDomainStatus(false)}
+                    style={ghostButtonStyle}
+                    disabled={!site.customDomain || busyKey === 'domain-refresh'}
+                  >
+                    {busyKey === 'domain-refresh' ? 'Проверявам…' : 'Провери отново'}
+                  </button>
+                </div>
               }
             />
 
@@ -787,22 +909,52 @@ export default function AdminDashboardClient({
 
             <div style={{ ...miniCardStyle, marginTop: 14 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Статус</p>
-              <p style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 800 }}>{site.domainStatus || 'not_connected'}</p>
+              <p style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 800 }}>{formatDomainStatus(site.domainStatus)}</p>
               {site.customDomain ? (
                 <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.6 }}>
                   Активен запис в профила: <strong>{site.customDomain}</strong>
                 </p>
               ) : null}
+              {domainMeta.configuredBy ? (
+                <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.6 }}>
+                  Засечена конфигурация: <strong>{domainMeta.configuredBy}</strong>
+                </p>
+              ) : null}
+              {domainMeta.checkedAt ? (
+                <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.6 }}>
+                  Последна проверка: {new Date(domainMeta.checkedAt).toLocaleString()}
+                </p>
+              ) : null}
             </div>
 
-            {domainInstructions.length > 0 ? (
+            {domainMeta.verificationInstructions.length > 0 ? (
               <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-                {domainInstructions.map((instruction, index) => (
+                {domainMeta.verificationInstructions.map((instruction, index) => (
+                  <div key={`verification-${index}`} style={miniCardStyle}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 800 }}>
+                      {String(instruction.type ?? 'TXT')} {String(instruction.host ?? '')}
+                    </p>
+                    <p style={{ margin: '6px 0 0', fontSize: 15, wordBreak: 'break-all' }}>
+                      {String(instruction.value ?? '')}
+                    </p>
+                    {instruction.reason ? (
+                      <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.6 }}>
+                        {instruction.reason}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {domainMeta.dnsInstructions.length > 0 ? (
+              <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+                {domainMeta.dnsInstructions.map((instruction, index) => (
                   <div key={`dns-${index}`} style={miniCardStyle}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 800 }}>
                       {String(instruction.type ?? 'DNS')} {String(instruction.host ?? '@')}
                     </p>
-                    <p style={{ margin: '6px 0 0', fontSize: 15 }}>
+                    <p style={{ margin: '6px 0 0', fontSize: 15, wordBreak: 'break-all' }}>
                       {String(instruction.value ?? '')}
                     </p>
                   </div>
