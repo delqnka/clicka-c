@@ -18,7 +18,7 @@ async function resolveSalonFromRequest(request: NextRequest) {
   }
 
   const salons = await sql`
-    SELECT CAST(id AS text) AS salon_id, name, email, slug FROM salons
+    SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
   `;
 
@@ -130,9 +130,19 @@ export async function POST(request: NextRequest) {
     clientPhone,
     clientEmail,
     serviceName,
+    servicePrice,
+    serviceDuration,
     date,
     time,
+    notes,
     salonName: resolved.salon.name,
+    salonEmail: resolved.salon.email || undefined,
+    salonPhone: resolved.salon.phone || undefined,
+    salonAddress:
+      [resolved.salon.address, resolved.salon.city]
+        .map(value => String(value ?? '').trim())
+        .filter(Boolean)
+        .join(', ') || undefined,
   };
 
   const emailPromises: Promise<void>[] = [];

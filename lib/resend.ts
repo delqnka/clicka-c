@@ -7,51 +7,71 @@ export interface BookingDetails {
   clientPhone: string;
   clientEmail?: string;
   serviceName: string;
+  servicePrice?: number | null;
+  serviceDuration?: number | null;
   date: string;
   time: string;
+  notes?: string;
   salonName: string;
+  salonEmail?: string;
+  salonPhone?: string;
+  salonAddress?: string;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function senderFromSalonName(salonName: string) {
+  const cleanName = String(salonName || 'Clicka').trim().replaceAll(/\s+/g, ' ');
+  return `${cleanName} <bookings@clicka.bg>`;
+}
+
+function renderRow(label: string, value: string) {
+  return `
+    <tr>
+      <td style="padding: 10px 12px; border: 1px solid #000; font-weight: 700; width: 34%;">${escapeHtml(label)}</td>
+      <td style="padding: 10px 12px; border: 1px solid #000;">${escapeHtml(value)}</td>
+    </tr>
+  `;
 }
 
 export async function sendBookingNotification(
   salonEmail: string,
   booking: BookingDetails
 ): Promise<void> {
+  const salonRows = [
+    renderRow('Клиент', booking.clientName),
+    renderRow('Телефон', booking.clientPhone),
+    booking.clientEmail ? renderRow('Имейл', booking.clientEmail) : '',
+    renderRow('Услуга', booking.serviceName),
+    booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
+    booking.servicePrice != null ? renderRow('Цена', `${booking.servicePrice} лв.`) : '',
+    renderRow('Дата', booking.date),
+    renderRow('Час', booking.time),
+    booking.notes ? renderRow('Бележка', booking.notes) : '',
+  ].join('');
+
   await resend.emails.send({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: senderFromSalonName(booking.salonName),
     to: salonEmail,
+    reply_to: booking.clientEmail || undefined,
     subject: `Нова резервация от ${booking.clientName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Нова резервация</h2>
-        <p>Имате нова резервация за <strong>${booking.salonName}</strong>.</p>
+        <h2 style="margin: 0 0 16px; color: #000;">Нова резервация</h2>
+        <p style="margin: 0 0 16px; line-height: 1.7;">
+          Имате нова заявка за <strong>${escapeHtml(booking.salonName)}</strong>.
+        </p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Клиент</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.clientName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Телефон</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.clientPhone}</td>
-          </tr>
-          ${booking.clientEmail ? `
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Имейл</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.clientEmail}</td>
-          </tr>` : ''}
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Услуга</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.serviceName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Дата</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.date}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Час</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.time}</td>
-          </tr>
+          ${salonRows}
         </table>
-        <p style="margin-top: 24px; color: #666; font-size: 14px;">
+        <p style="margin-top: 24px; font-size: 14px; line-height: 1.7;">
           Това съобщение е изпратено автоматично от <a href="https://clicka.bg">Clicka.bg</a>.
         </p>
       </div>
@@ -63,33 +83,37 @@ export async function sendBookingConfirmation(
   clientEmail: string,
   booking: BookingDetails
 ): Promise<void> {
+  const clientRows = [
+    renderRow('Име', booking.clientName),
+    renderRow('Услуга', booking.serviceName),
+    booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
+    booking.servicePrice != null ? renderRow('Цена', `${booking.servicePrice} лв.`) : '',
+    renderRow('Дата', booking.date),
+    renderRow('Час', booking.time),
+    booking.salonPhone ? renderRow('Телефон на салона', booking.salonPhone) : '',
+    booking.salonAddress ? renderRow('Адрес', booking.salonAddress) : '',
+    booking.notes ? renderRow('Бележка', booking.notes) : '',
+  ].join('');
+
   await resend.emails.send({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: senderFromSalonName(booking.salonName),
     to: clientEmail,
-    subject: `Потвърждение на резервация – ${booking.salonName}`,
+    reply_to: booking.salonEmail || undefined,
+    subject: `Резервация в ${booking.salonName} – ${booking.date} ${booking.time}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Вашата резервация е потвърдена</h2>
-        <p>Здравейте, <strong>${booking.clientName}</strong>!</p>
-        <p>Резервацията Ви в <strong>${booking.salonName}</strong> е приета успешно.</p>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Услуга</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.serviceName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Дата</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.date}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Час</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${booking.time}</td>
-          </tr>
-        </table>
-        <p style="margin-top: 16px;">
-          При нужда от промяна, моля свържете се директно с нас.
+        <h2 style="margin: 0 0 16px; color: #000;">Получихме вашата резервация</h2>
+        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(booking.clientName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          Получихме вашата заявка за <strong>${escapeHtml(booking.salonName)}</strong>.
         </p>
-        <p style="margin-top: 24px; color: #666; font-size: 14px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          ${clientRows}
+        </table>
+        <p style="margin-top: 16px; line-height: 1.7;">
+          При нужда от промяна, отговорете директно на този имейл или се свържете със салона.
+        </p>
+        <p style="margin-top: 24px; font-size: 14px; line-height: 1.7;">
           Това съобщение е изпратено автоматично от <a href="https://clicka.bg">Clicka.bg</a>.
         </p>
       </div>

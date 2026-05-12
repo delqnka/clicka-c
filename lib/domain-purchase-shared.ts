@@ -1,11 +1,32 @@
 export const DOMAIN_PURCHASE_CURRENCY = 'eur';
 export const DOMAIN_SETUP_FEE_CENTS = 3900;
+export const DOMAIN_SETUP_FEE_BGN_CENTS = 7628;
 
-export const DOMAIN_TLD_OPTIONS = [
-  { value: 'bg', label: '.bg', feeCents: 4900 },
-  { value: 'com', label: '.com', feeCents: 1900 },
-  { value: 'eu', label: '.eu', feeCents: 1900 },
-] as const;
+export type DomainTldOption = {
+  value: string;
+  label: string;
+  feeCents: number;
+  feeBgnCents: number;
+  badge?: string;
+  originalFeeCents?: number;
+  originalFeeBgnCents?: number;
+};
+
+export const DOMAIN_TLD_OPTIONS: DomainTldOption[] = [
+  { value: 'com', label: '.com', feeCents: 1529, feeBgnCents: 2990 },
+  { value: 'bg', label: '.bg', feeCents: 2960, feeBgnCents: 5790 },
+  { value: 'net', label: '.net', feeCents: 1580, feeBgnCents: 3090 },
+  { value: 'eu', label: '.eu', feeCents: 780, feeBgnCents: 1526, badge: 'Промо' },
+  {
+    value: 'org',
+    label: '.org',
+    feeCents: 1682,
+    feeBgnCents: 3290,
+    originalFeeCents: 3859,
+    originalFeeBgnCents: 7548,
+    badge: 'Промо',
+  },
+];
 
 export type DomainPurchaseStatus =
   | 'requested'
@@ -75,8 +96,11 @@ export function getDomainPurchasePricing(tld: string) {
   return {
     tld: config.value,
     domainFeeCents: config.feeCents,
+    domainFeeBgnCents: config.feeBgnCents,
     setupFeeCents: DOMAIN_SETUP_FEE_CENTS,
+    setupFeeBgnCents: DOMAIN_SETUP_FEE_BGN_CENTS,
     totalFeeCents: config.feeCents + DOMAIN_SETUP_FEE_CENTS,
+    totalFeeBgnCents: config.feeBgnCents + DOMAIN_SETUP_FEE_BGN_CENTS,
     currency: DOMAIN_PURCHASE_CURRENCY,
   };
 }
