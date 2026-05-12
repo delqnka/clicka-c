@@ -44,9 +44,31 @@ function toSlug(name: string): string {
     .split('')
     .map(c => TRANSLIT[c] ?? c)
     .join('')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40) || 'salon';
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 32) || 'salon';
+}
+
+async function generateUniqueSalonSlug(name: string) {
+  const base = toSlug(name);
+
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const suffix = attempt === 0 ? '' : String(attempt + 1);
+    const maxBaseLength = Math.max(1, 32 - suffix.length);
+    const candidate = `${base.slice(0, maxBaseLength)}${suffix}`;
+
+    const rows = await sql`
+      SELECT slug
+      FROM salons
+      WHERE slug = ${candidate}
+      LIMIT 1
+    `;
+
+    if (rows.length === 0) {
+      return candidate;
+    }
+  }
+
+  throw new Error('Не успяхме да генерираме свободен адрес за сайта');
 }
 
 export async function POST(request: NextRequest) {
@@ -154,9 +176,7 @@ export async function POST(request: NextRequest) {
 
   try {
     /* ── Generate unique slug ───────────────────────────── */
-    const base = toSlug(salonData.name);
-    const suffix = Math.random().toString(36).slice(2, 6);
-    const slug = `${base}-${suffix}`;
+    const slug = await generateUniqueSalonSlug(salonData.name);
     const salonId = crypto.randomUUID();
     const publicUrl = getPlatformPublicUrl(slug);
     const claimUrl = getPlatformClaimUrl(slug);

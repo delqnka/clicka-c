@@ -64,6 +64,9 @@ export async function POST(request: NextRequest) {
   const code = generateOtpCode();
   const codeHash = hashOtpCode(emailNorm, code);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  const skipCheckoutMode =
+    process.env.CLICKA_SKIP_CHECKOUT === '1' ||
+    process.env.CLICKA_SKIP_CHECKOUT === 'true';
 
   await sql`
     INSERT INTO salon_claim_otp (salon_id, email_norm, code_hash, expires_at, attempts, created_at)
@@ -76,7 +79,11 @@ export async function POST(request: NextRequest) {
       created_at = now()
   `;
 
-  await resend.emails.send({
+  if (skipCheckoutMode) {
+    return NextResponse.json({ success: true, debugCode: code });
+  }
+
+  const sendResult = await resend.emails.send({
     from: 'Clicka.bg <noreply@clicka.bg>',
     to: allowedEmail,
     subject: `Код за достъп до ${salon.name}`,
@@ -95,6 +102,13 @@ export async function POST(request: NextRequest) {
       </div>
     `,
   });
+
+  if (sendResult.error) {
+    return NextResponse.json(
+      { error: 'Не успяхме да изпратим кода по имейл.' },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ success: true });
 }
