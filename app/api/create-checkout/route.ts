@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import Stripe from 'stripe';
+import crypto from 'crypto';
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
   const base   = toSlug(salonData.name);
   const suffix = Math.random().toString(36).slice(2, 6);
   const slug   = `${base}-${suffix}`;
+  const salonId = crypto.randomUUID();
 
   const colors = MONO_THEME;
 
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
   /* ── Save salon to Neon ─────────────────────────────── */
   const rows = await sql`
     INSERT INTO salons (
-      slug, name, category, phone, email,
+      id, slug, name, category, phone, email,
       city, address, about,
       cover_image_url, logo_image_url, gallery_images,
       instagram_username, facebook_username,
@@ -144,6 +146,7 @@ export async function POST(request: NextRequest) {
       template_id, primary_color, primary_color_light,
       plan_type, is_active, site_status
     ) VALUES (
+      ${salonId},
       ${slug},
       ${salonData.name},
       ${salonData.category},
@@ -169,8 +172,7 @@ export async function POST(request: NextRequest) {
     )
     RETURNING id
   `;
-
-  const salonId = rows[0].id;
+  const createdSalonId = rows[0].id ?? salonId;
 
   /* ── Demo / скриншоти: без Stripe (само при CLICKA_SKIP_CHECKOUT на сървъра) ── */
   const skipCheckout =
@@ -184,7 +186,7 @@ export async function POST(request: NextRequest) {
         is_active = true,
         site_status = 'active',
         stripe_session_id = NULL
-      WHERE id = ${salonId}
+      WHERE id = ${createdSalonId}
     `;
     return NextResponse.json({ skipCheckout: true, slug });
   }
@@ -208,7 +210,7 @@ export async function POST(request: NextRequest) {
     ],
     metadata: {
       salonSlug: slug,
-      salonId:   String(salonId),
+      salonId:   String(createdSalonId),
       templateId: String(templateId),
       planType,
     },
