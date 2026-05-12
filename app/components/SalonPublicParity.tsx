@@ -280,6 +280,7 @@ export default function SalonPublicParity({
 
   const salonId = String(rawSalon.id ?? '').trim();
   const name = String(rawSalon.name ?? 'Салон');
+  const category = String(rawSalon.category ?? '').trim();
   const description = String(rawSalon.about ?? '').trim();
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
@@ -759,7 +760,11 @@ export default function SalonPublicParity({
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] items-center justify-end px-4 py-3 md:px-6">
+        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] items-center justify-between px-4 py-3 md:px-6">
+          <div className="h-10 w-10 shrink-0 md:hidden" aria-hidden />
+          <p className="min-w-0 flex-1 truncate px-3 text-center text-base font-semibold text-[#1a1a1a] md:hidden">
+            {name}
+          </p>
           <button
             type="button"
             onClick={handleShare}
@@ -802,10 +807,11 @@ export default function SalonPublicParity({
       <main className="mx-auto w-full max-w-[min(100%,1180px)] px-4 md:px-6">
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,380px)] lg:items-start lg:gap-x-10">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-4 lg:border-0 lg:pb-0">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-5 lg:border-0 lg:pb-0">
               <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{name}</h1>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
+                <h1 className="hidden text-2xl font-semibold tracking-tight text-[#1a1a1a] md:text-3xl lg:block">{name}</h1>
+                {category ? <p className="text-sm text-black/45 lg:mt-2">{category}</p> : null}
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
                   {(headerPlatformRating != null || headerGoogleRating != null) && (
                     <button
                       type="button"
@@ -836,22 +842,22 @@ export default function SalonPublicParity({
                     <span className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--salon-primary)]" aria-hidden />
                     {getCurrentStatusString(openingHoursMerged)}
                   </span>
-                  {mapsHref || address || city ? (
-                    <a
-                      href={
-                        mapsHref ??
-                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([address, city].filter(Boolean).join(', '))}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex max-w-full items-center gap-1 font-medium underline-offset-2 hover:underline"
-                      style={{ color: APPLE_LINK_BLUE }}
-                    >
-                      <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                      <span className="truncate">{[address, city].filter(Boolean).join(', ')}</span>
-                    </a>
-                  ) : null}
                 </div>
+                {mapsHref || address || city ? (
+                  <a
+                    href={
+                      mapsHref ??
+                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([address, city].filter(Boolean).join(', '))}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex max-w-full items-center gap-1 text-sm font-medium underline-offset-2 hover:underline"
+                    style={{ color: APPLE_LINK_BLUE }}
+                  >
+                    <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="truncate">{[address, city].filter(Boolean).join(', ')}</span>
+                  </a>
+                ) : null}
                 {addressDistanceLabel ? <p className="mt-1 text-xs text-black/45">{addressDistanceLabel}</p> : null}
               </div>
             </div>
@@ -1039,7 +1045,7 @@ export default function SalonPublicParity({
                   })}
                 </div>
               ) : null}
-              <ul className="mt-4 border-y border-black/10 bg-white">
+              <ul className="mt-4 space-y-3">
                 {displayServices.map((service, idxInPage) => {
                   const globalIdx = servicesFromDb.findIndex((x) => x.id === service.id);
                   const variants = service.variants && service.variants.length > 0 ? service.variants : null;
@@ -1051,7 +1057,10 @@ export default function SalonPublicParity({
                     : null;
                   const effective = getEffectiveServiceCb(service, selectedVariant);
                   return (
-                    <li key={service.id} className="border-b border-black/10 px-1 py-5 first:pt-3 last:border-b-0 last:pb-3">
+                    <li
+                      key={service.id}
+                      className="rounded-[26px] border border-black/10 bg-white px-4 py-5 shadow-[0_14px_28px_rgba(0,0,0,0.16)]"
+                    >
                       <div className="flex flex-row items-start gap-4">
                         <div className="min-w-0 flex-1">
                           <p className="text-[17px] font-normal leading-snug text-[#1a1a1a]">{service.name}</p>
@@ -1510,7 +1519,7 @@ export default function SalonPublicParity({
               >
                 Резервирай сега
               </button>
-              <div className="mt-5 space-y-4 border-t border-black/10 pt-4 text-sm text-black/55">
+              <div className="mt-5 space-y-4 pt-2 text-sm text-black/55">
                 <div className="flex gap-2">
                   <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--salon-primary)]" aria-hidden />
                   <span className="min-w-0 leading-snug">{getCurrentStatusString(openingHoursMerged)}</span>
@@ -1552,8 +1561,8 @@ export default function SalonPublicParity({
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-black/10 bg-white/95 px-4 py-4 backdrop-blur-sm lg:hidden">
-        <div className="mx-auto flex max-w-[min(100%,1180px)] items-center justify-between rounded-[28px] border border-black/10 bg-white px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+      <div className="fixed bottom-0 left-0 right-0 z-20 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:hidden">
+        <div className="mx-auto flex max-w-[min(100%,1180px)] items-center justify-between rounded-[30px] border border-white/70 bg-white/70 px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.16)] backdrop-blur-xl">
           <div className="min-w-0 pr-4">
             <p className="text-sm text-black/55">{servicesFromDb.length} услуги налични</p>
           </div>
