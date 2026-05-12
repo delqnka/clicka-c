@@ -179,7 +179,7 @@ function SalonGalleryMosaic({
         <img
           src={a}
           alt=""
-          className="aspect-[4/3] w-full object-cover transition duration-300 group-hover:opacity-95 md:aspect-[2/1]"
+          className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95 md:aspect-[2/1]"
         />
       </button>
     );
@@ -192,7 +192,7 @@ function SalonGalleryMosaic({
           onClick={() => onOpenGallery(0)}
           className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
         >
-          <img src={a} alt="" className="aspect-[4/3] w-full object-cover transition duration-300 group-hover:opacity-95" />
+          <img src={a} alt="" className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
           <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
             Виж снимки
           </span>
@@ -223,7 +223,7 @@ function SalonGalleryMosaic({
         onClick={() => onOpenGallery(0)}
         className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
       >
-        <img src={a} alt="" className="aspect-[4/3] w-full object-cover transition duration-300 group-hover:opacity-95" />
+        <img src={a} alt="" className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
         <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
           Преглед на всички изображения
         </span>
@@ -307,6 +307,8 @@ export default function SalonPublicParity({
     workingHours,
     rawSalon.opening_hours
   );
+  const currentStatusLabel = getCurrentStatusString(openingHoursMerged);
+  const currentStatusIsOpen = currentStatusLabel.startsWith('Отворено');
 
   const venueRaw = rawSalon.venue_extras ?? rawSalon.venueExtras;
   const ve = parseSalonVenueExtras(venueRaw);
@@ -760,7 +762,7 @@ export default function SalonPublicParity({
       className="min-h-screen bg-white pb-28 text-[#1a1a1a] lg:pb-10"
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
-      <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-0 md:px-6 md:pt-4">
+      <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
         <button
           type="button"
           onClick={handleShare}
@@ -784,7 +786,7 @@ export default function SalonPublicParity({
                     type="button"
                     onClick={() => scrollToSection(tab.id)}
                     className={`relative shrink-0 whitespace-nowrap border-b-2 px-0 py-2 text-[15px] font-medium transition ${
-                      isActive ? 'border-black text-[#1a1a1a]' : 'border-transparent text-black/50 hover:text-[#1a1a1a]'
+                      isActive ? 'border-black text-[#1a1a1a]' : 'border-transparent text-[#1a1a1a] hover:text-[#1a1a1a]'
                     }`}
                   >
                     {tab.label}
@@ -799,7 +801,7 @@ export default function SalonPublicParity({
       <main className="mx-auto w-full max-w-[min(100%,1180px)] px-4 md:px-6">
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,380px)] lg:items-start lg:gap-x-10">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-5 lg:border-0 lg:pb-0">
+            <div className="flex flex-wrap items-start justify-between gap-4 pb-5 lg:pb-0">
               <div className="min-w-0 flex-1">
                 <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{name}</h1>
                 {category ? <p className="text-sm text-black/45 lg:mt-2">{category}</p> : null}
@@ -831,8 +833,8 @@ export default function SalonPublicParity({
                     </button>
                   )}
                   <span className="inline-flex items-center gap-1">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--salon-primary)]" aria-hidden />
-                    {getCurrentStatusString(openingHoursMerged)}
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${currentStatusIsOpen ? 'bg-emerald-500' : 'bg-black/25'}`} aria-hidden />
+                    {currentStatusLabel}
                   </span>
                 </div>
                 {mapsHref || address || city ? (
@@ -1170,9 +1172,9 @@ export default function SalonPublicParity({
                   {publicTeamMembers.map((member) => (
                     <div
                       key={member.id}
-                      className="flex w-28 shrink-0 flex-col items-center rounded-2xl border border-black/10 bg-white p-3 text-center shadow-sm"
+                      className="flex w-28 shrink-0 flex-col items-center p-1 text-center"
                     >
-                      <div className="h-16 w-16 overflow-hidden rounded-full border border-black/10 bg-white">
+                      <div className="h-16 w-16 overflow-hidden rounded-full">
                         {member.photoUrl ? (
                           <img src={member.photoUrl} alt="" className="h-full w-full object-cover" />
                         ) : (
@@ -1650,7 +1652,7 @@ export default function SalonPublicParity({
                 <div>
                   <label className="block text-xs font-medium text-black/55">Услуга</label>
                   <select
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
                     value={bookingServiceIdx === '' ? '' : String(bookingServiceIdx)}
                     onChange={(e) => setBookingServiceIdx(e.target.value === '' ? '' : Number(e.target.value))}
                     required
@@ -1664,12 +1666,12 @@ export default function SalonPublicParity({
                     ))}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="min-w-0">
                     <label className="block text-xs font-medium text-black/55">Дата</label>
                     <input
                       type="date"
-                      className="mt-1 w-full rounded-lg border border-black/15 px-2 py-2 text-sm"
+                      className="mt-1 w-full min-w-0 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
                       min={minDate}
                       max={maxDate}
                       value={selectedDate}
@@ -1677,10 +1679,10 @@ export default function SalonPublicParity({
                       required
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-xs font-medium text-black/55">Час</label>
                     <select
-                      className="mt-1 w-full rounded-lg border border-black/15 px-2 py-2 text-sm"
+                      className="mt-1 w-full min-w-0 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
                       value={selectedTime}
                       onChange={(e) => setSelectedTime(e.target.value)}
                       required
@@ -1703,7 +1705,7 @@ export default function SalonPublicParity({
                 <div>
                   <label className="block text-xs font-medium text-black/55">Име</label>
                   <input
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     required
@@ -1712,7 +1714,7 @@ export default function SalonPublicParity({
                 <div>
                   <label className="block text-xs font-medium text-black/55">Телефон</label>
                   <input
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     required
@@ -1721,7 +1723,7 @@ export default function SalonPublicParity({
                 <div>
                   <label className="block text-xs font-medium text-black/55">Бележки (по желание)</label>
                   <textarea
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
