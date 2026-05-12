@@ -71,7 +71,7 @@ const sectionCardStyle: CSSProperties = {
   borderRadius: 30,
   background: '#fff',
   boxShadow: '0 20px 54px rgba(0,0,0,0.16)',
-  padding: 26,
+  padding: 'clamp(16px, 4vw, 26px)',
 };
 
 const insetCardStyle: CSSProperties = {
@@ -89,7 +89,7 @@ const inputStyle: CSSProperties = {
   background: '#fff',
   color: '#000',
   padding: '14px 16px',
-  fontSize: 15,
+  fontSize: 16,
   fontWeight: 500,
   outline: 'none',
   boxShadow: '0 10px 24px rgba(0,0,0,0.1)',
@@ -127,7 +127,13 @@ const fieldLabelStyle: CSSProperties = {
 const choiceGridStyle: CSSProperties = {
   display: 'grid',
   gap: 12,
-  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))',
+};
+
+const twoColumnGridStyle: CSSProperties = {
+  display: 'grid',
+  gap: 14,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
 };
 
 function choiceButtonStyle(active: boolean): CSSProperties {
@@ -453,7 +459,7 @@ export default function DomainPurchaseSection({
 
           <div style={{ display: 'grid', gap: 12 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Регистрация като</p>
-            <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+            <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))' }}>
               <button
                 type="button"
                 onClick={() => setForm(prev => ({ ...prev, registrantType: 'individual' }))}
@@ -478,7 +484,7 @@ export default function DomainPurchaseSection({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <div style={twoColumnGridStyle}>
             <FieldShell label="Име / получател">
               <input
                 value={form.registrantName}
@@ -497,7 +503,7 @@ export default function DomainPurchaseSection({
             </FieldShell>
           </div>
 
-          <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <div style={twoColumnGridStyle}>
             <FieldShell label="Телефон">
               <input
                 value={form.registrantPhone}
@@ -516,7 +522,7 @@ export default function DomainPurchaseSection({
           </div>
 
           {form.registrantType === 'company' ? (
-            <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+            <div style={twoColumnGridStyle}>
               <FieldShell label="Фирма">
                 <input
                   value={form.companyName}
@@ -535,7 +541,7 @@ export default function DomainPurchaseSection({
             </div>
           ) : null}
 
-          <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <div style={twoColumnGridStyle}>
             <FieldShell label="Адрес">
               <input
                 value={form.addressLine1}
@@ -591,7 +597,14 @@ export default function DomainPurchaseSection({
             </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'grid',
+              gap: 12,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
+              alignItems: 'center',
+            }}
+          >
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'rgba(0,0,0,0.78)' }}>
               Поддържани домейни: {DOMAIN_TLD_OPTIONS.map(item => item.label).join(', ')}.
             </p>

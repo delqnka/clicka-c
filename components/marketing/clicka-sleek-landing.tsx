@@ -1,5 +1,6 @@
 'use client';
 
+import { ActivityBanner } from '@/components/marketing/activity-banner';
 import { ContactSection } from '@/components/marketing/contact-section';
 import { HeroSection } from '@/components/marketing/hero-section';
 import { ServicesSection } from '@/components/marketing/services-section';
@@ -15,6 +16,7 @@ export function ClickaSleekLanding() {
         <SiteHeader />
         <main>
           <HeroSection />
+          <ActivityBanner />
           <ServicesSection />
           <WorkSection />
           <ContactSection />

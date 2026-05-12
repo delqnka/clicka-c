@@ -93,6 +93,19 @@ function formatDomainStatus(status: string) {
   }
 }
 
+function useIsMobileLayout(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < breakpoint);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 export default function AdminDashboardClient({
   slug,
   ownerEmail,
@@ -107,6 +120,7 @@ export default function AdminDashboardClient({
   const [notice, setNotice] = useState('');
   const [busyKey, setBusyKey] = useState<string>('');
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
+  const isMobile = useIsMobileLayout();
   const currentHost = typeof window !== 'undefined' ? window.location.host : null;
   const platformPublicUrl = getPlatformPublicUrl(slug);
   const sitePath = getHostAwareSalonPath({ host: currentHost, slug });
@@ -487,33 +501,64 @@ export default function AdminDashboardClient({
           backdropFilter: 'blur(16px)',
         }}
       >
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: '0 auto',
+            padding: '16px clamp(16px, 4vw, 20px)',
+            display: 'grid',
+            gap: 16,
+            gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+            alignItems: 'center',
+          }}
+        >
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
               Owner Dashboard
             </p>
-            <h1 style={{ margin: '6px 0 0', fontSize: 24, lineHeight: 1.05, letterSpacing: '-0.04em' }}>{site.name || slug}</h1>
-            <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.5 }}>
+            <h1 style={{ margin: '6px 0 0', fontSize: 'clamp(24px, 7vw, 32px)', lineHeight: 1.05, letterSpacing: '-0.04em' }}>
+              {site.name || slug}
+            </h1>
+            <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.5, wordBreak: 'break-word' }}>
               Собственик: <strong>{ownerEmail}</strong>
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link href={sitePath} style={linkButtonStyle}>
+          <div
+            style={{
+              display: 'grid',
+              gap: 10,
+              gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
+              alignItems: 'center',
+            }}
+          >
+            <Link href={sitePath} style={{ ...linkButtonStyle, width: '100%' }}>
               Виж сайта
             </Link>
-            <Link href={claimPath} style={linkGhostStyle}>
+            <Link href={claimPath} style={{ ...linkGhostStyle, width: '100%' }}>
               Claim page
             </Link>
-            <button type="button" onClick={logout} style={ghostButtonStyle} disabled={busyKey === 'logout'}>
+            <button type="button" onClick={logout} style={{ ...ghostButtonStyle, width: '100%' }} disabled={busyKey === 'logout'}>
               {busyKey === 'logout' ? 'Излизане…' : 'Изход'}
             </button>
           </div>
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 64px' }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '16px 14px 56px' : '24px clamp(16px, 4vw, 20px) 64px' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: isMobile ? 8 : 10,
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            marginBottom: 18,
+            paddingBottom: 6,
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+          }}
+        >
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -525,14 +570,17 @@ export default function AdminDashboardClient({
               }}
               style={{
                 borderRadius: 999,
-                padding: '11px 16px',
+                padding: isMobile ? '10px 14px' : '11px 16px',
+                flex: '0 0 auto',
+                whiteSpace: 'nowrap',
                 border: `1px solid ${activeTab === tab.id ? '#000' : 'rgba(0,0,0,0.12)'}`,
                 background: '#fff',
                 color: '#000',
-                fontSize: 14,
+                fontSize: isMobile ? 13 : 14,
                 fontWeight: activeTab === tab.id ? 800 : 700,
                 cursor: 'pointer',
                 boxShadow: activeTab === tab.id ? '0 14px 28px rgba(0,0,0,0.16)' : '0 8px 18px rgba(0,0,0,0.08)',
+                scrollSnapAlign: 'start',
               }}
             >
               {tab.label}
@@ -549,10 +597,11 @@ export default function AdminDashboardClient({
               title="Сайт"
               description="Редактирай основната информация, която се показва в публичната страница."
               action={
-                <button type="button" onClick={saveSiteSettings} style={primaryButtonStyle} disabled={busyKey === 'site'}>
+                <button type="button" onClick={saveSiteSettings} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'site'}>
                   {busyKey === 'site' ? 'Запазваме…' : 'Запази'}
                 </button>
               }
+              mobile={isMobile}
             />
 
             <div style={gridStyle}>
@@ -604,10 +653,11 @@ export default function AdminDashboardClient({
               title="Снимки"
               description="Cover, лого и галерия за публичния сайт."
               action={
-                <button type="button" onClick={saveImages} style={primaryButtonStyle} disabled={busyKey === 'images'}>
+                <button type="button" onClick={saveImages} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'images'}>
                   {busyKey === 'images' ? 'Запазваме…' : 'Запази снимките'}
                 </button>
               }
+              mobile={isMobile}
             />
 
             <div style={gridStyle}>
@@ -635,7 +685,7 @@ export default function AdminDashboardClient({
                 </UploadControl>
               </Field>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))', gap: 14 }}>
                 {site.galleryImages.map((url, index) => (
                   <div key={`${url}-${index}`} style={miniCardStyle}>
                     <PreviewImage src={url} alt={`Gallery ${index + 1}`} />
@@ -670,10 +720,11 @@ export default function AdminDashboardClient({
               title="Специалист"
               description="Това захранва секцията „Вашият специалист“ в сайта."
               action={
-                <button type="button" onClick={saveSpecialist} style={primaryButtonStyle} disabled={busyKey === 'specialist'}>
+                <button type="button" onClick={saveSpecialist} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'specialist'}>
                   {busyKey === 'specialist' ? 'Запазваме…' : 'Запази профила'}
                 </button>
               }
+              mobile={isMobile}
             />
 
             <div style={gridStyle}>
@@ -701,7 +752,7 @@ export default function AdminDashboardClient({
               title="Услуги"
               description="Добави, редактирай и премахвай услуги в същия формат, който публичният сайт вече използва."
               action={
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(180px, 100%), max-content))' }}>
                   <button
                     type="button"
                     onClick={() =>
@@ -710,15 +761,16 @@ export default function AdminDashboardClient({
                         services: [...prev.services, { name: '', price: 0, duration_min: 30 }],
                       }))
                     }
-                    style={ghostButtonStyle}
+                    style={{ ...ghostButtonStyle, ...(isMobile ? { width: '100%' } : null) }}
                   >
                     + Добави услуга
                   </button>
-                  <button type="button" onClick={saveServices} style={primaryButtonStyle} disabled={busyKey === 'services'}>
+                  <button type="button" onClick={saveServices} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'services'}>
                     {busyKey === 'services' ? 'Запазваме…' : 'Запази'}
                   </button>
                 </div>
               }
+              mobile={isMobile}
             />
 
             <div style={{ display: 'grid', gap: 14 }}>
@@ -771,7 +823,7 @@ export default function AdminDashboardClient({
 
                   <button
                     type="button"
-                    style={ghostButtonStyle}
+                    style={{ ...ghostButtonStyle, ...(isMobile ? { width: '100%' } : null) }}
                     onClick={() =>
                       setSite(prev => ({
                         ...prev,
@@ -793,10 +845,11 @@ export default function AdminDashboardClient({
               title="Работно време"
               description="Редактирай часовете в същия shape, който публичният сайт вече консумира."
               action={
-                <button type="button" onClick={saveHours} style={primaryButtonStyle} disabled={busyKey === 'hours'}>
+                <button type="button" onClick={saveHours} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'hours'}>
                   {busyKey === 'hours' ? 'Запазваме…' : 'Запази'}
                 </button>
               }
+              mobile={isMobile}
             />
 
             <div style={{ display: 'grid', gap: 14 }}>
@@ -882,20 +935,21 @@ export default function AdminDashboardClient({
               title="Домейн"
               description="Всеки сайт получава автоматично свой адрес под clicka.bg. Тук можеш да свържеш и собствен домейн като override."
               action={
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={connectDomain} style={primaryButtonStyle} disabled={busyKey === 'domain'}>
+                <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(180px, 100%), max-content))' }}>
+                  <button type="button" onClick={connectDomain} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'domain'}>
                     {busyKey === 'domain' ? 'Свързваме…' : 'Свържи домейн'}
                   </button>
                   <button
                     type="button"
                     onClick={() => void refreshDomainStatus(false)}
-                    style={ghostButtonStyle}
+                    style={{ ...ghostButtonStyle, ...(isMobile ? { width: '100%' } : null) }}
                     disabled={!site.customDomain || busyKey === 'domain-refresh'}
                   >
                     {busyKey === 'domain-refresh' ? 'Проверявам…' : 'Провери отново'}
                   </button>
                 </div>
               }
+              mobile={isMobile}
             />
 
             <div style={miniCardStyle}>
@@ -988,13 +1042,14 @@ export default function AdminDashboardClient({
               title="Резервации"
               description="Управлявай статуса на входящите заявки."
               action={
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={inputStyle}>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inputStyle, ...(isMobile ? { width: '100%' } : null) }}>
                   <option value="all">Всички</option>
                   <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
               }
+              mobile={isMobile}
             />
 
             {filteredBookings.length === 0 ? (
@@ -1008,7 +1063,14 @@ export default function AdminDashboardClient({
               <div style={{ display: 'grid', gap: 12 }}>
                 {filteredBookings.map(booking => (
                   <div key={booking.id} style={miniCardStyle}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gap: 14,
+                        gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
+                        alignItems: 'start',
+                      }}
+                    >
                       <div>
                         <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{booking.client_name}</p>
                         <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.6 }}>
@@ -1027,7 +1089,14 @@ export default function AdminDashboardClient({
                         ) : null}
                       </div>
 
-                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gap: 10,
+                          gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))',
+                          alignItems: 'center',
+                        }}
+                      >
                         <StatusPill status={booking.status} />
                         <select
                           value={booking.status}
@@ -1057,7 +1126,7 @@ function Card({ children }: { children: ReactNode }) {
       style={{
         border: '1px solid rgba(0,0,0,0.10)',
         borderRadius: 30,
-        padding: 22,
+        padding: 'clamp(16px, 4vw, 22px)',
         background: '#fff',
         boxShadow: '0 22px 46px rgba(0,0,0,0.12)',
       }}
@@ -1071,18 +1140,28 @@ function SectionHeader({
   title,
   description,
   action,
+  mobile = false,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  mobile?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: mobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+        gap: 16,
+        marginBottom: 20,
+        alignItems: 'flex-start',
+      }}
+    >
       <div>
-        <h2 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.04em' }}>{title}</h2>
+        <h2 style={{ margin: 0, fontSize: 'clamp(22px, 6vw, 24px)', letterSpacing: '-0.04em' }}>{title}</h2>
         <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.6 }}>{description}</p>
       </div>
-      {action}
+      {action ? <div style={{ display: 'grid', gap: 10, justifyItems: mobile ? 'stretch' : 'start', width: '100%' }}>{action}</div> : null}
     </div>
   );
 }
@@ -1096,7 +1175,7 @@ function Field({
 }) {
   return (
     <label style={{ display: 'grid', gap: 8 }}>
-      <span style={{ fontSize: 13, fontWeight: 800 }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700 }}>{label}</span>
       {children}
     </label>
   );
@@ -1110,7 +1189,7 @@ function PreviewImage({ src, alt, round = false }: { src: string; alt: string; r
       style={{
         display: 'block',
         width: round ? 112 : '100%',
-        height: round ? 112 : 200,
+        height: round ? 112 : 'min(52vw, 200px)',
         objectFit: 'cover',
         borderRadius: round ? '999px' : 20,
         border: '1px solid rgba(0,0,0,0.08)',
@@ -1132,7 +1211,21 @@ function UploadControl({
 }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, border: '1px solid rgba(0,0,0,0.12)', borderRadius: 999, padding: '10px 14px', boxShadow: '0 10px 20px rgba(0,0,0,0.08)', cursor: busy ? 'wait' : 'pointer', fontSize: 14, fontWeight: 800 }}>
+      <label
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 10,
+          border: '1px solid rgba(0,0,0,0.12)',
+          borderRadius: 999,
+          padding: '10px 14px',
+          boxShadow: '0 10px 20px rgba(0,0,0,0.08)',
+          cursor: busy ? 'wait' : 'pointer',
+          fontSize: 15,
+          fontWeight: 800,
+          maxWidth: '100%',
+        }}
+      >
         <span>{busy ? 'Качваме…' : label}</span>
         <span style={{ display: 'none' }}>{children}</span>
       </label>
@@ -1148,7 +1241,7 @@ function StatusPill({ status }: { status: BookingStatus }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        minWidth: 112,
+        minWidth: 0,
         borderRadius: 999,
         border: '1px solid rgba(0,0,0,0.12)',
         padding: '10px 12px',
@@ -1188,7 +1281,7 @@ function MessageBox({
 
 const gridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
   gap: 14,
 };
 
@@ -1200,10 +1293,13 @@ const inputStyle: CSSProperties = {
   boxShadow: '0 10px 22px rgba(0,0,0,0.08)',
   background: '#fff',
   color: '#000',
-  fontSize: 15,
+  fontSize: 16,
 };
 
 const primaryButtonStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   border: '1px solid #000',
   borderRadius: 999,
   background: '#000',
@@ -1216,6 +1312,9 @@ const primaryButtonStyle: CSSProperties = {
 };
 
 const ghostButtonStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   border: '1px solid rgba(0,0,0,0.12)',
   borderRadius: 999,
   background: '#fff',
