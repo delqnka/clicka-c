@@ -6,6 +6,10 @@ import Link from 'next/link';
 
 const CREATE_DRAFT_KEY = 'clicka-create-draft-v1';
 
+/** Сървърът пропуска Stripe само при CLICKA_SKIP_CHECKOUT; този флаг само за текст на бутона. */
+const SHOW_SKIP_PAYMENT_UI =
+  typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SKIP_CHECKOUT === '1';
+
 /* ── Data ─────────────────────────────────────────────── */
 const TEMPLATES = [
   { id: 1, name: 'Стандартен шаблон' },
@@ -353,7 +357,15 @@ export default function CreatePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
-      window.location.href = data.checkoutUrl;
+      if (data.skipCheckout === true && typeof data.slug === 'string' && data.slug.length > 0) {
+        window.location.href = `${window.location.origin}/${encodeURIComponent(data.slug)}`;
+        return;
+      }
+      if (typeof data.checkoutUrl === 'string' && data.checkoutUrl.length > 0) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      throw new Error('Няма линк за плащане или сайт');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Грешка при пренасочване');
       setIsSubmitting(false);
@@ -1071,7 +1083,9 @@ export default function CreatePage() {
               Потвърди поръчката
             </h1>
             <p style={{ color: 'rgba(0,0,0,0.45)', marginBottom: 28, fontSize: 15 }}>
-              Прегледай детайлите преди плащане
+              {SHOW_SKIP_PAYMENT_UI
+                ? 'Демо режим: сайтът се активира веднага, без плащане.'
+                : 'Прегледай детайлите преди плащане'}
             </p>
 
             {/* SITE PREVIEW */}
@@ -1161,12 +1175,20 @@ export default function CreatePage() {
                 opacity: isSubmitting ? 0.7 : 1, fontFamily: 'inherit',
               }}
             >
-              {isSubmitting ? 'Пренасочване към Stripe...' : 'Плати сега →'}
+              {isSubmitting
+                ? SHOW_SKIP_PAYMENT_UI
+                  ? 'Създавам сайта...'
+                  : 'Пренасочване към Stripe...'
+                : SHOW_SKIP_PAYMENT_UI
+                  ? 'Създай сайта (без плащане) →'
+                  : 'Плати сега →'}
             </button>
 
-            <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(0,0,0,0.35)', marginTop: 12 }}>
-              🔒 Сигурно плащане през Stripe
-            </p>
+            {!SHOW_SKIP_PAYMENT_UI && (
+              <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(0,0,0,0.35)', marginTop: 12 }}>
+                🔒 Сигурно плащане през Stripe
+              </p>
+            )}
           </div>
         )}
 

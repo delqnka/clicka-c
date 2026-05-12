@@ -19,9 +19,14 @@ export function HeroSection() {
       </div>
 
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <p className="mb-4 inline-flex max-w-prose items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-          <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
-          Уебсайт + резервации
+        <p className="mb-4 flex max-w-prose flex-col gap-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1">
+          <span className="inline-flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+            Уебсайт + резервации
+          </span>
+          <span className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-white/40 sm:pl-0 sm:text-xs">
+            24/7 ai рецепционист за салона ти
+          </span>
         </p>
         <div className="hero-h1-spotlights max-w-[min(100%,36rem)] sm:max-w-5xl">
           <motion.h1
@@ -36,7 +41,7 @@ export function HeroSection() {
             <span className="text-white/90">Независима от платформи.</span>
           </motion.h1>
           <motion.p
-            className="mt-3 text-sm font-medium tracking-tight text-white sm:text-[0.9375rem]"
+            className="hero-h1-commission mt-4 max-w-5xl text-[clamp(1.5rem,3.6vw+0.45rem,2.85rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-white sm:mt-5 sm:text-[clamp(1.65rem,3.9vw+0.35rem,3.1rem)]"
             initial={{ opacity: 1, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.22, ease: [0.25, 0.1, 0.25, 1] }}

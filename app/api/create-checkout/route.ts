@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-});
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error('Липсва STRIPE_SECRET_KEY');
+  }
+  return new Stripe(key, { apiVersion: '2024-06-20' });
+}
 
 const PLAN_PRICES: Record<string, number> = {
   solo:   29900,
@@ -168,8 +172,25 @@ export async function POST(request: NextRequest) {
 
   const salonId = rows[0].id;
 
+  /* ── Demo / скриншоти: без Stripe (само при CLICKA_SKIP_CHECKOUT на сървъра) ── */
+  const skipCheckout =
+    process.env.CLICKA_SKIP_CHECKOUT === '1' ||
+    process.env.CLICKA_SKIP_CHECKOUT === 'true';
+
+  if (skipCheckout) {
+    await sql`
+      UPDATE salons
+      SET
+        is_active = true,
+        site_status = 'active',
+        stripe_session_id = NULL
+      WHERE id = ${salonId}
+    `;
+    return NextResponse.json({ skipCheckout: true, slug });
+  }
+
   /* ── Stripe checkout ────────────────────────────────── */
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     mode: 'payment',
     currency: 'eur',
     line_items: [
