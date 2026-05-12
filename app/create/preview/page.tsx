@@ -33,15 +33,19 @@ type PreviewPayload = {
 
 export default function CreatePreviewPage() {
   const [payload, setPayload] = useState<PreviewPayload | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const raw = window.localStorage.getItem(CREATE_PREVIEW_KEY);
-      if (!raw) return;
-      setPayload(JSON.parse(raw) as PreviewPayload);
+      if (raw) {
+        setPayload(JSON.parse(raw) as PreviewPayload);
+      }
     } catch {
       setPayload(null);
+    } finally {
+      setHasLoaded(true);
     }
   }, []);
 
@@ -61,7 +65,7 @@ export default function CreatePreviewPage() {
         payload.form.about ||
         'Това е preview на реалната публична страница. Тук клиентите ще виждат услугите, снимките и информацията за салона ти.',
       cover_image_url: payload.coverUrl || gallery[0] || '',
-      logo_image_url: payload.logoUrl || '',
+      logo_image_url: payload.logoUrl || payload.coverUrl || gallery[0] || '',
       gallery_images: gallery,
       portfolio_images: gallery,
       instagram_username: '',
@@ -104,7 +108,7 @@ export default function CreatePreviewPage() {
   const reviews = useMemo<SalonReviewRow[]>(() => [], []);
   const googleReviews = useMemo<GoogleReviewLite[]>(() => [], []);
 
-  if (!salon) {
+  if (!hasLoaded) {
     return (
       <main
         style={{
@@ -120,6 +124,47 @@ export default function CreatePreviewPage() {
         }}
       >
         Зареждам реалния preview...
+      </main>
+    );
+  }
+
+  if (!salon) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          background: '#fff',
+          fontFamily: 'system-ui, sans-serif',
+          color: '#1a1a1a',
+          textAlign: 'center',
+        }}
+      >
+        <div>
+          <p style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 700 }}>Няма подготвен demo сайт</p>
+          <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.6 }}>
+            Върни се в create, попълни данните и отвори demo сайта оттам.
+          </p>
+          <a
+            href="/create"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '12px 18px',
+              borderRadius: 999,
+              background: '#111',
+              color: '#fff',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Към create
+          </a>
+        </div>
       </main>
     );
   }

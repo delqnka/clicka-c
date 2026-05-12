@@ -338,6 +338,11 @@ export default function CreatePage() {
     setIsSubmitting(true);
     setError('');
     try {
+      if (SHOW_SKIP_PAYMENT_UI) {
+        window.location.href = `${window.location.origin}/demo?v=${Date.now()}`;
+        return;
+      }
+
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1191,10 +1196,10 @@ export default function CreatePage() {
             >
               {isSubmitting
                 ? SHOW_SKIP_PAYMENT_UI
-                  ? 'Създавам сайта...'
+                  ? 'Отварям demo сайта...'
                   : 'Пренасочване към Stripe...'
                 : SHOW_SKIP_PAYMENT_UI
-                  ? 'Създай сайта (без плащане) →'
+                  ? 'Отвори demo сайта →'
                   : 'Плати сега →'}
             </button>
 
@@ -1331,7 +1336,7 @@ function SitePreview({
     setPreviewVersion(v => v + 1);
   }, [previewPayload]);
 
-  const previewSrc = `/create/preview?v=${previewVersion}`;
+  const previewSrc = `/demo?v=${previewVersion}`;
 
   return (
     <div style={{ marginBottom: 28 }}>
