@@ -1,0 +1,137 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import SalonPublicParity, {
+  type GoogleReviewLite,
+  type SalonOfferRow,
+  type SalonReviewRow,
+} from '@/app/components/SalonPublicParity';
+
+const CREATE_PREVIEW_KEY = 'clicka-create-preview-v1';
+
+type WorkingDay = { open: string; close: string; closed: boolean };
+type Service = { name: string; price: number; duration_min: number };
+
+type PreviewPayload = {
+  template: { primary: string; light: string; name: string };
+  form: {
+    name: string;
+    category: string;
+    city: string;
+    address: string;
+    phone: string;
+    about: string;
+    email?: string;
+  };
+  hours: Record<string, WorkingDay>;
+  coverUrl: string;
+  logoUrl: string;
+  galleryUrls: string[];
+  googleMapsUrl: string;
+  services: Service[];
+};
+
+export default function CreatePreviewPage() {
+  const [payload, setPayload] = useState<PreviewPayload | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(CREATE_PREVIEW_KEY);
+      if (!raw) return;
+      setPayload(JSON.parse(raw) as PreviewPayload);
+    } catch {
+      setPayload(null);
+    }
+  }, []);
+
+  const salon = useMemo(() => {
+    if (!payload) return null;
+    const gallery = payload.galleryUrls.filter(Boolean);
+    return {
+      id: 'preview-salon',
+      slug: 'preview-salon',
+      name: payload.form.name || 'Вашият салон',
+      category: payload.form.category || 'Фризьорски салон',
+      phone: payload.form.phone || '+359 88 888 8888',
+      email: payload.form.email || 'preview@clicka.bg',
+      city: payload.form.city || '',
+      address: payload.form.address || '',
+      about:
+        payload.form.about ||
+        'Това е preview на реалната публична страница. Тук клиентите ще виждат услугите, снимките и информацията за салона ти.',
+      cover_image_url: payload.coverUrl || gallery[0] || '',
+      logo_image_url: payload.logoUrl || '',
+      gallery_images: gallery,
+      portfolio_images: gallery,
+      instagram_username: '',
+      facebook_username: '',
+      google_maps_url: payload.googleMapsUrl || '',
+      working_hours: payload.hours,
+      opening_hours: payload.hours,
+      services: payload.services.map((service, index) => ({
+        id: `preview-service-${index}`,
+        name: service.name,
+        price: service.price,
+        duration_min: service.duration_min,
+      })),
+      primary_color: payload.template.primary,
+      primary_color_light: payload.template.light,
+      rating: 5,
+      review_count: 12,
+      verified: true,
+      venue_extras: {},
+    };
+  }, [payload]);
+
+  const offers = useMemo<SalonOfferRow[]>(
+    () =>
+      salon
+        ? [
+            {
+              id: 'preview-offer',
+              title: 'Нова клиентска оферта',
+              description: 'Примерна оферта за визуализация на публичната страница.',
+              discount: 20,
+              images: salon.cover_image_url ? [salon.cover_image_url] : [],
+              is_active: true,
+            },
+          ]
+        : [],
+    [salon]
+  );
+
+  const reviews = useMemo<SalonReviewRow[]>(() => [], []);
+  const googleReviews = useMemo<GoogleReviewLite[]>(() => [], []);
+
+  if (!salon) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          background: '#fff',
+          fontFamily: 'system-ui, sans-serif',
+          color: '#1a1a1a',
+          textAlign: 'center',
+        }}
+      >
+        Зареждам реалния preview...
+      </main>
+    );
+  }
+
+  return (
+    <SalonPublicParity
+      salonSlug="preview-salon"
+      salon={salon}
+      offers={offers}
+      reviews={reviews}
+      googleReviews={googleReviews}
+      staticMapUrl={null}
+    />
+  );
+}
