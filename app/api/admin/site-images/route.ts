@@ -48,12 +48,16 @@ export async function PATCH(request: NextRequest) {
       : current.ownerPublicPhotoUrl;
   const galleryImages =
     body.galleryImages !== undefined ? normalizeImageList(body.galleryImages) : current.galleryImages;
+  const normalizedCoverImageUrl =
+    coverImageUrl || galleryImages[0] || logoImageUrl || current.coverImageUrl || current.logoImageUrl;
+  const normalizedLogoImageUrl =
+    logoImageUrl || normalizedCoverImageUrl || galleryImages[0] || current.logoImageUrl || current.coverImageUrl;
 
   await sql`
     UPDATE salons
     SET
-      cover_image_url = ${coverImageUrl || null},
-      logo_image_url = ${logoImageUrl || coverImageUrl || galleryImages[0] || null},
+      cover_image_url = ${normalizedCoverImageUrl},
+      logo_image_url = ${normalizedLogoImageUrl},
       gallery_images = ${JSON.stringify(galleryImages)}::jsonb,
       owner_public_photo_url = ${ownerPublicPhotoUrl || null},
       updated_at = now()

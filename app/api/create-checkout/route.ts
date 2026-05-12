@@ -90,6 +90,19 @@ export async function POST(request: NextRequest) {
   const normalizedAbout =
     String(salonData.about || '').trim() ||
     `${salonData.name} предлага онлайн резервации през собствен сайт.`;
+  const normalizedGalleryImages = Array.isArray(salonData.galleryImages)
+    ? salonData.galleryImages.map(item => String(item || '').trim()).filter(Boolean)
+    : [];
+  const normalizedCoverImageUrl =
+    String(salonData.coverImageUrl || '').trim() ||
+    normalizedGalleryImages[0] ||
+    String(salonData.logoImageUrl || '').trim() ||
+    '';
+  const normalizedLogoImageUrl =
+    String(salonData.logoImageUrl || '').trim() ||
+    normalizedCoverImageUrl ||
+    normalizedGalleryImages[0] ||
+    '';
 
   /* ── Services: prefer client-provided, else analyze ──── */
   let services: { name: string; price: number; duration_min: number }[] = Array.isArray(salonData.services)
@@ -167,9 +180,9 @@ export async function POST(request: NextRequest) {
         ${salonData.city},
         ${salonData.address || null},
         ${normalizedAbout},
-        ${salonData.coverImageUrl || null},
-        ${salonData.logoImageUrl || null},
-        ${JSON.stringify(salonData.galleryImages)}::jsonb,
+        ${normalizedCoverImageUrl},
+        ${normalizedLogoImageUrl},
+        ${JSON.stringify(normalizedGalleryImages)}::jsonb,
         ${salonData.instagram || null},
         ${salonData.facebook || null},
         ${salonData.googleMapsUrl || null},
