@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { getHostAwareSalonPath, getPlatformPublicUrl } from '@/lib/domain-routing';
 
@@ -117,6 +118,14 @@ export default function AdminDashboardClient({
     if (statusFilter === 'all') return bookings;
     return bookings.filter(item => item.status === statusFilter);
   }, [bookings, statusFilter]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedTab = params.get('tab');
+    if (requestedTab && TABS.some(tab => tab.id === requestedTab)) {
+      setActiveTab(requestedTab as TabId);
+    }
+  }, []);
 
   async function guardResponse(res: Response) {
     const data = await readJson(res);
@@ -961,6 +970,15 @@ export default function AdminDashboardClient({
                 ))}
               </div>
             ) : null}
+
+            <DomainPurchaseSection
+              slug={slug}
+              siteName={site.name}
+              siteEmail={site.email}
+              sitePhone={site.phone}
+              siteAddress={site.address}
+              siteCity={site.city}
+            />
           </Card>
         ) : null}
 

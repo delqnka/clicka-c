@@ -3,6 +3,12 @@ import { stripe } from '@/lib/stripe';
 import { sql } from '@/lib/db';
 import { Resend } from 'resend';
 import {
+  DOMAIN_PURCHASE_CURRENCY,
+  type DomainPurchaseStatus,
+  ensureDomainPurchaseSchema,
+  formatDomainPurchaseStatus,
+} from '@/lib/domain-purchase';
+import {
   getPlatformAdminUrl,
   getPlatformClaimUrl,
   getPlatformPublicUrl,
@@ -10,6 +16,74 @@ import {
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+function domainPurchaseNotificationRecipient() {
+  return (
+    process.env.DOMAIN_PURCHASE_NOTIFICATION_EMAIL ||
+    process.env.RESEND_NOTIFICATION_EMAIL ||
+    'support@clicka.bg'
+  );
+}
+
+async function sendDomainPurchaseNotification(requestId: string) {
+  if (!process.env.RESEND_API_KEY) return;
+
+  await ensureDomainPurchaseSchema();
+
+  const rows = await sql`
+    SELECT
+      r.full_domain,
+      r.registrant_name,
+      r.registrant_email,
+      r.registrant_phone,
+      r.address_line1,
+      r.city,
+      r.postal_code,
+      r.country_code,
+      r.company_name,
+      r.company_id,
+      r.notes,
+      r.total_fee_cents,
+      r.currency,
+      r.status,
+      s.slug,
+      s.name
+    FROM domain_purchase_requests r
+    JOIN salons s ON s.id::text = r.salon_id
+    WHERE r.id = ${requestId}
+    LIMIT 1
+  `;
+
+  if (rows.length === 0) return;
+
+  const row = rows[0] as Record<string, unknown>;
+  const total = Number(row.total_fee_cents ?? 0) / 100;
+
+  try {
+    await resend.emails.send({
+      from: 'Clicka.bg <noreply@clicka.bg>',
+      to: domainPurchaseNotificationRecipient(),
+      subject: `Нова платена заявка за домейн: ${String(row.full_domain ?? '')}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+          <h2>Нова платена заявка за домейн</h2>
+          <p><strong>Салон:</strong> ${String(row.name ?? '')} (${String(row.slug ?? '')})</p>
+          <p><strong>Домейн:</strong> ${String(row.full_domain ?? '')}</p>
+          <p><strong>Статус:</strong> ${formatDomainPurchaseStatus(String(row.status ?? 'paid') as DomainPurchaseStatus)}</p>
+          <p><strong>Сума:</strong> ${total.toFixed(2)} ${String(row.currency ?? DOMAIN_PURCHASE_CURRENCY).toUpperCase()}</p>
+          <hr style="margin: 24px 0;" />
+          <p><strong>Име:</strong> ${String(row.registrant_name ?? '')}</p>
+          <p><strong>Имейл:</strong> ${String(row.registrant_email ?? '')}</p>
+          <p><strong>Телефон:</strong> ${String(row.registrant_phone ?? '')}</p>
+          <p><strong>Адрес:</strong> ${String(row.address_line1 ?? '')}, ${String(row.city ?? '')}, ${String(row.postal_code ?? '')}, ${String(row.country_code ?? '')}</p>
+          <p><strong>Фирма:</strong> ${String(row.company_name ?? '') || 'Няма'}</p>
+          <p><strong>ЕИК / VAT:</strong> ${String(row.company_id ?? '') || 'Няма'}</p>
+          <p><strong>Бележки:</strong> ${String(row.notes ?? '') || 'Няма'}</p>
+        </div>
+      `,
+    });
+  } catch {}
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -32,7 +106,24 @@ export async function POST(request: NextRequest) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const { salonSlug, templateId, planType } = session.metadata ?? {};
+    const { flow, domainPurchaseRequestId, salonSlug, templateId, planType } = session.metadata ?? {};
+
+    if (flow === 'domain_purchase_request' && domainPurchaseRequestId) {
+      await ensureDomainPurchaseSchema();
+      await sql`
+        UPDATE domain_purchase_requests
+        SET
+          status = 'paid',
+          paid_at = now(),
+          stripe_session_id = ${session.id},
+          stripe_customer_id = ${(session.customer as string) ?? ''},
+          updated_at = now()
+        WHERE id = ${domainPurchaseRequestId}
+      `;
+
+      await sendDomainPurchaseNotification(String(domainPurchaseRequestId));
+      return NextResponse.json({ received: true });
+    }
 
     if (!salonSlug) {
       return NextResponse.json({ received: true });

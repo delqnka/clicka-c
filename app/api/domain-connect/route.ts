@@ -7,6 +7,7 @@ import {
 } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
 import { ROOT_DOMAIN } from '@/lib/domain-routing';
+import { ensureDomainPurchaseSchema } from '@/lib/domain-purchase';
 import { syncDomainWithVercel } from '@/lib/vercel-domains';
 
 async function persistDomainState({
@@ -37,6 +38,21 @@ async function persistDomainState({
       })}::jsonb,
       updated_at = now()
     WHERE slug = ${slug}
+  `;
+
+  await ensureDomainPurchaseSchema();
+  await sql`
+    UPDATE domain_purchase_requests
+    SET
+      status = CASE
+        WHEN ${provider.status} = 'active' THEN 'connected'
+        WHEN status IN ('paid', 'requested') THEN 'processing'
+        ELSE status
+      END,
+      updated_at = now()
+    WHERE lower(full_domain) = lower(${domain})
+      AND salon_id IN (SELECT id::text FROM salons WHERE slug = ${slug} LIMIT 1)
+      AND status <> 'rejected'
   `;
 }
 
