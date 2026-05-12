@@ -82,13 +82,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалиден план' }, { status: 400 });
   }
 
-  /* ── Generate unique slug ───────────────────────────── */
-  const base   = toSlug(salonData.name);
-  const suffix = Math.random().toString(36).slice(2, 6);
-  const slug   = `${base}-${suffix}`;
-  const salonId = crypto.randomUUID();
-
-  const colors = MONO_THEME;
+  const normalizedAbout =
+    String(salonData.about || '').trim() ||
+    `${salonData.name} предлага онлайн резервации през собствен сайт.`;
 
   /* ── Services: prefer client-provided, else analyze ──── */
   let services: { name: string; price: number; duration_min: number }[] = Array.isArray(salonData.services)
@@ -134,90 +130,106 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  /* ── Save salon to Neon ─────────────────────────────── */
-  const rows = await sql`
-    INSERT INTO salons (
-      id, slug, name, category, phone, email,
-      city, address, about,
-      cover_image_url, logo_image_url, gallery_images,
-      instagram_username, facebook_username,
-      google_maps_url,
-      working_hours, services,
-      template_id, primary_color, primary_color_light,
-      plan_type, is_active, site_status
-    ) VALUES (
-      ${salonId},
-      ${slug},
-      ${salonData.name},
-      ${salonData.category},
-      ${salonData.phone},
-      ${salonData.email},
-      ${salonData.city},
-      ${salonData.address || null},
-      ${salonData.about || null},
-      ${salonData.coverImageUrl || null},
-      ${salonData.logoImageUrl || null},
-      ${JSON.stringify(salonData.galleryImages)}::jsonb,
-      ${salonData.instagram || null},
-      ${salonData.facebook || null},
-      ${salonData.googleMapsUrl || null},
-      ${JSON.stringify(salonData.workingHours)}::jsonb,
-      ${JSON.stringify(services)}::jsonb,
-      ${templateId},
-      ${colors.primary},
-      ${colors.light},
-      ${planType},
-      false,
-      'pending'
-    )
-    RETURNING id
-  `;
-  const createdSalonId = rows[0].id ?? salonId;
+  try {
+    /* ── Generate unique slug ───────────────────────────── */
+    const base = toSlug(salonData.name);
+    const suffix = Math.random().toString(36).slice(2, 6);
+    const slug = `${base}-${suffix}`;
+    const salonId = crypto.randomUUID();
 
-  /* ── Demo / скриншоти: без Stripe (само при CLICKA_SKIP_CHECKOUT на сървъра) ── */
-  const skipCheckout =
-    process.env.CLICKA_SKIP_CHECKOUT === '1' ||
-    process.env.CLICKA_SKIP_CHECKOUT === 'true';
+    const colors = MONO_THEME;
 
-  if (skipCheckout) {
-    await sql`
-      UPDATE salons
-      SET
-        is_active = true,
-        site_status = 'active',
-        stripe_session_id = NULL
-      WHERE id = ${createdSalonId}
+    /* ── Save salon to Neon ─────────────────────────────── */
+    const rows = await sql`
+      INSERT INTO salons (
+        id, slug, name, category, phone, email,
+        city, address, about,
+        cover_image_url, logo_image_url, gallery_images,
+        instagram_username, facebook_username,
+        google_maps_url,
+        working_hours, services,
+        template_id, primary_color, primary_color_light,
+        plan_type, is_active, site_status
+      ) VALUES (
+        ${salonId},
+        ${slug},
+        ${salonData.name},
+        ${salonData.category},
+        ${salonData.phone},
+        ${salonData.email},
+        ${salonData.city},
+        ${salonData.address || null},
+        ${normalizedAbout},
+        ${salonData.coverImageUrl || null},
+        ${salonData.logoImageUrl || null},
+        ${JSON.stringify(salonData.galleryImages)}::jsonb,
+        ${salonData.instagram || null},
+        ${salonData.facebook || null},
+        ${salonData.googleMapsUrl || null},
+        ${JSON.stringify(salonData.workingHours)}::jsonb,
+        ${JSON.stringify(services)}::jsonb,
+        ${templateId},
+        ${colors.primary},
+        ${colors.light},
+        ${planType},
+        false,
+        'pending'
+      )
+      RETURNING id
     `;
-    return NextResponse.json({ skipCheckout: true, slug });
-  }
+    const createdSalonId = rows[0].id ?? salonId;
 
-  /* ── Stripe checkout ────────────────────────────────── */
-  const session = await getStripe().checkout.sessions.create({
-    mode: 'payment',
-    currency: 'eur',
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: 'eur',
-          unit_amount: PLAN_PRICES[planType],
-          product_data: {
-            name: `Clicka.bg — ${PLAN_NAMES[planType]}`,
-            description: `Сайт за ${salonData.name}`,
+    /* ── Demo / скриншоти: без Stripe (само при CLICKA_SKIP_CHECKOUT на сървъра) ── */
+    const skipCheckout =
+      process.env.CLICKA_SKIP_CHECKOUT === '1' ||
+      process.env.CLICKA_SKIP_CHECKOUT === 'true';
+
+    if (skipCheckout) {
+      await sql`
+        UPDATE salons
+        SET
+          is_active = true,
+          site_status = 'active',
+          stripe_session_id = NULL
+        WHERE id = ${createdSalonId}
+      `;
+      return NextResponse.json({ skipCheckout: true, slug });
+    }
+
+    /* ── Stripe checkout ────────────────────────────────── */
+    const session = await getStripe().checkout.sessions.create({
+      mode: 'payment',
+      currency: 'eur',
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'eur',
+            unit_amount: PLAN_PRICES[planType],
+            product_data: {
+              name: `Clicka.bg — ${PLAN_NAMES[planType]}`,
+              description: `Сайт за ${salonData.name}`,
+            },
           },
         },
+      ],
+      metadata: {
+        salonSlug: slug,
+        salonId: String(createdSalonId),
+        templateId: String(templateId),
+        planType,
       },
-    ],
-    metadata: {
-      salonSlug: slug,
-      salonId:   String(createdSalonId),
-      templateId: String(templateId),
-      planType,
-    },
-    customer_email: salonData.email,
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url:  `${process.env.NEXT_PUBLIC_APP_URL}/create`,
-  });
+      customer_email: salonData.email,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/create`,
+    });
 
-  return NextResponse.json({ checkoutUrl: session.url });
+    return NextResponse.json({ checkoutUrl: session.url });
+  } catch (error) {
+    console.error('[create-checkout] failed:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Грешка при създаване на сайта' },
+      { status: 500 }
+    );
+  }
 }

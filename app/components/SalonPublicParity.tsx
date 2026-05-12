@@ -886,10 +886,10 @@ export default function SalonPublicParity({
                       key={tab.id}
                       type="button"
                       onClick={() => scrollToSection(tab.id)}
-                      className={`relative shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-semibold lg:rounded-none lg:px-0 lg:py-2 ${
+                      className={`relative shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-semibold shadow-[0_8px_22px_rgba(0,0,0,0.06)] lg:rounded-none lg:px-0 lg:py-2 lg:shadow-none ${
                         isActive
                           ? 'border border-[color:var(--salon-primary)] bg-white text-[color:var(--salon-primary)] lg:border-0 lg:border-b-2 lg:bg-transparent'
-                          : 'border border-transparent bg-white text-black/50 hover:text-[#1a1a1a] lg:border-0 lg:bg-transparent'
+                          : 'border border-black/10 bg-white text-black/60 hover:text-[#1a1a1a] lg:border-0 lg:bg-transparent'
                       }`}
                     >
                       {tab.label}
@@ -916,7 +916,7 @@ export default function SalonPublicParity({
                       key={o.id}
                       type="button"
                       onClick={() => openBookingModal()}
-                      className="relative w-[min(92vw,340px)] shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-black text-left shadow-lg"
+                      className="relative w-[min(92vw,340px)] shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-black text-left shadow-[0_14px_34px_rgba(0,0,0,0.12)]"
                       style={{ minHeight: 200 }}
                     >
                       {o.discount != null && o.discount > 0 ? (
@@ -967,7 +967,7 @@ export default function SalonPublicParity({
                         key={cat.id ?? 'all'}
                         type="button"
                         onClick={() => setSelectedServiceCategory(cat.id)}
-                        className={`rounded-full border px-3 py-1 text-sm font-normal transition ${
+                        className={`rounded-full border px-3 py-1 text-sm font-normal shadow-[0_8px_20px_rgba(0,0,0,0.05)] transition ${
                           isSelected
                             ? 'border-[color:var(--salon-primary)] text-[color:var(--salon-primary)]'
                             : 'border-black/25 bg-white hover:border-[color:var(--salon-primary)]'
@@ -984,7 +984,7 @@ export default function SalonPublicParity({
                   })}
                 </div>
               ) : null}
-              <ul className="mt-4 divide-y divide-black/10 rounded-xl border border-black/10 bg-white">
+              <ul className="mt-4 divide-y divide-black/10 rounded-2xl border border-black/10 bg-white shadow-[0_14px_34px_rgba(0,0,0,0.06)]">
                 {displayServices.map((service, idxInPage) => {
                   const globalIdx = servicesFromDb.findIndex((x) => x.id === service.id);
                   const variants = service.variants && service.variants.length > 0 ? service.variants : null;
@@ -1007,7 +1007,7 @@ export default function SalonPublicParity({
                                 onClick={() =>
                                   setVariantDropdownOpenForServiceId((prev) => (prev === service.id ? null : service.id))
                                 }
-                                className="flex w-full items-center justify-between rounded-full border border-black/25 bg-white px-4 py-2 text-left text-sm transition hover:border-[color:var(--salon-primary)]"
+                                className="flex w-full items-center justify-between rounded-full border border-black/20 bg-white px-4 py-2 text-left text-sm shadow-[0_8px_22px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--salon-primary)]"
                               >
                                 <span className="truncate">{selectedVariantLabel ?? 'Изберете вариант'}</span>
                                 <ChevronDown
@@ -1055,7 +1055,7 @@ export default function SalonPublicParity({
                           <button
                             type="button"
                             onClick={() => openBookingModal(globalIdx >= 0 ? globalIdx : servicesFromDb.indexOf(service))}
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--salon-primary)] shadow-sm sm:px-5"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--salon-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.06)] sm:px-5"
                           >
                             Резервирай
                           </button>

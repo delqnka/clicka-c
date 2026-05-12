@@ -74,7 +74,7 @@ type OSMResult = {
 /* ── Shared styles ────────────────────────────────────── */
 const inp: React.CSSProperties = {
   width: '100%', padding: '13px 15px',
-  border: '1.5px solid #000', borderRadius: 14,
+  border: '1px solid rgba(0,0,0,0.78)', borderRadius: 14,
   fontSize: 16, fontFamily: 'inherit', outline: 'none',
   background: '#fff', color: '#000', boxSizing: 'border-box',
 };
@@ -838,25 +838,25 @@ export default function CreatePage() {
                   )}
 
                   {!servicesLoading && services.length === 0 ? (
-                    <div style={{ border: '1.5px solid #000', borderRadius: 18, padding: 16, background: '#fff' }}>
+                    <div style={{ border: '1px solid rgba(0,0,0,0.78)', borderRadius: 22, padding: 18, background: '#fff', boxShadow: '0 10px 26px rgba(0,0,0,0.05)' }}>
                       <p style={{ margin: 0, color: '#000', fontSize: 14 }}>
                         Не открихме услуги. Можеш да качиш по-ясна снимка.
                       </p>
                     </div>
                   ) : (
-                    <div style={{ border: '1.5px solid #000', borderRadius: 18, overflow: 'hidden', background: '#fff' }}>
+                    <div style={{ border: '1px solid rgba(0,0,0,0.78)', borderRadius: 22, overflow: 'hidden', background: '#fff', boxShadow: '0 14px 34px rgba(0,0,0,0.06)' }}>
                       <div
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '1fr 90px 90px 42px',
-                          gap: 8,
-                          padding: '10px 10px 8px',
+                          gridTemplateColumns: 'minmax(0,1.8fr) 74px 74px 18px',
+                          gap: 10,
+                          padding: '12px 14px 10px',
                           background: '#fff',
-                          borderBottom: services.length > 0 ? '1px solid #000' : 'none',
-                          fontSize: 11,
-                          fontWeight: 800,
+                          borderBottom: services.length > 0 ? '1px solid rgba(0,0,0,0.12)' : 'none',
+                          fontSize: 10,
+                          fontWeight: 700,
                           color: '#000',
-                          letterSpacing: '0.04em',
+                          letterSpacing: '0.06em',
                           textTransform: 'uppercase',
                         }}
                       >
@@ -870,28 +870,28 @@ export default function CreatePage() {
                           key={idx}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: '1fr 90px 90px 42px',
-                            gap: 8,
-                            padding: 10,
-                            borderBottom: idx < services.length - 1 ? '1px solid #000' : 'none',
+                            gridTemplateColumns: 'minmax(0,1.8fr) 74px 74px 18px',
+                            gap: 10,
+                            padding: '12px 14px',
+                            borderBottom: idx < services.length - 1 ? '1px solid rgba(0,0,0,0.1)' : 'none',
                             alignItems: 'center',
                           }}
                         >
                           <input
-                            style={{ ...inp, padding: '10px 12px' }}
+                            style={{ ...inp, padding: '10px 12px', fontSize: 14, boxShadow: '0 6px 18px rgba(0,0,0,0.03)' }}
                             value={s.name}
                             placeholder="Име на услуга"
                             onChange={(e) => setServices(prev => prev.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)))}
                           />
                           <input
-                            style={{ ...inp, padding: '10px 12px' }}
+                            style={{ ...inp, padding: '8px 10px', fontSize: 13, textAlign: 'right' }}
                             value={String(s.price)}
                             inputMode="numeric"
                             placeholder="напр. 25 €"
                             onChange={(e) => setServices(prev => prev.map((x, i) => (i === idx ? { ...x, price: Number(e.target.value) || 0 } : x)))}
                           />
                           <input
-                            style={{ ...inp, padding: '10px 12px' }}
+                            style={{ ...inp, padding: '8px 10px', fontSize: 13, textAlign: 'right' }}
                             value={String(s.duration_min)}
                             inputMode="numeric"
                             placeholder="напр. 45"
@@ -901,13 +901,16 @@ export default function CreatePage() {
                             type="button"
                             onClick={() => setServices(prev => prev.filter((_, i) => i !== idx))}
                             style={{
-                              width: 38,
-                              height: 38,
-                              borderRadius: 14,
-                              border: '1.5px solid #000',
-                              background: '#fff',
+                              width: 18,
+                              height: 18,
+                              border: 'none',
+                              background: 'transparent',
                               cursor: 'pointer',
-                              fontWeight: 800,
+                              fontWeight: 500,
+                              fontSize: 18,
+                              lineHeight: 1,
+                              padding: 0,
+                              color: '#000',
                             }}
                             aria-label="Премахни услуга"
                           >
@@ -924,27 +927,31 @@ export default function CreatePage() {
                         type="button"
                         onClick={() => setServices(prev => [...prev, { name: '', price: 0, duration_min: 30 }])}
                         style={{
-                          padding: '10px 12px',
-                          borderRadius: 999,
-                          border: '1.5px solid #000',
-                          background: '#fff',
+                          padding: '6px 0',
+                          borderRadius: 0,
+                          border: 'none',
+                          background: 'transparent',
                           cursor: 'pointer',
-                          fontWeight: 700,
+                          fontWeight: 600,
+                          fontSize: 14,
+                          color: '#000',
                         }}
                       >
-                        Добави услуга
+                        + Добави услуга
                       </button>
                       {priceListUrls.length > 0 && (
                         <button
                           type="button"
                           onClick={() => analyzePriceLists(priceListUrls)}
                           style={{
-                            padding: '10px 12px',
-                            borderRadius: 999,
-                            border: '1.5px solid #000',
-                            background: '#fff',
+                            padding: '6px 0',
+                            borderRadius: 0,
+                            border: 'none',
+                            background: 'transparent',
                             cursor: 'pointer',
-                            fontWeight: 700,
+                            fontWeight: 500,
+                            fontSize: 13,
+                            color: '#000',
                           }}
                         >
                           Разчети отново
@@ -1047,16 +1054,17 @@ export default function CreatePage() {
               {/* Working hours */}
               <div>
                 <label style={lbl}>Работно време</label>
-                <div style={{ border: '1.5px solid #000', borderRadius: 18, overflow: 'hidden', background: '#fff' }}>
-                  {DAYS.map((day, i) => {
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {DAYS.map((day) => {
                     const h = hours[day.key];
                     return (
                       <div key={day.key} style={{
                         display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '11px 16px',
-                        borderBottom: i < 6 ? '1px solid #000' : 'none',
+                        padding: '10px 0',
+                        flexWrap: 'wrap',
                       }}>
-                        <span style={{ width: 86, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
+                        <span style={{ width: 106, fontSize: 13, fontWeight: 600, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: h.closed ? 'transparent' : '#16a34a', display: 'inline-block' }} />
                           {day.label}
                         </span>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', flexShrink: 0 }}>
@@ -1068,11 +1076,11 @@ export default function CreatePage() {
                           <>
                             <input type="time" value={h.open}
                               onChange={e => setHours(p => ({ ...p, [day.key]: { ...p[day.key], open: e.target.value } }))}
-                              style={{ fontSize: 13, border: '1px solid #000', borderRadius: 10, padding: '4px 8px', fontFamily: 'inherit' }} />
+                              style={{ fontSize: 12, border: '1px solid rgba(0,0,0,0.65)', borderRadius: 999, padding: '6px 10px', fontFamily: 'inherit', background: '#fff' }} />
                             <span style={{ fontSize: 13, color: '#000' }}>до</span>
                             <input type="time" value={h.close}
                               onChange={e => setHours(p => ({ ...p, [day.key]: { ...p[day.key], close: e.target.value } }))}
-                              style={{ fontSize: 13, border: '1px solid #000', borderRadius: 10, padding: '4px 8px', fontFamily: 'inherit' }} />
+                              style={{ fontSize: 12, border: '1px solid rgba(0,0,0,0.65)', borderRadius: 999, padding: '6px 10px', fontFamily: 'inherit', background: '#fff' }} />
                           </>
                         )}
                       </div>
