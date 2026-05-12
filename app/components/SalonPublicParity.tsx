@@ -506,7 +506,8 @@ export default function SalonPublicParity({
       const el = sectionRefs.current.about;
       if (!el) return;
       const aboutBottom = el.getBoundingClientRect().bottom;
-      const shouldShow = aboutBottom <= 72;
+      const hasScrolled = window.scrollY > 48;
+      const shouldShow = hasScrolled && aboutBottom <= 72;
       setShowStickySectionTabs((prev) => (prev === shouldShow ? prev : shouldShow));
     };
     updateStickyTabs();
@@ -759,24 +760,15 @@ export default function SalonPublicParity({
       className="min-h-screen bg-white pb-28 text-[#1a1a1a] lg:pb-10"
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] items-center justify-between px-4 py-3 md:px-6">
-          <div className="h-10 w-10 shrink-0 md:hidden" aria-hidden />
-          <p className="min-w-0 flex-1 truncate px-3 text-center text-base font-semibold text-[#1a1a1a] md:hidden">
-            {name}
-          </p>
-          <button
-            type="button"
-            onClick={handleShare}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white shadow-sm text-[color:var(--salon-primary)]"
-            aria-label="Сподели"
-          >
-            <Share2 className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
-      </header>
-
-      <div className="mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-0 md:px-6 md:pt-4">
+      <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-0 md:px-6 md:pt-4">
+        <button
+          type="button"
+          onClick={handleShare}
+          className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#1a1a1a] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-sm"
+          aria-label="Сподели"
+        >
+          <Share2 className="h-5 w-5" aria-hidden />
+        </button>
         <SalonGalleryMosaic uris={allGalleryWired} onOpenGallery={(i) => setGalleryModal({ uris: allGalleryWired, index: i })} ringClass={ringClass} />
       </div>
 
@@ -809,7 +801,7 @@ export default function SalonPublicParity({
           <div className="min-w-0">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-5 lg:border-0 lg:pb-0">
               <div className="min-w-0 flex-1">
-                <h1 className="hidden text-2xl font-semibold tracking-tight text-[#1a1a1a] md:text-3xl lg:block">{name}</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{name}</h1>
                 {category ? <p className="text-sm text-black/45 lg:mt-2">{category}</p> : null}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
                   {(headerPlatformRating != null || headerGoogleRating != null) && (
