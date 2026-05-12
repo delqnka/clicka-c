@@ -25,13 +25,7 @@ export default async function SalonSlugPage({
     return (
       <main style={{ fontFamily: 'system-ui, sans-serif', padding: '60px 24px', textAlign: 'center' }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>Салонът не е намерен</h1>
-        <p style={{ color: '#1a1a1a' }}>
-          Проверете адреса или се свържете с{' '}
-          <a href="https://clicka.bg" style={{ color: '#5B21B6' }}>
-            Clicka.bg
-          </a>
-          .
-        </p>
+        <p style={{ color: '#1a1a1a' }}>Проверете адреса и опитайте отново.</p>
       </main>
     );
   }

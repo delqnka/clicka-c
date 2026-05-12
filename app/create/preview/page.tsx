@@ -132,6 +132,7 @@ export default function CreatePreviewPage() {
       reviews={reviews}
       googleReviews={googleReviews}
       staticMapUrl={null}
+      disableStickySectionTabs
     />
   );
 }

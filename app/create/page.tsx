@@ -1117,13 +1117,10 @@ export default function CreatePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <div>
                   <p style={{ fontWeight: 700, fontSize: 17, margin: '0 0 4px' }}>
-                    Шаблон: {selectedTemplate?.name}
+                    {form.name || 'Вашият салон'}
                   </p>
                   <p style={{ fontSize: 14, color: '#000', margin: '0 0 2px' }}>
                     {selectedPlan?.name} — {selectedPlan?.desc}
-                  </p>
-                  <p style={{ fontSize: 13, color: '#000', margin: 0 }}>
-                    {form.name || 'Вашият салон'}
                   </p>
                 </div>
                 <div style={{
@@ -1298,7 +1295,6 @@ function SitePreview({
   googleMapsUrl: string;
   services: Service[];
 }) {
-  const [previewMode, setPreviewMode] = useState<'phone' | 'web'>('phone');
   const [previewVersion, setPreviewVersion] = useState(0);
   const previewPayload = JSON.stringify({
     template,
@@ -1338,129 +1334,100 @@ function SitePreview({
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, justifyContent: 'center' }}>
         <button
           type="button"
-          onClick={() => setPreviewMode('phone')}
+          onClick={() => {}}
           style={{
-            padding: '8px 12px',
+            padding: '7px 11px',
             borderRadius: 999,
             border: '1.5px solid #000',
-            background: previewMode === 'phone' ? '#111' : '#fff',
-            color: previewMode === 'phone' ? '#fff' : '#111',
-            fontWeight: 700,
+            background: '#111',
+            color: '#fff',
+            fontWeight: 500,
+            fontSize: 12,
             cursor: 'pointer',
           }}
         >
-          Мобилен (iPhone 16)
+          Мобилен
         </button>
         <button
           type="button"
-          onClick={() => setPreviewMode('web')}
+          onClick={() => {
+            if (typeof window === 'undefined') return;
+            window.open(previewSrc, '_blank', 'noopener,noreferrer');
+          }}
           style={{
-            padding: '8px 12px',
+            padding: '7px 11px',
             borderRadius: 999,
             border: '1.5px solid #000',
-            background: previewMode === 'web' ? '#111' : '#fff',
-            color: previewMode === 'web' ? '#fff' : '#111',
-            fontWeight: 700,
+            background: '#fff',
+            color: '#111',
+            fontWeight: 500,
+            fontSize: 12,
             cursor: 'pointer',
           }}
         >
-          Уеб (извън телефон)
+          Уеб
         </button>
       </div>
 
-      {previewMode === 'phone' ? (
-        <div style={{ maxWidth: 430, margin: '0 auto' }}>
+      <div style={{ maxWidth: 430, margin: '0 auto' }}>
+        <div
+          style={{
+            width: 393,
+            maxWidth: '100%',
+            margin: '0 auto',
+            borderRadius: 56,
+            padding: 11,
+            background: 'linear-gradient(180deg, #111111, #1b1b1b 38%, #0b0b0b 100%)',
+            boxShadow: '0 34px 110px rgba(0,0,0,0.34)',
+            position: 'relative',
+          }}
+        >
+          <div style={{ position: 'absolute', left: -3, top: 140, width: 4, height: 46, borderRadius: 999, background: 'rgba(0,0,0,0.45)' }} />
+          <div style={{ position: 'absolute', left: -3, top: 200, width: 4, height: 72, borderRadius: 999, background: 'rgba(0,0,0,0.45)' }} />
+          <div style={{ position: 'absolute', right: -3, top: 174, width: 4, height: 96, borderRadius: 999, background: 'rgba(0,0,0,0.45)' }} />
+
           <div
             style={{
-              width: 393,
-              maxWidth: '100%',
-              margin: '0 auto',
-              borderRadius: 56,
-              padding: 11,
-              background: 'linear-gradient(180deg, #111111, #1b1b1b 38%, #0b0b0b 100%)',
-              boxShadow: '0 34px 110px rgba(0,0,0,0.34)',
+              borderRadius: 46,
+              overflow: 'hidden',
+              background: '#fff',
+              border: '1px solid rgba(255,255,255,0.10)',
               position: 'relative',
             }}
           >
-            <div style={{ position: 'absolute', left: -3, top: 140, width: 4, height: 46, borderRadius: 999, background: 'rgba(0,0,0,0.45)' }} />
-            <div style={{ position: 'absolute', left: -3, top: 200, width: 4, height: 72, borderRadius: 999, background: 'rgba(0,0,0,0.45)' }} />
-            <div style={{ position: 'absolute', right: -3, top: 174, width: 4, height: 96, borderRadius: 999, background: 'rgba(0,0,0,0.45)' }} />
+            <div
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 126,
+                height: 36,
+                background: '#0b0b0b',
+                borderRadius: 999,
+                zIndex: 20,
+                boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
+              }}
+            />
 
             <div
               style={{
-                borderRadius: 46,
-                overflow: 'hidden',
+                height: 852,
                 background: '#fff',
-                border: '1px solid rgba(255,255,255,0.10)',
-                position: 'relative',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 12,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: 126,
-                  height: 36,
-                  background: '#0b0b0b',
-                  borderRadius: 999,
-                  zIndex: 20,
-                  boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
-                }}
-              />
-
-              <div
-                style={{
-                  height: 852,
-                  background: '#fff',
-                }}
-              >
-                {previewVersion > 0 ? (
-                  <iframe
-                    key={`phone-${previewVersion}`}
-                    src={previewSrc}
-                    title="Preview на реалния сайт в iPhone 16"
-                    style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
-                  />
-                ) : null}
-              </div>
+              {previewVersion > 0 ? (
+                <iframe
+                  key={`phone-${previewVersion}`}
+                  src={previewSrc}
+                  title="Preview на реалния сайт"
+                  style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                />
+              ) : null}
             </div>
           </div>
-          <p style={{ textAlign: 'center', fontSize: 12, color: '#000', marginTop: 8 }}>
-            Това е реалният публичен layout в iPhone 16 mockup.
-          </p>
         </div>
-      ) : (
-        <div
-          style={{
-            border: '1.5px solid #000',
-            borderRadius: 14,
-            overflow: 'hidden',
-            background: '#fff',
-            boxShadow: '0 14px 36px rgba(0,0,0,0.10)',
-          }}
-        >
-          <div style={{ height: 40, background: '#fff', borderBottom: '1.5px solid #000', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
-            <span style={{ fontSize: 12, color: '#000', fontWeight: 600 }}>
-              {form.name ? `${form.name}.clicka.bg` : 'salon.clicka.bg'}
-            </span>
-          </div>
-          <div style={{ height: 760, background: '#fff' }}>
-            {previewVersion > 0 ? (
-              <iframe
-                key={`web-${previewVersion}`}
-                src={previewSrc}
-                title="Preview на реалния публичен сайт"
-                style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
-              />
-            ) : null}
-          </div>
-          <p style={{ textAlign: 'center', fontSize: 12, color: '#000', margin: '8px 0 10px' }}>
-            Това е реалният публичен layout в уеб ширина.
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

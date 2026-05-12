@@ -104,6 +104,7 @@ export type SalonPublicParityProps = {
   highlightReviewId?: string | null;
   tabParam?: string | null;
   staticMapUrl?: string | null;
+  disableStickySectionTabs?: boolean;
 };
 
 function wireMediaUri(raw: string | null | undefined): string {
@@ -262,6 +263,7 @@ export default function SalonPublicParity({
   highlightReviewId: highlightReviewIdProp,
   tabParam: tabParamProp,
   staticMapUrl,
+  disableStickySectionTabs = false,
 }: SalonPublicParityProps) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
   const tabParam = (tabParamProp ?? '').trim();
@@ -491,6 +493,10 @@ export default function SalonPublicParity({
   }, [tabParam, highlightReviewId]);
 
   useEffect(() => {
+    if (disableStickySectionTabs) {
+      setShowStickySectionTabs(false);
+      return;
+    }
     if (typeof window === 'undefined') return;
     const updateStickyTabs = () => {
       const el = galleryWrapRef.current;
@@ -506,7 +512,7 @@ export default function SalonPublicParity({
       window.removeEventListener('scroll', updateStickyTabs);
       window.removeEventListener('resize', updateStickyTabs);
     };
-  }, []);
+  }, [disableStickySectionTabs]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !salonId) return;
@@ -720,13 +726,6 @@ export default function SalonPublicParity({
     }
   }
 
-  const trustBadges = useMemo(() => {
-    return [
-      { id: 'confirm', label: 'Потвърждение до 30 мин', icon: Clock },
-      { id: 'verified', label: verified ? 'Верифициран салон' : 'Онлайн резервации', icon: Star },
-    ] as const;
-  }, [verified]);
-
   const [showAllPlatformReviews, setShowAllPlatformReviews] = useState(false);
   const [showAllGoogleReviews, setShowAllGoogleReviews] = useState(false);
   useEffect(() => {
@@ -780,7 +779,7 @@ export default function SalonPublicParity({
         <SalonGalleryMosaic uris={allGalleryWired} onOpenGallery={(i) => setGalleryModal({ uris: allGalleryWired, index: i })} ringClass={ringClass} />
       </div>
 
-      {showStickySectionTabs ? (
+      {!disableStickySectionTabs && showStickySectionTabs ? (
         <div className="fixed inset-x-0 top-0 z-20 overflow-hidden border-b border-white/20 px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
           <div
             className="pointer-events-none absolute inset-0 opacity-95"
@@ -863,20 +862,6 @@ export default function SalonPublicParity({
                       <span className="truncate">{[address, city].filter(Boolean).join(', ')}</span>
                     </a>
                   ) : null}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {trustBadges.map((badge) => {
-                    const Icon = badge.icon;
-                    return (
-                      <span
-                        key={badge.id}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-2.5 py-1 text-xs font-semibold text-[color:var(--salon-primary)]"
-                      >
-                        <Icon className="h-3.5 w-3.5" aria-hidden />
-                        {badge.label}
-                      </span>
-                    );
-                  })}
                 </div>
                 {addressDistanceLabel ? <p className="mt-1 text-xs text-black/45">{addressDistanceLabel}</p> : null}
               </div>
