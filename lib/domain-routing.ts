@@ -61,6 +61,10 @@ export function getPlatformClaimUrl(slug: string) {
   return `${getPlatformSiteOrigin(slug)}/claim`;
 }
 
+export function getPlatformInstantClaimUrl(slug: string) {
+  return `${getOriginForHost(ROOT_DOMAIN)}/${slug}/claim`;
+}
+
 export function getPlatformAdminUrl(slug: string) {
   return `${getPlatformSiteOrigin(slug)}/admin`;
 }

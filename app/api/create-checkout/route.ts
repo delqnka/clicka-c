@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import crypto from 'crypto';
 import {
   getPlatformClaimUrl,
+  getPlatformInstantClaimUrl,
   getPlatformPublicUrl,
 } from '@/lib/domain-routing';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
@@ -180,6 +181,7 @@ export async function POST(request: NextRequest) {
     const salonId = crypto.randomUUID();
     const publicUrl = getPlatformPublicUrl(slug);
     const claimUrl = getPlatformClaimUrl(slug);
+    const instantClaimUrl = getPlatformInstantClaimUrl(slug);
 
     const colors = MONO_THEME;
 
@@ -239,7 +241,7 @@ export async function POST(request: NextRequest) {
           stripe_session_id = NULL
         WHERE id = ${createdSalonId}
       `;
-      return NextResponse.json({ skipCheckout: true, slug, publicUrl, claimUrl });
+      return NextResponse.json({ skipCheckout: true, slug, publicUrl, claimUrl, instantClaimUrl });
     }
 
     /* ── Stripe checkout ────────────────────────────────── */
@@ -270,7 +272,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/create`,
     });
 
-    return NextResponse.json({ checkoutUrl: session.url, publicUrl, claimUrl });
+    return NextResponse.json({ checkoutUrl: session.url, publicUrl, claimUrl, instantClaimUrl });
   } catch (error) {
     console.error('[create-checkout] failed:', error);
     return NextResponse.json(

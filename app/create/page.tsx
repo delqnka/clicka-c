@@ -360,6 +360,10 @@ export default function CreatePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
       if (data.skipCheckout === true) {
+        if (typeof data.instantClaimUrl === 'string' && data.instantClaimUrl.length > 0) {
+          window.location.href = data.instantClaimUrl;
+          return;
+        }
         if (typeof data.claimUrl === 'string' && data.claimUrl.length > 0) {
           window.location.href = data.claimUrl;
           return;
