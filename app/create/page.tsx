@@ -338,11 +338,6 @@ export default function CreatePage() {
     setIsSubmitting(true);
     setError('');
     try {
-      if (SHOW_SKIP_PAYMENT_UI) {
-        window.location.href = `${window.location.origin}/demo?v=${Date.now()}`;
-        return;
-      }
-
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -365,6 +360,10 @@ export default function CreatePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
       if (data.skipCheckout === true) {
+        if (typeof data.claimUrl === 'string' && data.claimUrl.length > 0) {
+          window.location.href = data.claimUrl;
+          return;
+        }
         if (typeof data.publicUrl === 'string' && data.publicUrl.length > 0) {
           window.location.href = data.publicUrl;
           return;
@@ -373,10 +372,6 @@ export default function CreatePage() {
           window.location.href = `${window.location.origin}/${encodeURIComponent(data.slug)}`;
           return;
         }
-      }
-      if (typeof data.claimUrl === 'string' && data.claimUrl.length > 0 && data.skipCheckout === true) {
-        window.location.href = data.claimUrl;
-        return;
       }
       if (typeof data.checkoutUrl === 'string' && data.checkoutUrl.length > 0) {
         window.location.href = data.checkoutUrl;
@@ -1206,10 +1201,10 @@ export default function CreatePage() {
             >
               {isSubmitting
                 ? SHOW_SKIP_PAYMENT_UI
-                  ? 'Отварям demo сайта...'
+                  ? 'Създавам тестовия сайт...'
                   : 'Пренасочване към Stripe...'
                 : SHOW_SKIP_PAYMENT_UI
-                  ? 'Отвори demo сайта →'
+                  ? 'Създай сайта без плащане →'
                   : 'Плати сега →'}
             </button>
 
