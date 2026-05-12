@@ -7,7 +7,7 @@ import {
   DOMAIN_TLD_OPTIONS,
   formatDomainPurchaseStatus,
   type DomainPurchaseRequest,
-} from '@/lib/domain-purchase';
+} from '@/lib/domain-purchase-shared';
 
 type Props = {
   slug: string;
