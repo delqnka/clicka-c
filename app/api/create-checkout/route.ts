@@ -90,6 +90,10 @@ export async function POST(request: NextRequest) {
   const normalizedAbout =
     String(salonData.about || '').trim() ||
     `${salonData.name} предлага онлайн резервации през собствен сайт.`;
+  const normalizedAddress = String(salonData.address || '').trim();
+  const normalizedInstagram = String(salonData.instagram || '').trim();
+  const normalizedFacebook = String(salonData.facebook || '').trim();
+  const normalizedGoogleMapsUrl = String(salonData.googleMapsUrl || '').trim();
   const normalizedGalleryImages = Array.isArray(salonData.galleryImages)
     ? salonData.galleryImages.map(item => String(item || '').trim()).filter(Boolean)
     : [];
@@ -178,14 +182,14 @@ export async function POST(request: NextRequest) {
         ${salonData.phone},
         ${salonData.email},
         ${salonData.city},
-        ${salonData.address || null},
+        ${normalizedAddress},
         ${normalizedAbout},
         ${normalizedCoverImageUrl},
         ${normalizedLogoImageUrl},
         ${JSON.stringify(normalizedGalleryImages)}::jsonb,
-        ${salonData.instagram || null},
-        ${salonData.facebook || null},
-        ${salonData.googleMapsUrl || null},
+        ${normalizedInstagram},
+        ${normalizedFacebook},
+        ${normalizedGoogleMapsUrl},
         ${JSON.stringify(salonData.workingHours)}::jsonb,
         ${JSON.stringify(services)}::jsonb,
         ${templateId},
