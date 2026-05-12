@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { Resend } from 'resend';
+import {
+  ensureAdminAuthSchema,
+  getPrimaryOwnerForSalon,
+  normalizeEmail,
+  resolveSalonBySlugOrHost,
+  sha256,
+} from '@/lib/admin-auth';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-function sha256(input: string) {
-  return crypto.createHash('sha256').update(input).digest('hex');
-}
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
-
 export async function POST(request: NextRequest) {
+  await ensureAdminAuthSchema();
+
   let body: { email?: string; slug?: string };
   try {
     body = await request.json();
@@ -26,20 +27,16 @@ export async function POST(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const slugFromHeader = request.headers.get('x-salon-slug');
-  const slug = body.slug || slugFromHeader || searchParams.get('slug');
-  if (!slug) return NextResponse.json({ error: 'Неидентифициран салон' }, { status: 400 });
+  const salon = await resolveSalonBySlugOrHost({
+    slug: body.slug || slugFromHeader || searchParams.get('slug'),
+    host: request.headers.get('host'),
+    includeInactive: true,
+  });
+  if (!salon) return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });
 
-  const salons = await sql`
-    SELECT id, slug, email, name
-    FROM salons
-    WHERE slug = ${slug} AND is_active = true
-  `;
-  if (salons.length === 0) return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });
-
-  const salon = salons[0] as any;
-  const salonEmail = normalizeEmail(salon.email ?? '');
-  if (!salonEmail || salonEmail !== email) {
-    // Avoid leaking which emails exist; still return OK-ish UX.
+  const primaryOwner = await getPrimaryOwnerForSalon(salon.salonId);
+  const allowedEmail = normalizeEmail(primaryOwner?.email ?? salon.email ?? '');
+  if (!allowedEmail || allowedEmail !== email) {
     return NextResponse.json({ success: true });
   }
 
@@ -48,9 +45,10 @@ export async function POST(request: NextRequest) {
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
   // Requires DB table admin_login_tokens (see below).
+  await sql`DELETE FROM admin_login_tokens WHERE salon_id = ${salon.salonId}`;
   await sql`
-    INSERT INTO admin_login_tokens (salon_id, token_hash, expires_at, used_at, created_at)
-    VALUES (${salon.id}, ${tokenHash}, ${expiresAt.toISOString()}, null, now())
+    INSERT INTO admin_login_tokens (salon_id, token_hash, email_norm, expires_at, used_at, created_at)
+    VALUES (${salon.salonId}, ${tokenHash}, ${allowedEmail}, ${expiresAt.toISOString()}, null, now())
   `;
 
   const host = request.headers.get('host') ?? '';
@@ -60,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   await resend.emails.send({
     from: 'Clicka.bg <noreply@clicka.bg>',
-    to: salonEmail,
+    to: allowedEmail,
     subject: `Вход за админ – ${salon.name ?? salon.slug}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

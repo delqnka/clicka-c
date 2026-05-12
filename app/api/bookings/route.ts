@@ -1,36 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { sendBookingNotification, sendBookingConfirmation } from '@/lib/resend';
+import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
 
 async function resolveSalonFromRequest(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const salonSlug = request.headers.get('x-salon-slug') || searchParams.get('slug');
+  const lookup = await resolveSalonBySlugOrHost({
+    slug: request.headers.get('x-salon-slug') || searchParams.get('slug'),
+    host: request.headers.get('host'),
+    includeInactive: false,
+  });
 
-  if (!salonSlug) {
+  if (!lookup) {
     return { error: NextResponse.json({ error: 'Неидентифициран салон' }, { status: 400 }) } as const;
   }
 
   const salons = await sql`
-    SELECT id, name, email FROM salons
-    WHERE slug = ${salonSlug} AND is_active = true
+    SELECT CAST(id AS text) AS salon_id, name, email, slug FROM salons
+    WHERE slug = ${lookup.slug} AND is_active = true
   `;
 
   if (salons.length === 0) {
     return { error: NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 }) } as const;
   }
 
-  return { salonSlug, salon: salons[0] } as const;
+  return { salonSlug: lookup.slug, salon: salons[0] } as const;
 }
 
 export async function GET(request: NextRequest) {
+  const { searchParams: requestSearchParams } = new URL(request.url);
+  const auth = await requireAdminRequestAccess(request, requestSearchParams.get('slug'));
+  if (!auth.ok) return auth.response;
+
   const resolved = await resolveSalonFromRequest(request);
   if ('error' in resolved) return resolved.error;
 
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status') as BookingStatus | null;
-  const limitRaw = searchParams.get('limit');
+  const status = requestSearchParams.get('status') as BookingStatus | null;
+  const limitRaw = requestSearchParams.get('limit');
   const limit = Math.min(Math.max(Number(limitRaw ?? '50') || 50, 1), 200);
 
   if (status && !['pending', 'confirmed', 'cancelled'].includes(status)) {
@@ -46,7 +54,7 @@ export async function GET(request: NextRequest) {
           reminder_sent,
           created_at
         FROM bookings
-        WHERE salon_id = ${resolved.salon.id} AND status = ${status}
+        WHERE salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')} AND status = ${status}
         ORDER BY date DESC, time DESC
         LIMIT ${limit}
       `
@@ -58,7 +66,7 @@ export async function GET(request: NextRequest) {
           reminder_sent,
           created_at
         FROM bookings
-        WHERE salon_id = ${resolved.salon.id}
+        WHERE salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')}
         ORDER BY date DESC, time DESC
         LIMIT ${limit}
       `;
@@ -114,7 +122,7 @@ export async function POST(request: NextRequest) {
       date, time, status, notes
     )
     VALUES (
-      ${resolved.salon.id}, ${clientName}, ${clientPhone}, ${clientEmail ?? null},
+      ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')}, ${clientName}, ${clientPhone}, ${clientEmail ?? null},
       ${serviceName}, ${servicePrice ?? null}, ${serviceDuration ?? null},
       ${date}, ${time}, 'pending', ${notes ?? null}
     )
@@ -151,6 +159,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const auth = await requireAdminRequestAccess(request, searchParams.get('slug'));
+  if (!auth.ok) return auth.response;
+
   const resolved = await resolveSalonFromRequest(request);
   if ('error' in resolved) return resolved.error;
 
@@ -174,7 +186,7 @@ export async function PATCH(request: NextRequest) {
   const updated = await sql`
     UPDATE bookings
     SET status = ${status}
-    WHERE id = ${bookingId} AND salon_id = ${resolved.salon.id}
+    WHERE id = ${bookingId} AND salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')}
     RETURNING id
   `;
 

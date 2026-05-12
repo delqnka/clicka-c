@@ -1,7 +1,20 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { getPlatformClaimUrl } from '@/lib/domain-routing';
 
-export default function SuccessPage() {
+export default function SuccessPage({
+  searchParams,
+}: {
+  searchParams?: { salon?: string | string[] };
+}) {
+  const claimSlug =
+    typeof searchParams?.salon === 'string'
+      ? searchParams.salon
+      : Array.isArray(searchParams?.salon)
+        ? searchParams?.salon[0]
+        : '';
+  const claimUrl = claimSlug ? getPlatformClaimUrl(claimSlug) : '';
+
   return (
     <div style={{
       minHeight: '100vh', background: '#fff', fontFamily: 'inherit',
@@ -48,7 +61,9 @@ export default function SuccessPage() {
           fontSize: 18, color: 'rgba(0,0,0,0.5)', maxWidth: 480,
           lineHeight: 1.6, margin: '0 0 40px',
         }}>
-          Ще получиш имейл до 15 минути с линк към твоя нов сайт.
+          {claimSlug
+            ? 'Плащането мина успешно. Можеш веднага да claim-неш сайта и да влезеш в dashboard-а.'
+            : 'Ще получиш имейл до 15 минути с линк към твоя нов сайт.'}
         </p>
 
         <div style={{
@@ -66,13 +81,24 @@ export default function SuccessPage() {
           ))}
         </div>
 
-        <Link href="/" style={{
-          display: 'inline-block', padding: '14px 32px',
-          background: '#000', color: '#fff', borderRadius: 12,
-          textDecoration: 'none', fontSize: 15, fontWeight: 600,
-        }}>
-          Към началната страница
-        </Link>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {claimSlug ? (
+            <a href={claimUrl} style={{
+              display: 'inline-block', padding: '14px 32px',
+              background: '#000', color: '#fff', borderRadius: 12,
+              textDecoration: 'none', fontSize: 15, fontWeight: 600,
+            }}>
+              Claim-ни сайта
+            </a>
+          ) : null}
+          <Link href="/" style={{
+            display: 'inline-block', padding: '14px 32px',
+            background: '#000', color: '#fff', borderRadius: 12,
+            textDecoration: 'none', fontSize: 15, fontWeight: 600,
+          }}>
+            Към началната страница
+          </Link>
+        </div>
       </div>
 
       <style>{`

@@ -35,6 +35,9 @@ export default function AdminSignInPage() {
         <p style={{ margin: '10px 0 0', color: 'rgba(0,0,0,0.5)', lineHeight: 1.6 }}>
           Въведете имейла на салона. Ще изпратим линк за вход.
         </p>
+        <p style={{ margin: '10px 0 0', color: '#000', lineHeight: 1.6, fontSize: 14 }}>
+          Ако още не сте claim-нали сайта, първо отворете <a href="/claim" style={{ color: '#000', fontWeight: 700 }}>claim page</a>.
+        </p>
 
         {sent ? (
           <div style={{ marginTop: 18, background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: '12px 14px', color: '#047857' }}>

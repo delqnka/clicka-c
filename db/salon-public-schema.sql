@@ -18,6 +18,15 @@ ALTER TABLE salons ADD COLUMN IF NOT EXISTS latitude double precision;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS longitude double precision;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS opening_hours jsonb;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS verified boolean DEFAULT false;
+ALTER TABLE salons ADD COLUMN IF NOT EXISTS custom_domain text;
+ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_status text;
+ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_verified_at timestamptz;
+ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_last_checked_at timestamptz;
+ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_config jsonb;
+
+CREATE UNIQUE INDEX IF NOT EXISTS salons_custom_domain_uniq
+ON salons ((lower(custom_domain)))
+WHERE custom_domain IS NOT NULL;
 
 -- Offers (replaces tRPC offers.listBySalon for Clicka DB)
 CREATE TABLE IF NOT EXISTS salon_offers (

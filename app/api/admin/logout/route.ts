@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const COOKIE_NAME = 'clicka_admin_session';
+import { ADMIN_COOKIE_NAME, destroyOwnerSession } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
+  const sessionId = request.cookies.get(ADMIN_COOKIE_NAME)?.value ?? '';
+  if (sessionId) {
+    await destroyOwnerSession(sessionId);
+  }
+
   const res = NextResponse.json({ success: true });
   res.cookies.set({
-    name: COOKIE_NAME,
+    name: ADMIN_COOKIE_NAME,
     value: '',
     httpOnly: true,
     sameSite: 'lax',

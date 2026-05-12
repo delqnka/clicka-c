@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToR2 } from '@/lib/r2';
+import { requireAdminRequestAccess } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -12,6 +13,11 @@ export async function POST(request: NextRequest) {
       { error: 'Неидентифициран салон' },
       { status: 400 }
     );
+  }
+
+  if (!salonSlug.startsWith('draft-')) {
+    const auth = await requireAdminRequestAccess(request, salonSlug);
+    if (!auth.ok) return auth.response;
   }
 
   let formData: FormData;

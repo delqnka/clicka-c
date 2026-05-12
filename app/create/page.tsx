@@ -364,8 +364,18 @@ export default function CreatePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
-      if (data.skipCheckout === true && typeof data.slug === 'string' && data.slug.length > 0) {
-        window.location.href = `${window.location.origin}/${encodeURIComponent(data.slug)}`;
+      if (data.skipCheckout === true) {
+        if (typeof data.publicUrl === 'string' && data.publicUrl.length > 0) {
+          window.location.href = data.publicUrl;
+          return;
+        }
+        if (typeof data.slug === 'string' && data.slug.length > 0) {
+          window.location.href = `${window.location.origin}/${encodeURIComponent(data.slug)}`;
+          return;
+        }
+      }
+      if (typeof data.claimUrl === 'string' && data.claimUrl.length > 0 && data.skipCheckout === true) {
+        window.location.href = data.claimUrl;
         return;
       }
       if (typeof data.checkoutUrl === 'string' && data.checkoutUrl.length > 0) {

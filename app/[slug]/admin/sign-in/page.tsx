@@ -36,6 +36,9 @@ export default function AdminSignInForSlugPage({ params }: { params: { slug: str
         <p style={{ margin: '10px 0 0', color: 'rgba(0,0,0,0.5)', lineHeight: 1.6 }}>
           Салон: <strong>{slug}</strong>. Въведете имейла на салона, за да получите линк за вход.
         </p>
+        <p style={{ margin: '10px 0 0', color: '#000', lineHeight: 1.6, fontSize: 14 }}>
+          Ако сайтът още не е claim-нат, първо отвори <a href={`/${slug}/claim`} style={{ color: '#000', fontWeight: 700 }}>claim page</a>.
+        </p>
 
         {sent ? (
           <div style={{ marginTop: 18, background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: '12px 14px', color: '#047857' }}>

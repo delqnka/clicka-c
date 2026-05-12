@@ -1,6 +1,5 @@
-import { sql } from '@/lib/db';
-import { buildStaticMapUrl, fetchGoogleReviewsForPlace } from '@/lib/google-place-server';
 import SalonPublicParity from '@/app/components/SalonPublicParity';
+import { getPublicSalonPageData } from '@/lib/public-salon';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,15 +12,9 @@ export default async function SalonSlugPage({
   params: { slug: string };
   searchParams?: Search;
 }) {
-  const salonSlug = params.slug;
+  const pageData = await getPublicSalonPageData({ slug: params.slug });
 
-  const rows = await sql`
-    SELECT *
-    FROM salons
-    WHERE slug = ${salonSlug} AND is_active = true
-  `;
-
-  if (rows.length === 0) {
+  if (!pageData) {
     return (
       <main style={{ fontFamily: 'system-ui, sans-serif', padding: '60px 24px', textAlign: 'center' }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>Салонът не е намерен</h1>
@@ -29,43 +22,6 @@ export default async function SalonSlugPage({
       </main>
     );
   }
-
-  const salon = rows[0] as Record<string, unknown>;
-  const salonId = String(salon.id ?? '');
-
-  let offers: unknown[] = [];
-  let reviews: unknown[] = [];
-  try {
-    offers = await sql`
-      SELECT id, title, description, discount, images, is_active, valid_until,
-             campaign_valid_from, campaign_valid_until, max_claims, total_claims
-      FROM salon_offers
-      WHERE salon_id = ${salonId}
-      ORDER BY created_at DESC
-    `;
-  } catch {
-    offers = [];
-  }
-
-  try {
-    reviews = await sql`
-      SELECT id, client_name, client_email, client_avatar, rating, comment,
-             specialist_comment, team_member_name, owner_reply, created_at
-      FROM salon_reviews
-      WHERE salon_id = ${salonId}
-      ORDER BY created_at DESC
-    `;
-  } catch {
-    reviews = [];
-  }
-
-  const placeId = typeof salon.google_place_id === 'string' ? salon.google_place_id.trim() : '';
-  const googleReviews = placeId ? await fetchGoogleReviewsForPlace(placeId) : [];
-
-  const lat = salon.latitude != null ? Number(salon.latitude) : NaN;
-  const lng = salon.longitude != null ? Number(salon.longitude) : NaN;
-  const staticMapUrl =
-    Number.isFinite(lat) && Number.isFinite(lng) ? buildStaticMapUrl(lat, lng) : null;
 
   const reviewIdRaw = searchParams?.reviewId;
   const highlightReviewId =
@@ -76,14 +32,14 @@ export default async function SalonSlugPage({
 
   return (
     <SalonPublicParity
-      salonSlug={salonSlug}
-      salon={salon}
-      offers={offers as never}
-      reviews={reviews as never}
-      googleReviews={googleReviews}
+      salonSlug={pageData.salonSlug}
+      salon={pageData.salon}
+      offers={pageData.offers as never}
+      reviews={pageData.reviews as never}
+      googleReviews={pageData.googleReviews}
       highlightReviewId={highlightReviewId || null}
       tabParam={tabParam || null}
-      staticMapUrl={staticMapUrl}
+      staticMapUrl={pageData.staticMapUrl}
     />
   );
 }

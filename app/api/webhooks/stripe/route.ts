@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { sql } from '@/lib/db';
 import { Resend } from 'resend';
+import {
+  getPlatformAdminUrl,
+  getPlatformClaimUrl,
+  getPlatformPublicUrl,
+} from '@/lib/domain-routing';
+import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -32,6 +38,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
+    await ensurePlatformSubdomain(String(salonSlug));
+
     await sql`
       UPDATE salons
       SET
@@ -50,15 +58,9 @@ export async function POST(request: NextRequest) {
 
     if (salons.length > 0 && salons[0].email) {
       const { email, name } = salons[0];
-      const publicUrl =
-        planType === 'custom_domain'
-          ? 'вашия домейн (ще получите инструкции по имейл)'
-          : `${salonSlug}.clicka.bg`;
-
-      const adminUrl =
-        planType === 'custom_domain'
-          ? `https://clicka.bg/${salonSlug}/admin`
-          : `https://${salonSlug}.clicka.bg/admin`;
+      const publicUrl = getPlatformPublicUrl(String(salonSlug));
+      const claimUrl = getPlatformClaimUrl(String(salonSlug));
+      const adminUrl = getPlatformAdminUrl(String(salonSlug));
 
       await resend.emails.send({
         from: 'Clicka.bg <noreply@clicka.bg>',
@@ -71,16 +73,23 @@ export async function POST(request: NextRequest) {
             <p>Плащането е прието успешно. Сайтът на <strong>${name}</strong> вече е активен.</p>
             <p>
               Можете да го намерите на адрес:<br>
-              <a href="https://${salonSlug}.clicka.bg" style="color: #0070f3;">
+              <a href="${publicUrl}" style="color: #0070f3;">
                 ${publicUrl}
               </a>
             </p>
             <p style="margin-top: 18px;">
-              Контролен панел (админ):<br>
+              Първа стъпка: claim-нете сайта си:<br>
+              <a href="${claimUrl}" style="color: #0070f3; font-weight: 600;">
+                ${claimUrl}
+              </a>
+            </p>
+            <p style="margin-top: 12px;">След това ще можете да редактирате съдържанието си от dashboard-а:</p>
+            <p>
               <a href="${adminUrl}" style="color: #0070f3; font-weight: 600;">
                 ${adminUrl}
               </a>
             </p>
+            ${planType === 'custom_domain' ? '<p style="margin-top: 12px;">Собственият домейн може да се свърже след claim от таба "Домейн".</p>' : ''}
             <p>При въпроси не се колебайте да се свържете с нас.</p>
             <p style="margin-top: 24px; color: #666; font-size: 14px;">
               Екипът на <a href="https://clicka.bg">Clicka.bg</a>

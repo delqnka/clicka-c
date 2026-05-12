@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import Stripe from 'stripe';
 import crypto from 'crypto';
+import {
+  getPlatformClaimUrl,
+  getPlatformPublicUrl,
+} from '@/lib/domain-routing';
+import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -136,6 +141,8 @@ export async function POST(request: NextRequest) {
     const suffix = Math.random().toString(36).slice(2, 6);
     const slug = `${base}-${suffix}`;
     const salonId = crypto.randomUUID();
+    const publicUrl = getPlatformPublicUrl(slug);
+    const claimUrl = getPlatformClaimUrl(slug);
 
     const colors = MONO_THEME;
 
@@ -179,6 +186,8 @@ export async function POST(request: NextRequest) {
     `;
     const createdSalonId = rows[0].id ?? salonId;
 
+    await ensurePlatformSubdomain(slug);
+
     /* ── Demo / скриншоти: без Stripe (само при CLICKA_SKIP_CHECKOUT на сървъра) ── */
     const skipCheckout =
       process.env.CLICKA_SKIP_CHECKOUT === '1' ||
@@ -193,7 +202,7 @@ export async function POST(request: NextRequest) {
           stripe_session_id = NULL
         WHERE id = ${createdSalonId}
       `;
-      return NextResponse.json({ skipCheckout: true, slug });
+      return NextResponse.json({ skipCheckout: true, slug, publicUrl, claimUrl });
     }
 
     /* ── Stripe checkout ────────────────────────────────── */
@@ -220,11 +229,11 @@ export async function POST(request: NextRequest) {
         planType,
       },
       customer_email: salonData.email,
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}&salon=${slug}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/create`,
     });
 
-    return NextResponse.json({ checkoutUrl: session.url });
+    return NextResponse.json({ checkoutUrl: session.url, publicUrl, claimUrl });
   } catch (error) {
     console.error('[create-checkout] failed:', error);
     return NextResponse.json(
