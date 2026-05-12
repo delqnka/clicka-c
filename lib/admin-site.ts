@@ -26,7 +26,6 @@ export type BookingRecord = {
   time: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   notes: string | null;
-  reminder_sent: boolean | null;
   created_at: string;
 };
 
@@ -155,7 +154,7 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
     SELECT
       id, client_name, client_phone, client_email,
       service_name, service_price, service_duration,
-      date, time, status, notes, reminder_sent, created_at
+      date, time, status, notes, created_at
     FROM bookings
     WHERE salon_id = ${salonId}
     ORDER BY date DESC, time DESC

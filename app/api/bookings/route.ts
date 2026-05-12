@@ -50,9 +50,7 @@ export async function GET(request: NextRequest) {
         SELECT
           id, client_name, client_phone, client_email,
           service_name, service_price, service_duration,
-          date, time, status, notes,
-          reminder_sent,
-          created_at
+          date, time, status, notes, created_at
         FROM bookings
         WHERE salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')} AND status = ${status}
         ORDER BY date DESC, time DESC
@@ -62,9 +60,7 @@ export async function GET(request: NextRequest) {
         SELECT
           id, client_name, client_phone, client_email,
           service_name, service_price, service_duration,
-          date, time, status, notes,
-          reminder_sent,
-          created_at
+          date, time, status, notes, created_at
         FROM bookings
         WHERE salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')}
         ORDER BY date DESC, time DESC
