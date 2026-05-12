@@ -1,14 +1,19 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
+const r2Endpoint = process.env.R2_ENDPOINT || process.env.CLOUDFLARE_R2_ENDPOINT;
+const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+const r2Bucket = process.env.R2_BUCKET || process.env.CLOUDFLARE_R2_BUCKET;
+
 const r2 = new S3Client({
   region: 'auto',
-  endpoint: process.env.R2_ENDPOINT,
+  endpoint: r2Endpoint,
   // Cloudflare R2 expects path-style requests with the account endpoint.
   // Without this, the SDK may try virtual-hosted style (`bucket.accountid...`) which breaks.
   forcePathStyle: true,
   credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+    accessKeyId: r2AccessKeyId!,
+    secretAccessKey: r2SecretAccessKey!,
   },
 });
 
@@ -19,7 +24,7 @@ export async function uploadToR2(
 ): Promise<string> {
   await r2.send(
     new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET!,
+      Bucket: r2Bucket!,
       Key: key,
       Body: file,
       ContentType: contentType,
