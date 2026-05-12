@@ -6,7 +6,6 @@
  */
 
 import {
-  ArrowLeft,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -19,7 +18,6 @@ import {
   User,
   X,
 } from 'lucide-react';
-import Link from 'next/link';
 import {
   useCallback,
   useEffect,
@@ -51,6 +49,8 @@ import {
   type SalonVenueExtraKey,
 } from '@/lib/salon-venue-extras';
 
+const APPLE_LINK_BLUE = '#0A84FF';
+
 const SALON_TABS = [
   { id: 'offers' as const, label: 'Оферти' },
   { id: 'services' as const, label: 'Услуги' },
@@ -61,7 +61,7 @@ const SALON_TABS = [
 ];
 
 type TabId = (typeof SALON_TABS)[number]['id'];
-const SCROLL_SPY_TAB_ORDER: TabId[] = ['offers', 'services', 'portfolio', 'team', 'reviews', 'about'];
+const SCROLL_SPY_TAB_ORDER: TabId[] = ['about', 'offers', 'services', 'portfolio', 'team', 'reviews'];
 
 const DESCRIPTION_PREVIEW_LEN = 120;
 const INITIAL_REVIEWS_VISIBLE = 3;
@@ -176,7 +176,11 @@ function SalonGalleryMosaic({
         onClick={() => onOpenGallery(0)}
         className={`group relative block w-full overflow-hidden rounded-2xl text-left focus:outline-none focus-visible:ring-2 ${ringClass}`}
       >
-        <img src={a} alt="" className="aspect-[2/1] w-full object-cover transition duration-300 group-hover:opacity-95" />
+        <img
+          src={a}
+          alt=""
+          className="aspect-[4/3] w-full object-cover transition duration-300 group-hover:opacity-95 md:aspect-[2/1]"
+        />
       </button>
     );
   }
@@ -188,7 +192,7 @@ function SalonGalleryMosaic({
           onClick={() => onOpenGallery(0)}
           className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
         >
-          <img src={a} alt="" className="aspect-[16/10] w-full object-cover transition duration-300 group-hover:opacity-95" />
+          <img src={a} alt="" className="aspect-[4/3] w-full object-cover transition duration-300 group-hover:opacity-95" />
           <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
             Виж снимки
           </span>
@@ -219,7 +223,7 @@ function SalonGalleryMosaic({
         onClick={() => onOpenGallery(0)}
         className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
       >
-        <img src={a} alt="" className="aspect-[16/10] w-full object-cover transition duration-300 group-hover:opacity-95" />
+        <img src={a} alt="" className="aspect-[4/3] w-full object-cover transition duration-300 group-hover:opacity-95" />
         <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
           Преглед на всички изображения
         </span>
@@ -334,9 +338,8 @@ export default function SalonPublicParity({
   }, [rawSalon.services]);
 
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
-  const galleryWrapRef = useRef<HTMLDivElement | null>(null);
   const scrollSpySuppressUntilRef = useRef(0);
-  const [activeTab, setActiveTab] = useState<TabId>('offers');
+  const [activeTab, setActiveTab] = useState<TabId>('about');
   const [showStickySectionTabs, setShowStickySectionTabs] = useState(false);
   const [selectedServiceCategory, setSelectedServiceCategory] = useState<string | null>(null);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
@@ -499,10 +502,10 @@ export default function SalonPublicParity({
     }
     if (typeof window === 'undefined') return;
     const updateStickyTabs = () => {
-      const el = galleryWrapRef.current;
+      const el = sectionRefs.current.about;
       if (!el) return;
-      const galleryBottom = el.getBoundingClientRect().bottom;
-      const shouldShow = galleryBottom <= 72;
+      const aboutBottom = el.getBoundingClientRect().bottom;
+      const shouldShow = aboutBottom <= 72;
       setShowStickySectionTabs((prev) => (prev === shouldShow ? prev : shouldShow));
     };
     updateStickyTabs();
@@ -756,14 +759,7 @@ export default function SalonPublicParity({
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] items-center justify-between px-4 py-3 md:px-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--salon-primary)]"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Начало
-          </Link>
+        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] items-center justify-end px-4 py-3 md:px-6">
           <button
             type="button"
             onClick={handleShare}
@@ -775,21 +771,14 @@ export default function SalonPublicParity({
         </div>
       </header>
 
-      <div ref={galleryWrapRef} className="mx-auto w-full max-w-[min(100%,1180px)] px-4 pb-2 pt-4 md:px-6">
+      <div className="mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-0 md:px-6 md:pt-4">
         <SalonGalleryMosaic uris={allGalleryWired} onOpenGallery={(i) => setGalleryModal({ uris: allGalleryWired, index: i })} ringClass={ringClass} />
       </div>
 
       {!disableStickySectionTabs && showStickySectionTabs ? (
-        <div className="fixed inset-x-0 top-0 z-20 overflow-hidden border-b border-white/20 px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-95"
-            style={{
-              background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 35%, white) 0%, ${primary} 55%, color-mix(in srgb, ${primary} 85%, black) 100%)`,
-            }}
-            aria-hidden
-          />
+        <div className="fixed inset-x-0 top-0 z-20 border-b border-black/10 bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
           <div className="relative mx-auto w-full max-w-[min(100%,1180px)]">
-            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+            <div className="flex gap-5 overflow-x-auto scrollbar-none">
               {salonTabsWithTeamLabel.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -797,10 +786,9 @@ export default function SalonPublicParity({
                     key={`sticky-${tab.id}`}
                     type="button"
                     onClick={() => scrollToSection(tab.id)}
-                    className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                      isActive ? 'bg-white shadow-sm' : 'border border-white/40 bg-white/15 text-white hover:bg-white/25'
+                    className={`relative shrink-0 whitespace-nowrap border-b-2 px-0 py-2 text-[15px] font-medium transition ${
+                      isActive ? 'border-black text-[#1a1a1a]' : 'border-transparent text-black/50 hover:text-[#1a1a1a]'
                     }`}
-                    style={isActive ? { color: primary } : undefined}
                   >
                     {tab.label}
                   </button>
@@ -856,7 +844,8 @@ export default function SalonPublicParity({
                       }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex max-w-full items-center gap-1 font-medium text-[color:var(--salon-primary)] underline-offset-2 hover:underline"
+                      className="inline-flex max-w-full items-center gap-1 font-medium underline-offset-2 hover:underline"
+                      style={{ color: APPLE_LINK_BLUE }}
                     >
                       <MapPin className="h-4 w-4 shrink-0" aria-hidden />
                       <span className="truncate">{[address, city].filter(Boolean).join(', ')}</span>
@@ -877,8 +866,77 @@ export default function SalonPublicParity({
               </a>
             ) : null}
 
-            <div className="-mx-4 mt-4 border-b border-black/10 bg-white px-4 py-2 lg:static lg:z-0 lg:mx-0 lg:mt-6 lg:border-b lg:border-t lg:border-black/10 lg:bg-transparent lg:px-0 lg:py-3">
-              <div className="flex gap-1 overflow-x-auto border-black/10 pb-1 lg:gap-6 lg:border-b lg:pb-2 scrollbar-none">
+            <section
+              ref={(el) => {
+                sectionRefs.current.about = el;
+              }}
+              className="scroll-mt-24 pt-7"
+            >
+              <h2 className="text-lg font-semibold text-[#1a1a1a]">За салона</h2>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#1a1a1a]">
+                {descriptionExpanded
+                  ? description || 'Няма добавено описание.'
+                  : (description || 'Няма добавено описание.').slice(0, DESCRIPTION_PREVIEW_LEN)}
+                {description.length > DESCRIPTION_PREVIEW_LEN && !descriptionExpanded ? '…' : ''}
+              </p>
+              {description.length > DESCRIPTION_PREVIEW_LEN ? (
+                <button
+                  type="button"
+                  className="mt-2 text-sm font-semibold text-[color:var(--salon-primary)]"
+                  onClick={() => setDescriptionExpanded((e) => !e)}
+                >
+                  {descriptionExpanded ? 'Свий' : 'Прочети още'}
+                </button>
+              ) : null}
+
+              {(() => {
+                const igUrl = salonPublicInstagramUrl(instagram);
+                const ttUrl = salonPublicTikTokUrl(tiktok);
+                const fbUrl = salonPublicFacebookUrl(facebook);
+                if (!igUrl && !ttUrl && !fbUrl) return null;
+                return (
+                  <div className="mt-6 rounded-xl border border-black/10 bg-white p-4">
+                    <p className="text-sm font-medium text-[#1a1a1a]">Последвайте ни в социалните мрежи</p>
+                    {igUrl ? (
+                      <a
+                        href={igUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 block text-sm underline"
+                        style={{ color: APPLE_LINK_BLUE }}
+                      >
+                        @{String(instagram ?? '').replace(/^@/, '')}
+                      </a>
+                    ) : null}
+                    {ttUrl ? (
+                      <a
+                        href={ttUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 block text-sm underline"
+                        style={{ color: APPLE_LINK_BLUE }}
+                      >
+                        TikTok @{String(tiktok ?? '').replace(/^@/, '')}
+                      </a>
+                    ) : null}
+                    {fbUrl ? (
+                      <a
+                        href={fbUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 block text-sm underline"
+                        style={{ color: APPLE_LINK_BLUE }}
+                      >
+                        Facebook
+                      </a>
+                    ) : null}
+                  </div>
+                );
+              })()}
+            </section>
+
+            <div className="-mx-4 mt-6 border-b border-black/10 bg-white px-4 py-1 lg:static lg:z-0 lg:mx-0 lg:border-b lg:border-t lg:border-black/10 lg:bg-transparent lg:px-0 lg:py-2">
+              <div className="flex gap-5 overflow-x-auto border-black/10 scrollbar-none">
                 {salonTabsWithTeamLabel.map((tab) => {
                   const isActive = activeTab === tab.id;
                   return (
@@ -886,16 +944,13 @@ export default function SalonPublicParity({
                       key={tab.id}
                       type="button"
                       onClick={() => scrollToSection(tab.id)}
-                      className={`relative shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-semibold shadow-[0_8px_22px_rgba(0,0,0,0.06)] lg:rounded-none lg:px-0 lg:py-2 lg:shadow-none ${
+                      className={`relative shrink-0 whitespace-nowrap border-b-2 px-0 py-3 text-[15px] font-medium ${
                         isActive
-                          ? 'border border-[color:var(--salon-primary)] bg-white text-[color:var(--salon-primary)] lg:border-0 lg:border-b-2 lg:bg-transparent'
-                          : 'border border-black/10 bg-white text-black/60 hover:text-[#1a1a1a] lg:border-0 lg:bg-transparent'
+                          ? 'border-black text-[#1a1a1a]'
+                          : 'border-transparent text-black/50 hover:text-[#1a1a1a]'
                       }`}
                     >
                       {tab.label}
-                      {isActive ? (
-                        <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[color:var(--salon-primary)] lg:hidden" />
-                      ) : null}
                     </button>
                   );
                 })}
@@ -984,7 +1039,7 @@ export default function SalonPublicParity({
                   })}
                 </div>
               ) : null}
-              <ul className="mt-4 divide-y divide-black/10 rounded-2xl border border-black/10 bg-white shadow-[0_14px_34px_rgba(0,0,0,0.06)]">
+              <ul className="mt-4 border-y border-black/10 bg-white">
                 {displayServices.map((service, idxInPage) => {
                   const globalIdx = servicesFromDb.findIndex((x) => x.id === service.id);
                   const variants = service.variants && service.variants.length > 0 ? service.variants : null;
@@ -996,10 +1051,10 @@ export default function SalonPublicParity({
                     : null;
                   const effective = getEffectiveServiceCb(service, selectedVariant);
                   return (
-                    <li key={service.id} className="px-4 py-4">
+                    <li key={service.id} className="border-b border-black/10 px-1 py-5 first:pt-3 last:border-b-0 last:pb-3">
                       <div className="flex flex-row items-start gap-4">
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-semibold leading-snug text-[#1a1a1a]">{service.name}</p>
+                          <p className="text-[17px] font-normal leading-snug text-[#1a1a1a]">{service.name}</p>
                           {variants && variants.length > 0 ? (
                             <div className="relative mt-2 max-w-full sm:max-w-md">
                               <button
@@ -1007,7 +1062,7 @@ export default function SalonPublicParity({
                                 onClick={() =>
                                   setVariantDropdownOpenForServiceId((prev) => (prev === service.id ? null : service.id))
                                 }
-                                className="flex w-full items-center justify-between rounded-full border border-black/20 bg-white px-4 py-2 text-left text-sm shadow-[0_8px_22px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--salon-primary)]"
+                                className="flex w-full items-center justify-between rounded-full border border-black/15 bg-white px-4 py-2 text-left text-sm transition hover:border-black/30"
                               >
                                 <span className="truncate">{selectedVariantLabel ?? 'Изберете вариант'}</span>
                                 <ChevronDown
@@ -1046,7 +1101,7 @@ export default function SalonPublicParity({
                             {effective.price != null ? (
                               <>
                                 <span className="mx-1.5 text-black/35">·</span>
-                                <span className="font-semibold text-[color:var(--salon-primary)]">{effective.price} €</span>
+                                <span className="font-normal text-[#1a1a1a]">{effective.price} €</span>
                               </>
                             ) : null}
                           </p>
@@ -1055,7 +1110,7 @@ export default function SalonPublicParity({
                           <button
                             type="button"
                             onClick={() => openBookingModal(globalIdx >= 0 ? globalIdx : servicesFromDb.indexOf(service))}
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-[color:var(--salon-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.06)] sm:px-5"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-black px-4 py-2 text-sm font-medium text-white sm:px-5"
                           >
                             Резервирай
                           </button>
@@ -1305,7 +1360,7 @@ export default function SalonPublicParity({
                   return (
                     <li key={dayKey} className="flex items-center gap-2 text-sm">
                       <span
-                        className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-[color:var(--salon-primary)]' : 'bg-black/25'}`}
+                        className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-black/25'}`}
                       />
                       <span className={isToday ? 'font-semibold text-[#1a1a1a]' : 'text-black/55'}>{label}</span>
                       <span className={`ml-auto ${isToday ? 'font-semibold text-[#1a1a1a]' : 'text-[#1a1a1a]'}`}>
@@ -1376,72 +1431,6 @@ export default function SalonPublicParity({
               </div>
             ) : null}
 
-            <section
-              ref={(el) => {
-                sectionRefs.current.about = el;
-              }}
-              className="scroll-mt-36 pt-10"
-            >
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">За салона</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#1a1a1a]">
-                {descriptionExpanded
-                  ? description || 'Няма добавено описание.'
-                  : (description || 'Няма добавено описание.').slice(0, DESCRIPTION_PREVIEW_LEN)}
-                {description.length > DESCRIPTION_PREVIEW_LEN && !descriptionExpanded ? '…' : ''}
-              </p>
-              {description.length > DESCRIPTION_PREVIEW_LEN ? (
-                <button
-                  type="button"
-                  className="mt-2 text-sm font-semibold text-[color:var(--salon-primary)]"
-                  onClick={() => setDescriptionExpanded((e) => !e)}
-                >
-                  {descriptionExpanded ? 'Свий' : 'Прочети още'}
-                </button>
-              ) : null}
-
-              {(() => {
-                const igUrl = salonPublicInstagramUrl(instagram);
-                const ttUrl = salonPublicTikTokUrl(tiktok);
-                const fbUrl = salonPublicFacebookUrl(facebook);
-                if (!igUrl && !ttUrl && !fbUrl) return null;
-                return (
-                  <div className="mt-6 rounded-xl border border-black/10 bg-white p-4">
-                    <p className="text-sm font-medium text-[#1a1a1a]">Последвайте ни в социалните мрежи</p>
-                    {igUrl ? (
-                      <a
-                        href={igUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 block text-sm text-[color:var(--salon-primary)] underline"
-                      >
-                        @{String(instagram ?? '').replace(/^@/, '')}
-                      </a>
-                    ) : null}
-                    {ttUrl ? (
-                      <a
-                        href={ttUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 block text-sm text-[color:var(--salon-primary)] underline"
-                      >
-                        TikTok @{String(tiktok ?? '').replace(/^@/, '')}
-                      </a>
-                    ) : null}
-                    {fbUrl ? (
-                      <a
-                        href={fbUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 block text-sm text-[color:var(--salon-primary)] underline"
-                      >
-                        Facebook
-                      </a>
-                    ) : null}
-                  </div>
-                );
-              })()}
-            </section>
-
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
               <section className="pt-10">
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
@@ -1469,12 +1458,15 @@ export default function SalonPublicParity({
                   href={mapsHref!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--salon-primary)] underline"
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold underline"
+                  style={{ color: APPLE_LINK_BLUE }}
                 >
                   <MapPin className="h-4 w-4" aria-hidden />
                   Отвори в Google Maps
                 </a>
-                <p className="mt-2 text-sm text-black/55">{[address, city].filter(Boolean).join(', ')}</p>
+                <p className="mt-2 text-sm" style={{ color: APPLE_LINK_BLUE }}>
+                  {[address, city].filter(Boolean).join(', ')}
+                </p>
               </section>
             ) : null}
           </div>
@@ -1526,8 +1518,8 @@ export default function SalonPublicParity({
                 {mapsHref || address || city ? (
                   <div>
                     <div className="flex gap-2">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-black/45" aria-hidden />
-                      <span className="min-w-0 text-[#1a1a1a]">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: APPLE_LINK_BLUE }} aria-hidden />
+                      <span className="min-w-0" style={{ color: APPLE_LINK_BLUE }}>
                         {[address, city].filter(Boolean).join(', ')}
                         {addressDistanceLabel ? (
                           <span className="mt-1 block text-xs text-black/45">{addressDistanceLabel}</span>
@@ -1541,7 +1533,8 @@ export default function SalonPublicParity({
                       }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-block pl-6 text-sm font-medium text-[color:var(--salon-primary)] underline-offset-2 hover:underline"
+                      className="mt-2 inline-block pl-6 text-sm font-medium underline-offset-2 hover:underline"
+                      style={{ color: APPLE_LINK_BLUE }}
                     >
                       Вижте указанията
                     </a>
@@ -1559,15 +1552,17 @@ export default function SalonPublicParity({
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-black/10 bg-white/95 px-4 py-3 backdrop-blur-sm lg:hidden">
-        <div className="mx-auto flex max-w-[min(100%,1180px)] gap-2">
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-black/10 bg-white/95 px-4 py-4 backdrop-blur-sm lg:hidden">
+        <div className="mx-auto flex max-w-[min(100%,1180px)] items-center justify-between rounded-[28px] border border-black/10 bg-white px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+          <div className="min-w-0 pr-4">
+            <p className="text-sm text-black/55">{servicesFromDb.length} услуги налични</p>
+          </div>
           <button
             type="button"
             onClick={() => openBookingModal()}
-            className="inline-flex w-full items-center justify-center rounded-full py-3 text-sm font-semibold text-white"
-            style={{ background: primary }}
+            className="inline-flex shrink-0 items-center justify-center rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white"
           >
-            Резервирай сега
+            Резервирай
           </button>
         </div>
       </div>
