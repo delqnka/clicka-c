@@ -1,6 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  BriefcaseBusiness,
+  CalendarClock,
+  Clock3,
+  Globe,
+  Image as ImageIcon,
+  Scissors,
+  UserRound,
+} from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
@@ -29,6 +38,16 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'];
 
+const MOBILE_TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'site', label: 'Сайт', icon: BriefcaseBusiness },
+  { id: 'images', label: 'Снимки', icon: ImageIcon },
+  { id: 'specialist', label: 'Спец.', icon: UserRound },
+  { id: 'services', label: 'Услуги', icon: Scissors },
+  { id: 'hours', label: 'Часове', icon: Clock3 },
+  { id: 'domain', label: 'Домейн', icon: Globe },
+  { id: 'bookings', label: 'Резер.', icon: CalendarClock },
+];
+
 type Props = {
   slug: string;
   ownerEmail: string;
@@ -37,6 +56,11 @@ type Props = {
 };
 
 type BookingStatus = BookingRecord['status'];
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
 
 async function readJson(res: Response) {
   try {
@@ -120,6 +144,8 @@ export default function AdminDashboardClient({
   const [notice, setNotice] = useState('');
   const [busyKey, setBusyKey] = useState<string>('');
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
   const isMobile = useIsMobileLayout();
   const currentHost = typeof window !== 'undefined' ? window.location.host : null;
   const platformPublicUrl = getPlatformPublicUrl(slug);
@@ -140,6 +166,66 @@ export default function AdminDashboardClient({
       setActiveTab(requestedTab as TabId);
     }
   }, []);
+
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    if (isStandalone) return;
+
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(ua);
+
+    if (isIos) {
+      setShowInstallButton(true);
+      return;
+    }
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+      setShowInstallButton(true);
+    };
+
+    const onAppInstalled = () => {
+      setInstallPromptEvent(null);
+      setShowInstallButton(false);
+      setNotice('Приложението е добавено на началния екран.');
+    };
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+    window.addEventListener('appinstalled', onAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', onAppInstalled);
+    };
+  }, []);
+
+  async function installAsApp() {
+    setError('');
+
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(ua);
+
+    if (isIos) {
+      setNotice('На iPhone: Share -> Add to Home Screen, за да добавиш иконата.');
+      return;
+    }
+
+    if (!installPromptEvent) {
+      setNotice('Инсталацията не е налична в момента. Пробвай от Chrome на телефона.');
+      return;
+    }
+
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+    if (choice.outcome === 'accepted') {
+      setNotice('Приложението се инсталира. Ще се появи като икона на телефона.');
+      setShowInstallButton(false);
+      setInstallPromptEvent(null);
+    }
+  }
 
   async function guardResponse(res: Response) {
     const data = await readJson(res);
@@ -490,7 +576,7 @@ export default function AdminDashboardClient({
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', color: '#000', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#fff', color: '#000', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', paddingBottom: isMobile ? 'calc(6.25rem + env(safe-area-inset-bottom, 0px))' : 0 }}>
       <nav
         style={{
           position: 'sticky',
@@ -538,6 +624,11 @@ export default function AdminDashboardClient({
             <Link href={claimPath} style={{ ...linkGhostStyle, width: '100%' }}>
               Claim page
             </Link>
+            {showInstallButton ? (
+              <button type="button" onClick={() => void installAsApp()} style={{ ...ghostButtonStyle, width: '100%' }}>
+                Добави като приложение
+              </button>
+            ) : null}
             <button type="button" onClick={logout} style={{ ...ghostButtonStyle, width: '100%' }} disabled={busyKey === 'logout'}>
               {busyKey === 'logout' ? 'Излизане…' : 'Изход'}
             </button>
@@ -546,47 +637,49 @@ export default function AdminDashboardClient({
       </nav>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '16px 14px 56px' : '24px clamp(16px, 4vw, 20px) 64px' }}>
-        <div
-          style={{
-            display: 'flex',
-            gap: isMobile ? 8 : 10,
-            flexWrap: 'nowrap',
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            marginBottom: 18,
-            paddingBottom: 6,
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-          }}
-        >
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab.id);
-                setError('');
-                setNotice('');
-              }}
-              style={{
-                borderRadius: 999,
-                padding: isMobile ? '10px 14px' : '11px 16px',
-                flex: '0 0 auto',
-                whiteSpace: 'nowrap',
-                border: `1px solid ${activeTab === tab.id ? '#000' : 'rgba(0,0,0,0.12)'}`,
-                background: '#fff',
-                color: '#000',
-                fontSize: isMobile ? 13 : 14,
-                fontWeight: activeTab === tab.id ? 800 : 700,
-                cursor: 'pointer',
-                boxShadow: activeTab === tab.id ? '0 14px 28px rgba(0,0,0,0.16)' : '0 8px 18px rgba(0,0,0,0.08)',
-                scrollSnapAlign: 'start',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {!isMobile ? (
+          <div
+            style={{
+              display: 'flex',
+              gap: 10,
+              flexWrap: 'nowrap',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              marginBottom: 18,
+              paddingBottom: 6,
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+            }}
+          >
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setError('');
+                  setNotice('');
+                }}
+                style={{
+                  borderRadius: 999,
+                  padding: '11px 16px',
+                  flex: '0 0 auto',
+                  whiteSpace: 'nowrap',
+                  border: `1px solid ${activeTab === tab.id ? '#000' : 'rgba(0,0,0,0.12)'}`,
+                  background: '#fff',
+                  color: '#000',
+                  fontSize: 14,
+                  fontWeight: activeTab === tab.id ? 800 : 700,
+                  cursor: 'pointer',
+                  boxShadow: activeTab === tab.id ? '0 14px 28px rgba(0,0,0,0.16)' : '0 8px 18px rgba(0,0,0,0.08)',
+                  scrollSnapAlign: 'start',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {error ? <MessageBox tone="error">{error}</MessageBox> : null}
         {notice ? <MessageBox tone="success">{notice}</MessageBox> : null}
@@ -1116,6 +1209,67 @@ export default function AdminDashboardClient({
           </Card>
         ) : null}
       </div>
+
+      {isMobile ? (
+        <nav
+          aria-label="Админ меню"
+          style={{
+            position: 'fixed',
+            left: 8,
+            right: 8,
+            bottom: 8,
+            zIndex: 40,
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
+        >
+          <div
+            style={{
+              margin: '0 auto',
+              width: '100%',
+              maxWidth: 680,
+              borderRadius: 32,
+              border: '1px solid rgba(0,0,0,0.10)',
+              background: 'rgba(255,255,255,0.92)',
+              padding: 6,
+              boxShadow: '0 16px 36px rgba(0,0,0,0.25)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              {MOBILE_TABS.map(tab => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setError('');
+                      setNotice('');
+                    }}
+                    style={{
+                      border: active ? '1px solid rgba(0,0,0,0.2)' : '1px solid transparent',
+                      borderRadius: 24,
+                      background: active ? 'rgba(0,0,0,0.06)' : 'transparent',
+                      color: '#000',
+                      minWidth: 68,
+                      flex: '1 0 auto',
+                      display: 'grid',
+                      justifyItems: 'center',
+                      gap: 2,
+                      padding: '6px 8px',
+                    }}
+                  >
+                    <Icon className={active ? 'h-5 w-5' : 'h-5 w-5 opacity-80'} />
+                    <span style={{ fontSize: 10, fontWeight: active ? 700 : 600, whiteSpace: 'nowrap' }}>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </nav>
+      ) : null}
     </div>
   );
 }
