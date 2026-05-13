@@ -16,7 +16,6 @@ export const metadata: Metadata = {
   title: 'clicka.bg — Твоята лична резервационна система, независима от платформи',
   description:
     'Собствен сайт с онлайн резервации за твоя бранд, готов за по-малко от 15 минути.',
-  manifest: '/manifest.json',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
