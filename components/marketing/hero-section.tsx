@@ -1,12 +1,17 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { HeroBackground } from '@/components/marketing/hero-background';
 import { MagneticCta } from '@/components/marketing/magnetic-cta';
-import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 
 export function HeroSection() {
+  const pills = [
+    '0% комисионна',
+    'Клиентите са твои',
+    'Личен домейн',
+    'SMS/email известия',
+  ];
+
   return (
     <section
       className="relative flex min-h-[100dvh] flex-col justify-end overflow-hidden pb-16 pt-32 sm:pb-24"
@@ -19,14 +24,8 @@ export function HeroSection() {
       </div>
 
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <p className="mb-4 flex max-w-prose flex-col gap-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1">
-          <span className="inline-flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-            Уебсайт + резервации
-          </span>
-          <span className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-white/40 sm:pl-0 sm:text-xs">
-            24/7 ai рецепционист за салона ти
-          </span>
+        <p className="mb-4 max-w-4xl text-sm font-medium leading-relaxed text-white/65 sm:text-base">
+          За фризьори, маникюристи, козметици, груумъри и всички професионалисти в сферата на красотата
         </p>
         <div className="hero-h1-spotlights max-w-[min(100%,36rem)] sm:max-w-5xl">
           <motion.h1
@@ -36,38 +35,42 @@ export function HeroSection() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            Твоята лична резервационна система.
-            <span className="text-white/30"> / </span>
-            <span className="text-white/90">Независима от платформи.</span>
+            Резервации онлайн.
+            <br />
+            0 % комисионна.
+            <br />
+            100 % финансова независимост.
           </motion.h1>
-          <motion.p
-            className="hero-h1-commission mt-4 max-w-5xl text-[clamp(1.5rem,3.6vw+0.45rem,2.85rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-white sm:mt-5 sm:text-[clamp(1.65rem,3.9vw+0.35rem,3.1rem)]"
-            initial={{ opacity: 1, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-          >
-            0 % комисионна
-          </motion.p>
         </div>
         <motion.p
-          className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-white/55"
+          className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/58"
           initial={{ opacity: 1, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
         >
-          {clickaMarketingSite.description}
+          Личната ти резервационна страница е готова за 15 минути — без платформи, без комисионни, без зависимост. Клиентите записват час директно при теб.
         </motion.p>
-        <div className="mt-10 flex flex-wrap items-center gap-4">
-          <MagneticCta href="/create" aria-label="Започни създаване на сайт">
+        <div className="mt-10 flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <MagneticCta href="/create" aria-label="Започни сега">
             Започни сега
           </MagneticCta>
           <motion.a
-            href="#services"
-            className="px-2 text-sm font-medium text-white/45 transition hover:text-white/90"
+            href="/demo"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-white/18 px-4 text-sm font-medium text-white/72 shadow-[0_10px_24px_rgba(0,0,0,0.25)] transition hover:border-white/34 hover:text-white"
             whileHover={{ x: 2 }}
           >
-            Виж как работи →
+            Виж демо
           </motion.a>
+        </div>
+        <div className="mt-6 flex flex-wrap items-center gap-2.5">
+          {pills.map(pill => (
+            <span
+              key={pill}
+              className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 shadow-[0_10px_22px_rgba(0,0,0,0.25)] backdrop-blur-sm sm:text-sm"
+            >
+              {pill}
+            </span>
+          ))}
         </div>
       </div>
     </section>

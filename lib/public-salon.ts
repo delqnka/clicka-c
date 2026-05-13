@@ -1,6 +1,62 @@
 import { sql } from '@/lib/db';
 import { buildStaticMapUrl, fetchGoogleReviewsForPlace } from '@/lib/google-place-server';
-import { resolveSalonBySlugOrHost } from '@/lib/admin-auth';
+import { extractHostname, getPlatformSubdomain, isPlatformApexHost } from '@/lib/domain-routing';
+
+type PublicSalonLookup = {
+  salonId: string;
+  slug: string;
+};
+
+async function resolvePublicSalonBySlugOrHost({
+  slug,
+  host,
+}: {
+  slug?: string | null;
+  host?: string | null;
+}): Promise<PublicSalonLookup | null> {
+  const safeSlug = String(slug ?? '').trim();
+  if (safeSlug) {
+    const rows = await sql`
+      SELECT CAST(id AS text) AS salon_id, slug
+      FROM salons
+      WHERE slug = ${safeSlug} AND is_active = true
+      LIMIT 1
+    `;
+    if (rows.length > 0) {
+      const row = rows[0] as Record<string, unknown>;
+      return {
+        salonId: String(row.salon_id ?? ''),
+        slug: String(row.slug ?? ''),
+      };
+    }
+    return null;
+  }
+
+  const hostname = extractHostname(host);
+  const subdomain = getPlatformSubdomain(hostname);
+  if (subdomain) {
+    return resolvePublicSalonBySlugOrHost({ slug: subdomain });
+  }
+  if (!hostname || isPlatformApexHost(hostname)) return null;
+
+  const customRows = await sql`
+    SELECT CAST(id AS text) AS salon_id, slug
+    FROM salons
+    WHERE lower(custom_domain) = lower(${hostname}) AND is_active = true
+    LIMIT 1
+  `;
+
+  if (customRows.length === 0 && hostname.startsWith('www.')) {
+    return resolvePublicSalonBySlugOrHost({ host: hostname.slice(4) });
+  }
+  if (customRows.length === 0) return null;
+
+  const row = customRows[0] as Record<string, unknown>;
+  return {
+    salonId: String(row.salon_id ?? ''),
+    slug: String(row.slug ?? ''),
+  };
+}
 
 export async function getPublicSalonPageData({
   slug,
@@ -9,10 +65,9 @@ export async function getPublicSalonPageData({
   slug?: string | null;
   host?: string | null;
 }) {
-  const salonLookup = await resolveSalonBySlugOrHost({
+  const salonLookup = await resolvePublicSalonBySlugOrHost({
     slug,
     host,
-    includeInactive: false,
   });
 
   if (!salonLookup) return null;
