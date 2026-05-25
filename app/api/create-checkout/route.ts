@@ -9,7 +9,6 @@ import {
   getPlatformPublicUrl,
 } from '@/lib/domain-routing';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
-import { generateAdminMagicLink } from '@/lib/admin-auth';
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -247,13 +246,9 @@ export async function POST(request: NextRequest) {
       if (process.env.RESEND_API_KEY && salonData.email) {
         try {
           const resend = new Resend(process.env.RESEND_API_KEY);
-          const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/${slug}/admin`;
-          const magicLink = await generateAdminMagicLink({
-            salonId: String(createdSalonId),
-            slug,
-            email: salonData.email,
-            expiresMs: 7 * 24 * 60 * 60 * 1000,
-          }).catch(() => adminUrl);
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+          // Use apex domain claim URL — subdomain may not be ready immediately after creation
+          const panelUrl = `${appUrl}/${slug}/claim`;
 
           await resend.emails.send({
             from: `${salonData.name} <noreply@clicka.bg>`,
@@ -264,21 +259,20 @@ export async function POST(request: NextRequest) {
                 <h2 style="color: #000; margin: 0 0 16px;">Твоят сайт е готов!</h2>
                 <p style="line-height: 1.7;">Здравей!</p>
                 <p style="line-height: 1.7;">
-                  Сайтът на <strong>${salonData.name}</strong> вече е активен на адрес:<br>
-                  <a href="${publicUrl}" style="color: #000; font-weight: 700;">${publicUrl}</a>
+                  Сайтът на <strong>${salonData.name}</strong> вече е активен.<br>
                 </p>
                 <p style="margin: 24px 0 8px; line-height: 1.7;">
-                  Натисни бутона, за да влезеш в контролния си панел:
+                  Натисни бутона, за да claim-неш сайта и да влезеш в панела:
                 </p>
                 <p style="margin: 0 0 24px;">
-                  <a href="${magicLink}"
+                  <a href="${panelUrl}"
                      style="display:inline-block;background:#000;color:#fff;text-decoration:none;
                             padding:14px 24px;border-radius:999px;font-weight:700;font-size:15px;">
                     Отвори панела →
                   </a>
                 </p>
                 <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">
-                  Линкът е валиден 7 дни. Ако не сте поръчали сайт, игнорирайте имейла.
+                  Ако не сте поръчали сайт, игнорирайте имейла.
                 </p>
               </div>
             `,
