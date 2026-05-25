@@ -6,6 +6,7 @@ import {
   Bell,
   CalendarClock,
   Clock3,
+  FileText,
   Globe,
   Image as ImageIcon,
   Scissors,
@@ -48,6 +49,7 @@ const TABS = [
   { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
   { id: 'domain',        label: 'Домейн',         Icon: Globe },
   { id: 'notifications', label: 'Известия',       Icon: Bell },
+  { id: 'legal',         label: 'Правни',         Icon: FileText },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -140,6 +142,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
+  const [legalInfo, setLegalInfo] = useState({
+    companyName:  initialSite.legalInfo?.companyName  ?? '',
+    eik:          initialSite.legalInfo?.eik          ?? '',
+    managerName:  initialSite.legalInfo?.managerName  ?? '',
+    address:      initialSite.legalInfo?.address      ?? '',
+    contactEmail: initialSite.legalInfo?.contactEmail ?? '',
+  });
+  const [legalSaving, setLegalSaving] = useState(false);
+  const [legalNotice, setLegalNotice] = useState('');
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
@@ -394,6 +405,25 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); };
+
+  /* ── Save legal info ── */
+  async function saveLegalInfo() {
+    setLegalSaving(true);
+    setLegalNotice('');
+    try {
+      const res = await fetch('/api/admin/legal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, ...legalInfo }),
+      });
+      if (!res.ok) throw new Error('save_failed');
+      setLegalNotice('Запазено успешно.');
+    } catch {
+      setLegalNotice('Грешка при запазване.');
+    } finally {
+      setLegalSaving(false);
+    }
+  }
 
   /* ─── Render ─────────────────────────────────────────── */
   return (
@@ -754,6 +784,83 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               inp={inp}
               btn={btn}
             />
+          )}
+
+          {/* ── Правни документи ── */}
+          {activeTab === 'legal' && (
+            <Section title="Правни документи" desc="Попълни данните на фирмата. Те се използват за автоматично генериране на Политика за поверителност, Условия за ползване и Политика за бисквитки.">
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Официално наименование на фирмата</label>
+                  <input
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    value={legalInfo.companyName}
+                    onChange={e => setLegalInfo(p => ({ ...p, companyName: e.target.value }))}
+                    placeholder="напр. Ню Лукс ООД"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>ЕИК / Булстат</label>
+                  <input
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    value={legalInfo.eik}
+                    onChange={e => setLegalInfo(p => ({ ...p, eik: e.target.value }))}
+                    placeholder="напр. 123456789"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>МОЛ (материалноотговорно лице / управител)</label>
+                  <input
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    value={legalInfo.managerName}
+                    onChange={e => setLegalInfo(p => ({ ...p, managerName: e.target.value }))}
+                    placeholder="напр. Деляна Иванова"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Адрес на управление</label>
+                  <input
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    value={legalInfo.address}
+                    onChange={e => setLegalInfo(p => ({ ...p, address: e.target.value }))}
+                    placeholder="напр. гр. София, ул. Витоша 1"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Имейл за връзка (за правни документи)</label>
+                  <input
+                    type="email"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    value={legalInfo.contactEmail}
+                    onChange={e => setLegalInfo(p => ({ ...p, contactEmail: e.target.value }))}
+                    placeholder="напр. info@salon.bg"
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={saveLegalInfo}
+                    disabled={legalSaving}
+                    style={{ ...btn('primary'), opacity: legalSaving ? 0.6 : 1 }}
+                  >
+                    {legalSaving ? 'Запазване…' : 'Запази'}
+                  </button>
+                  {legalNotice && (
+                    <span style={{ fontSize: 13, color: legalNotice.includes('Грешка') ? '#EF4444' : '#047857' }}>{legalNotice}</span>
+                  )}
+                </div>
+                <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', marginTop: 4 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+                    След запазване документите се генерират автоматично на:
+                  </p>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: T.muted, lineHeight: 1.8 }}>
+                    <li><a href={`/${slug}/terms`} target="_blank" rel="noreferrer" style={{ color: T.accent }}>/{slug}/terms</a> — Условия за ползване</li>
+                    <li><a href={`/${slug}/privacy`} target="_blank" rel="noreferrer" style={{ color: T.accent }}>/{slug}/privacy</a> — Политика за поверителност</li>
+                    <li><a href={`/${slug}/cookies`} target="_blank" rel="noreferrer" style={{ color: T.accent }}>/{slug}/cookies</a> — Политика за бисквитки</li>
+                  </ul>
+                </div>
+              </div>
+            </Section>
           )}
 
           {/* ── Известия ── */}

@@ -30,6 +30,14 @@ export type BookingRecord = {
   completed_at: string | null;
 };
 
+export type LegalInfoPayload = {
+  companyName: string;
+  eik: string;
+  managerName: string;
+  address: string;
+  contactEmail: string;
+};
+
 export type AdminSitePayload = {
   slug: string;
   name: string;
@@ -58,6 +66,7 @@ export type AdminSitePayload = {
   telegramChatId: string;
   onboardingCode: string;
   siteStatus: string;
+  legalInfo: LegalInfoPayload | null;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -120,7 +129,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       services, working_hours,
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code,
-      site_status
+      site_status, legal_info
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -157,6 +166,17 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     telegramChatId: String(row.telegram_chat_id ?? ''),
     onboardingCode: String(row.onboarding_code ?? ''),
     siteStatus: String(row.site_status ?? ''),
+    legalInfo: (() => {
+      const li = row.legal_info as Record<string, unknown> | null | undefined;
+      if (!li || typeof li !== 'object') return null;
+      return {
+        companyName:  String(li.companyName  ?? ''),
+        eik:          String(li.eik          ?? ''),
+        managerName:  String(li.managerName  ?? ''),
+        address:      String(li.address      ?? ''),
+        contactEmail: String(li.contactEmail ?? ''),
+      };
+    })(),
   };
 }
 

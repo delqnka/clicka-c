@@ -73,7 +73,7 @@ export async function getPublicSalonPageData({
   if (!salonLookup) return null;
 
   const rows = await sql`
-    SELECT *
+    SELECT *, legal_info
     FROM salons
     WHERE slug = ${salonLookup.slug} AND is_active = true
     LIMIT 1

@@ -485,6 +485,11 @@ export default function SalonPublicParity({
   }, []);
 
   useEffect(() => {
+    const saved = localStorage.getItem('clicka-cookie-consent');
+    if (saved !== null) setCookieConsent(saved === '1');
+  }, []);
+
+  useEffect(() => {
     setServicesExpanded(false);
   }, [selectedServiceCategory]);
 
@@ -735,6 +740,7 @@ export default function SalonPublicParity({
 
   const [showAllPlatformReviews, setShowAllPlatformReviews] = useState(false);
   const [showAllGoogleReviews, setShowAllGoogleReviews] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState<boolean | null>(null);
   useEffect(() => {
     const hid = highlightReviewId?.trim();
     if (!hid) return;
@@ -1375,6 +1381,45 @@ export default function SalonPublicParity({
               </ul>
             </section>
 
+            {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
+              <section className="pt-10">
+                <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
+                <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
+                  {staticMapUrl ? (
+                    <img
+                      src={staticMapUrl}
+                      alt=""
+                      className="h-48 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-48 w-full items-center justify-center bg-[#F5F5F7] text-sm text-black/45">
+                      Карта
+                    </div>
+                  )}
+                  <a
+                    href={mapsHref!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Отвори локацията в Google Maps"
+                    className="absolute inset-0"
+                  />
+                </div>
+                <a
+                  href={mapsHref!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold underline"
+                  style={{ color: APPLE_LINK_BLUE }}
+                >
+                  <MapPin className="h-4 w-4" aria-hidden />
+                  Отвори в Google Maps
+                </a>
+                <p className="mt-2 text-sm" style={{ color: APPLE_LINK_BLUE }}>
+                  {[address, city].filter(Boolean).join(', ')}
+                </p>
+              </section>
+            ) : null}
+
             {showVenueBlock ? (
               <div className="pt-8">
                 {activeExtraKeys.length > 0 ? (
@@ -1434,44 +1479,6 @@ export default function SalonPublicParity({
               </div>
             ) : null}
 
-            {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
-              <section className="pt-10">
-                <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
-                <div className="relative mt-3">
-                  {staticMapUrl ? (
-                    <img
-                      src={staticMapUrl}
-                      alt=""
-                      className="z-0 h-48 w-full overflow-hidden rounded-xl border border-black/10 object-cover shadow-sm"
-                    />
-                  ) : (
-                    <div className="flex h-48 w-full items-center justify-center rounded-xl border border-black/10 bg-white text-sm text-black/45">
-                      Карта
-                    </div>
-                  )}
-                  <a
-                    href={mapsHref!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Отвори локацията в Google Maps"
-                    className="absolute inset-0 z-10 rounded-xl"
-                  />
-                </div>
-                <a
-                  href={mapsHref!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold underline"
-                  style={{ color: APPLE_LINK_BLUE }}
-                >
-                  <MapPin className="h-4 w-4" aria-hidden />
-                  Отвори в Google Maps
-                </a>
-                <p className="mt-2 text-sm" style={{ color: APPLE_LINK_BLUE }}>
-                  {[address, city].filter(Boolean).join(', ')}
-                </p>
-              </section>
-            ) : null}
           </div>
 
           <aside
@@ -1553,6 +1560,20 @@ export default function SalonPublicParity({
             </div>
           </aside>
         </div>
+
+        <footer className="mt-16 border-t border-black/8 pb-28 pt-10 text-center lg:pb-12">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            <a href={`/${salonSlug}/terms`} className="text-xs text-black/40 transition-colors hover:text-black/60">Условия за ползване</a>
+            <a href={`/${salonSlug}/privacy`} className="text-xs text-black/40 transition-colors hover:text-black/60">Политика за поверителност</a>
+            <a href={`/${salonSlug}/cookies`} className="text-xs text-black/40 transition-colors hover:text-black/60">Политика за бисквитки</a>
+          </div>
+          <p className="mt-3 text-xs text-black/25">
+            Изграден с{' '}
+            <a href="https://clicka.bg" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-black/45">
+              Clicka.bg
+            </a>
+          </p>
+        </footer>
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 z-20 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:hidden">
@@ -1744,6 +1765,40 @@ export default function SalonPublicParity({
             <button type="button" className="mt-4 w-full text-sm text-[color:var(--salon-primary)]" onClick={closeBookingModal}>
               Затвори
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {cookieConsent === null ? (
+        <div className="fixed bottom-20 left-4 right-4 z-30 lg:bottom-6 lg:left-auto lg:right-6 lg:max-w-sm">
+          <div className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_8px_32px_rgba(0,0,0,0.14)]">
+            <p className="text-sm leading-relaxed text-black/70">
+              Използваме бисквитки, за да управляваме резервациите ви.{' '}
+              <a
+                href={`/${salonSlug}/cookies`}
+                className="underline underline-offset-2"
+                style={{ color: APPLE_LINK_BLUE }}
+              >
+                Научи повече
+              </a>
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { localStorage.setItem('clicka-cookie-consent', '1'); setCookieConsent(true); }}
+                className="flex-1 rounded-full py-2 text-sm font-medium text-white"
+                style={{ background: primary }}
+              >
+                Приемам
+              </button>
+              <button
+                type="button"
+                onClick={() => { localStorage.setItem('clicka-cookie-consent', '0'); setCookieConsent(false); }}
+                className="flex-1 rounded-full border border-black/20 py-2 text-sm font-medium text-black/70 hover:bg-black/5"
+              >
+                Отказвам
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
