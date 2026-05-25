@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { ParticleHero } from '@/components/ui/particle-hero';
 
 /* ═══════════════════════════════════════════════════════════
    SVG Icons — consistent 22×22, 1.75 stroke, no emoji
@@ -367,21 +368,6 @@ const CSS = `
    Page
 ═══════════════════════════════════════════════════════════ */
 export default function HomePage() {
-  const [count, setCount] = useState(0);
-
-  /* Counter */
-  useEffect(() => {
-    const target = 247;
-    let cur = 0;
-    const tick = () => {
-      cur += Math.ceil((target - cur) / 8);
-      setCount(cur);
-      if (cur < target) requestAnimationFrame(tick);
-    };
-    const t = setTimeout(() => requestAnimationFrame(tick), 700);
-    return () => clearTimeout(t);
-  }, []);
-
   /* Scroll reveal */
   useEffect(() => {
     const els = document.querySelectorAll('[data-reveal]');
@@ -424,69 +410,7 @@ export default function HomePage() {
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────── */}
-      <section style={{ background: '#FAF8F5' }} aria-labelledby="hero-h">
-        <div className="hp-hero-grid">
-
-          {/* Left — text */}
-          <div className="hp-hero-left">
-            {/* Live badge */}
-            <div
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#fff', border: '1px solid #E7E5E4', borderRadius: 9999,
-                padding: '7px 16px', marginBottom: 32,
-                fontSize: 13, fontWeight: 500, color: '#44403C',
-                boxShadow: '0 2px 8px rgba(28,25,23,.06)',
-              }}
-              role="status"
-              aria-live="polite"
-            >
-              <span
-                style={{ width: 7, height: 7, borderRadius: '50%', background: '#22C55E', display: 'inline-block', animation: 'blink 2s infinite', boxShadow: '0 0 6px rgba(34,197,94,.45)', flexShrink: 0 }}
-                aria-hidden="true"
-              />
-              Над <strong style={{ fontWeight: 700, marginLeft: 4 }}>{count}</strong>&nbsp;салона вече работят с Clicka
-            </div>
-
-            <h1
-              id="hero-h"
-              className="font-display"
-              style={{ fontSize: 'clamp(36px,5.8vw,72px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.06, marginBottom: 24, color: '#1C1917' }}
-            >
-              Сайт за твоя салон.<br />
-              <span style={{ color: '#B07D2E' }}>Готов за 15 минути.</span>
-            </h1>
-
-            <p style={{ fontSize: 'clamp(16px,1.7vw,19px)', color: '#78716C', lineHeight: 1.74, marginBottom: 40, maxWidth: 480 }}>
-              Резервационна система, Telegram нотификации, Google Calendar sync и
-              автоматично събиране на ревюта.{' '}
-              <strong style={{ color: '#1C1917', fontWeight: 600 }}>0% комисионна.</strong>
-            </p>
-
-            <div className="hp-hero-btns" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-              <Link href="/create" className="hp-btn hp-btn-ink" style={{ padding: '15px 40px', fontSize: 16 }}>
-                Стартирай безплатно
-              </Link>
-              <Link href="/demo" className="hp-btn hp-btn-ghost" style={{ padding: '15px 32px', fontSize: 16 }}>
-                Виж демо →
-              </Link>
-            </div>
-
-            <p style={{ fontSize: 13, color: '#A8A29E', margin: 0 }}>
-              от 0.82 € / ден · без скрити такси · без комисионна
-            </p>
-          </div>
-
-          {/* Right — phone mockup */}
-          <div
-            className="hp-hero-right"
-            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', paddingBlock: 40 }}
-            aria-hidden="true"
-          >
-            <PhoneMockup />
-          </div>
-        </div>
-      </section>
+      <ParticleHero />
 
       {/* ── MARQUEE ─────────────────────────────────────────── */}
       <div className="hp-mq-wrap" aria-hidden="true">

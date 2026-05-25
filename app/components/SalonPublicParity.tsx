@@ -103,6 +103,7 @@ export type SalonPublicParityProps = {
   googleReviews: GoogleReviewLite[];
   highlightReviewId?: string | null;
   tabParam?: string | null;
+  /** @deprecated no longer rendered — kept for caller compat */
   staticMapUrl?: string | null;
   disableStickySectionTabs?: boolean;
 };
@@ -271,6 +272,12 @@ export default function SalonPublicParity({
 }: SalonPublicParityProps) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
   const tabParam = (tabParamProp ?? '').trim();
+
+  const basePath = useMemo(() => {
+    if (typeof window === 'undefined') return `/${salonSlug}`;
+    const path = window.location.pathname;
+    return path.startsWith(`/${salonSlug}`) ? `/${salonSlug}` : '';
+  }, [salonSlug]);
 
   const primary =
     typeof rawSalon.primary_color === 'string' && rawSalon.primary_color
@@ -1385,17 +1392,13 @@ export default function SalonPublicParity({
               <section className="pt-10">
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
                 <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
-                  {staticMapUrl ? (
-                    <img
-                      src={staticMapUrl}
-                      alt=""
-                      className="h-48 w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-48 w-full items-center justify-center bg-[#F5F5F7] text-sm text-black/45">
-                      Карта
-                    </div>
-                  )}
+                  <iframe
+                    title="Карта на салона"
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008},${lat - 0.005},${lng + 0.008},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`}
+                    className="h-52 w-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
                   <a
                     href={mapsHref!}
                     target="_blank"
@@ -1561,15 +1564,15 @@ export default function SalonPublicParity({
           </aside>
         </div>
 
-        <footer className="mt-16 border-t border-black/8 pb-28 pt-10 text-center lg:pb-12">
+        <footer className="mt-16 rounded-t-2xl bg-[#1C1917] pb-28 pt-10 text-center lg:pb-12">
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            <a href={`/${salonSlug}/terms`} className="text-xs text-black/40 transition-colors hover:text-black/60">Условия за ползване</a>
-            <a href={`/${salonSlug}/privacy`} className="text-xs text-black/40 transition-colors hover:text-black/60">Политика за поверителност</a>
-            <a href={`/${salonSlug}/cookies`} className="text-xs text-black/40 transition-colors hover:text-black/60">Политика за бисквитки</a>
+            <a href={`${basePath}/terms`} className="text-xs text-white/40 transition-colors hover:text-white/60">Условия за ползване</a>
+            <a href={`${basePath}/privacy`} className="text-xs text-white/40 transition-colors hover:text-white/60">Политика за поверителност</a>
+            <a href={`${basePath}/cookies`} className="text-xs text-white/40 transition-colors hover:text-white/60">Политика за бисквитки</a>
           </div>
-          <p className="mt-3 text-xs text-black/25">
+          <p className="mt-3 text-xs text-white/25">
             Изграден с{' '}
-            <a href="https://clicka.bg" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-black/45">
+            <a href="https://clicka.bg" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-white/45">
               Clicka.bg
             </a>
           </p>
@@ -1775,7 +1778,7 @@ export default function SalonPublicParity({
             <p className="text-sm leading-relaxed text-black/70">
               Използваме бисквитки, за да управляваме резервациите ви.{' '}
               <a
-                href={`/${salonSlug}/cookies`}
+                href={`${basePath}/cookies`}
                 className="underline underline-offset-2"
                 style={{ color: APPLE_LINK_BLUE }}
               >
