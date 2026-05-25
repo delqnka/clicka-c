@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import Link from "next/link"
+import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation"
 
 interface Particle {
   x: number
@@ -153,16 +154,26 @@ export function ParticleHero() {
         width: "100%",
         minHeight: "100svh",
         overflow: "hidden",
-        background: "#05060f",
-        backgroundImage: "linear-gradient(0deg,rgba(216,236,248,.05),rgba(152,192,239,.05))",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
       {/* Scoped styles */}
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      {/* Gradient animation background */}
+      <BackgroundGradientAnimation
+        gradientBackgroundStart="rgb(5, 6, 15)"
+        gradientBackgroundEnd="rgb(8, 12, 40)"
+        firstColor="60, 90, 180"
+        secondColor="124, 58, 237"
+        thirdColor="100, 160, 255"
+        fourthColor="80, 40, 160"
+        fifthColor="50, 80, 200"
+        pointerColor="120, 100, 240"
+        size="90%"
+        blendingValue="hard-light"
+        interactive={true}
+        containerClassName="!absolute !inset-0 !w-full !h-full"
+      />
 
       {/* Particles canvas */}
       <canvas
@@ -172,7 +183,7 @@ export function ParticleHero() {
         style={{
           position: "absolute", inset: 0,
           width: "100%", height: "100%",
-          pointerEvents: "none", zIndex: 1,
+          pointerEvents: "none", zIndex: 3,
           animation: "ph-load 0.6s ease-in-out forwards",
         }}
       />
@@ -183,7 +194,7 @@ export function ParticleHero() {
         style={{
           pointerEvents: "none",
           position: "absolute", inset: 0,
-          overflow: "hidden", zIndex: 0,
+          overflow: "hidden", zIndex: 4,
         }}
       >
         {spotlightAnims.map((anim, i) => (
@@ -213,7 +224,7 @@ export function ParticleHero() {
         aria-hidden="true"
         style={{
           pointerEvents: "none", position: "absolute",
-          inset: 0, zIndex: 0, overflow: "hidden",
+          inset: 0, zIndex: 4, overflow: "hidden",
         }}
       >
         {/* Horizontal */}
@@ -255,8 +266,11 @@ export function ParticleHero() {
           position: "relative", zIndex: 10,
           display: "flex", flexDirection: "column",
           alignItems: "center", textAlign: "center",
+          justifyContent: "center",
+          minHeight: "100svh",
           padding: "clamp(80px,14vh,140px) clamp(20px,6vw,60px) clamp(60px,10vh,100px)",
           maxWidth: 760, width: "100%",
+          margin: "0 auto",
         }}
       >
         {/* Live badge */}
@@ -439,7 +453,7 @@ export function ParticleHero() {
           position: "absolute", bottom: 0, left: 0, right: 0,
           height: 120,
           background: "linear-gradient(to bottom, transparent, #FAF8F5)",
-          zIndex: 2, pointerEvents: "none",
+          zIndex: 12, pointerEvents: "none",
         }}
       />
     </section>
