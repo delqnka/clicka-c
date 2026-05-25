@@ -964,9 +964,23 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         {' '}в Telegram и изпрати:
                       </p>
                       {site.onboardingCode ? (
-                        <code style={{ display: 'block', marginTop: 10, padding: '10px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
-                          /start {site.onboardingCode}
-                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
+                            setBusyKey('copied-tg');
+                            setTimeout(() => setBusyKey(k => k === 'copied-tg' ? '' : k), 2000);
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', border: 'none', cursor: 'pointer', transition: 'background 150ms' }}
+                        >
+                          <code style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
+                            /start {site.onboardingCode}
+                          </code>
+                          {busyKey === 'copied-tg'
+                            ? <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
+                            : <Copy size={15} style={{ color: T.muted, flexShrink: 0 }} />
+                          }
+                        </button>
                       ) : (
                         <p style={{ margin: '8px 0 0', fontSize: 12, color: T.subtle }}>Кодът се генерира при активиране на акаунта.</p>
                       )}
