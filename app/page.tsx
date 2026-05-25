@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { ClickaSleekLanding } from '@/components/marketing/clicka-sleek-landing';
+import MarketingHomePage from '@/app/components/HomePage';
 import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 import SalonPublicParity from '@/app/components/SalonPublicParity';
 import { extractHostname, isPlatformApexHost } from '@/lib/domain-routing';
@@ -17,7 +17,7 @@ export default async function HomePage() {
   const host = headers().get('host');
   const hostname = extractHostname(host);
   if (isPlatformApexHost(hostname)) {
-    return <ClickaSleekLanding />;
+    return <MarketingHomePage />;
   }
 
   const pageData = await getPublicSalonPageData({ host });
@@ -35,5 +35,5 @@ export default async function HomePage() {
     );
   }
 
-  return <ClickaSleekLanding />;
+  return <MarketingHomePage />;
 }
