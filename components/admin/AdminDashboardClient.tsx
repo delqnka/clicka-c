@@ -268,6 +268,21 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
+  async function removeDomain() {
+    if (!confirm('Сигурен ли си, че искаш да премахнеш домейна?')) return;
+    setError(''); setNotice(''); setBusyKey('domain-remove');
+    try {
+      const res = await fetch('/api/domain-connect', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      await guardResponse(res);
+      setSite(prev => ({ ...prev, customDomain: '', domainStatus: '', domainConfig: null }));
+      setDomainInput('');
+      setNotice('Домейнът е премахнат.');
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
+  }
+
   async function refreshDomainStatus(silent = false) {
     if (!site.customDomain) return;
     if (!silent) { setError(''); setNotice(''); }
@@ -738,6 +753,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     }
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{site.customDomain}</span>
                     <span style={{ fontSize: 12, color: T.muted }}>— {formatDomainStatus(site.domainStatus)}</span>
+                    <button
+                      type="button"
+                      onClick={() => void removeDomain()}
+                      disabled={busyKey === 'domain-remove'}
+                      style={{ ...btn('ghost'), marginLeft: 'auto', color: '#EF4444', borderColor: '#FECACA', fontSize: 12, padding: '4px 10px' }}
+                    >
+                      <Trash2 size={12} />
+                      {busyKey === 'domain-remove' ? 'Премахваме…' : 'Премахни'}
+                    </button>
                   </div>
                   {domainMeta.checkedAt && (
                     <p style={{ margin: '6px 0 0', fontSize: 11, color: T.subtle }}>Последна проверка: {new Date(domainMeta.checkedAt).toLocaleString('bg-BG')}</p>

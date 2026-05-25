@@ -8,7 +8,7 @@ import {
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
 import { ROOT_DOMAIN } from '@/lib/domain-routing';
 import { ensureDomainPurchaseSchema } from '@/lib/domain-purchase';
-import { syncDomainWithVercel } from '@/lib/vercel-domains';
+import { syncDomainWithVercel, removeProjectDomain } from '@/lib/vercel-domains';
 
 async function persistDomainState({
   slug,
@@ -109,6 +109,38 @@ export async function PATCH(request: NextRequest) {
     misconfigured: provider.misconfigured,
     verified: provider.verified,
   });
+}
+
+export async function DELETE(request: NextRequest) {
+  let body: { slug?: string } = {};
+  try { body = await request.json(); } catch {}
+
+  const auth = await requireAdminRequestAccess(
+    request,
+    body.slug ?? request.nextUrl.searchParams.get('slug')
+  );
+  if (!auth.ok) return auth.response;
+
+  const site = await loadAdminSiteDataBySlug(auth.salon.slug);
+  if (!site) return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
+
+  if (site.customDomain) {
+    await removeProjectDomain(site.customDomain);
+  }
+
+  await sql`
+    UPDATE salons
+    SET
+      custom_domain = NULL,
+      domain_status = NULL,
+      domain_config = NULL,
+      domain_verified_at = NULL,
+      domain_last_checked_at = now(),
+      updated_at = now()
+    WHERE slug = ${auth.salon.slug}
+  `;
+
+  return NextResponse.json({ success: true });
 }
 
 export async function POST(request: NextRequest) {

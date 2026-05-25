@@ -301,3 +301,16 @@ export async function syncDomainWithVercel(domain: string) {
 export async function ensurePlatformSubdomain(slug: string) {
   return syncDomainWithVercel(getPlatformSiteHost(slug));
 }
+
+export async function removeProjectDomain(domain: string): Promise<{ ok: boolean }> {
+  const context = getVercelApiContext();
+  if (!context.token || !context.projectId) return { ok: true };
+
+  const result = await fetchVercelJson(
+    `/v9/projects/${encodeURIComponent(context.projectId)}/domains/${encodeURIComponent(domain)}`,
+    { method: 'DELETE' },
+    context
+  );
+
+  return { ok: result.ok || result.status === 404 };
+}
