@@ -196,7 +196,8 @@ export async function POST(request: NextRequest) {
         google_maps_url,
         working_hours, services,
         template_id, primary_color, primary_color_light,
-        plan_type, is_active, site_status
+        plan_type, is_active, site_status,
+        onboarding_code
       ) VALUES (
         ${salonId},
         ${slug},
@@ -220,7 +221,8 @@ export async function POST(request: NextRequest) {
         ${colors.light},
         ${planType},
         false,
-        'pending'
+        'pending',
+        ${crypto.randomBytes(4).toString('hex').toUpperCase()}
       )
       RETURNING id
     `;

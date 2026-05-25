@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db';
+import crypto from 'crypto';
 
 export type WorkingDay = {
   open: string;
@@ -137,6 +138,12 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
 
   if (rows.length === 0) return null;
   const row = rows[0] as Record<string, unknown>;
+
+  if (!row.onboarding_code) {
+    const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+    await sql`UPDATE salons SET onboarding_code = ${code} WHERE slug = ${slug}`;
+    row.onboarding_code = code;
+  }
 
   return {
     slug: String(row.slug ?? ''),

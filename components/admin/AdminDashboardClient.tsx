@@ -22,6 +22,8 @@ import {
   ChevronRight,
   Copy,
   Check,
+  Menu,
+  X,
 } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -51,6 +53,18 @@ const TABS = [
   { id: 'notifications', label: 'Известия',       Icon: Bell },
   { id: 'legal',         label: 'Правни',         Icon: FileText },
 ] as const;
+
+const TAB_BAR_IDS = new Set<TabId>(['site', 'services', 'bookings', 'notifications']);
+const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
+const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
+
+const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
+  images:     ['#FF9966', '#FF5E62'],
+  specialist: ['#a955ff', '#ea51ff'],
+  hours:      ['#56CCF2', '#2F80ED'],
+  domain:     ['#80FF72', '#7EE8FA'],
+  legal:      ['#ffa9c6', '#f434e2'],
+};
 
 type TabId = (typeof TABS)[number]['id'];
 
@@ -118,7 +132,7 @@ const STATUS_CFG: Record<BookingStatus, { label: string; bg: string; text: strin
 
 /* ─── Design tokens (module-level so sub-components can use them) ─ */
 const T = {
-  bg:       '#F5F4F1',
+  bg:       '#FFFFFF',
   surface:  '#FFFFFF',
   border:   '#E5E3DE',
   text:     '#18181B',
@@ -151,6 +165,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   });
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalNotice, setLegalNotice] = useState('');
+  const [navOpen, setNavOpen] = useState(false);
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
@@ -394,8 +409,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     border: variant === 'primary' ? `1px solid ${T.accent}` : variant === 'danger' ? 'none' : `1px solid ${T.border}`,
     background: variant === 'primary' ? T.accent : 'transparent',
     color: variant === 'primary' ? '#fff' : variant === 'danger' ? '#EF4444' : T.text,
-    padding: variant === 'sm-ghost' ? '6px 12px' : '8px 16px',
-    fontSize: variant === 'sm-ghost' ? 13 : 14,
+    padding: variant === 'sm-ghost' ? '6px 12px' : isMobile ? '6px 12px' : '8px 16px',
+    fontSize: variant === 'sm-ghost' ? 13 : isMobile ? 12 : 14,
     fontWeight: 500,
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
@@ -404,7 +419,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 12 };
 
   /* ── Nav tab switch ── */
-  const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); };
+  const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); setNavOpen(false); };
 
   /* ── Save legal info ── */
   async function saveLegalInfo() {
@@ -427,11 +442,21 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
   /* ─── Render ─────────────────────────────────────────── */
   return (
-    <div style={{ minHeight: '100dvh', background: T.bg, color: T.text, fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif', WebkitFontSmoothing: 'antialiased' }}>
+    <div style={{ minHeight: '100dvh', background: T.bg, color: T.text, fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif', WebkitFontSmoothing: 'antialiased', position: 'relative' }}>
+      {/* Background grid + gradient */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: 'linear-gradient(to right, #f0f0f0 1px, transparent 1px), linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)', backgroundSize: '6rem 4rem' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle 800px at 100% 200px, #d5c5ff, transparent)' }} />
+      </div>
 
       {/* ── Top nav ───────────────────────────────────── */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: T.surface, borderBottom: `1px solid ${T.border}`, height: 56 }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: `1px solid ${T.border}`, height: 56 }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Hamburger (mobile only) */}
+          {isMobile && (
+            <button type="button" onClick={() => setNavOpen(o => !o)} style={{ border: 'none', background: 'none', padding: 4, cursor: 'pointer', color: T.text, flexShrink: 0 }}>
+              {navOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          )}
           {/* Brand */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
             <div style={{ width: 28, height: 28, borderRadius: 7, background: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>c</div>
@@ -442,27 +467,28 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flexShrink: 0 }}>
             {site.siteStatus !== 'active' && (
               <button
                 type="button"
                 onClick={() => void publishSite()}
                 disabled={busyKey === 'publish'}
-                style={{ ...btn('primary'), fontSize: 13, padding: '6px 14px' }}
+                style={{ ...btn('primary'), fontSize: isMobile ? 12 : 13, padding: isMobile ? '5px 10px' : '6px 14px' }}
               >
-                {busyKey === 'publish' ? 'Публикуване…' : '🚀 Публикувай сайта'}
+                {busyKey === 'publish' ? '…' : '🚀'}
+                {!isMobile && (busyKey === 'publish' ? ' Публикуване…' : ' Публикувай сайта')}
               </button>
             )}
             <a
               href={sitePublicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ ...btn('sm-ghost'), textDecoration: 'none' }}
+              style={{ ...btn('sm-ghost'), textDecoration: 'none', padding: isMobile ? '5px 8px' : '6px 12px' }}
             >
-              <ExternalLink size={13} />
+              <ExternalLink size={isMobile ? 15 : 13} />
               {!isMobile && 'Виж сайта'}
             </a>
-            {showInstallButton && (
+            {showInstallButton && !isMobile && (
               <button type="button" onClick={() => void installAsApp()} style={btn('sm-ghost')}>
                 Инсталирай
               </button>
@@ -471,7 +497,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               type="button"
               onClick={logout}
               disabled={busyKey === 'logout'}
-              style={{ ...btn('sm-ghost'), color: T.muted }}
+              style={{ ...btn('sm-ghost'), color: T.muted, padding: isMobile ? '5px 8px' : '6px 12px' }}
               title="Изход"
             >
               <LogOut size={14} />
@@ -481,8 +507,64 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         </div>
       </header>
 
+      {/* ── Mobile slide-out navbar ───────────────────── */}
+      {isMobile && navOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 45 }} onClick={() => setNavOpen(false)}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
+          <div
+            style={{ position: 'absolute', top: 56, left: 0, bottom: 0, width: 280, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRight: `1px solid ${T.border}`, padding: '20px 16px', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.subtle }}>Още</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {NAVBAR_TABS.map(({ id, label, Icon }) => {
+                const active = activeTab === id;
+                const [gFrom, gTo] = NAVBAR_GRADIENTS[id] ?? ['#a955ff', '#ea51ff'];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => switchTab(id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '12px 14px', borderRadius: 14, border: 'none',
+                      background: active ? `linear-gradient(135deg, ${gFrom}, ${gTo})` : T.surface,
+                      boxShadow: active ? `0 4px 16px ${gFrom}40` : '0 1px 3px rgba(0,0,0,0.06)',
+                      color: active ? '#fff' : T.text,
+                      cursor: 'pointer', width: '100%', textAlign: 'left',
+                      transition: 'all 200ms ease',
+                      minHeight: 48,
+                    }}
+                  >
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      background: active ? 'rgba(255,255,255,0.2)' : `linear-gradient(135deg, ${gFrom}20, ${gTo}20)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                      <Icon size={18} strokeWidth={2} style={{ color: active ? '#fff' : gFrom }} />
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: active ? 600 : 500 }}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
+              <a href={sitePublicUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, textDecoration: 'none', color: T.muted, fontSize: 13 }}>
+                <ExternalLink size={16} /> Виж сайта
+              </a>
+              {showInstallButton && (
+                <button type="button" onClick={() => void installAsApp()} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: 'none', color: T.muted, fontSize: 13, cursor: 'pointer', width: '100%' }}>
+                  <Plus size={16} /> Инсталирай
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Body layout ───────────────────────────────── */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
 
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
@@ -490,7 +572,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             width: 220, flexShrink: 0,
             position: 'sticky', top: 56, height: 'calc(100dvh - 56px)',
             overflowY: 'auto', borderRight: `1px solid ${T.border}`,
-            background: T.surface, padding: '16px 10px',
+            background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '16px 10px',
             display: 'flex', flexDirection: 'column', gap: 2,
           }}>
             {TABS.map(({ id, label, Icon }) => {
@@ -909,20 +991,26 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         </main>
       </div>
 
-      {/* ── Mobile bottom nav ─────────────────────────── */}
+      {/* ── Mobile bottom tab bar ────────────────────── */}
       {isMobile && (
-        <nav aria-label="Навигация" style={{ position: 'fixed', left: 10, right: 10, bottom: 10, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-          <div style={{ background: 'rgba(255,255,255,0.96)', border: `1px solid ${T.border}`, borderRadius: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', backdropFilter: 'blur(16px)', padding: '4px 6px', display: 'flex', gap: 2, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            {TABS.map(({ id, label, Icon }) => {
-              const active = activeTab === id;
+        <nav aria-label="Навигация" style={{ position: 'fixed', left: 8, right: 8, bottom: 8, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div style={{ background: 'rgba(255,255,255,0.96)', border: `1px solid ${T.border}`, borderRadius: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '4px 6px', display: 'flex', gap: 2 }}>
+            {TAB_BAR_TABS.map(({ id, label, Icon }) => {
+              const active = activeTab === id && !navOpen;
               return (
                 <button key={id} type="button" onClick={() => switchTab(id)}
-                  style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 10px', borderRadius: 18, border: 'none', background: active ? '#F4F4F5' : 'transparent', color: active ? T.text : T.muted, cursor: 'pointer', minWidth: 52 }}>
-                  <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
-                  <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{label.split(' ')[0]}</span>
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 4px', borderRadius: 16, border: 'none', background: active ? '#F4F4F5' : 'transparent', color: active ? T.text : T.muted, cursor: 'pointer', minHeight: 44 }}>
+                  <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                  <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{label.split(' ')[0]}</span>
                 </button>
               );
             })}
+            {/* Още button */}
+            <button type="button" onClick={() => setNavOpen(o => !o)}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 4px', borderRadius: 16, border: 'none', background: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? '#F4F4F5' : 'transparent', color: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? T.text : T.muted, cursor: 'pointer', minHeight: 44 }}>
+              <Menu size={18} strokeWidth={navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 2.2 : 1.8} />
+              <span style={{ fontSize: 10, fontWeight: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 700 : 400, whiteSpace: 'nowrap' }}>Още</span>
+            </button>
           </div>
         </nav>
       )}
