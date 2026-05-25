@@ -19,33 +19,38 @@ async function persistDomainState({
   domain: string;
   provider: Awaited<ReturnType<typeof syncDomainWithVercel>>;
 }) {
+  const configJson = JSON.stringify({
+    provider: provider.provider,
+    dnsInstructions: provider.dnsInstructions,
+    verificationInstructions: provider.verificationInstructions,
+    configuredBy: provider.configuredBy,
+    misconfigured: provider.misconfigured,
+    verified: provider.verified,
+    providerDetails: provider.details,
+    checkedAt: new Date().toISOString(),
+  });
+
+  const isActive = provider.status === 'active';
+
   await sql`
     UPDATE salons
     SET
       custom_domain = ${domain},
       domain_status = ${provider.status},
       domain_last_checked_at = now(),
-      domain_verified_at = CASE WHEN ${provider.status} = 'active' THEN now() ELSE domain_verified_at END,
-      domain_config = ${JSON.stringify({
-        provider: provider.provider,
-        dnsInstructions: provider.dnsInstructions,
-        verificationInstructions: provider.verificationInstructions,
-        configuredBy: provider.configuredBy,
-        misconfigured: provider.misconfigured,
-        verified: provider.verified,
-        providerDetails: provider.details,
-        checkedAt: new Date().toISOString(),
-      })}::jsonb,
+      domain_verified_at = CASE WHEN ${isActive} THEN now() ELSE domain_verified_at END,
+      domain_config = ${configJson},
       updated_at = now()
     WHERE slug = ${slug}
   `;
 
   await ensureDomainPurchaseSchema();
+  const statusForPurchase = provider.status;
   await sql`
     UPDATE domain_purchase_requests
     SET
       status = CASE
-        WHEN ${provider.status} = 'active' THEN 'connected'
+        WHEN ${statusForPurchase} = 'active' THEN 'connected'
         WHEN status IN ('paid', 'requested') THEN 'processing'
         ELSE status
       END,

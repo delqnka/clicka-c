@@ -85,7 +85,7 @@ export async function ensureDomainPurchaseSchema() {
           setup_fee_cents integer NOT NULL DEFAULT 0,
           domain_fee_cents integer NOT NULL DEFAULT 0,
           total_fee_cents integer NOT NULL DEFAULT 0,
-          currency text NOT NULL DEFAULT ${DOMAIN_PURCHASE_CURRENCY},
+          currency text NOT NULL DEFAULT 'eur',
           status text NOT NULL DEFAULT 'requested',
           stripe_session_id text NOT NULL DEFAULT '',
           stripe_customer_id text NOT NULL DEFAULT '',

@@ -198,7 +198,7 @@ function mapDomainStatus({
   const misconfigured = config?.misconfigured === true;
   const configuredBy = String(config?.configuredBy ?? '').trim();
 
-  if (verified && !misconfigured) return 'active';
+  if (verified && !misconfigured && configuredBy) return 'active';
   if (hasVerification && !verified) return 'pending_verification';
   if (!configuredBy || misconfigured) return 'pending_dns';
   if (verified) return 'active';
