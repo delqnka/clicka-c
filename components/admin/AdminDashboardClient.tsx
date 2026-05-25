@@ -10,6 +10,15 @@ import {
   Image as ImageIcon,
   Scissors,
   UserRound,
+  ExternalLink,
+  LogOut,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  Plus,
+  Trash2,
+  Upload,
+  ChevronRight,
 } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -17,39 +26,29 @@ import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { getHostAwareSalonPath, getPlatformPublicUrl } from '@/lib/domain-routing';
 
+/* ─── Constants ───────────────────────────────────────── */
 const DAYS = [
-  { key: 'monday', label: 'Понеделник' },
-  { key: 'tuesday', label: 'Вторник' },
+  { key: 'monday',    label: 'Понеделник' },
+  { key: 'tuesday',   label: 'Вторник' },
   { key: 'wednesday', label: 'Сряда' },
-  { key: 'thursday', label: 'Четвъртък' },
-  { key: 'friday', label: 'Петък' },
-  { key: 'saturday', label: 'Събота' },
-  { key: 'sunday', label: 'Неделя' },
+  { key: 'thursday',  label: 'Четвъртък' },
+  { key: 'friday',    label: 'Петък' },
+  { key: 'saturday',  label: 'Събота' },
+  { key: 'sunday',    label: 'Неделя' },
 ] as const;
 
 const TABS = [
-  { id: 'site', label: 'Сайт' },
-  { id: 'images', label: 'Снимки' },
-  { id: 'specialist', label: 'Специалист' },
-  { id: 'services', label: 'Услуги' },
-  { id: 'hours', label: 'Работно време' },
-  { id: 'domain', label: 'Домейн' },
-  { id: 'bookings', label: 'Резервации' },
-  { id: 'notifications', label: 'Известия' },
+  { id: 'site',          label: 'Сайт',          Icon: BriefcaseBusiness },
+  { id: 'images',        label: 'Снимки',         Icon: ImageIcon },
+  { id: 'specialist',    label: 'Специалист',     Icon: UserRound },
+  { id: 'services',      label: 'Услуги',         Icon: Scissors },
+  { id: 'hours',         label: 'Работно време',  Icon: Clock3 },
+  { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
+  { id: 'domain',        label: 'Домейн',         Icon: Globe },
+  { id: 'notifications', label: 'Известия',       Icon: Bell },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
-
-const MOBILE_TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'site', label: 'Сайт', icon: BriefcaseBusiness },
-  { id: 'images', label: 'Снимки', icon: ImageIcon },
-  { id: 'specialist', label: 'Спец.', icon: UserRound },
-  { id: 'services', label: 'Услуги', icon: Scissors },
-  { id: 'hours', label: 'Часове', icon: Clock3 },
-  { id: 'domain', label: 'Домейн', icon: Globe },
-  { id: 'bookings', label: 'Резер.', icon: CalendarClock },
-  { id: 'notifications', label: 'Извест.', icon: Bell },
-];
 
 type Props = {
   slug: string;
@@ -65,1528 +64,867 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
+/* ─── Helpers ─────────────────────────────────────────── */
 async function readJson(res: Response) {
-  try {
-    return await res.json();
-  } catch {
-    return {};
-  }
+  try { return await res.json(); } catch { return {}; }
 }
 
-type DomainInstruction = {
-  type?: string;
-  host?: string;
-  value?: string;
-  reason?: string | null;
-};
+type DomainInstruction = { type?: string; host?: string; value?: string; reason?: string | null };
 
 function getDomainMeta(site: AdminSitePayload) {
   const config = (site.domainConfig ?? {}) as Record<string, unknown>;
-  const dnsInstructions = Array.isArray(config.dnsInstructions)
-    ? (config.dnsInstructions as DomainInstruction[])
-    : [];
-  const verificationInstructions = Array.isArray(config.verificationInstructions)
-    ? (config.verificationInstructions as DomainInstruction[])
-    : [];
-
   return {
-    dnsInstructions,
-    verificationInstructions,
-    configuredBy:
-      typeof config.configuredBy === 'string' ? config.configuredBy : '',
-    misconfigured:
-      typeof config.misconfigured === 'boolean' ? config.misconfigured : null,
+    dnsInstructions:          Array.isArray(config.dnsInstructions) ? (config.dnsInstructions as DomainInstruction[]) : [],
+    verificationInstructions: Array.isArray(config.verificationInstructions) ? (config.verificationInstructions as DomainInstruction[]) : [],
+    configuredBy: typeof config.configuredBy === 'string' ? config.configuredBy : '',
+    misconfigured: typeof config.misconfigured === 'boolean' ? config.misconfigured : null,
     verified: config.verified === true,
     checkedAt: typeof config.checkedAt === 'string' ? config.checkedAt : '',
   };
 }
 
-function isPendingDomainStatus(status: string) {
-  return ['pending_dns', 'pending_verification'].includes(status);
+function isPendingDomainStatus(s: string) { return ['pending_dns', 'pending_verification'].includes(s); }
+
+function formatDomainStatus(s: string) {
+  const map: Record<string, string> = {
+    active: 'Активен', pending_verification: 'Чака верификация',
+    pending_dns: 'Чака DNS', error: 'Грешка',
+  };
+  return map[s] ?? s ?? 'Не е свързан';
 }
 
-function formatDomainStatus(status: string) {
-  switch (status) {
-    case 'active':
-      return 'Активен';
-    case 'pending_verification':
-      return 'Чака верификация';
-    case 'pending_dns':
-      return 'Чака DNS';
-    case 'error':
-      return 'Грешка';
-    default:
-      return status || 'Не е свързан';
-  }
-}
-
-function useIsMobileLayout(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(false);
-
+function useIsMobileLayout(bp = 768) {
+  const [m, setM] = useState(false);
   useEffect(() => {
-    const update = () => setIsMobile(window.innerWidth < breakpoint);
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, [breakpoint]);
-
-  return isMobile;
+    const fn = () => setM(window.innerWidth < bp);
+    fn();
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, [bp]);
+  return m;
 }
 
-export default function AdminDashboardClient({
-  slug,
-  ownerEmail,
-  initialSite,
-  initialBookings,
-}: Props) {
-  const [site, setSite] = useState(initialSite);
-  const [bookings, setBookings] = useState(initialBookings);
+/* ─── Status config ───────────────────────────────────── */
+const STATUS_CFG: Record<BookingStatus, { label: string; bg: string; text: string; dot: string }> = {
+  pending:   { label: 'Чакаща',     bg: '#FEF3C7', text: '#92400E', dot: '#F59E0B' },
+  confirmed: { label: 'Потвърдена', bg: '#DBEAFE', text: '#1E40AF', dot: '#3B82F6' },
+  completed: { label: 'Завършена',  bg: '#D1FAE5', text: '#065F46', dot: '#10B981' },
+  cancelled: { label: 'Отказана',   bg: '#FEE2E2', text: '#991B1B', dot: '#EF4444' },
+};
+
+/* ─── Design tokens (module-level so sub-components can use them) ─ */
+const T = {
+  bg:       '#F5F4F1',
+  surface:  '#FFFFFF',
+  border:   '#E5E3DE',
+  text:     '#18181B',
+  muted:    '#71717A',
+  subtle:   '#A1A1AA',
+  accent:   '#18181B',
+  radius:   12,
+  radiusLg: 16,
+  radiusSm: 8,
+} as const;
+
+/* ═══════════════════════════════════════════════════════ */
+export default function AdminDashboardClient({ slug, ownerEmail, initialSite, initialBookings }: Props) {
+  const [site, setSite]           = useState(initialSite);
+  const [bookings, setBookings]   = useState(initialBookings);
   const [activeTab, setActiveTab] = useState<TabId>('site');
   const [statusFilter, setStatusFilter] = useState<'all' | BookingStatus>('all');
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [busyKey, setBusyKey] = useState<string>('');
+  const [error, setError]         = useState('');
+  const [notice, setNotice]       = useState('');
+  const [busyKey, setBusyKey]     = useState('');
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [showInstallButton, setShowInstallButton]   = useState(false);
+
   const isMobile = useIsMobileLayout();
-  const currentHost = typeof window !== 'undefined' ? window.location.host : null;
-  const platformPublicUrl = getPlatformPublicUrl(slug);
-  const sitePath = getHostAwareSalonPath({ host: currentHost, slug });
-  const claimPath = getHostAwareSalonPath({ host: currentHost, slug, path: 'claim' });
-  const signInPath = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
-  const domainMeta = getDomainMeta(site);
+  const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
+  const sitePath      = getHostAwareSalonPath({ host: currentHost, slug });
+  const claimPath     = getHostAwareSalonPath({ host: currentHost, slug, path: 'claim' });
+  const signInPath    = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
+  const domainMeta    = getDomainMeta(site);
 
-  const filteredBookings = useMemo(() => {
-    if (statusFilter === 'all') return bookings;
-    return bookings.filter(item => item.status === statusFilter);
-  }, [bookings, statusFilter]);
+  const filteredBookings = useMemo(() =>
+    statusFilter === 'all' ? bookings : bookings.filter(b => b.status === statusFilter),
+    [bookings, statusFilter]
+  );
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const requestedTab = params.get('tab');
-    if (requestedTab && TABS.some(tab => tab.id === requestedTab)) {
-      setActiveTab(requestedTab as TabId);
-    }
+    const p = new URLSearchParams(window.location.search);
+    const t = p.get('tab');
+    if (t && TABS.some(tab => tab.id === t)) setActiveTab(t as TabId);
   }, []);
 
   useEffect(() => {
-    const isStandalone =
-      window.matchMedia?.('(display-mode: standalone)').matches ||
+    const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (isStandalone) return;
-
+    if (standalone) return;
     const ua = window.navigator.userAgent.toLowerCase();
-    const isIos = /iphone|ipad|ipod/.test(ua);
-
-    if (isIos) {
-      setShowInstallButton(true);
-      return;
-    }
-
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPromptEvent(event as BeforeInstallPromptEvent);
-      setShowInstallButton(true);
-    };
-
-    const onAppInstalled = () => {
-      setInstallPromptEvent(null);
-      setShowInstallButton(false);
-      setNotice('Приложението е добавено на началния екран.');
-    };
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-    window.addEventListener('appinstalled', onAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', onAppInstalled);
-    };
+    if (/iphone|ipad|ipod/.test(ua)) { setShowInstallButton(true); return; }
+    const onPrompt = (e: Event) => { e.preventDefault(); setInstallPromptEvent(e as BeforeInstallPromptEvent); setShowInstallButton(true); };
+    const onInstalled = () => { setInstallPromptEvent(null); setShowInstallButton(false); setNotice('Приложението е добавено.'); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled); };
   }, []);
 
-  async function installAsApp() {
-    setError('');
+  useEffect(() => {
+    if (activeTab !== 'domain' || !site.customDomain || !isPendingDomainStatus(site.domainStatus)) return;
+    if (busyKey === 'domain' || busyKey === 'domain-refresh') return;
+    const t = window.setTimeout(() => void refreshDomainStatus(true), 6000);
+    return () => window.clearTimeout(t);
+  }, [activeTab, site.customDomain, site.domainStatus, busyKey]);
 
-    const ua = window.navigator.userAgent.toLowerCase();
-    const isIos = /iphone|ipad|ipod/.test(ua);
-
-    if (isIos) {
-      setNotice('На iPhone: Share -> Add to Home Screen, за да добавиш иконата.');
-      return;
-    }
-
-    if (!installPromptEvent) {
-      setNotice('Инсталацията не е налична в момента. Пробвай от Chrome на телефона.');
-      return;
-    }
-
-    await installPromptEvent.prompt();
-    const choice = await installPromptEvent.userChoice;
-    if (choice.outcome === 'accepted') {
-      setNotice('Приложението се инсталира. Ще се появи като икона на телефона.');
-      setShowInstallButton(false);
-      setInstallPromptEvent(null);
-    }
-  }
-
+  /* ── Handlers ── */
   async function guardResponse(res: Response) {
     const data = await readJson(res);
-    if (res.status === 401 && typeof data.redirectTo === 'string') {
-      window.location.href = data.redirectTo;
-      throw new Error('Пренасочване…');
-    }
+    if (res.status === 401 && typeof data.redirectTo === 'string') { window.location.href = data.redirectTo; throw new Error('Пренасочване…'); }
     if (!res.ok) throw new Error(data.error || 'Възникна грешка.');
     return data;
   }
 
+  function handleErr(err: unknown) {
+    if (err instanceof Error && err.message === 'Пренасочване…') return;
+    setError(err instanceof Error ? err.message : 'Грешка');
+  }
+
   async function saveSiteSettings() {
-    setError('');
-    setNotice('');
-    setBusyKey('site');
+    setError(''); setNotice(''); setBusyKey('site');
     try {
       const res = await fetch(`/api/admin/site-settings?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: site.name,
-          category: site.category,
-          phone: site.phone,
-          city: site.city,
-          address: site.address,
-          about: site.about,
-          instagram: site.instagram,
-          facebook: site.facebook,
-          tiktok: site.tiktok,
-          googleMapsUrl: site.googleMapsUrl,
-          googlePlaceId: site.googlePlaceId,
-        }),
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: site.name, category: site.category, phone: site.phone, city: site.city, address: site.address, about: site.about, instagram: site.instagram, facebook: site.facebook, tiktok: site.tiktok, googleMapsUrl: site.googleMapsUrl, googlePlaceId: site.googlePlaceId }),
       });
       const data = await guardResponse(res);
       setSite(data.site as AdminSitePayload);
-      setNotice('Информацията за сайта е запазена.');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+      setNotice('Информацията е запазена.');
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function saveSpecialist() {
-    setError('');
-    setNotice('');
-    setBusyKey('specialist');
+    setError(''); setNotice(''); setBusyKey('specialist');
     try {
       const res = await fetch(`/api/admin/site-settings?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ownerName: site.ownerName,
-          ownerPublicRole: site.ownerPublicRole,
-          ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
-        }),
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerName: site.ownerName, ownerPublicRole: site.ownerPublicRole, ownerPublicPhotoUrl: site.ownerPublicPhotoUrl }),
       });
       const data = await guardResponse(res);
       setSite(data.site as AdminSitePayload);
-      setNotice('Профилът на специалиста е запазен.');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+      setNotice('Профилът е запазен.');
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function saveImages() {
-    setError('');
-    setNotice('');
-    setBusyKey('images');
+    setError(''); setNotice(''); setBusyKey('images');
     try {
       const res = await fetch(`/api/admin/site-images?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          coverImageUrl: site.coverImageUrl,
-          logoImageUrl: site.logoImageUrl,
-          galleryImages: site.galleryImages,
-          ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
-        }),
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coverImageUrl: site.coverImageUrl, logoImageUrl: site.logoImageUrl, galleryImages: site.galleryImages, ownerPublicPhotoUrl: site.ownerPublicPhotoUrl }),
       });
       const data = await guardResponse(res);
       setSite(data.site as AdminSitePayload);
       setNotice('Снимките са запазени.');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function saveServices() {
-    setError('');
-    setNotice('');
-    setBusyKey('services');
+    setError(''); setNotice(''); setBusyKey('services');
     try {
       const res = await fetch(`/api/admin/site-services?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ services: site.services }),
       });
       const data = await guardResponse(res);
       setSite(prev => ({ ...prev, services: data.services as AdminSitePayload['services'] }));
       setNotice('Услугите са запазени.');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function saveHours() {
-    setError('');
-    setNotice('');
-    setBusyKey('hours');
+    setError(''); setNotice(''); setBusyKey('hours');
     try {
       const res = await fetch(`/api/admin/site-hours?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workingHours: site.workingHours }),
       });
       const data = await guardResponse(res);
       setSite(prev => ({ ...prev, workingHours: data.workingHours as WorkingHours }));
       setNotice('Работното време е запазено.');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function connectDomain() {
-    setError('');
-    setNotice('');
-    setBusyKey('domain');
+    setError(''); setNotice(''); setBusyKey('domain');
     try {
       const res = await fetch('/api/domain-connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug, domain: domainInput }),
       });
       const data = await guardResponse(res);
-      setSite(prev => ({
-        ...prev,
-        customDomain: data.customDomain,
-        domainStatus: data.domainStatus,
-        domainConfig: {
-          dnsInstructions: data.dnsInstructions,
-          verificationInstructions: data.verificationInstructions,
-          configuredBy: data.configuredBy,
-          misconfigured: data.misconfigured,
-          verified: data.verified,
-          provider: data.provider,
-          providerDetails: data.providerDetails,
-          checkedAt: new Date().toISOString(),
-        },
-      }));
-      setNotice(
-        data.domainStatus === 'active'
-          ? 'Домейнът е активен.'
-          : 'Домейнът е записан. Добави DNS записите и изчакай верификация.'
-      );
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+      setSite(prev => ({ ...prev, customDomain: data.customDomain, domainStatus: data.domainStatus, domainConfig: { dnsInstructions: data.dnsInstructions, verificationInstructions: data.verificationInstructions, configuredBy: data.configuredBy, misconfigured: data.misconfigured, verified: data.verified, provider: data.provider, providerDetails: data.providerDetails, checkedAt: new Date().toISOString() } }));
+      setNotice(data.domainStatus === 'active' ? 'Домейнът е активен.' : 'Домейнът е записан. Добави DNS записите и изчакай верификация.');
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function refreshDomainStatus(silent = false) {
     if (!site.customDomain) return;
-    if (!silent) {
-      setError('');
-      setNotice('');
-    }
+    if (!silent) { setError(''); setNotice(''); }
     setBusyKey('domain-refresh');
     try {
       const res = await fetch('/api/domain-connect', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug }),
       });
       const data = await guardResponse(res);
-      setSite(prev => ({
-        ...prev,
-        customDomain: data.customDomain,
-        domainStatus: data.domainStatus,
-        domainConfig: {
-          dnsInstructions: data.dnsInstructions,
-          verificationInstructions: data.verificationInstructions,
-          configuredBy: data.configuredBy,
-          misconfigured: data.misconfigured,
-          verified: data.verified,
-          provider: data.provider,
-          providerDetails: data.providerDetails,
-          checkedAt: new Date().toISOString(),
-        },
-      }));
-      if (!silent) {
-        setNotice(
-          data.domainStatus === 'active'
-            ? 'Домейнът е вече активен.'
-            : 'Статусът на домейна е обновен.'
-        );
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      if (!silent) {
-        setError(err instanceof Error ? err.message : 'Грешка');
-      }
-    } finally {
-      setBusyKey('');
-    }
+      setSite(prev => ({ ...prev, customDomain: data.customDomain, domainStatus: data.domainStatus, domainConfig: { dnsInstructions: data.dnsInstructions, verificationInstructions: data.verificationInstructions, configuredBy: data.configuredBy, misconfigured: data.misconfigured, verified: data.verified, provider: data.provider, providerDetails: data.providerDetails, checkedAt: new Date().toISOString() } }));
+      if (!silent) setNotice(data.domainStatus === 'active' ? 'Домейнът е активен.' : 'Статусът е обновен.');
+    } catch (e) { if (!silent) handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function logout() {
     setBusyKey('logout');
-    try {
-      await fetch('/api/admin/logout', { method: 'POST' });
-    } finally {
-      window.location.href = signInPath;
-    }
+    try { await fetch('/api/admin/logout', { method: 'POST' }); }
+    finally { window.location.href = signInPath; }
   }
-
-  useEffect(() => {
-    if (activeTab !== 'domain') return;
-    if (!site.customDomain) return;
-    if (!isPendingDomainStatus(site.domainStatus)) return;
-    if (busyKey === 'domain' || busyKey === 'domain-refresh') return;
-
-    const timeout = window.setTimeout(() => {
-      void refreshDomainStatus(true);
-    }, 6000);
-
-    return () => window.clearTimeout(timeout);
-  }, [activeTab, site.customDomain, site.domainStatus, busyKey]);
 
   async function updateBookingStatus(bookingId: string, status: BookingStatus) {
     setError('');
     const previous = bookings;
-    setBookings(current => current.map(item => (item.id === bookingId ? { ...item, status } : item)));
+    setBookings(c => c.map(b => b.id === bookingId ? { ...b, status } : b));
     try {
       const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId, status }),
       });
       await guardResponse(res);
-      setNotice('Статусът на резервацията е обновен.');
-    } catch (err: unknown) {
-      setBookings(previous);
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    }
+      setNotice('Статусът е обновен.');
+    } catch (e) { setBookings(previous); handleErr(e); }
   }
 
   async function uploadSingleFile(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`/api/upload?slug=${encodeURIComponent(slug)}`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await guardResponse(res);
-    return String(data.url ?? '');
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch(`/api/upload?slug=${encodeURIComponent(slug)}`, { method: 'POST', body: fd });
+    const d = await guardResponse(res);
+    return String(d.url ?? '');
   }
 
   async function handleCoverUpload(file: File | null) {
-    if (!file) return;
-    setBusyKey('upload-cover');
-    setError('');
-    try {
-      const url = await uploadSingleFile(file);
-      setSite(prev => ({
-        ...prev,
-        coverImageUrl: url,
-        logoImageUrl: prev.logoImageUrl || url,
-      }));
-      setNotice('Cover снимката е качена. Натисни "Запази снимките".');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+    if (!file) return; setBusyKey('upload-cover'); setError('');
+    try { const url = await uploadSingleFile(file); setSite(p => ({ ...p, coverImageUrl: url, logoImageUrl: p.logoImageUrl || url })); setNotice('Cover качена. Натисни „Запази снимките".'); }
+    catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function handleLogoUpload(file: File | null) {
-    if (!file) return;
-    setBusyKey('upload-logo');
-    setError('');
-    try {
-      const url = await uploadSingleFile(file);
-      setSite(prev => ({ ...prev, logoImageUrl: url }));
-      setNotice('Логото е качено. Натисни "Запази снимките".');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+    if (!file) return; setBusyKey('upload-logo'); setError('');
+    try { const url = await uploadSingleFile(file); setSite(p => ({ ...p, logoImageUrl: url })); setNotice('Лого качено. Натисни „Запази снимките".'); }
+    catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function handleOwnerPhotoUpload(file: File | null) {
-    if (!file) return;
-    setBusyKey('upload-owner');
-    setError('');
-    try {
-      const url = await uploadSingleFile(file);
-      setSite(prev => ({ ...prev, ownerPublicPhotoUrl: url }));
-      setNotice('Снимката на специалиста е качена. Натисни "Запази профила".');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+    if (!file) return; setBusyKey('upload-owner'); setError('');
+    try { const url = await uploadSingleFile(file); setSite(p => ({ ...p, ownerPublicPhotoUrl: url })); setNotice('Снимката е качена. Натисни „Запази профила".'); }
+    catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function handleGalleryUpload(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    setBusyKey('upload-gallery');
-    setError('');
+    if (!files || !files.length) return; setBusyKey('upload-gallery'); setError('');
     try {
-      const nextUrls: string[] = [];
-      for (const file of Array.from(files)) {
-        const url = await uploadSingleFile(file);
-        nextUrls.push(url);
-      }
-      setSite(prev => ({
-        ...prev,
-        galleryImages: [...prev.galleryImages, ...nextUrls],
-        coverImageUrl: prev.coverImageUrl || nextUrls[0] || prev.coverImageUrl,
-      }));
-      setNotice('Галерията е качена. Натисни "Запази снимките".');
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'Пренасочване…') return;
-      setError(err instanceof Error ? err.message : 'Грешка');
-    } finally {
-      setBusyKey('');
-    }
+      const urls: string[] = [];
+      for (const f of Array.from(files)) urls.push(await uploadSingleFile(f));
+      setSite(p => ({ ...p, galleryImages: [...p.galleryImages, ...urls], coverImageUrl: p.coverImageUrl || urls[0] || p.coverImageUrl }));
+      setNotice('Галерията е качена. Натисни „Запази снимките".');
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
+  async function installAsApp() {
+    setError('');
+    if (/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) { setNotice('На iPhone: Share → Add to Home Screen.'); return; }
+    if (!installPromptEvent) { setNotice('Инсталацията не е налична. Пробвай от Chrome.'); return; }
+    await installPromptEvent.prompt();
+    const r = await installPromptEvent.userChoice;
+    if (r.outcome === 'accepted') { setNotice('Приложението се инсталира.'); setShowInstallButton(false); setInstallPromptEvent(null); }
+  }
+
+  /* ── Shared styles ── */
+  const inp: CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' };
+  const btn = (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost'): CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderRadius: variant === 'primary' ? T.radiusSm : T.radiusSm,
+    border: variant === 'primary' ? `1px solid ${T.accent}` : variant === 'danger' ? 'none' : `1px solid ${T.border}`,
+    background: variant === 'primary' ? T.accent : 'transparent',
+    color: variant === 'primary' ? '#fff' : variant === 'danger' ? '#EF4444' : T.text,
+    padding: variant === 'sm-ghost' ? '6px 12px' : '8px 16px',
+    fontSize: variant === 'sm-ghost' ? 13 : 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
+  });
+  const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 12 };
+
+  /* ── Nav tab switch ── */
+  const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); };
+
+  /* ─── Render ─────────────────────────────────────────── */
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', color: '#000', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', paddingBottom: isMobile ? 'calc(6.25rem + env(safe-area-inset-bottom, 0px))' : 0 }}>
-      <nav
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 30,
-          background: 'rgba(255,255,255,0.95)',
-          borderBottom: '1px solid rgba(0,0,0,0.08)',
-          backdropFilter: 'blur(16px)',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: '0 auto',
-            padding: '16px clamp(16px, 4vw, 20px)',
-            display: 'grid',
-            gap: 16,
-            gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-              Owner Dashboard
-            </p>
-            <h1 style={{ margin: '6px 0 0', fontSize: 'clamp(24px, 7vw, 32px)', lineHeight: 1.05, letterSpacing: '-0.04em' }}>
-              {site.name || slug}
-            </h1>
-            <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.5, wordBreak: 'break-word' }}>
-              Собственик: <strong>{ownerEmail}</strong>
-            </p>
+    <div style={{ minHeight: '100dvh', background: T.bg, color: T.text, fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif', WebkitFontSmoothing: 'antialiased' }}>
+
+      {/* ── Top nav ───────────────────────────────────── */}
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: T.surface, borderBottom: `1px solid ${T.border}`, height: 56 }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>c</div>
+            <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.name || slug}</span>
+            {!isMobile && (
+              <span style={{ fontSize: 12, color: T.subtle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{ownerEmail}</span>
+            )}
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gap: 10,
-              gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
-              alignItems: 'center',
-            }}
-          >
-            <Link href={sitePath} style={{ ...linkButtonStyle, width: '100%' }}>
-              Виж сайта
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <Link
+              href={sitePath}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...btn('sm-ghost'), textDecoration: 'none' }}
+            >
+              <ExternalLink size={13} />
+              {!isMobile && 'Виж сайта'}
             </Link>
-            <Link href={claimPath} style={{ ...linkGhostStyle, width: '100%' }}>
-              Claim page
-            </Link>
-            {showInstallButton ? (
-              <button type="button" onClick={() => void installAsApp()} style={{ ...ghostButtonStyle, width: '100%' }}>
-                Добави като приложение
+            {showInstallButton && (
+              <button type="button" onClick={() => void installAsApp()} style={btn('sm-ghost')}>
+                Инсталирай
               </button>
-            ) : null}
-            <button type="button" onClick={logout} style={{ ...ghostButtonStyle, width: '100%' }} disabled={busyKey === 'logout'}>
-              {busyKey === 'logout' ? 'Излизане…' : 'Изход'}
+            )}
+            <button
+              type="button"
+              onClick={logout}
+              disabled={busyKey === 'logout'}
+              style={{ ...btn('sm-ghost'), color: T.muted }}
+              title="Изход"
+            >
+              <LogOut size={14} />
+              {!isMobile && (busyKey === 'logout' ? 'Излизане…' : 'Изход')}
             </button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '16px 14px 56px' : '24px clamp(16px, 4vw, 20px) 64px' }}>
-        {!isMobile ? (
-          <div
-            style={{
-              display: 'flex',
-              gap: 10,
-              flexWrap: 'nowrap',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              marginBottom: 18,
-              paddingBottom: 6,
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-            }}
-          >
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setError('');
-                  setNotice('');
-                }}
-                style={{
-                  borderRadius: 999,
-                  padding: '11px 16px',
-                  flex: '0 0 auto',
-                  whiteSpace: 'nowrap',
-                  border: `1px solid ${activeTab === tab.id ? '#000' : 'rgba(0,0,0,0.12)'}`,
-                  background: '#fff',
-                  color: '#000',
-                  fontSize: 14,
-                  fontWeight: activeTab === tab.id ? 800 : 700,
-                  cursor: 'pointer',
-                  boxShadow: activeTab === tab.id ? '0 14px 28px rgba(0,0,0,0.16)' : '0 8px 18px rgba(0,0,0,0.08)',
-                  scrollSnapAlign: 'start',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
+      {/* ── Body layout ───────────────────────────────── */}
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start' }}>
 
-        {error ? <MessageBox tone="error">{error}</MessageBox> : null}
-        {notice ? <MessageBox tone="success">{notice}</MessageBox> : null}
+        {/* ── Sidebar (desktop) ─────────────────────── */}
+        {!isMobile && (
+          <aside style={{
+            width: 220, flexShrink: 0,
+            position: 'sticky', top: 56, height: 'calc(100dvh - 56px)',
+            overflowY: 'auto', borderRight: `1px solid ${T.border}`,
+            background: T.surface, padding: '16px 10px',
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            {TABS.map(({ id, label, Icon }) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => switchTab(id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 12px', borderRadius: T.radiusSm,
+                    border: 'none', width: '100%', textAlign: 'left',
+                    background: active ? '#F4F4F5' : 'transparent',
+                    color: active ? T.text : T.muted,
+                    fontSize: 13, fontWeight: active ? 600 : 400,
+                    cursor: 'pointer',
+                    transition: 'background 120ms, color 120ms',
+                  }}
+                >
+                  <Icon size={15} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{label}</span>
+                  {active && <ChevronRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />}
+                </button>
+              );
+            })}
 
-        {activeTab === 'site' ? (
-          <Card>
-            <SectionHeader
+            {/* Sidebar footer */}
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
+              <Link href={claimPath} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: T.radiusSm, textDecoration: 'none', color: T.muted, fontSize: 13 }}>
+                <ExternalLink size={14} />
+                Claim page
+              </Link>
+            </div>
+          </aside>
+        )}
+
+        {/* ── Main content ──────────────────────────── */}
+        <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '16px 16px 100px' : '28px 32px 48px' }}>
+
+          {/* Toast messages */}
+          {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
+          {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
+
+          {/* ── Сайт ── */}
+          {activeTab === 'site' && (
+            <Section
               title="Сайт"
-              description="Редактирай основната информация, която се показва в публичната страница."
-              action={
-                <button type="button" onClick={saveSiteSettings} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'site'}>
-                  {busyKey === 'site' ? 'Запазваме…' : 'Запази'}
-                </button>
-              }
-              mobile={isMobile}
-            />
-
-            <div style={gridStyle}>
-              <Field label="Име на салона">
-                <input value={site.name} onChange={e => setSite(prev => ({ ...prev, name: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Категория">
-                <input value={site.category} onChange={e => setSite(prev => ({ ...prev, category: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Телефон">
-                <input value={site.phone} onChange={e => setSite(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Имейл">
-                <input value={site.email} readOnly style={{ ...inputStyle, opacity: 0.75 }} />
-              </Field>
-              <Field label="Град">
-                <input value={site.city} onChange={e => setSite(prev => ({ ...prev, city: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Адрес">
-                <input value={site.address} onChange={e => setSite(prev => ({ ...prev, address: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Instagram">
-                <input value={site.instagram} onChange={e => setSite(prev => ({ ...prev, instagram: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Facebook">
-                <input value={site.facebook} onChange={e => setSite(prev => ({ ...prev, facebook: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="TikTok">
-                <input value={site.tiktok} onChange={e => setSite(prev => ({ ...prev, tiktok: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Google Maps URL">
-                <input value={site.googleMapsUrl} onChange={e => setSite(prev => ({ ...prev, googleMapsUrl: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Google Place ID">
-                <input
-                  value={site.googlePlaceId}
-                  onChange={e => setSite(prev => ({ ...prev, googlePlaceId: e.target.value }))}
-                  placeholder="ChIJ..."
-                  style={inputStyle}
-                />
-              </Field>
-            </div>
-
-            <Field label="За салона">
-              <textarea
-                value={site.about}
-                onChange={e => setSite(prev => ({ ...prev, about: e.target.value }))}
-                style={{ ...inputStyle, minHeight: 150, resize: 'vertical' }}
-              />
-            </Field>
-          </Card>
-        ) : null}
-
-        {activeTab === 'images' ? (
-          <Card>
-            <SectionHeader
-              title="Снимки"
-              description="Cover, лого и галерия за публичния сайт."
-              action={
-                <button type="button" onClick={saveImages} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'images'}>
-                  {busyKey === 'images' ? 'Запазваме…' : 'Запази снимките'}
-                </button>
-              }
-              mobile={isMobile}
-            />
-
-            <div style={gridStyle}>
-              <Field label="Cover">
-                <UploadControl label="Качи cover" busy={busyKey === 'upload-cover'}>
-                  <input type="file" accept="image/*" onChange={e => void handleCoverUpload(e.target.files?.[0] ?? null)} />
-                </UploadControl>
-                <input value={site.coverImageUrl} onChange={e => setSite(prev => ({ ...prev, coverImageUrl: e.target.value }))} style={inputStyle} />
-                {site.coverImageUrl ? <PreviewImage src={site.coverImageUrl} alt="Cover" /> : null}
-              </Field>
-
-              <Field label="Лого">
-                <UploadControl label="Качи лого" busy={busyKey === 'upload-logo'}>
-                  <input type="file" accept="image/*" onChange={e => void handleLogoUpload(e.target.files?.[0] ?? null)} />
-                </UploadControl>
-                <input value={site.logoImageUrl} onChange={e => setSite(prev => ({ ...prev, logoImageUrl: e.target.value }))} style={inputStyle} />
-                {site.logoImageUrl ? <PreviewImage src={site.logoImageUrl} alt="Logo" /> : null}
-              </Field>
-            </div>
-
-            <div style={{ marginTop: 20 }}>
-              <Field label="Галерия">
-                <UploadControl label="Добави снимки" busy={busyKey === 'upload-gallery'}>
-                  <input type="file" accept="image/*" multiple onChange={e => void handleGalleryUpload(e.target.files)} />
-                </UploadControl>
-              </Field>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))', gap: 14 }}>
-                {site.galleryImages.map((url, index) => (
-                  <div key={`${url}-${index}`} style={miniCardStyle}>
-                    <PreviewImage src={url} alt={`Gallery ${index + 1}`} />
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" style={ghostButtonStyle} onClick={() => setSite(prev => ({ ...prev, coverImageUrl: url }))}>
-                        Направи cover
-                      </button>
-                      <button
-                        type="button"
-                        style={ghostButtonStyle}
-                        onClick={() =>
-                          setSite(prev => ({
-                            ...prev,
-                            galleryImages: prev.galleryImages.filter((_, itemIndex) => itemIndex !== index),
-                            coverImageUrl: prev.coverImageUrl === url ? prev.galleryImages.find((_, itemIndex) => itemIndex !== index) ?? '' : prev.coverImageUrl,
-                          }))
-                        }
-                      >
-                        Премахни
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              desc="Основна информация, показвана в публичната страница."
+              action={<button type="button" onClick={saveSiteSettings} style={btn('primary')} disabled={busyKey === 'site'}>{busyKey === 'site' ? 'Запазваме…' : 'Запази'}</button>}
+            >
+              <div style={grid2}>
+                <Field label="Име на салона"><input value={site.name} onChange={e => setSite(p => ({ ...p, name: e.target.value }))} style={inp} /></Field>
+                <Field label="Категория"><input value={site.category} onChange={e => setSite(p => ({ ...p, category: e.target.value }))} style={inp} /></Field>
+                <Field label="Телефон"><input value={site.phone} onChange={e => setSite(p => ({ ...p, phone: e.target.value }))} style={inp} /></Field>
+                <Field label="Имейл"><input value={site.email} readOnly style={{ ...inp, color: T.muted, cursor: 'default' }} /></Field>
+                <Field label="Град"><input value={site.city} onChange={e => setSite(p => ({ ...p, city: e.target.value }))} style={inp} /></Field>
+                <Field label="Адрес"><input value={site.address} onChange={e => setSite(p => ({ ...p, address: e.target.value }))} style={inp} /></Field>
+                <Field label="Instagram"><input value={site.instagram} onChange={e => setSite(p => ({ ...p, instagram: e.target.value }))} style={inp} /></Field>
+                <Field label="Facebook"><input value={site.facebook} onChange={e => setSite(p => ({ ...p, facebook: e.target.value }))} style={inp} /></Field>
+                <Field label="TikTok"><input value={site.tiktok} onChange={e => setSite(p => ({ ...p, tiktok: e.target.value }))} style={inp} /></Field>
+                <Field label="Google Maps URL"><input value={site.googleMapsUrl} onChange={e => setSite(p => ({ ...p, googleMapsUrl: e.target.value }))} style={inp} /></Field>
+                <Field label="Google Place ID"><input value={site.googlePlaceId} onChange={e => setSite(p => ({ ...p, googlePlaceId: e.target.value }))} placeholder="ChIJ…" style={inp} /></Field>
               </div>
-            </div>
-          </Card>
-        ) : null}
+              <div style={{ marginTop: 12 }}>
+                <Field label="За салона">
+                  <textarea value={site.about} onChange={e => setSite(p => ({ ...p, about: e.target.value }))} style={{ ...inp, minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
+                </Field>
+              </div>
+            </Section>
+          )}
 
-        {activeTab === 'specialist' ? (
-          <Card>
-            <SectionHeader
-              title="Специалист"
-              description="Това захранва секцията „Вашият специалист“ в сайта."
-              action={
-                <button type="button" onClick={saveSpecialist} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'specialist'}>
-                  {busyKey === 'specialist' ? 'Запазваме…' : 'Запази профила'}
-                </button>
-              }
-              mobile={isMobile}
-            />
+          {/* ── Снимки ── */}
+          {activeTab === 'images' && (
+            <Section
+              title="Снимки"
+              desc="Cover, лого и галерия за публичния сайт."
+              action={<button type="button" onClick={saveImages} style={btn('primary')} disabled={busyKey === 'images'}>{busyKey === 'images' ? 'Запазваме…' : 'Запази снимките'}</button>}
+            >
+              <div style={grid2}>
+                <Field label="Cover">
+                  <FileUploadBtn label="Качи cover" busy={busyKey === 'upload-cover'}>
+                    <input type="file" accept="image/*" onChange={e => void handleCoverUpload(e.target.files?.[0] ?? null)} />
+                  </FileUploadBtn>
+                  <input value={site.coverImageUrl} onChange={e => setSite(p => ({ ...p, coverImageUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
+                  {site.coverImageUrl && <PreviewImg src={site.coverImageUrl} alt="Cover" />}
+                </Field>
 
-            <div style={gridStyle}>
-              <Field label="Име">
-                <input value={site.ownerName} onChange={e => setSite(prev => ({ ...prev, ownerName: e.target.value }))} style={inputStyle} />
-              </Field>
-              <Field label="Роля">
-                <input value={site.ownerPublicRole} onChange={e => setSite(prev => ({ ...prev, ownerPublicRole: e.target.value }))} style={inputStyle} />
-              </Field>
-            </div>
+                <Field label="Лого">
+                  <FileUploadBtn label="Качи лого" busy={busyKey === 'upload-logo'}>
+                    <input type="file" accept="image/*" onChange={e => void handleLogoUpload(e.target.files?.[0] ?? null)} />
+                  </FileUploadBtn>
+                  <input value={site.logoImageUrl} onChange={e => setSite(p => ({ ...p, logoImageUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
+                  {site.logoImageUrl && <PreviewImg src={site.logoImageUrl} alt="Лого" />}
+                </Field>
+              </div>
 
-            <Field label="Снимка на специалиста">
-              <UploadControl label="Качи снимка" busy={busyKey === 'upload-owner'}>
-                <input type="file" accept="image/*" onChange={e => void handleOwnerPhotoUpload(e.target.files?.[0] ?? null)} />
-              </UploadControl>
-              <input value={site.ownerPublicPhotoUrl} onChange={e => setSite(prev => ({ ...prev, ownerPublicPhotoUrl: e.target.value }))} style={inputStyle} />
-              {site.ownerPublicPhotoUrl ? <PreviewImage src={site.ownerPublicPhotoUrl} alt="Specialist" round /> : null}
-            </Field>
-          </Card>
-        ) : null}
-
-        {activeTab === 'services' ? (
-          <Card>
-            <SectionHeader
-              title="Услуги"
-              description="Добави, редактирай и премахвай услуги в същия формат, който публичният сайт вече използва."
-              action={
-                <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(180px, 100%), max-content))' }}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSite(prev => ({
-                        ...prev,
-                        services: [...prev.services, { name: '', price: 0, duration_min: 30 }],
-                      }))
-                    }
-                    style={{ ...ghostButtonStyle, ...(isMobile ? { width: '100%' } : null) }}
-                  >
-                    + Добави услуга
-                  </button>
-                  <button type="button" onClick={saveServices} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'services'}>
-                    {busyKey === 'services' ? 'Запазваме…' : 'Запази'}
-                  </button>
-                </div>
-              }
-              mobile={isMobile}
-            />
-
-            <div style={{ display: 'grid', gap: 14 }}>
-              {site.services.map((service, index) => (
-                <div key={`service-${index}`} style={miniCardStyle}>
-                  <div style={gridStyle}>
-                    <Field label="Име">
-                      <input
-                        value={service.name}
-                        onChange={e =>
-                          setSite(prev => ({
-                            ...prev,
-                            services: prev.services.map((item, itemIndex) => (itemIndex === index ? { ...item, name: e.target.value } : item)),
-                          }))
-                        }
-                        style={inputStyle}
-                      />
-                    </Field>
-                    <Field label="Цена">
-                      <input
-                        type="number"
-                        value={service.price}
-                        onChange={e =>
-                          setSite(prev => ({
-                            ...prev,
-                            services: prev.services.map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, price: Number(e.target.value) || 0 } : item
-                            ),
-                          }))
-                        }
-                        style={inputStyle}
-                      />
-                    </Field>
-                    <Field label="Продължителност (мин)">
-                      <input
-                        type="number"
-                        value={service.duration_min}
-                        onChange={e =>
-                          setSite(prev => ({
-                            ...prev,
-                            services: prev.services.map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, duration_min: Number(e.target.value) || 30 } : item
-                            ),
-                          }))
-                        }
-                        style={inputStyle}
-                      />
-                    </Field>
+              <div style={{ marginTop: 20 }}>
+                <Field label="Галерия">
+                  <FileUploadBtn label="Добави снимки" busy={busyKey === 'upload-gallery'}>
+                    <input type="file" accept="image/*" multiple onChange={e => void handleGalleryUpload(e.target.files)} />
+                  </FileUploadBtn>
+                </Field>
+                {site.galleryImages.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(140px, 100%), 1fr))', gap: 10, marginTop: 12 }}>
+                    {site.galleryImages.map((url, i) => (
+                      <div key={`${url}-${i}`} style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, overflow: 'hidden', background: T.surface }}>
+                        <img src={url} alt={`Gallery ${i + 1}`} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+                        <div style={{ padding: '6px 8px', display: 'flex', gap: 6 }}>
+                          <button type="button" style={{ ...btn('sm-ghost'), flex: 1, fontSize: 11, padding: '4px 8px' }} onClick={() => setSite(p => ({ ...p, coverImageUrl: url }))}>Cover</button>
+                          <button type="button" style={{ ...btn('sm-ghost'), color: '#EF4444', padding: '4px 8px' }} onClick={() => setSite(p => ({ ...p, galleryImages: p.galleryImages.filter((_, j) => j !== i), coverImageUrl: p.coverImageUrl === url ? (p.galleryImages.find((_, j) => j !== i) ?? '') : p.coverImageUrl }))}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                )}
+              </div>
+            </Section>
+          )}
 
-                  <button
-                    type="button"
-                    style={{ ...ghostButtonStyle, ...(isMobile ? { width: '100%' } : null) }}
-                    onClick={() =>
-                      setSite(prev => ({
-                        ...prev,
-                        services: prev.services.filter((_, itemIndex) => itemIndex !== index),
-                      }))
-                    }
-                  >
-                    Премахни
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        ) : null}
+          {/* ── Специалист ── */}
+          {activeTab === 'specialist' && (
+            <Section
+              title="Специалист"
+              desc='Захранва секцията „Вашият специалист" в сайта.'
+              action={<button type="button" onClick={saveSpecialist} style={btn('primary')} disabled={busyKey === 'specialist'}>{busyKey === 'specialist' ? 'Запазваме…' : 'Запази профила'}</button>}
+            >
+              <div style={grid2}>
+                <Field label="Име"><input value={site.ownerName} onChange={e => setSite(p => ({ ...p, ownerName: e.target.value }))} style={inp} /></Field>
+                <Field label="Роля"><input value={site.ownerPublicRole} onChange={e => setSite(p => ({ ...p, ownerPublicRole: e.target.value }))} style={inp} /></Field>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <Field label="Снимка на специалиста">
+                  <FileUploadBtn label="Качи снимка" busy={busyKey === 'upload-owner'}>
+                    <input type="file" accept="image/*" onChange={e => void handleOwnerPhotoUpload(e.target.files?.[0] ?? null)} />
+                  </FileUploadBtn>
+                  <input value={site.ownerPublicPhotoUrl} onChange={e => setSite(p => ({ ...p, ownerPublicPhotoUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
+                  {site.ownerPublicPhotoUrl && <PreviewImg src={site.ownerPublicPhotoUrl} alt="Специалист" round />}
+                </Field>
+              </div>
+            </Section>
+          )}
 
-        {activeTab === 'hours' ? (
-          <Card>
-            <SectionHeader
-              title="Работно време"
-              description="Редактирай часовете в същия shape, който публичният сайт вече консумира."
+          {/* ── Услуги ── */}
+          {activeTab === 'services' && (
+            <Section
+              title="Услуги"
+              desc="Добави, редактирай и премахвай услуги."
               action={
-                <button type="button" onClick={saveHours} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'hours'}>
-                  {busyKey === 'hours' ? 'Запазваме…' : 'Запази'}
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" style={btn('ghost')} onClick={() => setSite(p => ({ ...p, services: [...p.services, { name: '', price: 0, duration_min: 30 }] }))}>
+                    <Plus size={14} />Добави
+                  </button>
+                  <button type="button" style={btn('primary')} onClick={saveServices} disabled={busyKey === 'services'}>{busyKey === 'services' ? 'Запазваме…' : 'Запази'}</button>
+                </div>
               }
-              mobile={isMobile}
-            />
+            >
+              {site.services.length === 0 ? (
+                <EmptyState title="Няма услуги" desc='Натисни "Добави" за да добавиш първата услуга.' />
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {site.services.map((svc, i) => (
+                    <div key={`svc-${i}`} style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: 14, background: T.surface }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 10, alignItems: 'end' }}>
+                        <Field label="Услуга">
+                          <input value={svc.name} onChange={e => setSite(p => ({ ...p, services: p.services.map((s, j) => j === i ? { ...s, name: e.target.value } : s) }))} style={inp} placeholder="Напр. Подстригване" />
+                        </Field>
+                        <Field label="Цена (лв)">
+                          <input type="number" value={svc.price} onChange={e => setSite(p => ({ ...p, services: p.services.map((s, j) => j === i ? { ...s, price: Number(e.target.value) || 0 } : s) }))} style={{ ...inp, width: 80 }} />
+                        </Field>
+                        <Field label="Мин">
+                          <input type="number" value={svc.duration_min} onChange={e => setSite(p => ({ ...p, services: p.services.map((s, j) => j === i ? { ...s, duration_min: Number(e.target.value) || 30 } : s) }))} style={{ ...inp, width: 70 }} />
+                        </Field>
+                        <button type="button" style={{ ...btn('ghost'), color: '#EF4444', padding: '8px 10px', alignSelf: 'flex-end' }} onClick={() => setSite(p => ({ ...p, services: p.services.filter((_, j) => j !== i) }))}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
+          )}
 
-            <div style={{ display: 'grid', gap: 14 }}>
-              {DAYS.map(day => {
-                const dayValue = site.workingHours[day.key];
-                return (
-                  <div key={day.key} style={miniCardStyle}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-                      <strong style={{ fontSize: 15 }}>{day.label}</strong>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700 }}>
-                        <input
-                          type="checkbox"
-                          checked={dayValue.closed}
-                          onChange={e =>
-                            setSite(prev => ({
-                              ...prev,
-                              workingHours: {
-                                ...prev.workingHours,
-                                [day.key]: {
-                                  ...prev.workingHours[day.key],
-                                  closed: e.target.checked,
-                                },
-                              },
-                            }))
-                          }
-                        />
-                        Почивен ден
+          {/* ── Работно време ── */}
+          {activeTab === 'hours' && (
+            <Section
+              title="Работно време"
+              desc="Настрой часовете за всеки ден от седмицата."
+              action={<button type="button" onClick={saveHours} style={btn('primary')} disabled={busyKey === 'hours'}>{busyKey === 'hours' ? 'Запазваме…' : 'Запази'}</button>}
+            >
+              <div style={{ display: 'grid', gap: 8 }}>
+                {DAYS.map(day => {
+                  const d = site.workingHours[day.key];
+                  return (
+                    <div key={day.key} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '130px 1fr auto auto', gap: 10, alignItems: 'center', padding: '12px 14px', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, background: T.surface, opacity: d.closed ? 0.55 : 1 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500 }}>{day.label}</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input type="time" value={d.open} disabled={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], open: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
+                        <span style={{ color: T.muted, fontSize: 12 }}>–</span>
+                        <input type="time" value={d.close} disabled={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], close: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.muted, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], closed: e.target.checked } } }))} />
+                        Почивен
                       </label>
                     </div>
-
-                    <div style={gridStyle}>
-                      <Field label="От">
-                        <input
-                          type="time"
-                          value={dayValue.open}
-                          disabled={dayValue.closed}
-                          onChange={e =>
-                            setSite(prev => ({
-                              ...prev,
-                              workingHours: {
-                                ...prev.workingHours,
-                                [day.key]: {
-                                  ...prev.workingHours[day.key],
-                                  open: e.target.value,
-                                },
-                              },
-                            }))
-                          }
-                          style={inputStyle}
-                        />
-                      </Field>
-                      <Field label="До">
-                        <input
-                          type="time"
-                          value={dayValue.close}
-                          disabled={dayValue.closed}
-                          onChange={e =>
-                            setSite(prev => ({
-                              ...prev,
-                              workingHours: {
-                                ...prev.workingHours,
-                                [day.key]: {
-                                  ...prev.workingHours[day.key],
-                                  close: e.target.value,
-                                },
-                              },
-                            }))
-                          }
-                          style={inputStyle}
-                        />
-                      </Field>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        ) : null}
-
-        {activeTab === 'domain' ? (
-          <Card>
-            <SectionHeader
-              title="Домейн"
-              description="Всеки сайт получава автоматично свой адрес под clicka.bg. Тук можеш да свържеш и собствен домейн като override."
-              action={
-                <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(180px, 100%), max-content))' }}>
-                  <button type="button" onClick={connectDomain} style={{ ...primaryButtonStyle, ...(isMobile ? { width: '100%' } : null) }} disabled={busyKey === 'domain'}>
-                    {busyKey === 'domain' ? 'Свързваме…' : 'Свържи домейн'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void refreshDomainStatus(false)}
-                    style={{ ...ghostButtonStyle, ...(isMobile ? { width: '100%' } : null) }}
-                    disabled={!site.customDomain || busyKey === 'domain-refresh'}
-                  >
-                    {busyKey === 'domain-refresh' ? 'Проверявам…' : 'Провери отново'}
-                  </button>
-                </div>
-              }
-              mobile={isMobile}
-            />
-
-            <div style={miniCardStyle}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                Default address
-              </p>
-              <p style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 800 }}>
-                <a href={platformPublicUrl} style={{ color: '#000', textDecoration: 'none' }}>
-                  {platformPublicUrl}
-                </a>
-              </p>
-              <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                Това е автоматичният public URL за сайта, дори когато клиентът още няма собствен домейн.
-              </p>
-            </div>
-
-            <Field label="Custom domain">
-              <input value={domainInput} onChange={e => setDomainInput(e.target.value)} placeholder="example.com" style={inputStyle} />
-            </Field>
-
-            <div style={{ ...miniCardStyle, marginTop: 14 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Статус</p>
-              <p style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 800 }}>{formatDomainStatus(site.domainStatus)}</p>
-              {site.customDomain ? (
-                <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.6 }}>
-                  Активен запис в профила: <strong>{site.customDomain}</strong>
-                </p>
-              ) : null}
-              {domainMeta.configuredBy ? (
-                <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                  Засечена конфигурация: <strong>{domainMeta.configuredBy}</strong>
-                </p>
-              ) : null}
-              {domainMeta.checkedAt ? (
-                <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.6 }}>
-                  Последна проверка: {new Date(domainMeta.checkedAt).toLocaleString()}
-                </p>
-              ) : null}
-            </div>
-
-            {domainMeta.verificationInstructions.length > 0 ? (
-              <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-                {domainMeta.verificationInstructions.map((instruction, index) => (
-                  <div key={`verification-${index}`} style={miniCardStyle}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 800 }}>
-                      {String(instruction.type ?? 'TXT')} {String(instruction.host ?? '')}
-                    </p>
-                    <p style={{ margin: '6px 0 0', fontSize: 15, wordBreak: 'break-all' }}>
-                      {String(instruction.value ?? '')}
-                    </p>
-                    {instruction.reason ? (
-                      <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.6 }}>
-                        {instruction.reason}
-                      </p>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            ) : null}
+            </Section>
+          )}
 
-            {domainMeta.dnsInstructions.length > 0 ? (
-              <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-                {domainMeta.dnsInstructions.map((instruction, index) => (
-                  <div key={`dns-${index}`} style={miniCardStyle}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 800 }}>
-                      {String(instruction.type ?? 'DNS')} {String(instruction.host ?? '@')}
-                    </p>
-                    <p style={{ margin: '6px 0 0', fontSize: 15, wordBreak: 'break-all' }}>
-                      {String(instruction.value ?? '')}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            <DomainPurchaseSection
-              slug={slug}
-              siteName={site.name}
-              siteEmail={site.email}
-              sitePhone={site.phone}
-              siteAddress={site.address}
-              siteCity={site.city}
-            />
-          </Card>
-        ) : null}
-
-        {activeTab === 'notifications' ? (
-          <Card>
-            <SectionHeader
-              title="Известия"
-              description="Свържи Telegram, за да получаваш нотификация при всяка нова резервация."
-              mobile={isMobile}
-            />
-
-            <div style={miniCardStyle}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                Telegram Onboarding
-              </p>
-              {site.telegramChatId ? (
-                <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.6 }}>
-                  ✅ Telegram е свързан. Ще получаваш известия при нова резервация.
-                </p>
-              ) : (
-                <>
-                  <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.6 }}>
-                    Отвори <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: '#000', fontWeight: 700 }}>@clicka_booking_bot</a> в Telegram и изпрати:
-                  </p>
-                  {site.onboardingCode ? (
-                    <pre
-                      style={{
-                        margin: '12px 0 0',
-                        padding: '12px 16px',
-                        borderRadius: 16,
-                        border: '1px solid rgba(0,0,0,0.12)',
-                        background: 'rgba(0,0,0,0.03)',
-                        fontSize: 18,
-                        fontWeight: 900,
-                        letterSpacing: '0.06em',
-                        overflowX: 'auto',
-                      }}
-                    >
-                      /start {site.onboardingCode}
-                    </pre>
-                  ) : (
-                    <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                      Кодът се генерира при активиране на акаунта. Ако не виждаш код, изпълни миграцията в Neon.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div style={{ ...miniCardStyle, marginTop: 14 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                Google Reviews
-              </p>
-              <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                {site.googlePlaceId
-                  ? `✅ Google Place ID е зададен. Клиентите ще получат покана за отзив след завършена услуга.`
-                  : 'Добави Google Place ID в раздел Сайт, за да активираш автоматичните покани за отзиви.'}
-              </p>
-            </div>
-          </Card>
-        ) : null}
-
-        {activeTab === 'bookings' ? (
-          <Card>
-            <SectionHeader
+          {/* ── Резервации ── */}
+          {activeTab === 'bookings' && (
+            <Section
               title="Резервации"
-              description="Управлявай статуса на входящите заявки."
+              desc={`Общо ${bookings.length} резервации`}
               action={
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inputStyle, ...(isMobile ? { width: '100%' } : null) }}>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
                   <option value="all">Всички</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="pending">Чакащи</option>
+                  <option value="confirmed">Потвърдени</option>
+                  <option value="completed">Завършени</option>
+                  <option value="cancelled">Отказани</option>
                 </select>
               }
-              mobile={isMobile}
-            />
+            >
+              {filteredBookings.length === 0 ? (
+                <EmptyState title="Няма резервации" desc="Когато клиент резервира през сайта, ще я видиш тук." />
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {filteredBookings.map(b => {
+                    const cfg = STATUS_CFG[b.status];
+                    return (
+                      <div key={b.id} style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: '14px 16px', background: T.surface }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <span style={{ fontSize: 15, fontWeight: 600 }}>{b.client_name}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.text, fontSize: 11, fontWeight: 600 }}>
+                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                                {cfg.label}
+                              </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+                              {b.service_name}
+                              {typeof b.service_price === 'number' ? ` · ${b.service_price} лв` : ''}
+                              {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
+                            </p>
+                            <p style={{ margin: '2px 0 0', fontSize: 13, color: T.muted }}>
+                              {b.date} · {b.time} · {b.client_phone}
+                              {b.client_email ? ` · ${b.client_email}` : ''}
+                            </p>
+                            {b.notes && <p style={{ margin: '4px 0 0', fontSize: 12, color: T.subtle }}>Бележка: {b.notes}</p>}
+                          </div>
+                          <select
+                            value={b.status}
+                            onChange={e => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
+                            style={{ ...inp, width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+                          >
+                            <option value="pending">Чакаща</option>
+                            <option value="confirmed">Потвърдена</option>
+                            <option value="completed">Завършена</option>
+                            <option value="cancelled">Отказана</option>
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Section>
+          )}
 
-            {filteredBookings.length === 0 ? (
-              <div style={miniCardStyle}>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Няма резервации</p>
-                <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                  Когато клиент резервира през сайта, ще я видиш тук.
-                </p>
+          {/* ── Домейн ── */}
+          {activeTab === 'domain' && (
+            <Section
+              title="Домейн"
+              desc="Свържи собствен домейн към сайта."
+            >
+              {/* Platform URL */}
+              <div style={{ padding: '12px 14px', background: '#F4F4F5', borderRadius: T.radiusSm, marginBottom: 16 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Автоматичен адрес</p>
+                <a href={getPlatformPublicUrl(slug)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: T.text, textDecoration: 'none', fontWeight: 500 }}>{getPlatformPublicUrl(slug)} <ExternalLink size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /></a>
               </div>
-            ) : (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {filteredBookings.map(booking => (
-                  <div key={booking.id} style={miniCardStyle}>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gap: 14,
-                        gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
-                        alignItems: 'start',
-                      }}
-                    >
-                      <div>
-                        <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{booking.client_name}</p>
-                        <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                          {booking.service_name}
-                          {typeof booking.service_price === 'number' ? ` · ${booking.service_price} EUR` : ''}
-                          {typeof booking.service_duration === 'number' ? ` · ${booking.service_duration} мин` : ''}
-                        </p>
-                        <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                          {booking.date} · {booking.time} · {booking.client_phone}
-                          {booking.client_email ? ` · ${booking.client_email}` : ''}
-                        </p>
-                        {booking.notes ? (
-                          <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.6 }}>
-                            Бележка: {booking.notes}
-                          </p>
-                        ) : null}
-                      </div>
 
-                      <div
-                        style={{
-                          display: 'grid',
-                          gap: 10,
-                          gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <StatusPill status={booking.status} />
-                        <select
-                          value={booking.status}
-                          onChange={e => void updateBookingStatus(booking.id, e.target.value as BookingStatus)}
-                          style={inputStyle}
-                        >
-                          <option value="pending">pending</option>
-                          <option value="confirmed">confirmed</option>
-                          <option value="completed">completed</option>
-                          <option value="cancelled">cancelled</option>
-                        </select>
-                      </div>
-                    </div>
+              {/* Connect form */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 16 }}>
+                <Field label="Собствен домейн" style={{ flex: 1 }}>
+                  <input value={domainInput} onChange={e => setDomainInput(e.target.value)} placeholder="example.com" style={inp} />
+                </Field>
+                <button type="button" onClick={connectDomain} style={btn('primary')} disabled={busyKey === 'domain'}>{busyKey === 'domain' ? 'Свързваме…' : 'Свържи'}</button>
+                {site.customDomain && (
+                  <button type="button" onClick={() => void refreshDomainStatus(false)} style={btn('ghost')} disabled={busyKey === 'domain-refresh'}>
+                    <RefreshCw size={13} style={{ animation: busyKey === 'domain-refresh' ? 'spin 1s linear infinite' : 'none' }} />
+                    {!isMobile && 'Провери'}
+                  </button>
+                )}
+              </div>
+
+              {/* Status */}
+              {site.customDomain && (
+                <div style={{ padding: '12px 14px', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {site.domainStatus === 'active'
+                      ? <CheckCircle2 size={15} style={{ color: '#10B981', flexShrink: 0 }} />
+                      : site.domainStatus === 'error'
+                        ? <XCircle size={15} style={{ color: '#EF4444', flexShrink: 0 }} />
+                        : <RefreshCw size={15} style={{ color: '#F59E0B', flexShrink: 0 }} />
+                    }
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{site.customDomain}</span>
+                    <span style={{ fontSize: 12, color: T.muted }}>— {formatDomainStatus(site.domainStatus)}</span>
                   </div>
-                ))}
+                  {domainMeta.checkedAt && (
+                    <p style={{ margin: '6px 0 0', fontSize: 11, color: T.subtle }}>Последна проверка: {new Date(domainMeta.checkedAt).toLocaleString('bg-BG')}</p>
+                  )}
+                </div>
+              )}
+
+              {/* DNS instructions */}
+              {domainMeta.dnsInstructions.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>DNS Записи</p>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {domainMeta.dnsInstructions.map((d, i) => (
+                      <div key={`dns-${i}`} style={{ padding: '10px 12px', background: '#F4F4F5', borderRadius: T.radiusSm, fontFamily: 'monospace', fontSize: 12 }}>
+                        <span style={{ color: T.muted }}>{d.type} {d.host}</span>
+                        <span style={{ color: T.text, marginLeft: 8, wordBreak: 'break-all' }}>{d.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {domainMeta.verificationInstructions.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Верификация</p>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {domainMeta.verificationInstructions.map((d, i) => (
+                      <div key={`ver-${i}`} style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: T.radiusSm, fontSize: 12 }}>
+                        <span style={{ fontWeight: 600 }}>{d.type} {d.host}</span>
+                        <div style={{ wordBreak: 'break-all', marginTop: 2 }}>{d.value}</div>
+                        {d.reason && <div style={{ marginTop: 4, color: T.muted }}>{d.reason}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <DomainPurchaseSection slug={slug} siteName={site.name} siteEmail={site.email} sitePhone={site.phone} siteAddress={site.address} siteCity={site.city} />
+            </Section>
+          )}
+
+          {/* ── Известия ── */}
+          {activeTab === 'notifications' && (
+            <Section title="Известия" desc="Настрой нотификациите за резервации.">
+              <div style={{ display: 'grid', gap: 10 }}>
+                {/* Telegram */}
+                <InfoCard
+                  title="Telegram"
+                  status={site.telegramChatId ? 'connected' : 'pending'}
+                >
+                  {site.telegramChatId ? (
+                    <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>Telegram е свързан. Ще получаваш известия при нова резервация.</p>
+                  ) : (
+                    <>
+                      <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+                        Отвори{' '}
+                        <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: T.text, fontWeight: 600 }}>@clicka_booking_bot</a>
+                        {' '}в Telegram и изпрати:
+                      </p>
+                      {site.onboardingCode ? (
+                        <code style={{ display: 'block', marginTop: 10, padding: '10px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
+                          /start {site.onboardingCode}
+                        </code>
+                      ) : (
+                        <p style={{ margin: '8px 0 0', fontSize: 12, color: T.subtle }}>Кодът се генерира при активиране на акаунта.</p>
+                      )}
+                    </>
+                  )}
+                </InfoCard>
+
+                {/* Google Reviews */}
+                <InfoCard
+                  title="Google Reviews"
+                  status={site.googlePlaceId ? 'connected' : 'pending'}
+                >
+                  <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+                    {site.googlePlaceId
+                      ? 'Google Place ID е зададен. Клиентите ще получат покана за отзив след завършена услуга.'
+                      : 'Добави Google Place ID в раздел Сайт, за да активираш автоматичните покани за отзиви.'}
+                  </p>
+                </InfoCard>
               </div>
-            )}
-          </Card>
-        ) : null}
+            </Section>
+          )}
+        </main>
       </div>
 
-      {isMobile ? (
-        <nav
-          aria-label="Админ меню"
-          style={{
-            position: 'fixed',
-            left: 8,
-            right: 8,
-            bottom: 8,
-            zIndex: 40,
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          }}
-        >
-          <div
-            style={{
-              margin: '0 auto',
-              width: '100%',
-              maxWidth: 680,
-              borderRadius: 32,
-              border: '1px solid rgba(0,0,0,0.10)',
-              background: 'rgba(255,255,255,0.92)',
-              padding: 6,
-              boxShadow: '0 16px 36px rgba(0,0,0,0.25)',
-              backdropFilter: 'blur(12px)',
-            }}
-          >
-            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              {MOBILE_TABS.map(tab => {
-                const Icon = tab.icon;
-                const active = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      setError('');
-                      setNotice('');
-                    }}
-                    style={{
-                      border: active ? '1px solid rgba(0,0,0,0.2)' : '1px solid transparent',
-                      borderRadius: 24,
-                      background: active ? 'rgba(0,0,0,0.06)' : 'transparent',
-                      color: '#000',
-                      minWidth: 68,
-                      flex: '1 0 auto',
-                      display: 'grid',
-                      justifyItems: 'center',
-                      gap: 2,
-                      padding: '6px 8px',
-                    }}
-                  >
-                    <Icon className={active ? 'h-5 w-5' : 'h-5 w-5 opacity-80'} />
-                    <span style={{ fontSize: 10, fontWeight: active ? 700 : 600, whiteSpace: 'nowrap' }}>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+      {/* ── Mobile bottom nav ─────────────────────────── */}
+      {isMobile && (
+        <nav aria-label="Навигация" style={{ position: 'fixed', left: 10, right: 10, bottom: 10, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div style={{ background: 'rgba(255,255,255,0.96)', border: `1px solid ${T.border}`, borderRadius: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', backdropFilter: 'blur(16px)', padding: '4px 6px', display: 'flex', gap: 2, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {TABS.map(({ id, label, Icon }) => {
+              const active = activeTab === id;
+              return (
+                <button key={id} type="button" onClick={() => switchTab(id)}
+                  style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 10px', borderRadius: 18, border: 'none', background: active ? '#F4F4F5' : 'transparent', color: active ? T.text : T.muted, cursor: 'pointer', minWidth: 52 }}>
+                  <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
+                  <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{label.split(' ')[0]}</span>
+                </button>
+              );
+            })}
           </div>
         </nav>
-      ) : null}
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-function Card({ children }: { children: ReactNode }) {
-  return (
-    <section
-      style={{
-        border: '1px solid rgba(0,0,0,0.10)',
-        borderRadius: 30,
-        padding: 'clamp(16px, 4vw, 22px)',
-        background: '#fff',
-        boxShadow: '0 22px 46px rgba(0,0,0,0.12)',
-      }}
-    >
-      {children}
-    </section>
-  );
-}
+/* ─── Sub-components ──────────────────────────────────── */
 
-function SectionHeader({
-  title,
-  description,
-  action,
-  mobile = false,
-}: {
-  title: string;
-  description: string;
-  action?: ReactNode;
-  mobile?: boolean;
-}) {
+function Section({ title, desc, action, children }: { title: string; desc: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: mobile ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
-        gap: 16,
-        marginBottom: 20,
-        alignItems: 'flex-start',
-      }}
-    >
-      <div>
-        <h2 style={{ margin: 0, fontSize: 'clamp(22px, 6vw, 24px)', letterSpacing: '-0.04em' }}>{title}</h2>
-        <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.6 }}>{description}</p>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: T.text }}>{title}</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>{desc}</p>
+        </div>
+        {action && <div style={{ flexShrink: 0 }}>{action}</div>}
       </div>
-      {action ? <div style={{ display: 'grid', gap: 10, justifyItems: mobile ? 'stretch' : 'start', width: '100%' }}>{action}</div> : null}
+      {children}
     </div>
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function Field({ label, children, style }: { label: string; children: ReactNode; style?: CSSProperties }) {
   return (
-    <label style={{ display: 'grid', gap: 8 }}>
-      <span style={{ fontSize: 13, fontWeight: 700 }}>{label}</span>
+    <label style={{ display: 'grid', gap: 5, ...style }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: T.muted, letterSpacing: '0.02em' }}>{label}</span>
       {children}
     </label>
   );
 }
 
-function PreviewImage({ src, alt, round = false }: { src: string; alt: string; round?: boolean }) {
+function EmptyState({ title, desc }: { title: string; desc: string }) {
   return (
-    <img
-      src={src}
-      alt={alt}
-      style={{
-        display: 'block',
-        width: round ? 112 : '100%',
-        height: round ? 112 : 'min(52vw, 200px)',
-        objectFit: 'cover',
-        borderRadius: round ? '999px' : 20,
-        border: '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 14px 28px rgba(0,0,0,0.14)',
-        marginTop: 10,
-      }}
-    />
-  );
-}
-
-function UploadControl({
-  label,
-  busy,
-  children,
-}: {
-  label: string;
-  busy: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <label
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 10,
-          border: '1px solid rgba(0,0,0,0.12)',
-          borderRadius: 999,
-          padding: '10px 14px',
-          boxShadow: '0 10px 20px rgba(0,0,0,0.08)',
-          cursor: busy ? 'wait' : 'pointer',
-          fontSize: 15,
-          fontWeight: 800,
-          maxWidth: '100%',
-        }}
-      >
-        <span>{busy ? 'Качваме…' : label}</span>
-        <span style={{ display: 'none' }}>{children}</span>
-      </label>
+    <div style={{ padding: '32px 20px', textAlign: 'center', border: `1px dashed ${T.border}`, borderRadius: T.radiusSm }}>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: T.muted }}>{title}</p>
+      <p style={{ margin: '6px 0 0', fontSize: 13, color: T.subtle }}>{desc}</p>
     </div>
   );
 }
 
-function StatusPill({ status }: { status: BookingStatus }) {
-  const label = status.toUpperCase();
+function PreviewImg({ src, alt, round = false }: { src: string; alt: string; round?: boolean }) {
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 0,
-        borderRadius: 999,
-        border: '1px solid rgba(0,0,0,0.12)',
-        padding: '10px 12px',
-        fontSize: 12,
-        fontWeight: 900,
-        letterSpacing: '0.10em',
-        boxShadow: '0 10px 20px rgba(0,0,0,0.08)',
-      }}
-    >
-      {label}
-    </span>
+    <img src={src} alt={alt} style={{ display: 'block', marginTop: 8, width: round ? 80 : '100%', height: round ? 80 : 140, objectFit: 'cover', borderRadius: round ? '50%' : T.radiusSm, border: `1px solid ${T.border}` }} />
   );
 }
 
-function MessageBox({
-  tone,
-  children,
-}: {
-  tone: 'success' | 'error';
-  children: ReactNode;
-}) {
+function FileUploadBtn({ label, busy, children }: { label: string; busy: boolean; children: ReactNode }) {
   return (
-    <div
-      style={{
-        marginBottom: 16,
-        borderRadius: 20,
-        border: `1px solid ${tone === 'error' ? '#ef4444' : 'rgba(0,0,0,0.12)'}`,
-        background: '#fff',
-        padding: '14px 16px',
-        boxShadow: '0 14px 28px rgba(0,0,0,0.10)',
-      }}
-    >
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, fontSize: 13, fontWeight: 500, color: T.text, cursor: busy ? 'wait' : 'pointer', background: T.surface }}>
+      <Upload size={13} />
+      {busy ? 'Качваме…' : label}
+      <span style={{ display: 'none' }}>{children}</span>
+    </label>
+  );
+}
+
+function InfoCard({ title, status, children }: { title: string; status: 'connected' | 'pending'; children: ReactNode }) {
+  return (
+    <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: '14px 16px', background: T.surface }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        {status === 'connected'
+          ? <CheckCircle2 size={14} style={{ color: '#10B981', flexShrink: 0 }} />
+          : <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#E5E7EB', flexShrink: 0, display: 'inline-block' }} />}
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{title}</span>
+        <span style={{ fontSize: 11, color: status === 'connected' ? '#10B981' : T.subtle, marginLeft: 'auto' }}>
+          {status === 'connected' ? 'Свързан' : 'Не е свързан'}
+        </span>
+      </div>
       {children}
     </div>
   );
 }
 
-const gridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
-  gap: 14,
-};
+function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDismiss: () => void; children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: T.radiusSm, border: `1px solid ${tone === 'error' ? '#FECACA' : '#A7F3D0'}`, background: tone === 'error' ? '#FEF2F2' : '#ECFDF5', marginBottom: 16 }}>
+      {tone === 'error'
+        ? <XCircle size={14} style={{ color: '#EF4444', flexShrink: 0 }} />
+        : <CheckCircle2 size={14} style={{ color: '#10B981', flexShrink: 0 }} />}
+      <span style={{ flex: 1, fontSize: 13, color: tone === 'error' ? '#991B1B' : '#065F46', lineHeight: 1.5 }}>{children}</span>
+      <button type="button" onClick={onDismiss} style={{ border: 'none', background: 'none', cursor: 'pointer', color: T.muted, padding: 2, fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+    </div>
+  );
+}
 
-const inputStyle: CSSProperties = {
-  width: '100%',
-  padding: '13px 14px',
-  borderRadius: 16,
-  border: '1px solid rgba(0,0,0,0.14)',
-  boxShadow: '0 10px 22px rgba(0,0,0,0.08)',
-  background: '#fff',
-  color: '#000',
-  fontSize: 16,
-};
-
-const primaryButtonStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: '1px solid #000',
-  borderRadius: 999,
-  background: '#000',
-  color: '#fff',
-  padding: '12px 16px',
-  fontSize: 14,
-  fontWeight: 800,
-  boxShadow: '0 14px 28px rgba(0,0,0,0.16)',
-  cursor: 'pointer',
-};
-
-const ghostButtonStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: '1px solid rgba(0,0,0,0.12)',
-  borderRadius: 999,
-  background: '#fff',
-  color: '#000',
-  padding: '11px 15px',
-  fontSize: 14,
-  fontWeight: 800,
-  boxShadow: '0 10px 20px rgba(0,0,0,0.08)',
-  cursor: 'pointer',
-};
-
-const linkButtonStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: '1px solid #000',
-  borderRadius: 999,
-  background: '#000',
-  color: '#fff',
-  padding: '12px 16px',
-  fontSize: 14,
-  fontWeight: 800,
-  textDecoration: 'none',
-  boxShadow: '0 14px 28px rgba(0,0,0,0.16)',
-};
-
-const linkGhostStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: '1px solid rgba(0,0,0,0.12)',
-  borderRadius: 999,
-  background: '#fff',
-  color: '#000',
-  padding: '11px 15px',
-  fontSize: 14,
-  fontWeight: 800,
-  textDecoration: 'none',
-  boxShadow: '0 10px 20px rgba(0,0,0,0.08)',
-};
-
-const miniCardStyle: CSSProperties = {
-  border: '1px solid rgba(0,0,0,0.10)',
-  borderRadius: 24,
-  padding: 16,
-  background: '#fff',
-  boxShadow: '0 16px 30px rgba(0,0,0,0.12)',
-};
