@@ -115,6 +115,19 @@ function wireMediaUri(raw: string | null | undefined): string {
   return s;
 }
 
+function optimizedSrc(src: string, w: number): string {
+  if (!src || src.startsWith('data:') || src.startsWith('http')) return src;
+  const sep = src.includes('?') ? '&' : '?';
+  return `${src}${sep}w=${w}`;
+}
+
+const HERO_SRCSET_WIDTHS = [480, 640, 768, 1024, 1280] as const;
+
+function heroSrcSet(src: string): string {
+  if (!src || src.startsWith('data:') || src.startsWith('http')) return '';
+  return HERO_SRCSET_WIDTHS.map(w => `${optimizedSrc(src, w)} ${w}w`).join(', ');
+}
+
 function salonPublicInstagramUrl(handle: string | null | undefined): string | null {
   const h = (handle ?? '').trim().replace(/^@/, '');
   if (!h) return null;
@@ -180,9 +193,16 @@ function SalonGalleryMosaic({
         className={`group relative block w-full overflow-hidden rounded-2xl text-left focus:outline-none focus-visible:ring-2 ${ringClass}`}
       >
         <img
-          src={a}
+          src={optimizedSrc(a, 768)}
+          srcSet={heroSrcSet(a)}
+          sizes="(max-width: 768px) 100vw, 768px"
           alt={salonName}
           className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95 md:aspect-[2/1]"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          width={768}
+          height={614}
         />
       </button>
     );
@@ -195,7 +215,7 @@ function SalonGalleryMosaic({
           onClick={() => onOpenGallery(0)}
           className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
         >
-          <img src={a} alt={salonName} className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
+          <img src={optimizedSrc(a, 768)} srcSet={heroSrcSet(a)} sizes="100vw" alt={salonName} className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" fetchPriority="high" loading="eager" decoding="async" width={768} height={614} />
           <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
             Виж снимки
           </span>
@@ -206,14 +226,14 @@ function SalonGalleryMosaic({
             onClick={() => onOpenGallery(0)}
             className={`relative min-h-[200px] overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
           >
-            <img src={a} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
+            <img src={optimizedSrc(a, 768)} srcSet={heroSrcSet(a)} sizes="60vw" alt={salonName} className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" loading="eager" decoding="async" />
           </button>
           <button
             type="button"
             onClick={() => onOpenGallery(1)}
             className={`relative min-h-[200px] overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
           >
-            <img src={b} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
+            <img src={optimizedSrc(b, 480)} alt={salonName} className="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" />
           </button>
         </div>
       </div>
@@ -226,7 +246,7 @@ function SalonGalleryMosaic({
         onClick={() => onOpenGallery(0)}
         className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
       >
-        <img src={a} alt={salonName} className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
+        <img src={optimizedSrc(a, 768)} srcSet={heroSrcSet(a)} sizes="100vw" alt={salonName} className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" fetchPriority="high" loading="eager" decoding="async" width={768} height={614} />
         <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
           Преглед на всички изображения
         </span>
@@ -237,21 +257,21 @@ function SalonGalleryMosaic({
           onClick={() => onOpenGallery(0)}
           className={`relative min-h-[200px] overflow-hidden md:row-span-2 md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
         >
-          <img src={a} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={optimizedSrc(a, 768)} srcSet={heroSrcSet(a)} sizes="65vw" alt={salonName} className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" loading="eager" decoding="async" />
         </button>
         <button
           type="button"
           onClick={() => onOpenGallery(1)}
           className={`relative min-h-[120px] overflow-hidden md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
         >
-          <img src={b} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={optimizedSrc(b, 480)} alt={salonName} className="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" />
         </button>
         <button
           type="button"
           onClick={() => onOpenGallery(2)}
           className={`relative min-h-[120px] overflow-hidden md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
         >
-          <img src={c!} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={optimizedSrc(c!, 480)} alt={salonName} className="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" />
           <span className="absolute bottom-2 right-2 max-w-[min(100%,220px)] rounded-full bg-white/95 px-3 py-2 text-center text-[11px] font-semibold leading-tight shadow-md sm:text-xs">
             Преглед на всички изображения
           </span>
@@ -999,6 +1019,8 @@ export default function SalonPublicParity({
                           src={wireMediaUri(offerImagesList(o.images)[0])}
                           alt={name}
                           className="absolute inset-0 h-full w-full object-cover opacity-90"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="absolute inset-0 bg-black" />
@@ -1168,7 +1190,7 @@ export default function SalonPublicParity({
                       onClick={() => setGalleryModal({ uris: portfolioDisplay, index: idx })}
                       className="relative h-44 w-[45%] shrink-0 overflow-hidden rounded-xl sm:h-52 sm:w-[200px]"
                     >
-                      <img src={uri} alt={name} className="h-full w-full object-cover" />
+                      <img src={uri} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     </button>
                   ))}
                 </div>
@@ -1191,7 +1213,7 @@ export default function SalonPublicParity({
                     >
                       <div className="h-16 w-16 overflow-hidden rounded-full">
                         {member.photoUrl ? (
-                          <img src={member.photoUrl} alt={name} className="h-full w-full object-cover" />
+                          <img src={member.photoUrl} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <User className="h-7 w-7 text-black/35" aria-hidden />
@@ -1247,7 +1269,7 @@ export default function SalonPublicParity({
                             <div className="flex items-center gap-2">
                               <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
                                 {review.client_avatar ? (
-                                  <img src={wireMediaUri(review.client_avatar)} alt={name} className="h-full w-full object-cover" />
+                                  <img src={wireMediaUri(review.client_avatar)} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                                 ) : (
                                   <div
                                     className="flex h-full w-full items-center justify-center text-[11px] font-medium text-white"

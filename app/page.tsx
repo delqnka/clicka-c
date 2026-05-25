@@ -80,8 +80,34 @@ export default async function HomePage() {
 
   if (pageData) {
     const jsonLd = buildSalonJsonLd(pageData.salon as Record<string, unknown>, pageData.salonSlug);
+    const salonRecord = pageData.salon as Record<string, unknown>;
+    const coverRaw = String(salonRecord.cover_image_url ?? '').trim();
+    const portfolioRaw = Array.isArray(salonRecord.portfolio_images)
+      ? salonRecord.portfolio_images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
+      : [];
+    const galleryRaw = Array.isArray(salonRecord.gallery_images)
+      ? salonRecord.gallery_images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
+      : [];
+    const lcpImage = [coverRaw, ...portfolioRaw, ...galleryRaw].find(u => u && !u.startsWith('data:'));
+    const lcpHref = lcpImage
+      ? (lcpImage.includes('?') ? `${lcpImage}&w=768` : `${lcpImage}?w=768`)
+      : null;
+
     return (
       <>
+        {lcpHref && (
+          <link
+            rel="preload"
+            as="image"
+            href={lcpHref}
+            imageSrcSet={[480, 640, 768, 1024, 1280].map(w => {
+              const src = lcpImage!.includes('?') ? `${lcpImage}&w=${w}` : `${lcpImage}?w=${w}`;
+              return `${src} ${w}w`;
+            }).join(', ')}
+            imageSizes="(max-width: 768px) 100vw, 768px"
+            fetchPriority="high"
+          />
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
