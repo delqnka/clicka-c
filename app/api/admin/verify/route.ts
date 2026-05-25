@@ -14,7 +14,11 @@ export async function GET(request: NextRequest) {
   await ensureAdminAuthSchema();
 
   const token = request.nextUrl.searchParams.get('token') ?? '';
-  const slug = request.nextUrl.searchParams.get('slug') ?? '';
+  // Accept slug from query param or from middleware header (subdomain access)
+  const slug =
+    request.nextUrl.searchParams.get('slug') ||
+    request.headers.get('x-salon-slug') ||
+    '';
 
   if (!token || !slug) {
     return NextResponse.redirect(new URL('/admin/sign-in', request.url));

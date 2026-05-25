@@ -5,6 +5,7 @@ import {
   ROOT_DOMAIN,
   extractHostname,
   getPlatformSubdomain,
+  getPlatformSiteOrigin,
   getHostAwareSalonPath,
   isPlatformApexHost,
 } from '@/lib/domain-routing';
@@ -456,6 +457,33 @@ export function setAdminSessionCookie(response: NextResponse, request: NextReque
     path: '/',
     expires: expiresAt,
   });
+}
+
+export async function generateAdminMagicLink({
+  salonId,
+  slug,
+  email,
+  expiresMs = 72 * 60 * 60 * 1000,
+}: {
+  salonId: string;
+  slug: string;
+  email: string;
+  expiresMs?: number;
+}): Promise<string> {
+  await ensureAdminAuthSchema();
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = sha256(token);
+  const expiresAt = new Date(Date.now() + expiresMs);
+
+  await sql`DELETE FROM admin_login_tokens WHERE salon_id = ${salonId}`;
+  await sql`
+    INSERT INTO admin_login_tokens (salon_id, token_hash, email_norm, expires_at, created_at)
+    VALUES (${salonId}, ${tokenHash}, ${normalizeEmail(email)}, ${expiresAt.toISOString()}, now())
+  `;
+
+  // Use the salon's own subdomain as base so the session cookie lands on the right domain.
+  const base = getPlatformSiteOrigin(slug);
+  return `${base}/api/admin/verify?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(slug)}`;
 }
 
 export function generateOtpCode() {

@@ -10,9 +10,9 @@ import {
 } from '@/lib/domain-purchase';
 import {
   getPlatformAdminUrl,
-  getPlatformClaimUrl,
   getPlatformPublicUrl,
 } from '@/lib/domain-routing';
+import { generateAdminMagicLink } from '@/lib/admin-auth';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -149,41 +149,41 @@ export async function POST(request: NextRequest) {
 
     if (salons.length > 0 && salons[0].email) {
       const { email, name } = salons[0];
+      const salonIdRows = await sql`SELECT CAST(id AS text) AS salon_id FROM salons WHERE slug = ${salonSlug} LIMIT 1`;
+      const salonId = String((salonIdRows[0] as Record<string, unknown>)?.salon_id ?? '');
+
       const publicUrl = getPlatformPublicUrl(String(salonSlug));
-      const claimUrl = getPlatformClaimUrl(String(salonSlug));
       const adminUrl = getPlatformAdminUrl(String(salonSlug));
 
+      const magicLink = salonId
+        ? await generateAdminMagicLink({ salonId, slug: String(salonSlug), email, expiresMs: 7 * 24 * 60 * 60 * 1000 }).catch(() => adminUrl)
+        : adminUrl;
+
       await resend.emails.send({
-        from: 'Clicka.bg <noreply@clicka.bg>',
+        from: `${name} <noreply@clicka.bg>`,
         to: email,
-        subject: `Добре дошли в Clicka.bg – ${name}`,
+        subject: `Твоят сайт е готов! 🎉`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Вашият сайт е готов!</h2>
-            <p>Здравейте,</p>
-            <p>Плащането е прието успешно. Сайтът на <strong>${name}</strong> вече е активен.</p>
-            <p>
-              Можете да го намерите на адрес:<br>
-              <a href="${publicUrl}" style="color: #0070f3;">
-                ${publicUrl}
+            <h2 style="color: #000; margin: 0 0 16px;">Твоят сайт е готов!</h2>
+            <p style="line-height: 1.7;">Здравей!</p>
+            <p style="line-height: 1.7;">
+              Сайтът на <strong>${name}</strong> вече е активен на адрес:<br>
+              <a href="${publicUrl}" style="color: #000; font-weight: 700;">${publicUrl}</a>
+            </p>
+            <p style="margin: 24px 0 8px; line-height: 1.7;">
+              Натисни бутона, за да влезеш в контролния си панел и да персонализираш сайта:
+            </p>
+            <p style="margin: 0 0 24px;">
+              <a href="${magicLink}"
+                 style="display:inline-block;background:#000;color:#fff;text-decoration:none;
+                        padding:14px 24px;border-radius:999px;font-weight:700;font-size:15px;">
+                Отвори панела →
               </a>
             </p>
-            <p style="margin-top: 18px;">
-              Първа стъпка: claim-нете сайта си:<br>
-              <a href="${claimUrl}" style="color: #0070f3; font-weight: 600;">
-                ${claimUrl}
-              </a>
-            </p>
-            <p style="margin-top: 12px;">След това ще можете да редактирате съдържанието си от dashboard-а:</p>
-            <p>
-              <a href="${adminUrl}" style="color: #0070f3; font-weight: 600;">
-                ${adminUrl}
-              </a>
-            </p>
-            ${planType === 'custom_domain' ? '<p style="margin-top: 12px;">Собственият домейн може да се свърже след claim от таба "Домейн".</p>' : ''}
-            <p>При въпроси не се колебайте да се свържете с нас.</p>
-            <p style="margin-top: 24px; color: #666; font-size: 14px;">
-              Екипът на <a href="https://clicka.bg">Clicka.bg</a>
+            ${planType === 'custom_domain' ? '<p style="line-height: 1.7;">Собственият домейн може да се свърже от таба „Домейн" в панела.</p>' : ''}
+            <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">
+              Линкът е валиден 7 дни. Ако не сте поръчали сайт, игнорирайте имейла.
             </p>
           </div>
         `,
