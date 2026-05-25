@@ -26,7 +26,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
-import { getHostAwareSalonPath, getPlatformPublicUrl } from '@/lib/domain-routing';
+import { getHostAwareSalonPath, getPlatformPublicUrl, getPrimaryPublicUrl } from '@/lib/domain-routing';
 
 /* ─── Constants ───────────────────────────────────────── */
 const DAYS = [
@@ -144,6 +144,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
   const sitePath      = getHostAwareSalonPath({ host: currentHost, slug });
+  const sitePublicUrl = getPrimaryPublicUrl({ slug, customDomain: site.customDomain, domainStatus: site.domainStatus });
   const claimPath     = getHostAwareSalonPath({ host: currentHost, slug, path: 'claim' });
   const signInPath    = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
   const domainMeta    = getDomainMeta(site);
@@ -422,15 +423,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 {busyKey === 'publish' ? 'Публикуване…' : '🚀 Публикувай сайта'}
               </button>
             )}
-            <Link
-              href={sitePath}
+            <a
+              href={sitePublicUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{ ...btn('sm-ghost'), textDecoration: 'none' }}
             >
               <ExternalLink size={13} />
               {!isMobile && 'Виж сайта'}
-            </Link>
+            </a>
             {showInstallButton && (
               <button type="button" onClick={() => void installAsApp()} style={btn('sm-ghost')}>
                 Инсталирай
