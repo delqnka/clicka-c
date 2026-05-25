@@ -192,6 +192,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     setError(err instanceof Error ? err.message : 'Грешка');
   }
 
+  async function publishSite() {
+    setError(''); setNotice(''); setBusyKey('publish');
+    try {
+      const res = await fetch(`/api/admin/publish?slug=${encodeURIComponent(slug)}`, { method: 'POST' });
+      await guardResponse(res);
+      setSite(prev => ({ ...prev, siteStatus: 'active' }));
+      setNotice('Сайтът е публикуван успешно!');
+    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
+  }
+
   async function saveSiteSettings() {
     setError(''); setNotice(''); setBusyKey('site');
     try {
@@ -402,6 +412,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {site.siteStatus !== 'active' && (
+              <button
+                type="button"
+                onClick={() => void publishSite()}
+                disabled={busyKey === 'publish'}
+                style={{ ...btn('primary'), fontSize: 13, padding: '6px 14px' }}
+              >
+                {busyKey === 'publish' ? 'Публикуване…' : '🚀 Публикувай сайта'}
+              </button>
+            )}
             <Link
               href={sitePath}
               target="_blank"

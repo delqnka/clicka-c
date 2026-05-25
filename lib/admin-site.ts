@@ -57,6 +57,7 @@ export type AdminSitePayload = {
   googlePlaceId: string;
   telegramChatId: string;
   onboardingCode: string;
+  siteStatus: string;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -118,7 +119,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       owner_name, owner_public_role, owner_public_photo_url,
       services, working_hours,
       custom_domain, domain_status, domain_config,
-      google_place_id, telegram_chat_id, onboarding_code
+      google_place_id, telegram_chat_id, onboarding_code,
+      site_status
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -154,6 +156,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     googlePlaceId: String(row.google_place_id ?? ''),
     telegramChatId: String(row.telegram_chat_id ?? ''),
     onboardingCode: String(row.onboarding_code ?? ''),
+    siteStatus: String(row.site_status ?? ''),
   };
 }
 
