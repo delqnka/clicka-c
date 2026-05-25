@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { uploadToR2 } from '@/lib/r2';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
+
+const MAX_DIMENSION = 2048;
+const WEBP_QUALITY = 82;
 
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -50,12 +54,18 @@ export async function POST(request: NextRequest) {
   }
 
   const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+  const raw = Buffer.from(bytes);
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const key = `salons/${salonSlug}/${Date.now()}-${safeName}`;
+  const webpBuffer = await sharp(raw)
+    .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
+    .rotate()
+    .webp({ quality: WEBP_QUALITY })
+    .toBuffer();
 
-  const url = await uploadToR2(buffer, key, file.type);
+  const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const key = `salons/${salonSlug}/${Date.now()}-${baseName}.webp`;
+
+  const url = await uploadToR2(webpBuffer, key, 'image/webp');
 
   return NextResponse.json({ url });
 }
