@@ -412,8 +412,9 @@ export default function CreatePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
       if (data.skipCheckout) {
-        const dest = data.instantClaimUrl || data.claimUrl || data.publicUrl ||
-          (data.slug ? `${window.location.origin}/${data.slug}` : null);
+        const dest = data.slug
+          ? `${window.location.origin}/${data.slug}/claim`
+          : (data.instantClaimUrl || data.claimUrl || data.publicUrl || null);
         if (dest) { window.location.href = dest; return; }
       }
       if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
