@@ -1172,6 +1172,13 @@ function DomainTab({
               Проверяваме автоматично. Страницата ще се обнови при успешно свързване.
             </p>
           )}
+          <div style={{ marginTop: 16, padding: '10px 12px', background: '#F0F4F8', border: `1px solid #BFDBFE`, borderRadius: T.radiusSm }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#1E40AF', lineHeight: 1.6 }}>
+              <strong style={{ color: '#1E3A8A' }}>ℹ "Not secure"?</strong> {' '}
+              Браузъра казва това докато SSL сертификатът се издава (обикновено 5-30 мин след разпространение на DNS).
+              Това е нормално и ще мине автоматично. Не делай нищо допълнително.
+            </p>
+          </div>
         </StepCard>
 
       </div>
