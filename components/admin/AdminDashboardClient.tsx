@@ -1057,7 +1057,13 @@ function DomainTab({
   }
 
   /* ── Pending: show step-by-step DNS guide ── */
-  const instructions = domainMeta.dnsInstructions;
+  // Show only the primary record of each type (dedupe by type to avoid confusion)
+  const instructionsByType = new Map<string, DomainInstruction>();
+  for (const ins of domainMeta.dnsInstructions) {
+    const type = String(ins.type ?? '').toUpperCase();
+    if (!instructionsByType.has(type)) instructionsByType.set(type, ins);
+  }
+  const instructions = Array.from(instructionsByType.values());
   const verifications = domainMeta.verificationInstructions;
   const isPending = isPendingDomainStatus(site.domainStatus ?? '');
 
