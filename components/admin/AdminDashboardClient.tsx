@@ -972,6 +972,10 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
             </button>
           </div>
         </div>
+        <div>
+          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: T.muted, letterSpacing: '0.03em' }}>ПОЛЕ "TTL"</p>
+          <code style={{ display: 'inline-block', padding: '7px 10px', background: '#fff', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, fontSize: 13, fontFamily: 'monospace', color: T.muted }}>Automatic</code>
+        </div>
       </div>
     </div>
   );
@@ -1121,21 +1125,31 @@ function DomainTab({
 
         {/* Step 2 */}
         <StepCard step={2} title='Намери DNS настройките' done={false}>
-          <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
             В управлението на домейна търси раздел или бутон, който се казва:{' '}
             <strong style={{ color: T.text }}>DNS Settings</strong>,{' '}
             <strong style={{ color: T.text }}>Manage DNS</strong>,{' '}
             <strong style={{ color: T.text }}>DNS Management</strong> или{' '}
             <strong style={{ color: T.text }}>Zone Editor</strong>.
-            Там ще видиш списък с DNS записи — точно там трябва да добавиш новия запис.
+            Там ще видиш списък с DNS записи.
           </p>
+          <div style={{ padding: '10px 14px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: T.radiusSm }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#92400E', lineHeight: 1.7 }}>
+              <strong style={{ color: '#7C2D12' }}>⚠️ Важно — изтрий съществуващите записи първо!</strong><br />
+              Преди да добавиш новите стойности, провери дали в списъка вече има:{' '}
+              <strong>CNAME запис с Host „www"</strong> или <strong>A запис с Host „@"</strong>.
+              Ако имаш такива — <strong>изтрий ги</strong> (бутон "Delete" или "Remove" до тях).
+              Само след това добавяй новите записи от Стъпка 3.
+            </p>
+          </div>
         </StepCard>
 
         {/* Step 3 */}
-        <StepCard step={3} title="Добави DNS запис" done={false}>
+        <StepCard step={3} title="Добави двата DNS записа" done={false}>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
             Натисни <strong style={{ color: T.text }}>"Добави нов запис"</strong> или{' '}
-            <strong style={{ color: T.text }}>"Add Record"</strong> и попълни точно тези стойности
+            <strong style={{ color: T.text }}>"Add Record"</strong> и добави{' '}
+            <strong style={{ color: T.text }}>и двата записа по-долу</strong>{' '}
             (използвай бутона "Копирай" за да не сбъркаш):
           </p>
 
