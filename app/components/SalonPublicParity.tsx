@@ -155,8 +155,10 @@ function SalonGalleryMosaic({
   uris,
   onOpenGallery,
   ringClass,
+  salonName = 'Салон',
 }: {
   uris: string[];
+  salonName?: string;
   onOpenGallery: (index: number) => void;
   ringClass: string;
 }) {
@@ -179,7 +181,7 @@ function SalonGalleryMosaic({
       >
         <img
           src={a}
-          alt=""
+          alt={salonName}
           className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95 md:aspect-[2/1]"
         />
       </button>
@@ -193,7 +195,7 @@ function SalonGalleryMosaic({
           onClick={() => onOpenGallery(0)}
           className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
         >
-          <img src={a} alt="" className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
+          <img src={a} alt={salonName} className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
           <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
             Виж снимки
           </span>
@@ -204,14 +206,14 @@ function SalonGalleryMosaic({
             onClick={() => onOpenGallery(0)}
             className={`relative min-h-[200px] overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
           >
-            <img src={a} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={a} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
           </button>
           <button
             type="button"
             onClick={() => onOpenGallery(1)}
             className={`relative min-h-[200px] overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
           >
-            <img src={b} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={b} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
           </button>
         </div>
       </div>
@@ -224,7 +226,7 @@ function SalonGalleryMosaic({
         onClick={() => onOpenGallery(0)}
         className={`group relative block w-full overflow-hidden md:hidden focus:outline-none focus-visible:ring-2 ${ringClass}`}
       >
-        <img src={a} alt="" className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
+        <img src={a} alt={salonName} className="aspect-[5/4] w-full object-cover transition duration-300 group-hover:opacity-95" />
         <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-semibold shadow-md">
           Преглед на всички изображения
         </span>
@@ -235,21 +237,21 @@ function SalonGalleryMosaic({
           onClick={() => onOpenGallery(0)}
           className={`relative min-h-[200px] overflow-hidden md:row-span-2 md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
         >
-          <img src={a} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={a} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
         </button>
         <button
           type="button"
           onClick={() => onOpenGallery(1)}
           className={`relative min-h-[120px] overflow-hidden md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
         >
-          <img src={b} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={b} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
         </button>
         <button
           type="button"
           onClick={() => onOpenGallery(2)}
           className={`relative min-h-[120px] overflow-hidden md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset ${ringClass}`}
         >
-          <img src={c!} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={c!} alt={salonName} className="absolute inset-0 h-full w-full object-cover" />
           <span className="absolute bottom-2 right-2 max-w-[min(100%,220px)] rounded-full bg-white/95 px-3 py-2 text-center text-[11px] font-semibold leading-tight shadow-md sm:text-xs">
             Преглед на всички изображения
           </span>
@@ -784,7 +786,7 @@ export default function SalonPublicParity({
         >
           <Share2 className="h-5 w-5" aria-hidden />
         </button>
-        <SalonGalleryMosaic uris={allGalleryWired} onOpenGallery={(i) => setGalleryModal({ uris: allGalleryWired, index: i })} ringClass={ringClass} />
+        <SalonGalleryMosaic uris={allGalleryWired} onOpenGallery={(i) => setGalleryModal({ uris: allGalleryWired, index: i })} ringClass={ringClass} salonName={name} />
       </div>
 
       {!disableStickySectionTabs && showStickySectionTabs ? (
@@ -995,7 +997,7 @@ export default function SalonPublicParity({
                       {offerImagesList(o.images)[0] ? (
                         <img
                           src={wireMediaUri(offerImagesList(o.images)[0])}
-                          alt=""
+                          alt={name}
                           className="absolute inset-0 h-full w-full object-cover opacity-90"
                         />
                       ) : (
@@ -1166,7 +1168,7 @@ export default function SalonPublicParity({
                       onClick={() => setGalleryModal({ uris: portfolioDisplay, index: idx })}
                       className="relative h-44 w-[45%] shrink-0 overflow-hidden rounded-xl sm:h-52 sm:w-[200px]"
                     >
-                      <img src={uri} alt="" className="h-full w-full object-cover" />
+                      <img src={uri} alt={name} className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -1189,7 +1191,7 @@ export default function SalonPublicParity({
                     >
                       <div className="h-16 w-16 overflow-hidden rounded-full">
                         {member.photoUrl ? (
-                          <img src={member.photoUrl} alt="" className="h-full w-full object-cover" />
+                          <img src={member.photoUrl} alt={name} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <User className="h-7 w-7 text-black/35" aria-hidden />
@@ -1245,7 +1247,7 @@ export default function SalonPublicParity({
                             <div className="flex items-center gap-2">
                               <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
                                 {review.client_avatar ? (
-                                  <img src={wireMediaUri(review.client_avatar)} alt="" className="h-full w-full object-cover" />
+                                  <img src={wireMediaUri(review.client_avatar)} alt={name} className="h-full w-full object-cover" />
                                 ) : (
                                   <div
                                     className="flex h-full w-full items-center justify-center text-[11px] font-medium text-white"
@@ -1622,7 +1624,7 @@ export default function SalonPublicParity({
               <img
                 key={`${galleryModal.index}-${galleryModal.uris[galleryModal.index]}`}
                 src={galleryModal.uris[galleryModal.index]}
-                alt=""
+                alt={name}
                 className="max-h-[min(80vh,85dvh)] max-w-full touch-manipulation object-contain select-none"
                 draggable={false}
               />
