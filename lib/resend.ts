@@ -79,6 +79,44 @@ export async function sendBookingNotification(
   });
 }
 
+export async function sendGoogleReviewInvitation(
+  clientEmail: string,
+  clientName: string,
+  salonName: string,
+  googlePlaceId: string
+): Promise<void> {
+  const reviewUrl = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(googlePlaceId)}`;
+
+  await resend.emails.send({
+    from: senderFromSalonName(salonName),
+    to: clientEmail,
+    subject: `Как беше при ${escapeHtml(salonName)}? Остави ни отзив`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">Благодарим ви!</h2>
+        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(clientName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          Радваме се, че посетихте <strong>${escapeHtml(salonName)}</strong>.
+          Ако сте доволни от услугата, ще ни помогнете много с кратък отзив в Google.
+        </p>
+        <p style="margin: 24px 0;">
+          <a href="${reviewUrl}"
+             style="display: inline-block; background: #000; color: #fff; padding: 14px 24px;
+                    border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 15px;">
+            Остави отзив в Google
+          </a>
+        </p>
+        <p style="font-size: 14px; line-height: 1.7; color: #555;">
+          Отнема под 1 минута и е голяма подкрепа за нашия салон.
+        </p>
+        <p style="margin-top: 24px; font-size: 13px; line-height: 1.7; color: #999;">
+          Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendBookingConfirmation(
   clientEmail: string,
   booking: BookingDetails

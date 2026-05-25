@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { sendBookingNotification, sendBookingConfirmation } from '@/lib/resend';
+import { sendBookingNotification, sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resend';
+import { sendBookingTelegram } from '@/lib/telegram';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 
-type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
 async function resolveSalonFromRequest(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -18,7 +19,9 @@ async function resolveSalonFromRequest(request: NextRequest) {
   }
 
   const salons = await sql`
-    SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address FROM salons
+    SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address,
+           telegram_chat_id, google_place_id
+    FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
   `;
 
@@ -145,17 +148,27 @@ export async function POST(request: NextRequest) {
         .join(', ') || undefined,
   };
 
-  const emailPromises: Promise<void>[] = [];
+  const notifPromises: Promise<void>[] = [];
 
   if (resolved.salon.email) {
-    emailPromises.push(sendBookingNotification(resolved.salon.email, bookingDetails));
+    notifPromises.push(sendBookingNotification(resolved.salon.email, bookingDetails));
   }
 
   if (clientEmail) {
-    emailPromises.push(sendBookingConfirmation(clientEmail, bookingDetails));
+    notifPromises.push(sendBookingConfirmation(clientEmail, bookingDetails));
   }
 
-  await Promise.allSettled(emailPromises);
+  const telegramChatId = String((resolved.salon as Record<string, unknown>).telegram_chat_id ?? '').trim();
+  if (telegramChatId) {
+    notifPromises.push(
+      sendBookingTelegram(telegramChatId, {
+        ...bookingDetails,
+        clientEmail: clientEmail ?? null,
+      })
+    );
+  }
+
+  await Promise.allSettled(notifPromises);
 
   return NextResponse.json({
     success: true,
@@ -185,19 +198,37 @@ export async function PATCH(request: NextRequest) {
   if (!bookingId) {
     return NextResponse.json({ error: 'Липсва bookingId' }, { status: 400 });
   }
-  if (!status || !['pending', 'confirmed', 'cancelled'].includes(status)) {
+  if (!status || !['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
     return NextResponse.json({ error: 'Невалиден статус' }, { status: 400 });
   }
 
+  const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+
   const updated = await sql`
     UPDATE bookings
-    SET status = ${status}
-    WHERE id = ${bookingId} AND salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')}
-    RETURNING id
+    SET status = ${status},
+        completed_at = CASE WHEN ${status} = 'completed' THEN now() ELSE completed_at END
+    WHERE id = ${bookingId} AND salon_id = ${salonId}
+    RETURNING id, client_email, client_name, service_name
   `;
 
   if (updated.length === 0) {
     return NextResponse.json({ error: 'Резервацията не е намерена' }, { status: 404 });
+  }
+
+  if (status === 'completed') {
+    const booking = updated[0] as Record<string, unknown>;
+    const clientEmail = String(booking.client_email ?? '').trim();
+    const googlePlaceId = String((resolved.salon as Record<string, unknown>).google_place_id ?? '').trim();
+
+    if (clientEmail && googlePlaceId) {
+      void sendGoogleReviewInvitation(
+        clientEmail,
+        String(booking.client_name ?? ''),
+        resolved.salon.name,
+        googlePlaceId
+      ).catch(() => {});
+    }
   }
 
   return NextResponse.json({ success: true });

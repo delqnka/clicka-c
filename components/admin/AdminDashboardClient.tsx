@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {
   BriefcaseBusiness,
+  Bell,
   CalendarClock,
   Clock3,
   Globe,
@@ -34,6 +35,7 @@ const TABS = [
   { id: 'hours', label: 'Работно време' },
   { id: 'domain', label: 'Домейн' },
   { id: 'bookings', label: 'Резервации' },
+  { id: 'notifications', label: 'Известия' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -46,6 +48,7 @@ const MOBILE_TABS: { id: TabId; label: string; icon: React.ComponentType<{ class
   { id: 'hours', label: 'Часове', icon: Clock3 },
   { id: 'domain', label: 'Домейн', icon: Globe },
   { id: 'bookings', label: 'Резер.', icon: CalendarClock },
+  { id: 'notifications', label: 'Извест.', icon: Bell },
 ];
 
 type Props = {
@@ -256,6 +259,7 @@ export default function AdminDashboardClient({
           facebook: site.facebook,
           tiktok: site.tiktok,
           googleMapsUrl: site.googleMapsUrl,
+          googlePlaceId: site.googlePlaceId,
         }),
       });
       const data = await guardResponse(res);
@@ -728,6 +732,14 @@ export default function AdminDashboardClient({
               <Field label="Google Maps URL">
                 <input value={site.googleMapsUrl} onChange={e => setSite(prev => ({ ...prev, googleMapsUrl: e.target.value }))} style={inputStyle} />
               </Field>
+              <Field label="Google Place ID">
+                <input
+                  value={site.googlePlaceId}
+                  onChange={e => setSite(prev => ({ ...prev, googlePlaceId: e.target.value }))}
+                  placeholder="ChIJ..."
+                  style={inputStyle}
+                />
+              </Field>
             </div>
 
             <Field label="За салона">
@@ -1129,6 +1141,65 @@ export default function AdminDashboardClient({
           </Card>
         ) : null}
 
+        {activeTab === 'notifications' ? (
+          <Card>
+            <SectionHeader
+              title="Известия"
+              description="Свържи Telegram, за да получаваш нотификация при всяка нова резервация."
+              mobile={isMobile}
+            />
+
+            <div style={miniCardStyle}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                Telegram Onboarding
+              </p>
+              {site.telegramChatId ? (
+                <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.6 }}>
+                  ✅ Telegram е свързан. Ще получаваш известия при нова резервация.
+                </p>
+              ) : (
+                <>
+                  <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.6 }}>
+                    Отвори <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: '#000', fontWeight: 700 }}>@clicka_booking_bot</a> в Telegram и изпрати:
+                  </p>
+                  {site.onboardingCode ? (
+                    <pre
+                      style={{
+                        margin: '12px 0 0',
+                        padding: '12px 16px',
+                        borderRadius: 16,
+                        border: '1px solid rgba(0,0,0,0.12)',
+                        background: 'rgba(0,0,0,0.03)',
+                        fontSize: 18,
+                        fontWeight: 900,
+                        letterSpacing: '0.06em',
+                        overflowX: 'auto',
+                      }}
+                    >
+                      /start {site.onboardingCode}
+                    </pre>
+                  ) : (
+                    <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.6 }}>
+                      Кодът се генерира при активиране на акаунта. Ако не виждаш код, изпълни миграцията в Neon.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div style={{ ...miniCardStyle, marginTop: 14 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                Google Reviews
+              </p>
+              <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.6 }}>
+                {site.googlePlaceId
+                  ? `✅ Google Place ID е зададен. Клиентите ще получат покана за отзив след завършена услуга.`
+                  : 'Добави Google Place ID в раздел Сайт, за да активираш автоматичните покани за отзиви.'}
+              </p>
+            </div>
+          </Card>
+        ) : null}
+
         {activeTab === 'bookings' ? (
           <Card>
             <SectionHeader
@@ -1139,6 +1210,7 @@ export default function AdminDashboardClient({
                   <option value="all">Всички</option>
                   <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
+                  <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
               }
@@ -1198,6 +1270,7 @@ export default function AdminDashboardClient({
                         >
                           <option value="pending">pending</option>
                           <option value="confirmed">confirmed</option>
+                          <option value="completed">completed</option>
                           <option value="cancelled">cancelled</option>
                         </select>
                       </div>

@@ -24,9 +24,10 @@ export type BookingRecord = {
   service_duration: number | null;
   date: string;
   time: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   notes: string | null;
   created_at: string;
+  completed_at: string | null;
 };
 
 export type AdminSitePayload = {
@@ -53,6 +54,9 @@ export type AdminSitePayload = {
   customDomain: string;
   domainStatus: string;
   domainConfig: unknown;
+  googlePlaceId: string;
+  telegramChatId: string;
+  onboardingCode: string;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -113,7 +117,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       cover_image_url, logo_image_url, gallery_images,
       owner_name, owner_public_role, owner_public_photo_url,
       services, working_hours,
-      custom_domain, domain_status, domain_config
+      custom_domain, domain_status, domain_config,
+      google_place_id, telegram_chat_id, onboarding_code
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -146,6 +151,9 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     customDomain: String(row.custom_domain ?? ''),
     domainStatus: String(row.domain_status ?? ''),
     domainConfig: row.domain_config ?? null,
+    googlePlaceId: String(row.google_place_id ?? ''),
+    telegramChatId: String(row.telegram_chat_id ?? ''),
+    onboardingCode: String(row.onboarding_code ?? ''),
   };
 }
 
@@ -154,7 +162,7 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
     SELECT
       id, client_name, client_phone, client_email,
       service_name, service_price, service_duration,
-      date, time, status, notes, created_at
+      date, time, status, notes, created_at, completed_at
     FROM bookings
     WHERE salon_id = ${salonId}
     ORDER BY date DESC, time DESC
