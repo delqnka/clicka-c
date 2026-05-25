@@ -232,6 +232,17 @@ export async function syncDomainWithVercel(domain: string) {
       context
     );
 
+    // Also register www subdomain so www.domain.com routes to the same project
+    const wwwDomain = `www.${domain}`;
+    const isApex = !domain.startsWith('www.') && domain.split('.').length === 2;
+    if (isApex) {
+      await fetchVercelJson(
+        `/v10/projects/${encodeURIComponent(context.projectId)}/domains`,
+        { method: 'POST', body: JSON.stringify({ name: wwwDomain }) },
+        context
+      ).catch(() => {});
+    }
+
     let inspect = await inspectProjectDomain(domain, context);
     let verify = null;
 
@@ -311,6 +322,16 @@ export async function removeProjectDomain(domain: string): Promise<{ ok: boolean
     { method: 'DELETE' },
     context
   );
+
+  // Also remove www subdomain if this is an apex domain
+  const isApex = !domain.startsWith('www.') && domain.split('.').length === 2;
+  if (isApex) {
+    await fetchVercelJson(
+      `/v9/projects/${encodeURIComponent(context.projectId)}/domains/${encodeURIComponent(`www.${domain}`)}`,
+      { method: 'DELETE' },
+      context
+    ).catch(() => {});
+  }
 
   return { ok: result.ok || result.status === 404 };
 }
