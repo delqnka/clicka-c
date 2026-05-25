@@ -138,6 +138,7 @@ export async function ensureAdminAuthSchema() {
       await sql`CREATE UNIQUE INDEX IF NOT EXISTS owner_sessions_session_hash_uniq ON owner_sessions(session_hash)`;
       await sql`CREATE INDEX IF NOT EXISTS owner_sessions_owner_id_idx ON owner_sessions(owner_id)`;
       await sql`ALTER TABLE admin_login_tokens ADD COLUMN IF NOT EXISTS email_norm text`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS password_hash text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_name text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_role text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_photo_url text`;
@@ -481,9 +482,36 @@ export async function generateAdminMagicLink({
     VALUES (${salonId}, ${tokenHash}, ${normalizeEmail(email)}, ${expiresAt.toISOString()}, now())
   `;
 
-  // Use the salon's own subdomain as base so the session cookie lands on the right domain.
+  // Points to set-password page on the salon's own subdomain.
   const base = getPlatformSiteOrigin(slug);
-  return `${base}/api/admin/verify?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(slug)}`;
+  return `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(slug)}`;
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (err, buf) => {
+      if (err) reject(err);
+      else resolve(`${salt}:${buf.toString('hex')}`);
+    });
+  });
+}
+
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const colonIndex = stored.indexOf(':');
+  if (colonIndex === -1) return false;
+  const salt = stored.slice(0, colonIndex);
+  const hash = stored.slice(colonIndex + 1);
+  return new Promise((resolve) => {
+    crypto.scrypt(password, salt, 64, (err, buf) => {
+      if (err) { resolve(false); return; }
+      try {
+        resolve(crypto.timingSafeEqual(buf, Buffer.from(hash, 'hex')));
+      } catch {
+        resolve(false);
+      }
+    });
+  });
 }
 
 export function generateOtpCode() {

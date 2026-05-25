@@ -9,6 +9,7 @@ import {
   resolveSalonBySlugOrHost,
   sha256,
 } from '@/lib/admin-auth';
+import { getPlatformSiteOrigin } from '@/lib/domain-routing';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -51,26 +52,24 @@ export async function POST(request: NextRequest) {
     VALUES (${salon.salonId}, ${tokenHash}, ${allowedEmail}, ${expiresAt.toISOString()}, null, now())
   `;
 
-  const host = request.headers.get('host') ?? '';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const base = `${protocol}://${host}`;
-  const verifyUrl = `${base}/api/admin/verify?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}`;
+  const base = getPlatformSiteOrigin(salon.slug);
+  const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}`;
 
   await resend.emails.send({
     from: 'Clicka.bg <noreply@clicka.bg>',
     to: allowedEmail,
-    subject: `Вход за админ – ${salon.name ?? salon.slug}`,
+    subject: `Задай нова парола`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #111;">Линк за вход</h2>
-        <p>Натиснете бутона, за да влезете в контролния панел.</p>
-        <p style="margin: 18px 0;">
-          <a href="${verifyUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 16px;border-radius:10px;font-weight:700;">
-            Влез в админ панела →
+        <h2 style="color: #000; margin: 0 0 16px;">Задай нова парола</h2>
+        <p style="line-height: 1.7;">Натисни бутона, за да зададеш нова парола за панела.</p>
+        <p style="margin: 20px 0;">
+          <a href="${resetUrl}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:13px 22px;border-radius:999px;font-weight:700;font-size:15px;">
+            Задай парола →
           </a>
         </p>
-        <p style="color:#6b7280;font-size:13px;line-height:1.5;">
-          Линкът е валиден 15 минути. Ако не сте поискали този вход, игнорирайте имейла.
+        <p style="color:#999;font-size:13px;line-height:1.5;">
+          Линкът е валиден 15 минути. Ако не си поискал нова парола, игнорирай имейла.
         </p>
       </div>
     `,
