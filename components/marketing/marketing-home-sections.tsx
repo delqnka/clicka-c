@@ -3,12 +3,24 @@
 import type { ReactNode } from 'react';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
+import { CardSticky, ContainerScroll } from '@/components/ui/card-sticky';
 import {
   MARKETING_FEATURES,
   MARKETING_FOUNDER,
-  MARKETING_PROBLEM,
+  MARKETING_PROBLEM_CARDS,
   MARKETING_PROMISE,
+  type MarketingProblemCard,
 } from '@/lib/marketing-home-copy';
+import { cn } from '@/lib/utils';
+
+/** Същата sans типография като clicka-hero (без serif / font-display). */
+const HP_LEAD =
+  'text-[clamp(1rem,3.2vw,1.35rem)] font-medium leading-snug tracking-[-0.02em] text-[var(--foreground)]';
+const HP_SMALL = 'text-sm font-normal leading-relaxed text-[var(--muted-foreground)] sm:text-[15px]';
+const HP_EMPHASIS =
+  'text-[clamp(1.05rem,2.6vw,1.25rem)] font-semibold leading-snug tracking-[-0.02em] text-[var(--foreground)]';
+const HP_SECTION_TITLE =
+  'text-[clamp(1.65rem,4.5vw,2.5rem)] font-bold leading-[1.12] tracking-[-0.02em] text-[var(--foreground)]';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -19,106 +31,62 @@ function SectionLabel({ children }: { children: string }) {
   );
 }
 
-function ProseBlock({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <p
-      className={`hp-prose-p ${className}`}
-      style={{
-        fontSize: 'clamp(16px,1.6vw,18px)',
-        lineHeight: 1.75,
-        color: 'var(--secondary-foreground)',
-        margin: 0,
-      }}
-    >
-      {children}
-    </p>
-  );
+function ProseBlock({ children, className }: { children: ReactNode; className?: string }) {
+  return <p className={cn(HP_LEAD, 'm-0', className)}>{children}</p>;
+}
+
+function ProblemCardContent({ card }: { card: MarketingProblemCard }) {
+  if (card.variant === 'small') {
+    return <p className={cn(HP_SMALL, 'm-0')}>{card.body}</p>;
+  }
+
+  if (card.variant === 'emphasis') {
+    return (
+      <div className="space-y-3">
+        <p className={cn(HP_EMPHASIS, 'm-0')}>{card.body}</p>
+        {card.kicker ? (
+          <p className="m-0 text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+            {card.kicker}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return <p className={cn(HP_LEAD, 'm-0')}>{card.body}</p>;
 }
 
 export function MarketingProblemSection() {
+  const cardCount = MARKETING_PROBLEM_CARDS.length;
+
   return (
     <section
-      className="hp-section-alt"
-      style={{
-        borderTop: '1px solid var(--border)',
-        padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)',
-      }}
-      aria-labelledby="problem-h"
+      className="hp-section-alt border-t border-[var(--border)]"
+      style={{ padding: 'clamp(48px,8vw,80px) clamp(20px,5vw,60px)' }}
+      aria-label="Защо собствен сайт"
     >
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <h2
-          id="problem-h"
-          data-reveal
-          className="font-display"
-          style={{
-            fontSize: 'clamp(32px,5vw,52px)',
-            fontWeight: 700,
-            letterSpacing: '-0.03em',
-            lineHeight: 1.08,
-            marginBottom: 24,
-            color: 'var(--foreground)',
-          }}
-        >
-          {MARKETING_PROBLEM.headline}
-        </h2>
-
-        <ProseBlock className="mb-8">{MARKETING_PROBLEM.subheadline}</ProseBlock>
-
-        <div
-          data-reveal
-          style={{
-            display: 'grid',
-            gap: 20,
-            marginBottom: 32,
-            padding: '24px 0',
-            borderTop: '1px solid var(--border)',
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          {MARKETING_PROBLEM.story.split('\n\n').map((para) => (
-            <ProseBlock key={para.slice(0, 40)}>{para}</ProseBlock>
-          ))}
-        </div>
-
-        <p
-          data-reveal
-          style={{
-            fontSize: 'clamp(20px,2.8vw,28px)',
-            fontWeight: 700,
-            letterSpacing: '-0.02em',
-            lineHeight: 1.25,
-            color: 'var(--foreground)',
-            margin: '0 0 20px',
-          }}
-        >
-          {MARKETING_PROBLEM.punchline}
-        </p>
-
-        <div data-reveal style={{ marginTop: 8 }}>
-          <p
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: 'var(--muted-foreground)',
-              margin: '0 0 6px',
-            }}
+      <ContainerScroll
+        className="mx-auto max-w-2xl"
+        style={{ minHeight: `calc(${cardCount} * 52vh)` }}
+      >
+        {MARKETING_PROBLEM_CARDS.map((card, index) => (
+          <CardSticky
+            key={card.id}
+            index={index}
+            incrementY={20}
+            incrementZ={2}
+            className="top-20 mb-6 sm:top-24"
           >
-            {MARKETING_PROBLEM.kicker}
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              lineHeight: 1.55,
-              color: 'var(--muted-foreground)',
-              margin: 0,
-            }}
-          >
-            {MARKETING_PROBLEM.kickerSub}
-          </p>
-        </div>
-      </div>
+            <article
+              data-reveal
+              className="rounded-[calc(var(--radius)*2)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[var(--hp-shadow)] sm:p-8"
+              style={{ transitionDelay: `${index * 0.06}s` }}
+            >
+              <ProblemCardContent card={card} />
+            </article>
+          </CardSticky>
+        ))}
+      </ContainerScroll>
     </section>
   );
 }
@@ -126,41 +94,23 @@ export function MarketingProblemSection() {
 export function MarketingPromiseSection() {
   return (
     <section
-      className="hp-section-card"
+      className="hp-section-card border-t border-[var(--border)]"
       style={{ padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)' }}
       aria-labelledby="promise-h"
     >
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      <div className="mx-auto max-w-2xl">
         <SectionLabel>{MARKETING_PROMISE.label}</SectionLabel>
 
-        <h2
-          id="promise-h"
-          data-reveal
-          className="font-display"
-          style={{
-            fontSize: 'clamp(28px,4.2vw,48px)',
-            fontWeight: 700,
-            letterSpacing: '-0.03em',
-            lineHeight: 1.1,
-            marginBottom: 28,
-            color: 'var(--foreground)',
-          }}
-        >
+        <h2 id="promise-h" data-reveal className={cn(HP_SECTION_TITLE, 'mb-7')}>
           {MARKETING_PROMISE.title}
         </h2>
 
-        <div style={{ display: 'grid', gap: 20 }}>
+        <div className="grid gap-5">
           <p
-            style={{
-              fontSize: 'clamp(16px,1.6vw,18px)',
-              lineHeight: 1.75,
-              color: 'var(--secondary-foreground)',
-              margin: 0,
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '6px 8px',
-            }}
+            className={cn(
+              HP_LEAD,
+              'm-0 flex flex-wrap items-center gap-x-2 gap-y-2',
+            )}
           >
             <ClickaLogo size="compact" href={null} className="inline-flex shrink-0" />
             <span>{MARKETING_PROMISE.introAfterLogo}</span>
@@ -170,7 +120,7 @@ export function MarketingPromiseSection() {
           ))}
         </div>
 
-        <div data-reveal style={{ marginTop: 36 }}>
+        <div data-reveal className="mt-9">
           <ButtonColorful
             href="/create"
             label="Създай своя сайт сега"
@@ -185,87 +135,28 @@ export function MarketingPromiseSection() {
 export function MarketingFeaturesSection() {
   return (
     <section
-      className="hp-section-alt"
-      style={{
-        borderTop: '1px solid var(--border)',
-        padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)',
-      }}
+      className="hp-section-alt border-t border-[var(--border)]"
+      style={{ padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)' }}
       aria-labelledby="features-h"
     >
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div className="mx-auto max-w-[1100px]">
         <SectionLabel>{MARKETING_FEATURES.label}</SectionLabel>
-        <h2
-          id="features-h"
-          data-reveal
-          className="font-display"
-          style={{
-            fontSize: 'clamp(28px,4.2vw,48px)',
-            fontWeight: 700,
-            letterSpacing: '-0.03em',
-            lineHeight: 1.1,
-            marginBottom: 40,
-            color: 'var(--foreground)',
-            maxWidth: 640,
-          }}
-        >
+        <h2 id="features-h" data-reveal className={cn(HP_SECTION_TITLE, 'mb-10 max-w-xl')}>
           {MARKETING_FEATURES.title}
         </h2>
 
-        <div
-          className="hp-features-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
-            gap: 16,
-          }}
-        >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {MARKETING_FEATURES.items.map((item, i) => (
             <article
               key={item.title}
               data-reveal
-              style={{
-                transitionDelay: `${i * 0.08}s`,
-                background: 'var(--card)',
-                border: '1px solid var(--border)',
-                borderRadius: 'calc(var(--radius) * 2)',
-                padding: '28px 24px',
-                boxShadow: 'var(--hp-shadow)',
-              }}
+              className="rounded-[calc(var(--radius)*2)] border border-[var(--border)] bg-[var(--card)] p-7 shadow-[var(--hp-shadow)]"
+              style={{ transitionDelay: `${i * 0.08}s` }}
             >
-              <p
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: 'var(--primary)',
-                  margin: '0 0 12px',
-                }}
-              >
-                Блок {i + 1}
-              </p>
-              <h3
-                style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.25,
-                  margin: '0 0 12px',
-                  color: 'var(--foreground)',
-                }}
-              >
+              <h3 className="mb-3 text-lg font-bold tracking-[-0.02em] text-[var(--foreground)]">
                 {item.title}
               </h3>
-              <p
-                style={{
-                  fontSize: 15,
-                  lineHeight: 1.65,
-                  color: 'var(--secondary-foreground)',
-                  margin: 0,
-                }}
-              >
-                {item.body}
-              </p>
+              <p className={cn(HP_SMALL, 'text-[var(--secondary-foreground)]')}>{item.body}</p>
             </article>
           ))}
         </div>
@@ -277,32 +168,16 @@ export function MarketingFeaturesSection() {
 export function MarketingFounderSection() {
   return (
     <section
-      className="hp-section-card"
-      style={{
-        borderTop: '1px solid var(--border)',
-        padding: 'clamp(56px,8vw,88px) clamp(20px,5vw,60px)',
-        textAlign: 'center',
-      }}
+      className="hp-section-card border-t border-[var(--border)] text-center"
+      style={{ padding: 'clamp(56px,8vw,88px) clamp(20px,5vw,60px)' }}
       aria-labelledby="founder-h"
     >
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div className="mx-auto max-w-xl">
         <SectionLabel>{MARKETING_FOUNDER.label}</SectionLabel>
-        <h2
-          id="founder-h"
-          data-reveal
-          className="font-display"
-          style={{
-            fontSize: 'clamp(24px,3.5vw,36px)',
-            fontWeight: 700,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.2,
-            marginBottom: 16,
-            color: 'var(--foreground)',
-          }}
-        >
+        <h2 id="founder-h" data-reveal className={cn(HP_SECTION_TITLE, 'mb-4')}>
           {MARKETING_FOUNDER.title}
         </h2>
-        <ProseBlock>{MARKETING_FOUNDER.body}</ProseBlock>
+        <ProseBlock className="text-center">{MARKETING_FOUNDER.body}</ProseBlock>
       </div>
     </section>
   );

@@ -74,7 +74,7 @@ const PLAN_FEATURES = [
 ═══════════════════════════════════════════════════════════ */
 const CSS = `
   .hp {
-    font-family: var(--font-sans);
+    font-family: var(--font-body, 'Inter', system-ui, sans-serif);
     background: #ffffff;
     background: var(--background);
     color: var(--foreground);
@@ -86,10 +86,6 @@ const CSS = `
     opacity: 0;
     transform: translateY(22px);
     transition: opacity .65s cubic-bezier(.16,1,.3,1), transform .65s cubic-bezier(.16,1,.3,1);
-  }
-
-  .font-display {
-    font-family: var(--font-serif);
   }
 
   .hp-nav {
@@ -163,20 +159,15 @@ const CSS = `
   .hp-section-card { background: var(--card); border-top: 1px solid var(--border); }
   .hp-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); display: inline-block; }
 
-  .hp-bounce-card {
-    transition: transform 250ms cubic-bezier(.16,1,.3,1);
-    will-change: transform;
-  }
-  .hp-bounce-card:hover {
-    transform: scale(0.98) rotate(-1deg);
+  .hp-heading {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    color: var(--foreground);
   }
 
   @media (prefers-reduced-motion: reduce) {
     [data-reveal] { opacity:1; transform:none; transition:none; }
-    .hp-bounce-card { transition: none; will-change: auto; }
-    .hp-bounce-card:hover { transform: none; }
-    .hp-bounce-card .group-hover\\:translate-y-4 { transform: none; }
-    .hp-bounce-card .group-hover\\:rotate-\\[2deg\\] { transform: none; }
   }
 `;
 
@@ -235,7 +226,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
               SEO резултат
             </div>
 
-            <h2 id="seo-h" className="font-display" style={{ fontSize: 'clamp(26px,3.8vw,44px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, marginBottom: 20, color: 'var(--foreground)' }}>
+            <h2 id="seo-h" className="hp-heading" style={{ fontSize: 'clamp(26px,3.8vw,44px)', marginBottom: 20 }}>
               Постигни невъзможното:<br />100/100 SEO резултат
             </h2>
 
@@ -279,7 +270,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             07 · Цени
           </div>
 
-          <h2 id="pricing-h" data-reveal className="font-display" style={{ fontSize: 'clamp(28px,4.2vw,50px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 12, color: 'var(--foreground)' }}>
+          <h2 id="pricing-h" data-reveal className="hp-heading" style={{ fontSize: 'clamp(28px,4.2vw,50px)', lineHeight: 1.1, marginBottom: 12 }}>
             {MARKETING_PRICING.title}
           </h2>
           <p data-reveal style={{ fontSize: 'clamp(15px,1.5vw,17px)', fontWeight: 400, color: 'var(--muted-foreground)', marginBottom: 12, lineHeight: 1.67, maxWidth: 720 }}>
@@ -306,12 +297,12 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
                 )}
 
                 <div style={{ marginBottom: 20 }}>
-                  <h3 className="font-display" style={{ fontSize: 22, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.025em', color: 'var(--foreground)' }}>{plan.name}</h3>
+                  <h3 className="hp-heading" style={{ fontSize: 22, margin: '0 0 6px' }}>{plan.name}</h3>
                   <p style={{ fontSize: 14, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0 }}>{plan.desc}</p>
                 </div>
 
                 <div style={{ marginBottom: 28 }}>
-                  <span className="font-display" style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1, color: 'var(--foreground)' }}>{plan.price} €</span>
+                  <span className="hp-heading tabular-nums" style={{ fontSize: 44, letterSpacing: '-0.04em', lineHeight: 1 }}>{plan.price} €</span>
                   <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: 4 }}>/ год.</span>
                   <p style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', margin: '6px 0 0' }}>от {plan.daily} € на ден</p>
                 </div>
@@ -342,12 +333,12 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         aria-labelledby="cta-h"
       >
         <div data-reveal style={{ maxWidth: 600, margin: '0 auto' }}>
-          <h2 id="cta-h" className="font-display" style={{ fontSize: 'clamp(30px,5vw,58px)', fontWeight: 700, letterSpacing: '-0.033em', lineHeight: 1.1, color: 'var(--hp-cta-fg)', marginBottom: 20 }}>
+          <h2 id="cta-h" className="hp-heading" style={{ fontSize: 'clamp(30px,5vw,58px)', lineHeight: 1.1, color: 'var(--hp-cta-fg)', marginBottom: 20 }}>
             Готов ли си да спреш<br />да даваш % на другите?
           </h2>
           <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 55%, transparent)', marginBottom: 44, lineHeight: 1.67 }}>
-            Нужни ти са само: Салон + Град + Имейл.<br />
-            30 секунди и виждаш твоя сайт.
+            Попълни данните, избери план, плати — и сайтът ти е онлайн.<br />
+            Без процент от резервациите. Без скрити такси.
           </p>
           <ButtonColorful
             href="/create"
