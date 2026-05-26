@@ -1,5 +1,12 @@
 import { sql } from '@/lib/db';
 import crypto from 'crypto';
+import {
+  normalizeSalonFaqItems,
+  normalizeSalonVisitorInfo,
+  normalizeVisitorAdditionalInfo,
+  type SalonFaqItem,
+  type SalonVisitorInfo,
+} from '@/lib/salon-visitor-info';
 
 export type WorkingDay = {
   open: string;
@@ -70,6 +77,9 @@ export type AdminSitePayload = {
   onboardingCode: string;
   siteStatus: string;
   legalInfo: LegalInfoPayload | null;
+  faqItems: SalonFaqItem[];
+  visitorInfo: SalonVisitorInfo;
+  visitorAdditionalInfo: string;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -132,7 +142,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       services, working_hours,
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code,
-      site_status, legal_info, latitude, longitude
+      site_status, legal_info, latitude, longitude,
+      faq_items, visitor_info, visitor_additional_info
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -188,6 +199,9 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
         contactEmail: String(li.contactEmail ?? ''),
       };
     })(),
+    faqItems: normalizeSalonFaqItems(row.faq_items),
+    visitorInfo: normalizeSalonVisitorInfo(row.visitor_info),
+    visitorAdditionalInfo: normalizeVisitorAdditionalInfo(row.visitor_additional_info),
   };
 }
 

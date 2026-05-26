@@ -32,6 +32,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
 import { GalleryReorderGrid } from '@/components/admin/gallery-reorder-grid';
 import { AddressAutocompleteField } from '@/components/admin/address-autocomplete-field';
+import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
 import {
   AdminPriceListScanBtn,
   PriceListServicesImport,
@@ -292,6 +293,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           googlePlaceId: site.googlePlaceId,
           latitude: site.latitude,
           longitude: site.longitude,
+          faqItems: site.faqItems,
+          visitorInfo: site.visitorInfo,
+          visitorAdditionalInfo: site.visitorAdditionalInfo,
         }),
       });
       const data = await guardResponse(res);
@@ -999,13 +1003,31 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <Field label="Facebook"><input value={site.facebook} onChange={e => setSite(p => ({ ...p, facebook: e.target.value }))} style={inp} /></Field>
                 <Field label="TikTok"><input value={site.tiktok} onChange={e => setSite(p => ({ ...p, tiktok: e.target.value }))} style={inp} /></Field>
                 <Field label="Google Maps URL"><input value={site.googleMapsUrl} onChange={e => setSite(p => ({ ...p, googleMapsUrl: e.target.value }))} style={inp} /></Field>
-                <Field label="Google Place ID"><input value={site.googlePlaceId} onChange={e => setSite(p => ({ ...p, googlePlaceId: e.target.value }))} placeholder="ChIJ…" style={inp} /></Field>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <GooglePlaceIdField
+                  value={site.googlePlaceId}
+                  onChange={googlePlaceId => setSite(p => ({ ...p, googlePlaceId }))}
+                  isMobile={isMobile}
+                  inputStyle={inp}
+                />
               </div>
               <div style={{ marginTop: 12 }}>
                 <Field label="За салона">
                   <textarea value={site.about} onChange={e => setSite(p => ({ ...p, about: e.target.value }))} style={{ ...inp, minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
                 </Field>
               </div>
+              <SalonFaqVisitorFields
+                faqItems={site.faqItems}
+                visitorInfo={site.visitorInfo}
+                visitorAdditionalInfo={site.visitorAdditionalInfo}
+                inputStyle={inp}
+                onChangeFaq={faqItems => setSite(p => ({ ...p, faqItems }))}
+                onChangeVisitorInfo={visitorInfo => setSite(p => ({ ...p, visitorInfo }))}
+                onChangeAdditionalInfo={visitorAdditionalInfo =>
+                  setSite(p => ({ ...p, visitorAdditionalInfo }))
+                }
+              />
               {site.googleMapsUrl ? (
                 <iframe
                   src={site.googleMapsUrl}
@@ -1591,8 +1613,21 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 >
                   <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
                     {site.googlePlaceId
-                      ? 'Google Place ID е зададен. Клиентите ще получат покана за отзив след завършена услуга.'
-                      : 'Добави Google Place ID в раздел Сайт, за да активираш автоматичните покани за отзиви.'}
+                      ? 'Google Place ID е зададен. Отзивите се извличат за сайта и клиентите получават покана след завършена услуга.'
+                      : (
+                        <>
+                          Добави Google Place ID в раздел <strong>Сайт</strong> — виж{' '}
+                          <a
+                            href={GOOGLE_PLACE_ID_FINDER_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: T.accent, fontWeight: 600 }}
+                          >
+                            Place ID Finder
+                          </a>
+                          .
+                        </>
+                      )}
                   </p>
                 </InfoCard>
               </div>
@@ -1827,6 +1862,68 @@ function IconUploadBtn({ label, busy, children }: { label: string; busy: boolean
       {busy ? <RefreshCw size={18} strokeWidth={2} /> : <ImagePlus size={20} strokeWidth={2} />}
       {children}
     </label>
+  );
+}
+
+const GOOGLE_PLACE_ID_FINDER_URL =
+  'https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder';
+
+function GooglePlaceIdField({
+  value,
+  onChange,
+  isMobile,
+  inputStyle,
+}: {
+  value: string;
+  onChange: (googlePlaceId: string) => void;
+  isMobile: boolean;
+  inputStyle: CSSProperties;
+}) {
+  return (
+    <Field label="Google Place ID">
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="ChIJ…"
+        style={inputStyle}
+        autoComplete="off"
+        spellCheck={false}
+      />
+      <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.55, color: T.subtle }}>
+        Тук се показват Google отзивите на сайта ти и се изпращат покани за отзив. Открий ID в{' '}
+        <a
+          href={GOOGLE_PLACE_ID_FINDER_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: T.accent, fontWeight: 600, textDecoration: 'underline' }}
+        >
+          Google Place ID Finder
+        </a>
+        — попълни адреса на салона на картата и копирай стойността от прозореца (обикновено започва с{' '}
+        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11 }}>ChIJ</span>).
+      </p>
+      <a
+        href={GOOGLE_PLACE_ID_FINDER_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Отвори Google Place ID Finder — инструкция с карта"
+        style={{ display: 'block', marginTop: 10, maxWidth: isMobile ? '100%' : 520 }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/google-place-id-guide.png"
+          alt="Пример: попълваш адреса на салона в Google Place ID Finder и копираш Place ID от прозореца на картата"
+          style={{
+            width: '100%',
+            height: 'auto',
+            borderRadius: 12,
+            border: `1px solid ${T.border}`,
+            display: 'block',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+          }}
+        />
+      </a>
+    </Field>
   );
 }
 

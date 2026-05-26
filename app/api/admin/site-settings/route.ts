@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
+import {
+  normalizeSalonFaqItems,
+  normalizeSalonVisitorInfo,
+  normalizeVisitorAdditionalInfo,
+} from '@/lib/salon-visitor-info';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -68,6 +73,17 @@ export async function PATCH(request: NextRequest) {
       typeof body.ownerPublicPhotoUrl === 'string'
         ? body.ownerPublicPhotoUrl.trim()
         : current.ownerPublicPhotoUrl,
+    faqItems: Array.isArray(body.faqItems)
+      ? normalizeSalonFaqItems(body.faqItems)
+      : current.faqItems,
+    visitorInfo:
+      body.visitorInfo && typeof body.visitorInfo === 'object'
+        ? normalizeSalonVisitorInfo(body.visitorInfo)
+        : current.visitorInfo,
+    visitorAdditionalInfo:
+      typeof body.visitorAdditionalInfo === 'string'
+        ? normalizeVisitorAdditionalInfo(body.visitorAdditionalInfo)
+        : current.visitorAdditionalInfo,
   };
 
   if (!next.name) {
@@ -93,6 +109,9 @@ export async function PATCH(request: NextRequest) {
       owner_name = ${next.ownerName || null},
       owner_public_role = ${next.ownerPublicRole || null},
       owner_public_photo_url = ${next.ownerPublicPhotoUrl || null},
+      faq_items = ${JSON.stringify(next.faqItems)}::jsonb,
+      visitor_info = ${JSON.stringify(next.visitorInfo)}::jsonb,
+      visitor_additional_info = ${next.visitorAdditionalInfo || null},
       updated_at = now()
     WHERE slug = ${auth.salon.slug}
   `;

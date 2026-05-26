@@ -51,6 +51,12 @@ import {
   type SalonParkingKey,
   type SalonVenueExtraKey,
 } from '@/lib/salon-venue-extras';
+import {
+  normalizeSalonFaqItems,
+  normalizeSalonVisitorInfo,
+  normalizeVisitorAdditionalInfo,
+} from '@/lib/salon-visitor-info';
+import { PublicVisitorFaq } from '@/components/salon/public-visitor-faq';
 
 const APPLE_LINK_BLUE = '#0A84FF';
 
@@ -345,6 +351,18 @@ export default function SalonPublicParity({
   const name = String(rawSalon.name ?? 'Салон');
   const category = String(rawSalon.category ?? '').trim();
   const description = String(rawSalon.about ?? '').trim();
+  const faqItems = useMemo(
+    () => normalizeSalonFaqItems(rawSalon.faq_items),
+    [rawSalon.faq_items],
+  );
+  const visitorInfo = useMemo(
+    () => normalizeSalonVisitorInfo(rawSalon.visitor_info),
+    [rawSalon.visitor_info],
+  );
+  const visitorAdditionalInfo = useMemo(
+    () => normalizeVisitorAdditionalInfo(rawSalon.visitor_additional_info),
+    [rawSalon.visitor_additional_info],
+  );
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
   const address = String(rawSalon.address ?? '').trim();
@@ -1057,6 +1075,12 @@ export default function SalonPublicParity({
                   </div>
                 );
               })()}
+
+              <PublicVisitorFaq
+                faqItems={faqItems}
+                visitorInfo={visitorInfo}
+                visitorAdditionalInfo={visitorAdditionalInfo}
+              />
             </section>
 
             <div className="-mx-4 mt-6 border-b border-black/10 bg-white px-4 py-1 lg:static lg:z-0 lg:mx-0 lg:border-b lg:border-t lg:border-black/10 lg:bg-transparent lg:px-0 lg:py-2">
