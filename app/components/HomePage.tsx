@@ -1,54 +1,9 @@
 'use client';
 import { useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { ParticleHero } from '@/components/ui/particle-hero';
+import { ClickaHero } from '@/components/ui/clicka-hero';
 
-/* ═══════════════════════════════════════════════════════════
-   SVG Icons — consistent 22×22, 1.75 stroke, no emoji
-═══════════════════════════════════════════════════════════ */
-function IconCalendar() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="3" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  );
-}
-function IconStar() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  );
-}
-function IconMapPin() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}
-function IconSend() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-  );
-}
-function IconMail() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-      <polyline points="22,6 12,13 2,6" />
-    </svg>
-  );
-}
-function IconShield() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-}
 function IconCheck({ color = '#22C55E' }: { color?: string }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -64,39 +19,6 @@ const PLANS = [
   { id: 'solo',   name: 'Solo',   price: 299, daily: '0.82', desc: '1 специалист',     popular: false },
   { id: 'ekip',   name: 'Екип',   price: 399, daily: '1.09', desc: 'до 3 специалисти', popular: true  },
   { id: 'studio', name: 'Студио', price: 599, daily: '1.64', desc: 'без ограничения',  popular: false },
-];
-
-const FEATURES = [
-  {
-    Icon: IconCalendar, label: 'Резервации',
-    head: 'Клиентите записват директно',
-    body: 'Резервационна система без комисионна и без посредник. Клиентите избират час и специалист в реално време от твоя сайт.',
-  },
-  {
-    Icon: IconStar, label: 'Google ревюта',
-    head: 'Повече ревюта, автоматично',
-    body: 'След всяка приключила услуга клиентът получава имейл с директен линк към Google профила ти. Повече ревюта = по-висок ранг в Google.',
-  },
-  {
-    Icon: IconMapPin, label: 'Локална видимост',
-    head: 'По-добро местно SEO',
-    body: 'Собственият сайт с правилно SEO те показва по-напред, когато някой търси „фризьор до мен". Клиентите намират теб, не конкурент.',
-  },
-  {
-    Icon: IconSend, label: 'Telegram',
-    head: 'Нотификации в реално време',
-    body: 'Нова резервация → моментално съобщение в Telegram. Потвърди или откажи с един бутон. Без да отваряш приложение.',
-  },
-  {
-    Icon: IconMail, label: 'Комуникация',
-    head: 'Email и SMS потвърждения',
-    body: 'Клиентът получава потвърждение веднага след резервацията — услуга, дата, час, адрес. После и напомняне преди часа.',
-  },
-  {
-    Icon: IconShield, label: '0% комисионна',
-    head: 'Клиентите са само твои',
-    body: 'Данните, историята и клиентите са изцяло твои. Никога не ги споделяме с трети страни. Нито стотинка комисионна.',
-  },
 ];
 
 const STEPS = [
@@ -119,6 +41,88 @@ const MARQUEE = [
   'Telegram нотификации', '0% комисионна', 'Без скрити такси',
   'Email напомняния', 'Клиентите са твои', 'Мобилна версия',
   'Хостинг включен', 'Свързи собствен домейн',
+];
+
+const WHY_US = [
+  {
+    title: 'Край на заробващите проценти',
+    body: 'Не е честно да даваш огромен процент от трудно изработените си пари на външни платформи за всеки доведен клиент. Плащаш фиксиран абонамент и точка. Твоите клиенти и твоите приходи са си 100% твои!',
+  },
+  {
+    title: 'Без притеснения по телефона',
+    body: 'Не е редно и да те притесняват по телефона, за да даваш обяснения за всеки клиент, който е резервирал онлайн час при теб!',
+  },
+  {
+    title: 'Светкавични известия във Telegram',
+    body: 'Забрави за пропуснатите имейли или скъпите SMS-и. Всяка нова резервация или промяна на час идва като мигновено съобщение директно във Telegram на телефона ти. Винаги знаеш графика си в реално време.',
+  },
+  {
+    title: 'Минималистична визия от световно ниво, но с ТВОЯ бранд',
+    body: 'Клиентите ти получават същото бързо, удобно и красиво изживяване при резервация, с което са свикнали в големите платформи. Разликата? Сайтът е изцяло твой и е на твоя личен домейн, който е собственост на твоята фирма.',
+  },
+  {
+    title: 'Google те обича (100/100 SEO)',
+    body: 'Погрижихме се за перфектното ти локално присъствие. Нашите сайтове постигат максимален резултат за скорост и SEO. Когато някой в твоя град напише в Google услугата, която предлагаш, твоят бизнес ще излиза на първа линия пред конкуренцията.',
+  },
+  {
+    title: 'Твоите ревюта са си твоя собственост',
+    body: 'Няма смисъл да трупаш стотици петзвездни оценки в профил на чужда платформа, от която утре можеш да бъдеш изтрит. Твоите ревюта се синхронизират автоматично от твоя Google My Business профил, което допълнително вдига рейтинга ти в търсачката и излизаш по-напред в Google.',
+  },
+  {
+    title: 'Умно събиране на отзиви, което работи за теб',
+    body: 'Знаем колко е досадно да напомняш на клиентите да ти пишат отзиви. Затова го правим вместо теб! След резервацията им изпращаме имейл с директен линк за оценка в твоя Google профил! Така трупаш легитимни ревюта в Google, които веднага се визуализират на сайта ти и привличат следващите ти клиенти.',
+  },
+  {
+    title: 'Всичко включено (без скрити такси)',
+    body: 'Получаваш сайт, резервационна система и хостинг на едно място. Не плащаш нищо допълнително за сървъри и поддръжка — всичко е включено в цената.',
+  },
+  {
+    title: 'Супер бърз старт за минути',
+    body: 'Няма нужда да чакаш месеци. Твоят сайт е готов за работа веднага, за да започнеш да приемаш часове още днес.',
+  },
+  {
+    title: 'Пълна независимост без програмисти',
+    body: 'Големите платформи утре могат да вдигнат таксите си двойно. С твоя собствен сайт ти си шефът. Системата е толкова проста и модерна, че можеш сам да променяш цени, услуги и работно време директно от телефона си — без да плащаш на скъпи програмисти.',
+  },
+  {
+    title: 'Добавяш услугите си за секунди (снимка и готово!)',
+    body: 'Забрави за досадното писане на цени и услуги една по една. Просто снимай настоящия си хартиен ценоразпис или меню, качи снимката и те автоматично влизат в системата ти за резервации!',
+  },
+  {
+    title: '0 лв. такса за имейл известия към клиентите',
+    body: 'Твоите клиенти получават напълно безплатни имейли за потвърждение на часа, напомняния и промени. Грижата за тяхното удобство не ти струва нищо.',
+  },
+  {
+    title: 'Опция за SMS известия',
+    body: 'Искаш клиентите ти да получават напомняне с класически SMS на телефона си, за да не изпускат часове? Можеш да го включиш по всяко време.',
+  },
+  {
+    title: 'Законова изрядност без главоболия (GDPR и общи условия)',
+    body: 'Погрижихме се сайтът ти да бъде напълно законен. В контролния панел сме ти подготвили готови и лесни за попълване автоматизирани секции за общи условия, политика за поверителност и GDPR правила. Без нужда от скъпи консултации с адвокати — просто въвеждаш данните си и си напълно спокоен при проверки!',
+  },
+  {
+    title: 'Създаден първо за телефони (Mobile-First)',
+    body: 'Над 90% от твоите клиенти ще си запазват час през мобилния си телефон. Затова сайтът от Clicka.bg е проектиран първо за смартфони. Сайтът ти ще зарежда светкавично бързо, ще изглежда перфектно на всеки екран и запазването на час ще става с няколко докосвания — без досадно приближаване и лутане.',
+  },
+];
+
+const SEO_BENEFITS = [
+  {
+    title: 'Техническо предимство',
+    body: 'Google разбира, че сайтът ти е бърз, сигурен и добре структуриран, което автоматично му дава предимство. Как това ти носи нови клиенти?',
+  },
+  {
+    title: 'Безплатни посещения',
+    body: 'Получаваш безплатен трафик от хора, които вече активно търсят твоите услуги.',
+  },
+  {
+    title: 'Бързина, която продава',
+    body: 'Високият SEO резултат означава и светкавично бърз сайт на телефона на клиента, което ги подтиква да направят резервация.',
+  },
+  {
+    title: 'Гарантирано класиране',
+    body: 'Твоят салон ще излиза много по-напред, когато някой в твоя град търси „фризьор в центъра“ или „добър козметик“.',
+  },
 ];
 
 const PLAN_FEATURES = [
@@ -201,55 +205,6 @@ const CSS = `
   }
   .hp-btn-brass:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(176,125,46,.4); }
 
-  /* ── Hero layout ───────────────────────────── */
-  .hp-hero-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    align-items: center;
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 100px clamp(20px,5vw,60px) 80px;
-    min-height: 100svh;
-  }
-  @media (max-width:820px) {
-    .hp-hero-grid {
-      grid-template-columns: 1fr;
-      padding-top: 88px;
-      min-height: auto;
-      padding-bottom: 60px;
-    }
-    .hp-hero-right { display: none !important; }
-    .hp-hero-left  { text-align: center; }
-    .hp-hero-btns  { justify-content: center !important; }
-  }
-
-  /* ── Feature cards ─────────────────────────── */
-  .hp-feat-card {
-    background: #fff;
-    border: 1px solid #E7E5E4;
-    border-radius: 20px;
-    padding: 28px;
-    transition:
-      transform .3s cubic-bezier(.16,1,.3,1),
-      box-shadow .3s ease,
-      border-color .25s ease;
-  }
-  .hp-feat-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 56px rgba(28,25,23,.09), 0 4px 14px rgba(28,25,23,.05);
-    border-color: #D6D3D1;
-  }
-
-  /* ── Feature icon ──────────────────────────── */
-  .hp-feat-icon {
-    width: 46px; height: 46px;
-    border-radius: 13px;
-    background: #FAF8F5; border: 1px solid #E7E5E4;
-    display: flex; align-items: center; justify-content: center;
-    color: #1C1917; margin-bottom: 20px; flex-shrink: 0;
-  }
-
   /* ── Label pill ────────────────────────────── */
   .hp-label {
     display: inline-flex; align-items: center; gap: 7px;
@@ -293,13 +248,6 @@ const CSS = `
   }
   .hp-step:last-child { border-bottom:none; }
 
-  /* ── Value statements ──────────────────────── */
-  .hp-value-line {
-    padding: clamp(26px,4vw,48px) 0;
-    border-bottom: 1px solid #E7E5E4;
-  }
-  .hp-value-line:last-child { border-bottom: none; }
-
   /* ── Pricing grid ──────────────────────────── */
   .hp-pricing-grid {
     display: grid;
@@ -309,27 +257,62 @@ const CSS = `
   @media (max-width:900px) { .hp-pricing-grid { grid-template-columns: 1fr; } }
   @media (min-width:640px) and (max-width:900px) { .hp-pricing-grid { grid-template-columns: 1fr 1fr; } }
 
-  /* ── Features grid ─────────────────────────── */
-  .hp-feat-grid {
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    gap: 14px;
+  /* ── Why us list ───────────────────────────── */
+  .hp-why-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
   }
-  @media (max-width:900px) { .hp-feat-grid { grid-template-columns:1fr 1fr; } }
-  @media (max-width:560px) { .hp-feat-grid { grid-template-columns:1fr; } }
-
-  /* ── Myth buster cards ─────────────────────── */
-  .hp-myth-card {
+  .hp-why-item {
     background: #fff;
     border: 1px solid #E7E5E4;
     border-radius: 18px;
-    padding: 20px 24px;
-    font-size: clamp(15px,1.7vw,18px);
-    line-height: 1.65;
-    margin-bottom: 10px;
+    padding: 22px 26px;
     transition: box-shadow .25s ease, border-color .25s ease;
   }
-  .hp-myth-card:hover { border-color: #D6D3D1; box-shadow: 0 6px 20px rgba(28,25,23,.06); }
+  .hp-why-item:hover { border-color: #D6D3D1; box-shadow: 0 6px 20px rgba(28,25,23,.06); }
+  .hp-why-item h3 {
+    font-size: clamp(16px,1.8vw,18px);
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+  }
+  .hp-why-item p {
+    font-size: 15px;
+    color: #78716C;
+    line-height: 1.72;
+    margin: 0;
+  }
+
+  /* ── SEO split section ─────────────────────── */
+  .hp-seo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(32px, 5vw, 64px);
+    align-items: center;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) {
+    .hp-seo-grid { grid-template-columns: 1fr; }
+    .hp-seo-visual { order: -1; }
+  }
+  .hp-seo-visual {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid #E7E5E4;
+    box-shadow: 0 24px 64px rgba(28,25,23,.1);
+    background: #fff;
+  }
+  .hp-seo-benefit {
+    padding: 18px 0;
+    border-bottom: 1px solid #E7E5E4;
+  }
+  .hp-seo-benefit:last-child { border-bottom: none; padding-bottom: 0; }
+  .hp-seo-benefit:first-child { padding-top: 0; }
 
   /* ── Misc ──────────────────────────────────── */
   .hp-check { display:flex; align-items:center; gap:10px; font-size:14px; color:#44403C; line-height:1.5; padding:4px 0; }
@@ -387,7 +370,7 @@ export default function HomePage() {
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────── */}
-      <ParticleHero />
+      <ClickaHero />
 
       {/* ── MARQUEE ─────────────────────────────────────────── */}
       <div className="hp-mq-wrap" aria-hidden="true">
@@ -404,43 +387,91 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── MYTH BUSTER ─────────────────────────────────────── */}
+      {/* ── ЗАЩО ДА ИЗБЕРЕШ НАС ─────────────────────────────── */}
       <section
         style={{ background: '#FAF8F5', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
-        aria-labelledby="myth-h"
+        aria-labelledby="why-h"
       >
-        <div style={{ maxWidth: 820, margin: '0 auto' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div className="hp-label">
             <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#B07D2E', display: 'inline-block' }} />
-            За собственици на салони
+            За кого е и защо го правим?
           </div>
 
-          <h2 id="myth-h" data-reveal className="font-display" style={{ fontSize: 'clamp(28px,4.2vw,50px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 20 }}>
-            Отдавна искаш да спреш<br />да даваш комисионна?
+          <h2 id="why-h" data-reveal className="font-display" style={{ fontSize: 'clamp(28px,4.2vw,50px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 20 }}>
+            Защо да избереш нас?
           </h2>
 
-          <p data-reveal style={{ fontSize: 'clamp(15px,1.6vw,18px)', color: '#78716C', lineHeight: 1.74, maxWidth: 660, marginBottom: 36 }}>
-            Платформите за онлайн резервации вземат процент от всеки записан час —
-            дори когато клиентът е твой от години. Имаме готово решение: твоят сайт е
-            активен за 15 минути, без да даваш нищо на никого.
+          <p data-reveal style={{ fontSize: 'clamp(15px,1.6vw,18px)', color: '#44403C', lineHeight: 1.74, maxWidth: 760, marginBottom: 40, fontWeight: 500 }}>
+            <strong style={{ fontWeight: 700, color: '#1C1917' }}>На 1-во място:</strong>{' '}
+            Ние <strong style={{ fontWeight: 700 }}>НЕ</strong> сме резервационна платформа. Ние предлагаме на бизнеса ти
+            собствен дигитален дом, с идея за максимално добро локално позициониране!
           </p>
 
-          {[
-            { em: 'Без технически познания', rest: ' — ние изграждаме всичко за теб.' },
-            { em: 'Без скрити такси',         rest: ' — плащаш веднъж годишно, толкова.' },
-            { em: 'Без главоболия',            rest: ' — поемаме цялата поддръжка.' },
-          ].map((b, i) => (
-            <div key={i} data-reveal className="hp-myth-card" style={{ transitionDelay: `${i * 0.08}s` }}>
-              <strong style={{ fontWeight: 700 }}>{b.em}</strong>
-              <span style={{ color: '#78716C' }}>{b.rest}</span>
+          <div className="hp-why-list">
+            {WHY_US.map((item, i) => (
+              <article key={item.title} data-reveal className="hp-why-item" style={{ transitionDelay: `${(i % 6) * 0.05}s` }}>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SEO 100/100 ─────────────────────────────────────── */}
+      <section
+        style={{ background: '#fff', borderTop: '1px solid #E7E5E4', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
+        aria-labelledby="seo-h"
+      >
+        <div className="hp-seo-grid">
+          <div>
+            <div className="hp-label">
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#B07D2E', display: 'inline-block' }} />
+              SEO резултат
             </div>
-          ))}
+
+            <h2 id="seo-h" data-reveal className="font-display" style={{ fontSize: 'clamp(26px,3.8vw,44px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, marginBottom: 20 }}>
+              Постигни невъзможното:<br />100/100 SEO резултат
+            </h2>
+
+            <p data-reveal style={{ fontSize: 'clamp(15px,1.55vw,17px)', color: '#78716C', lineHeight: 1.74, marginBottom: 28 }}>
+              Докато другите само говорят за SEO, ние го доказваме. Това е реалният резултат от теста на Google Lighthouse
+              за нашия демо сайт — перфектна оценка от 100 от 100 за SEO оптимизация. Това означава, че сайтът ти е
+              технически безупречен в очите на Google. Това е твоят билет за предна линия в локалното търсене.
+            </p>
+
+            <p data-reveal style={{ fontSize: 15, fontWeight: 700, color: '#1C1917', marginBottom: 8, letterSpacing: '-0.01em' }}>
+              Какво получаваш с този перфектен резултат?
+            </p>
+
+            <div data-reveal>
+              {SEO_BENEFITS.map((b) => (
+                <div key={b.title} className="hp-seo-benefit">
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em' }}>{b.title}</h3>
+                  <p style={{ fontSize: 15, color: '#78716C', lineHeight: 1.68, margin: 0 }}>{b.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <figure data-reveal className="hp-seo-visual">
+            <Image
+              src="/images/lighthouse-seo-100.webp"
+              alt="Google Lighthouse SEO резултат 100 от 100 и мобилен сайт на салон — Google те обича, а с него и клиентите в твоя град"
+              width={576}
+              height={1024}
+              sizes="(max-width: 900px) 100vw, 50vw"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+              priority={false}
+            />
+          </figure>
         </div>
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────────── */}
       <section
-        style={{ background: '#fff', borderTop: '1px solid #E7E5E4', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
+        style={{ background: '#FAF8F5', borderTop: '1px solid #E7E5E4', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
         aria-labelledby="steps-h"
       >
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
@@ -467,62 +498,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FEATURES ────────────────────────────────────────── */}
-      <section
-        style={{ background: '#FAF8F5', borderTop: '1px solid #E7E5E4', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
-        aria-labelledby="feat-h"
-      >
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div className="hp-label">
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#B07D2E', display: 'inline-block' }} />
-            Функции
-          </div>
-
-          <h2 id="feat-h" data-reveal className="font-display" style={{ fontSize: 'clamp(28px,4.2vw,50px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 52 }}>
-            Всичко, от което<br />се нуждае твоят бранд.
-          </h2>
-
-          <div className="hp-feat-grid">
-            {FEATURES.map((f, i) => (
-              <div key={i} data-reveal className="hp-feat-card" style={{ transitionDelay: `${i * 0.07}s` }}>
-                <div className="hp-feat-icon">
-                  <f.Icon />
-                </div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#B07D2E', marginBottom: 10 }}>
-                  {f.label}
-                </div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 10px', letterSpacing: '-0.02em', lineHeight: 1.3 }}>{f.head}</h3>
-                <p style={{ fontSize: 14, color: '#78716C', lineHeight: 1.74, margin: 0 }}>{f.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── VALUE STATEMENTS ────────────────────────────────── */}
-      <section style={{ background: '#fff', borderTop: '1px solid #E7E5E4', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          {[
-            { line: 'Твоят сайт за 15 минути.',               note: null,                 brass: false },
-            { line: 'Клиентите записват директно при теб.',    note: null,                 brass: false },
-            { line: 'Нито стотинка комисионна.',               note: 'Никога. За нищо.',   brass: true  },
-          ].map((item, i) => (
-            <div key={i} data-reveal className="hp-value-line" style={{ transitionDelay: `${i * 0.1}s` }}>
-              <p
-                className="font-display"
-                style={{ fontSize: 'clamp(26px,5vw,60px)', fontWeight: 700, margin: 0, letterSpacing: '-0.033em', lineHeight: 1.06, color: item.brass ? '#B07D2E' : '#1C1917' }}
-              >
-                {item.line}
-              </p>
-              {item.note && <p style={{ fontSize: 'clamp(14px,1.4vw,17px)', color: '#A8A29E', marginTop: 8 }}>{item.note}</p>}
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── PRICING ─────────────────────────────────────────── */}
       <section
-        style={{ background: '#FAF8F5', borderTop: '1px solid #E7E5E4', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
+        style={{ background: '#fff', borderTop: '1px solid #E7E5E4', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
         aria-labelledby="pricing-h"
       >
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>

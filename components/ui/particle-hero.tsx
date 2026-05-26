@@ -264,18 +264,18 @@ export function ParticleHero() {
           margin: "0 auto",
         }}
       >
-        {/* Live badge */}
+        {/* Brand badge */}
         <div
           className="ph-sub"
-          role="status"
-          aria-live="polite"
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             background: "rgba(255,255,255,.06)",
             border: "1px solid rgba(186,214,247,.15)",
-            borderRadius: 9999, padding: "6px 16px",
-            marginBottom: 36, fontSize: 13, fontWeight: 500,
+            borderRadius: 9999, padding: "6px 18px",
+            marginBottom: 32, fontSize: 14, fontWeight: 600,
             color: "rgba(186,214,247,.8)",
+            letterSpacing: "-0.01em",
+            fontFamily: "Georgia, 'Times New Roman', serif",
           }}
         >
           <span
@@ -287,68 +287,40 @@ export function ParticleHero() {
               animation: "ph-blink 2s infinite",
             }}
           />
-          Активни салони се регистрират всеки ден
+          clicka.bg
         </div>
 
         {/* Main headline */}
-        <div
-          className="ph-headline"
+        <h1
           style={{
-            marginBottom: 24,
+            fontSize: "clamp(30px,5.5vw,56px)",
+            fontWeight: 700,
+            letterSpacing: "-0.035em",
+            lineHeight: 1.12,
+            margin: "0 0 20px",
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            color: "rgba(186,214,247,.95)",
+            maxWidth: 680,
           }}
         >
-          <h1
-            style={{
-              fontSize: "clamp(52px,9vw,108px)",
-              fontWeight: 700,
-              letterSpacing: "-0.04em",
-              lineHeight: 1,
-              margin: 0,
-              fontFamily: "Georgia, 'Times New Roman', serif",
-              background: "linear-gradient(160deg, #bad1f1 20%, #9dc3f7 60%, #c8dff8 100%)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            clicka.bg
-          </h1>
-          {/* blur echo */}
-          <h1
-            aria-hidden="true"
-            style={{
-              fontSize: "clamp(52px,9vw,108px)",
-              fontWeight: 700, letterSpacing: "-0.04em",
-              lineHeight: 1, margin: 0,
-              fontFamily: "Georgia, 'Times New Roman', serif",
-              position: "absolute", left: 0, right: 0,
-              background: "linear-gradient(160deg,#bad1f1,#9dc3f7)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              filter: "blur(18px) opacity(0.35)",
-              pointerEvents: "none",
-            }}
-          >
-            clicka.bg
-          </h1>
-        </div>
+          Независим собствен сайт с резервации за твоя салон.
+        </h1>
 
-        {/* Tag line */}
+        {/* Emphasis sub-heading */}
         <p
-          className="ph-sub"
           style={{
-            fontSize: "clamp(18px,2.2vw,22px)",
-            lineHeight: 1.55,
-            color: "rgba(186,214,247,.75)",
-            margin: "0 0 48px",
-            maxWidth: 520,
+            fontSize: "clamp(20px,3vw,28px)",
+            fontWeight: 700,
+            lineHeight: 1.3,
+            margin: "0 0 40px",
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            background: "linear-gradient(160deg, #bad1f1 20%, #9dc3f7 60%, #c8dff8 100%)",
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
           }}
         >
-          Собствен сайт с резервации за твоя салон.{" "}
-          <strong style={{ color: "rgba(186,214,247,.95)", fontWeight: 600 }}>
-            Готов за 15 минути.
-          </strong>
+          Готов за 15 минути.
         </p>
 
         {/* CTA buttons */}
@@ -379,7 +351,7 @@ export function ParticleHero() {
               ;(e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(250,248,245,.15)"
             }}
           >
-            Стартирай безплатно
+            Създай своя сайт сега →
           </Link>
           <Link
             href="/demo"
@@ -414,7 +386,7 @@ export function ParticleHero() {
             color: "rgba(186,214,247,.35)",
           }}
         >
-          от 0.82 € / ден · без скрити такси · 0% комисионна
+          от 0.82 € / ден · без скрити такси · 0% комисионна · собствен бранд
         </p>
       </div>
 
