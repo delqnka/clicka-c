@@ -9,8 +9,10 @@ import {
   FileText,
   Globe,
   Image as ImageIcon,
+  ImagePlus,
   Scissors,
   UserRound,
+  Save,
   ExternalLink,
   LogOut,
   CheckCircle2,
@@ -25,8 +27,8 @@ import {
   Menu,
   X,
 } from 'lucide-react';
-import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties, DragEvent, ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { getHostAwareSalonPath, getPlatformPublicUrl, getPrimaryPublicUrl } from '@/lib/domain-routing';
@@ -382,14 +384,36 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
-  async function handleGalleryUpload(files: FileList | null) {
-    if (!files || !files.length) return; setBusyKey('upload-gallery'); setError('');
+  async function handleGalleryUpload(
+    files: FileList | File[] | null,
+    input?: HTMLInputElement | null,
+  ) {
+    const images = imageFilesFromInput(files);
+    if (!images.length) {
+      setError('Моля, избери само изображения (JPG, PNG, WebP, GIF).');
+      return;
+    }
+    setBusyKey('upload-gallery');
+    setError('');
     try {
       const urls: string[] = [];
-      for (const f of Array.from(files)) urls.push(await uploadSingleFile(f));
-      setSite(p => ({ ...p, galleryImages: [...p.galleryImages, ...urls], coverImageUrl: p.coverImageUrl || urls[0] || p.coverImageUrl }));
-      setNotice('Галерията е качена. Натисни „Запази снимките".');
-    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
+      for (const f of images) urls.push(await uploadSingleFile(f));
+      setSite(p => ({
+        ...p,
+        galleryImages: [...p.galleryImages, ...urls],
+        coverImageUrl: p.coverImageUrl || urls[0] || p.coverImageUrl,
+      }));
+      setNotice(
+        urls.length === 1
+          ? 'Снимката е качена. Натисни „Запази снимките".'
+          : `${urls.length} снимки са качени. Натисни „Запази снимките".`,
+      );
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+      if (input) input.value = '';
+    }
   }
 
   async function installAsApp() {
@@ -649,48 +673,166 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'images' && (
             <Section
               title="Снимки"
-              desc="Cover, лого и галерия за публичния сайт."
-              action={<button type="button" onClick={saveImages} style={btn('primary')} disabled={busyKey === 'images'}>{busyKey === 'images' ? 'Запазваме…' : 'Запази снимките'}</button>}
+              desc={isMobile ? undefined : 'Cover, лого и галерия за публичния сайт.'}
+              compact={isMobile}
+              action={
+                <AdminSaveBtn
+                  label="Запази снимките"
+                  busy={busyKey === 'images'}
+                  mobile={isMobile}
+                  onClick={() => void saveImages()}
+                />
+              }
             >
-              <div style={grid2}>
-                <Field label="Cover">
-                  <FileUploadBtn label="Качи cover" busy={busyKey === 'upload-cover'}>
-                    <input type="file" accept="image/*" onChange={e => void handleCoverUpload(e.target.files?.[0] ?? null)} />
-                  </FileUploadBtn>
-                  <input value={site.coverImageUrl} onChange={e => setSite(p => ({ ...p, coverImageUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
-                  {site.coverImageUrl && <PreviewImg src={site.coverImageUrl} alt="Cover" />}
-                </Field>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
+                  gap: isMobile ? 20 : 12,
+                }}
+              >
+                <ImageAssetField
+                  label="Cover"
+                  uploadLabel="Качи cover"
+                  busy={busyKey === 'upload-cover'}
+                  mobile={isMobile}
+                  imageUrl={site.coverImageUrl}
+                  onUpload={files => void handleCoverUpload(files?.[0] ?? null)}
+                >
+                  {!isMobile && (
+                    <input
+                      value={site.coverImageUrl}
+                      onChange={e => setSite(p => ({ ...p, coverImageUrl: e.target.value }))}
+                      style={{ ...inp, marginTop: 6 }}
+                      placeholder="https://…"
+                    />
+                  )}
+                </ImageAssetField>
 
-                <Field label="Лого">
-                  <FileUploadBtn label="Качи лого" busy={busyKey === 'upload-logo'}>
-                    <input type="file" accept="image/*" onChange={e => void handleLogoUpload(e.target.files?.[0] ?? null)} />
-                  </FileUploadBtn>
-                  <input value={site.logoImageUrl} onChange={e => setSite(p => ({ ...p, logoImageUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
-                  {site.logoImageUrl && <PreviewImg src={site.logoImageUrl} alt="Лого" />}
-                </Field>
+                <ImageAssetField
+                  label="Лого"
+                  uploadLabel="Качи лого"
+                  busy={busyKey === 'upload-logo'}
+                  mobile={isMobile}
+                  imageUrl={site.logoImageUrl}
+                  roundPreview
+                  onUpload={files => void handleLogoUpload(files?.[0] ?? null)}
+                >
+                  {!isMobile && (
+                    <input
+                      value={site.logoImageUrl}
+                      onChange={e => setSite(p => ({ ...p, logoImageUrl: e.target.value }))}
+                      style={{ ...inp, marginTop: 6 }}
+                      placeholder="https://…"
+                    />
+                  )}
+                </ImageAssetField>
               </div>
 
-              <div style={{ marginTop: 20 }}>
-                <Field label="Галерия">
-                  <FileUploadBtn label="Добави снимки" busy={busyKey === 'upload-gallery'}>
-                    <input type="file" accept="image/*" multiple onChange={e => void handleGalleryUpload(e.target.files)} />
-                  </FileUploadBtn>
-                </Field>
-                {site.galleryImages.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(140px, 100%), 1fr))', gap: 10, marginTop: 12 }}>
+              <div style={{ marginTop: isMobile ? 24 : 20 }}>
+                <Field
+                  label={
+                    site.galleryImages.length > 0
+                      ? isMobile
+                        ? `Галерия · ${site.galleryImages.length}`
+                        : `Галерия (${site.galleryImages.length} снимки)`
+                      : 'Галерия'
+                  }
+                >
+                  <GalleryDropZone busy={busyKey === 'upload-gallery'} mobile={isMobile} onUpload={handleGalleryUpload}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile
+                        ? 'repeat(3, minmax(0, 1fr))'
+                        : 'repeat(auto-fill, minmax(min(140px, 100%), 1fr))',
+                      gap: isMobile ? 8 : 10,
+                    }}
+                  >
                     {site.galleryImages.map((url, i) => (
-                      <div key={`${url}-${i}`} style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, overflow: 'hidden', background: T.surface }}>
-                        <img src={url} alt={`Gallery ${i + 1}`} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
-                        <div style={{ padding: '6px 8px', display: 'flex', gap: 6 }}>
-                          <button type="button" style={{ ...btn('sm-ghost'), flex: 1, fontSize: 11, padding: '4px 8px' }} onClick={() => setSite(p => ({ ...p, coverImageUrl: url }))}>Cover</button>
-                          <button type="button" style={{ ...btn('sm-ghost'), color: '#EF4444', padding: '4px 8px' }} onClick={() => setSite(p => ({ ...p, galleryImages: p.galleryImages.filter((_, j) => j !== i), coverImageUrl: p.coverImageUrl === url ? (p.galleryImages.find((_, j) => j !== i) ?? '') : p.coverImageUrl }))}>
-                            <Trash2 size={12} />
+                      <div
+                        key={`${url}-${i}`}
+                        style={{
+                          border: `1px solid ${site.coverImageUrl === url ? T.text : T.border}`,
+                          borderRadius: T.radiusSm,
+                          overflow: 'hidden',
+                          background: T.surface,
+                        }}
+                      >
+                        <img
+                          src={url}
+                          alt={`Gallery ${i + 1}`}
+                          style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
+                        />
+                        <div
+                          style={{
+                            padding: isMobile ? '4px' : '6px 8px',
+                            display: 'flex',
+                            gap: isMobile ? 4 : 6,
+                            justifyContent: isMobile ? 'center' : 'stretch',
+                          }}
+                        >
+                          <button
+                            type="button"
+                            aria-label={site.coverImageUrl === url ? 'Начална снимка' : 'Задай за cover'}
+                            style={{
+                              ...btn('sm-ghost'),
+                              flex: isMobile ? '0 0 auto' : 1,
+                              fontSize: isMobile ? 10 : 11,
+                              padding: isMobile ? '6px' : '4px 8px',
+                              width: isMobile ? 32 : undefined,
+                              height: isMobile ? 32 : undefined,
+                              borderRadius: isMobile ? 8 : T.radiusSm,
+                              ...(site.coverImageUrl === url
+                                ? { background: T.text, color: '#fff', borderColor: T.text }
+                                : {}),
+                            }}
+                            onClick={() => setSite(p => ({ ...p, coverImageUrl: url }))}
+                          >
+                            {isMobile ? (
+                              <Check size={14} strokeWidth={2.5} />
+                            ) : site.coverImageUrl === url ? (
+                              'Cover ✓'
+                            ) : (
+                              'Cover'
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              ...btn('sm-ghost'),
+                              color: '#EF4444',
+                              padding: isMobile ? '6px' : '4px 8px',
+                              width: isMobile ? 32 : undefined,
+                              height: isMobile ? 32 : undefined,
+                              borderRadius: isMobile ? 8 : T.radiusSm,
+                              flex: '0 0 auto',
+                            }}
+                            aria-label="Премахни снимка"
+                            onClick={() =>
+                              setSite(p => ({
+                                ...p,
+                                galleryImages: p.galleryImages.filter((_, j) => j !== i),
+                                coverImageUrl:
+                                  p.coverImageUrl === url
+                                    ? (p.galleryImages.find((_, j) => j !== i) ?? '')
+                                    : p.coverImageUrl,
+                              }))
+                            }
+                          >
+                            <Trash2 size={isMobile ? 14 : 12} />
                           </button>
                         </div>
                       </div>
                     ))}
+                    <GalleryUploadTile
+                      busy={busyKey === 'upload-gallery'}
+                      mobile={isMobile}
+                      onUpload={handleGalleryUpload}
+                    />
                   </div>
-                )}
+                  </GalleryDropZone>
+                </Field>
               </div>
             </Section>
           )}
@@ -709,7 +851,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               <div style={{ marginTop: 12 }}>
                 <Field label="Снимка на специалиста">
                   <FileUploadBtn label="Качи снимка" busy={busyKey === 'upload-owner'}>
-                    <input type="file" accept="image/*" onChange={e => void handleOwnerPhotoUpload(e.target.files?.[0] ?? null)} />
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => void handleOwnerPhotoUpload(e.target.files?.[0] ?? null)} />
                   </FileUploadBtn>
                   <input value={site.ownerPublicPhotoUrl} onChange={e => setSite(p => ({ ...p, ownerPublicPhotoUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
                   {site.ownerPublicPhotoUrl && <PreviewImg src={site.ownerPublicPhotoUrl} alt="Специалист" round />}
@@ -1036,18 +1178,201 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
 /* ─── Sub-components ──────────────────────────────────── */
 
-function Section({ title, desc, action, children }: { title: string; desc: string; action?: ReactNode; children: ReactNode }) {
+function Section({
+  title,
+  desc,
+  action,
+  children,
+  compact = false,
+}: {
+  title: string;
+  desc?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  compact?: boolean;
+}) {
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: T.text }}>{title}</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>{desc}</p>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: compact ? 'center' : 'flex-start',
+          gap: compact ? 10 : 16,
+          marginBottom: compact ? 14 : 18,
+          flexWrap: compact ? 'nowrap' : 'wrap',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: compact ? 17 : 18,
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              color: T.text,
+            }}
+          >
+            {title}
+          </h2>
+          {desc ? (
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>{desc}</p>
+          ) : null}
         </div>
-        {action && <div style={{ flexShrink: 0 }}>{action}</div>}
+        {action ? <div style={{ flexShrink: 0, marginLeft: 'auto' }}>{action}</div> : null}
       </div>
       {children}
     </div>
+  );
+}
+
+function AdminSaveBtn({
+  label,
+  busy,
+  mobile,
+  onClick,
+}: {
+  label: string;
+  busy: boolean;
+  mobile: boolean;
+  onClick: () => void;
+}) {
+  if (mobile) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        aria-label={label}
+        title={label}
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          border: `1px solid ${T.accent}`,
+          background: T.accent,
+          color: '#fff',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: busy ? 'wait' : 'pointer',
+          flexShrink: 0,
+          boxShadow: '0 2px 8px rgba(24,24,27,0.12)',
+        }}
+      >
+        {busy ? <RefreshCw size={17} strokeWidth={2} /> : <Save size={17} strokeWidth={2.25} />}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        borderRadius: 10,
+        border: `1px solid ${T.accent}`,
+        background: T.accent,
+        color: '#fff',
+        padding: '7px 14px',
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: busy ? 'wait' : 'pointer',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {busy ? <RefreshCw size={14} /> : <Save size={14} strokeWidth={2.25} />}
+      {busy ? 'Запазваме…' : label}
+    </button>
+  );
+}
+
+function ImageAssetField({
+  label,
+  uploadLabel,
+  busy,
+  mobile,
+  imageUrl,
+  roundPreview = false,
+  onUpload,
+  children,
+}: {
+  label: string;
+  uploadLabel: string;
+  busy: boolean;
+  mobile: boolean;
+  imageUrl: string;
+  roundPreview?: boolean;
+  onUpload: (files: FileList | null) => void;
+  children?: ReactNode;
+}) {
+  const uploadControl = mobile ? (
+    <IconUploadBtn label={uploadLabel} busy={busy}>
+      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => onUpload(e.target.files)} />
+    </IconUploadBtn>
+  ) : (
+    <FileUploadBtn label={uploadLabel} busy={busy}>
+      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => onUpload(e.target.files)} />
+    </FileUploadBtn>
+  );
+
+  if (mobile) {
+    return (
+      <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            marginBottom: imageUrl ? 10 : 0,
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{label}</span>
+          {uploadControl}
+        </div>
+        {imageUrl ? <PreviewImg src={imageUrl} alt={label} round={roundPreview} mobile /> : null}
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <Field label={label}>
+      {uploadControl}
+      {children}
+      {imageUrl ? <PreviewImg src={imageUrl} alt={label} round={roundPreview} /> : null}
+    </Field>
+  );
+}
+
+function IconUploadBtn({ label, busy, children }: { label: string; busy: boolean; children: ReactNode }) {
+  return (
+    <label
+      aria-label={label}
+      title={label}
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        border: `1px solid ${T.border}`,
+        background: '#fff',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: busy ? 'wait' : 'pointer',
+        flexShrink: 0,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        color: T.text,
+      }}
+    >
+      {busy ? <RefreshCw size={18} strokeWidth={2} /> : <ImagePlus size={20} strokeWidth={2} />}
+      {children}
+    </label>
   );
 }
 
@@ -1069,19 +1394,249 @@ function EmptyState({ title, desc }: { title: string; desc: string }) {
   );
 }
 
-function PreviewImg({ src, alt, round = false }: { src: string; alt: string; round?: boolean }) {
+function PreviewImg({
+  src,
+  alt,
+  round = false,
+  mobile = false,
+}: {
+  src: string;
+  alt: string;
+  round?: boolean;
+  mobile?: boolean;
+}) {
   return (
-    <img src={src} alt={alt} style={{ display: 'block', marginTop: 8, width: round ? 80 : '100%', height: round ? 80 : 140, objectFit: 'cover', borderRadius: round ? '50%' : T.radiusSm, border: `1px solid ${T.border}` }} />
+    <img
+      src={src}
+      alt={alt}
+      style={{
+        display: 'block',
+        marginTop: mobile ? 0 : 8,
+        width: round ? (mobile ? 72 : 80) : '100%',
+        height: round ? (mobile ? 72 : 80) : mobile ? 160 : 140,
+        objectFit: 'cover',
+        borderRadius: round ? '50%' : mobile ? 14 : T.radiusSm,
+        border: `1px solid ${T.border}`,
+      }}
+    />
   );
 }
 
 function FileUploadBtn({ label, busy, children }: { label: string; busy: boolean; children: ReactNode }) {
   return (
-    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, fontSize: 13, fontWeight: 500, color: T.text, cursor: busy ? 'wait' : 'pointer', background: T.surface }}>
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 7,
+        padding: '7px 12px',
+        border: `1px solid ${T.border}`,
+        borderRadius: T.radiusSm,
+        fontSize: 13,
+        fontWeight: 500,
+        color: T.text,
+        cursor: busy ? 'wait' : 'pointer',
+        background: T.surface,
+      }}
+    >
       <Upload size={13} />
       {busy ? 'Качваме…' : label}
-      <span style={{ display: 'none' }}>{children}</span>
+      {children}
     </label>
+  );
+}
+
+function imageFilesFromInput(files: FileList | File[] | null): File[] {
+  if (!files?.length) return [];
+  return Array.from(files).filter(f => f.type.startsWith('image/'));
+}
+
+function GalleryDropZone({
+  busy,
+  mobile = false,
+  onUpload,
+  children,
+}: {
+  busy: boolean;
+  mobile?: boolean;
+  onUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
+  children: ReactNode;
+}) {
+  const [dragActive, setDragActive] = useState(false);
+  const depthRef = useRef(0);
+
+  const onDragEnter = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+    depthRef.current += 1;
+    setDragActive(true);
+  };
+
+  const onDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+    e.dataTransfer.dropEffect = 'copy';
+    setDragActive(true);
+  };
+
+  const onDragLeave = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    depthRef.current = Math.max(0, depthRef.current - 1);
+    if (depthRef.current === 0) setDragActive(false);
+  };
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    depthRef.current = 0;
+    setDragActive(false);
+    if (busy) return;
+    void onUpload(e.dataTransfer.files);
+  };
+
+  return (
+    <div
+      style={{ position: 'relative' }}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dragActive && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 20,
+            borderRadius: T.radiusSm,
+            border: `2px dashed ${T.text}`,
+            background: 'rgba(255,255,255,0.94)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            pointerEvents: 'none',
+          }}
+        >
+          <Upload size={mobile ? 24 : 28} color={T.text} strokeWidth={1.75} />
+          <span style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: T.text }}>
+            {mobile ? 'Пусни тук' : 'Пусни снимките тук'}
+          </span>
+          {!mobile && <span style={{ fontSize: 12, color: T.muted }}>JPG, PNG, WebP, GIF</span>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function GalleryUploadTile({
+  busy,
+  mobile = false,
+  onUpload,
+}: {
+  busy: boolean;
+  mobile?: boolean;
+  onUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [tileDrag, setTileDrag] = useState(false);
+  const tileDepthRef = useRef(0);
+
+  const onTileDragEnter = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+    tileDepthRef.current += 1;
+    setTileDrag(true);
+  };
+
+  const onTileDragLeave = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    tileDepthRef.current = Math.max(0, tileDepthRef.current - 1);
+    if (tileDepthRef.current === 0) setTileDrag(false);
+  };
+
+  const onTileDrop = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    tileDepthRef.current = 0;
+    setTileDrag(false);
+    if (busy) return;
+    void onUpload(e.dataTransfer.files, inputRef.current);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={busy ? -1 : 0}
+      aria-label="Добави още снимки"
+      onClick={() => !busy && inputRef.current?.click()}
+      onKeyDown={e => {
+        if ((e.key === 'Enter' || e.key === ' ') && !busy) {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
+      onDragEnter={onTileDragEnter}
+      onDragOver={e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!busy) {
+          e.dataTransfer.dropEffect = 'copy';
+          setTileDrag(true);
+        }
+      }}
+      onDragLeave={onTileDragLeave}
+      onDrop={onTileDrop}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: mobile ? 0 : 6,
+        minHeight: mobile ? 0 : 120,
+        aspectRatio: '1',
+        border: `1.5px dashed ${tileDrag ? T.text : T.border}`,
+        borderRadius: mobile ? 12 : T.radiusSm,
+        background: tileDrag ? '#F4F4F5' : '#FAFAFA',
+        cursor: busy ? 'wait' : 'pointer',
+        padding: mobile ? 8 : 12,
+        textAlign: 'center',
+        outline: 'none',
+      }}
+    >
+      {mobile ? (
+        busy ? (
+          <RefreshCw size={22} color={T.muted} strokeWidth={2} />
+        ) : (
+          <Plus size={24} color={tileDrag ? T.text : T.muted} strokeWidth={2} />
+        )
+      ) : (
+        <>
+          <Upload size={22} color={tileDrag ? T.text : T.muted} strokeWidth={1.75} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: tileDrag ? T.text : T.muted, lineHeight: 1.35 }}>
+            {busy ? 'Качваме…' : 'Добави още снимки'}
+          </span>
+          <span style={{ fontSize: 11, color: T.subtle }}>клик или плъзни тук</span>
+        </>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        disabled={busy}
+        style={{ display: 'none' }}
+        onChange={e => void onUpload(e.target.files, e.target)}
+      />
+    </div>
   );
 }
 
