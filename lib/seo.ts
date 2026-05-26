@@ -1,4 +1,5 @@
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
+import { SALON_CURRENCY_CODE } from '@/lib/salon-currency';
 
 const CATEGORY_SCHEMA_MAP: Record<string, string> = {
   'Фризьорски салон': 'HairSalon',
@@ -74,7 +75,7 @@ export function buildSalonJsonLd(salon: Record<string, unknown>, slug: string) {
         const offer: Record<string, unknown> = {
           '@type': 'Offer',
           name: String(s.name ?? ''),
-          ...(s.price != null ? { price: String(s.price), priceCurrency: 'BGN' } : {}),
+          ...(s.price != null ? { price: String(s.price), priceCurrency: SALON_CURRENCY_CODE } : {}),
         };
         return offer;
       });

@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { formatSalonPrice } from '@/lib/salon-currency';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -51,7 +52,7 @@ export async function sendBookingNotification(
     booking.clientEmail ? renderRow('Имейл', booking.clientEmail) : '',
     renderRow('Услуга', booking.serviceName),
     booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
-    booking.servicePrice != null ? renderRow('Цена', `${booking.servicePrice} лв.`) : '',
+    booking.servicePrice != null ? renderRow('Цена', formatSalonPrice(booking.servicePrice)) : '',
     renderRow('Дата', booking.date),
     renderRow('Час', booking.time),
     booking.notes ? renderRow('Бележка', booking.notes) : '',
@@ -125,7 +126,7 @@ export async function sendBookingConfirmation(
     renderRow('Име', booking.clientName),
     renderRow('Услуга', booking.serviceName),
     booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
-    booking.servicePrice != null ? renderRow('Цена', `${booking.servicePrice} лв.`) : '',
+    booking.servicePrice != null ? renderRow('Цена', formatSalonPrice(booking.servicePrice)) : '',
     renderRow('Дата', booking.date),
     renderRow('Час', booking.time),
     booking.salonPhone ? renderRow('Телефон на салона', booking.salonPhone) : '',

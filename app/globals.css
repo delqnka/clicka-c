@@ -116,6 +116,44 @@
     color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
 }
 
+.hp .clicka-hero h1,
+.hp .clicka-hero h2 {
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.hp .clicka-hero .hero-emphasis {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.hp .clicka-hero .hero-live-dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgb(34 197 94 / 0.45);
+  animation: hero-live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hero-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgb(34 197 94 / 0.45);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 6px rgb(34 197 94 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp .clicka-hero .hero-live-dot {
+    animation: none;
+  }
+}
+
 /* Dark tokens only when .dark is set explicitly — not from OS preference */
 .dark .hp,
 .hp.dark {

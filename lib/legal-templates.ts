@@ -1,5 +1,7 @@
 // IMPORTANT: These templates were designed for Bulgarian law. Consult a lawyer before production use.
 
+import { SALON_LEGAL_PRICE_NOTICE } from '@/lib/salon-currency';
+
 export type LegalInfo = {
   companyName: string;
   eik: string;
@@ -266,8 +268,7 @@ export function generateTermsOfService(data: LegalInfo): string {
     резервации.
   </li>
   <li>
-    <strong>Цени:</strong> Посочените цени на услугите са в български лева (BGN)
-    с включен ДДС, освен ако изрично не е посочено друго. Операторът си запазва
+    <strong>Цени:</strong> ${SALON_LEGAL_PRICE_NOTICE} Операторът си запазва
     правото да актуализира цените, като промените влизат в сила за резервации,
     извършени след публикуването им.
   </li>

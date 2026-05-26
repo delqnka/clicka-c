@@ -50,6 +50,7 @@ import {
   type LegalDocumentPath,
 } from '@/lib/domain-routing';
 import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
+import { formatSalonPrice } from '@/lib/salon-currency';
 
 /* ─── Constants ───────────────────────────────────────── */
 const DAYS = [
@@ -1403,7 +1404,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                             </div>
                             <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
                               {b.service_name}
-                              {typeof b.service_price === 'number' ? ` · ${b.service_price} лв` : ''}
+                              {typeof b.service_price === 'number' ? ` · ${formatSalonPrice(b.service_price)}` : ''}
                               {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
                             </p>
                             <p style={{ margin: '2px 0 0', fontSize: 13, color: T.muted }}>

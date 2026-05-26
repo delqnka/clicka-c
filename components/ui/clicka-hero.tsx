@@ -1,53 +1,76 @@
 import { ButtonColorful } from '@/components/ui/button-colorful';
-import { formatHeroTrustPill, MARKETING_ACTIVITY_FLOOR } from '@/lib/marketing-activity-shared';
+import {
+  formatSalonCitiesTrustLine,
+  getMarketingActivityMock,
+  HERO_CHIPS,
+  HERO_PRICE_PILL,
+  type MarketingActivity,
+} from '@/lib/marketing-activity-shared';
 import { cn } from '@/lib/utils';
 
 const EMPHASIS = 'Готов за 15 минути.';
 
+const HERO_TITLE_SIZE = 'text-[clamp(1.35rem,4.8vw,3rem)]';
+const HERO_EMPHASIS_SIZE = 'text-[clamp(0.95rem,2.8vw,1.35rem)]';
+const HERO_EMPHASIS_GRADIENT =
+  'bg-gradient-to-r from-[#ff2d55] via-[#c026d3] to-[#7c3aed] bg-clip-text text-transparent';
+
 type ClickaHeroProps = {
-  activeSalons?: number;
+  /** Подай mock от сървъра; по подразбиране — MARKETING_ACTIVITY_MOCK */
+  activity?: MarketingActivity;
 };
 
-const CHAR_TITLE =
-  'font-display text-[clamp(1.35rem,4.8vw,3rem)] leading-[1.05] font-bold text-[var(--foreground)] tracking-tight';
-const CHAR_EMPHASIS =
-  'font-display text-[clamp(1.5rem,5.5vw,3.5rem)] leading-none font-bold text-[var(--primary)] tracking-tight';
+export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
+  const activity = activityProp ?? getMarketingActivityMock();
+  const { settingUpNow, salonCities } = activity;
+  const citiesTrustLine = formatSalonCitiesTrustLine(salonCities);
 
-export function ClickaHero({ activeSalons }: ClickaHeroProps) {
-  const heroPill =
-    typeof activeSalons === 'number' && Number.isFinite(activeSalons)
-      ? formatHeroTrustPill(activeSalons)
-      : formatHeroTrustPill(MARKETING_ACTIVITY_FLOOR.activeSalons);
   return (
     <section
       aria-label="Hero"
-      className="relative flex min-h-[100svh] w-full flex-col overflow-hidden bg-[var(--background)]"
+      className="clicka-hero relative flex min-h-[100svh] w-full flex-col overflow-hidden"
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
+        className="absolute inset-0 z-0"
         style={{
-          backgroundImage:
-            'linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px)',
-          backgroundSize: 'clamp(20px, 5vw, 60px) clamp(20px, 5vw, 60px)',
+          background: 'radial-gradient(125% 125% at 50% 10%, #fff 40%, #6366f1 100%)',
         }}
         aria-hidden
       />
 
-      <div className="absolute left-8 top-24 h-12 w-12 border-l border-t border-[var(--border)]" aria-hidden />
-      <div className="absolute bottom-8 right-8 h-12 w-12 border-r border-b border-[var(--border)]" aria-hidden />
-
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 pb-16 pt-28 sm:pt-32">
-        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-1.5 text-sm font-semibold text-[var(--foreground)]">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" aria-hidden />
-          {heroPill}
+        <p className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+          <span className="hero-live-dot h-2 w-2 shrink-0 rounded-full" aria-hidden />
+          <span>
+            <span className="font-semibold tabular-nums">{settingUpNow}</span> салона настройват
+            сайт сега
+          </span>
+        </p>
+
+        <div className="mb-8 inline-flex items-center rounded-full border border-black/10 bg-white/80 px-4 py-1.5 text-sm font-semibold text-[var(--foreground)] shadow-sm backdrop-blur-sm">
+          {HERO_PRICE_PILL}
         </div>
 
-        <h1 className="mb-10 w-full max-w-5xl text-center">
-          <span className={cn('block md:inline', CHAR_TITLE)}>Независим собствен сайт</span>
+        <h1 className="mb-8 w-full max-w-5xl text-center text-[var(--foreground)]">
+          <span className={cn('block md:inline', HERO_TITLE_SIZE)}>Независим собствен сайт</span>
           <span className="hidden md:inline"> </span>
-          <span className={cn('block md:inline', CHAR_TITLE)}>с резервации за твоя салон.</span>
-          <span className={cn('mt-3 block', CHAR_EMPHASIS)}>{EMPHASIS}</span>
+          <span className={cn('block md:inline', HERO_TITLE_SIZE)}>с резервации за твоя салон.</span>
+          <span
+            className={cn('hero-emphasis mt-4 block', HERO_EMPHASIS_SIZE, HERO_EMPHASIS_GRADIENT)}
+          >
+            {EMPHASIS}
+          </span>
         </h1>
+
+        <ul className="mb-10 flex max-w-2xl flex-wrap items-center justify-center gap-2">
+          {HERO_CHIPS.map((chip) => (
+            <li key={chip}>
+              <span className="inline-flex rounded-full border border-black/8 bg-white/70 px-3 py-1 text-xs font-medium text-[var(--secondary-foreground)] shadow-sm backdrop-blur-sm sm:text-[13px]">
+                {chip}
+              </span>
+            </li>
+          ))}
+        </ul>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
           <ButtonColorful
@@ -56,19 +79,18 @@ export function ClickaHero({ activeSalons }: ClickaHeroProps) {
             className="h-12 rounded-full px-8 text-base font-bold"
           />
           <ButtonColorful
-            href="/demo"
+            href="https://salonurban.online/"
             label="Виж демо"
-            className="h-12 rounded-full px-7 text-base font-medium"
+            variant="outline"
+            className="h-12"
           />
         </div>
 
-        <p className="mt-5 text-center text-sm font-normal text-[var(--secondary-foreground)]">
-          от 0.82 € / ден · без скрити такси · 0% комисионна · собствен бранд
-        </p>
+        <p className="mt-5 text-center text-sm text-[var(--muted-foreground)]">{citiesTrustLine}</p>
       </div>
 
       <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[12] h-24 bg-gradient-to-b from-transparent to-[var(--background)]"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[12] h-28 bg-gradient-to-b from-transparent to-white"
         aria-hidden
       />
     </section>

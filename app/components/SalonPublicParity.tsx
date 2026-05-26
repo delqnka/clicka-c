@@ -10,6 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Facebook,
+  Instagram,
   Loader2,
   MapPin,
   Phone,
@@ -24,6 +26,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 
 import { getGradientColorsForUser, getInitialsDotted } from '@/lib/avatar-gradient';
@@ -138,6 +141,36 @@ function salonPublicTikTokUrl(handle: string | null | undefined): string | null 
   const h = (handle ?? '').trim().replace(/^@/, '');
   if (!h) return null;
   return `https://www.tiktok.com/@${encodeURIComponent(h)}`;
+}
+
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+    </svg>
+  );
+}
+
+function SalonFooterSocialLink({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-[0_2px_12px_rgba(0,0,0,0.25)] backdrop-blur-sm transition hover:scale-105 hover:bg-white/20"
+    >
+      {children}
+    </a>
+  );
 }
 
 function salonPublicFacebookUrl(stored: string | null | undefined): string | null {
@@ -321,6 +354,35 @@ export default function SalonPublicParity({
   const instagram = rawSalon.instagram_username as string | null | undefined;
   const facebook = rawSalon.facebook_username as string | null | undefined;
   const tiktok = (rawSalon.tiktok_username as string | null | undefined) ?? undefined;
+
+  const footerSocial = useMemo(() => {
+    const links: { href: string; label: string; node: ReactNode }[] = [];
+    const igUrl = salonPublicInstagramUrl(instagram);
+    const ttUrl = salonPublicTikTokUrl(tiktok);
+    const fbUrl = salonPublicFacebookUrl(facebook);
+    if (igUrl) {
+      links.push({
+        href: igUrl,
+        label: 'Instagram',
+        node: <Instagram className="h-4 w-4" strokeWidth={2} aria-hidden />,
+      });
+    }
+    if (ttUrl) {
+      links.push({
+        href: ttUrl,
+        label: 'TikTok',
+        node: <TikTokIcon className="h-4 w-4" />,
+      });
+    }
+    if (fbUrl) {
+      links.push({
+        href: fbUrl,
+        label: 'Facebook',
+        node: <Facebook className="h-4 w-4" strokeWidth={2} aria-hidden />,
+      });
+    }
+    return links;
+  }, [instagram, tiktok, facebook]);
   const googlePlaceId = (rawSalon.google_place_id as string | null | undefined) ?? null;
   const ratingAgg = Number(rawSalon.rating) || 0;
   const reviewCountAgg = Number(rawSalon.review_count) || 0;
@@ -820,7 +882,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className="min-h-screen bg-white pb-28 text-[#1a1a1a] lg:pb-10"
+      className="min-h-screen bg-white pb-6 text-[#1a1a1a] lg:pb-10"
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -1616,35 +1678,65 @@ export default function SalonPublicParity({
           </aside>
         </div>
 
-        <footer className="mt-16 rounded-t-2xl bg-[#1C1917] pb-28 pt-10 text-center lg:pb-12">
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            <a href={`${basePath}/terms`} className="text-xs text-white/40 transition-colors hover:text-white/60">Условия за ползване</a>
-            <a href={`${basePath}/privacy`} className="text-xs text-white/40 transition-colors hover:text-white/60">Политика за поверителност</a>
-            <a href={`${basePath}/cookies`} className="text-xs text-white/40 transition-colors hover:text-white/60">Политика за бисквитки</a>
+        <footer
+          className="mt-10 border-t border-white/10 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-px lg:mt-12"
+          style={{
+            background: `linear-gradient(115deg, #0a0a0a 0%, color-mix(in srgb, ${primary} 42%, #141018) 48%, #050505 100%)`,
+            boxShadow: '0 -12px 40px rgba(0,0,0,0.12)',
+          }}
+        >
+          <div className="mx-auto flex max-w-[min(100%,1180px)] flex-col items-center gap-3 px-4 py-3.5 sm:flex-row sm:justify-between sm:gap-4">
+            <nav
+              className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start"
+              aria-label="Правни документи"
+            >
+              <a
+                href={`${basePath}/terms`}
+                className="text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
+              >
+                Условия
+              </a>
+              <a
+                href={`${basePath}/privacy`}
+                className="text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
+              >
+                Поверителност
+              </a>
+              <a
+                href={`${basePath}/cookies`}
+                className="text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
+              >
+                Бисквитки
+              </a>
+            </nav>
+
+            {footerSocial.length > 0 ? (
+              <div className="flex items-center gap-2.5" aria-label="Социални мрежи">
+                {footerSocial.map((item) => (
+                  <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
+                    {item.node}
+                  </SalonFooterSocialLink>
+                ))}
+              </div>
+            ) : (
+              <span className="hidden h-8 sm:block" aria-hidden />
+            )}
+
+            <p className="text-center text-[10px] text-white/40 sm:text-right">
+              <span className="text-white/30">{name}</span>
+              <span className="mx-1.5 text-white/20">·</span>
+              <a
+                href="https://clicka.bg"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/50 transition-colors hover:text-white/75"
+              >
+                Clicka.bg
+              </a>
+            </p>
           </div>
-          <p className="mt-3 text-xs text-white/25">
-            Изграден с{' '}
-            <a href="https://clicka.bg" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-white/45">
-              Clicka.bg
-            </a>
-          </p>
         </footer>
       </main>
-
-      <div className="fixed bottom-0 left-0 right-0 z-20 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:hidden">
-        <div className="mx-auto flex max-w-[min(100%,1180px)] items-center justify-between rounded-[30px] border border-white/70 bg-white/70 px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.16)] backdrop-blur-xl">
-          <div className="min-w-0 pr-4">
-            <p className="text-sm text-black/55">{servicesFromDb.length} услуги налични</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => openBookingModal()}
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white"
-          >
-            Резервирай
-          </button>
-        </div>
-      </div>
 
       {galleryModal && galleryModal.uris.length > 0 ? (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" role="dialog" aria-modal aria-label="Галерия">
@@ -1825,7 +1917,7 @@ export default function SalonPublicParity({
       ) : null}
 
       {cookieConsent === null ? (
-        <div className="fixed bottom-20 left-4 right-4 z-30 lg:bottom-6 lg:left-auto lg:right-6 lg:max-w-sm">
+        <div className="fixed bottom-4 left-4 right-4 z-30 pb-[env(safe-area-inset-bottom,0px)] lg:bottom-6 lg:left-auto lg:right-6 lg:max-w-sm lg:pb-0">
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_8px_32px_rgba(0,0,0,0.14)]">
             <p className="text-sm leading-relaxed text-black/70">
               Използваме бисквитки, за да управляваме резервациите ви.{' '}

@@ -1,3 +1,5 @@
+import { formatSalonPrice } from '@/lib/salon-currency';
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
@@ -47,7 +49,7 @@ export async function sendBookingTelegram(
 
   lines.push(`✂️ ${booking.serviceName}`);
 
-  if (booking.servicePrice != null) lines.push(`💰 ${booking.servicePrice} лв.`);
+  if (booking.servicePrice != null) lines.push(`💰 ${formatSalonPrice(booking.servicePrice)}`);
   if (booking.serviceDuration) lines.push(`⏱ ${booking.serviceDuration} мин`);
 
   lines.push(`🗓 ${booking.date} в ${booking.time}`);

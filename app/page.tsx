@@ -74,8 +74,8 @@ export default async function HomePage() {
   const host = headers().get('host');
   const hostname = extractHostname(host);
   if (isPlatformApexHost(hostname)) {
-    const { activeSalons } = await getMarketingActivity();
-    return <MarketingHomePage activeSalons={activeSalons} />;
+    const activity = await getMarketingActivity();
+    return <MarketingHomePage activity={activity} />;
   }
 
   const pageData = await getPublicSalonPageData({ host });
@@ -126,6 +126,6 @@ export default async function HomePage() {
     );
   }
 
-  const { activeSalons } = await getMarketingActivity();
-  return <MarketingHomePage activeSalons={activeSalons} />;
+  const activity = await getMarketingActivity();
+  return <MarketingHomePage activity={activity} />;
 }

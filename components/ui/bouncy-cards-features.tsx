@@ -17,6 +17,12 @@ const GRADIENT_STYLES = [
 ] as const;
 
 function colClassForIndex(index: number, total: number): string {
+  if (total === 4) {
+    return 'col-span-12 md:col-span-6';
+  }
+  if (index === 0) {
+    return 'col-span-12';
+  }
   if (index === total - 1 && total % 2 === 1) {
     return 'col-span-12 md:col-span-8 md:col-start-3';
   }
@@ -45,7 +51,7 @@ export function BouncyCardsFeatures() {
 
   return (
     <section
-      className="cv-defer mx-auto max-w-7xl px-4 py-12 text-[var(--foreground)] md:px-8 lg:py-16"
+      className="cv-defer mx-auto max-w-7xl px-4 py-8 text-[var(--foreground)] md:px-8 lg:py-12"
       aria-labelledby="why-h"
     >
       <div className="mb-10 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
@@ -96,22 +102,24 @@ type CardData = {
 
 function FeatureBounceCard({ card }: { card: CardData }) {
   const longTitle = card.title.length > 42;
+  const longBody = card.body.length > 140;
+  const compact = longTitle || longBody;
 
   return (
-    <BounceCard className={card.colClass} tall={longTitle}>
-      <CardTitle compact={longTitle}>{card.title}</CardTitle>
+    <BounceCard className={card.colClass} compact={compact}>
+      <CardTitle compact={compact}>{card.title}</CardTitle>
       <div
         className={cn(
-          'absolute bottom-0 left-4 right-4 top-28 translate-y-8 rounded-t-2xl bg-gradient-to-br p-4 md:top-32',
+          'absolute bottom-0 left-3 right-3 top-[4.25rem] translate-y-4 rounded-t-xl bg-gradient-to-br p-3.5 md:left-4 md:right-4 md:top-[4.5rem] md:p-4',
           'transition-transform duration-[250ms]',
-          'group-hover:translate-y-4 group-hover:rotate-[2deg]',
+          'group-hover:translate-y-2 group-hover:rotate-[1.5deg]',
           card.style.gradient,
-          longTitle && 'top-36 md:top-40',
+          compact && 'top-[5.25rem] md:top-[5.5rem]',
         )}
       >
         <p
           className={cn(
-            'text-center text-sm font-normal leading-relaxed md:text-[15px]',
+            'text-center text-[13px] font-normal leading-relaxed md:text-sm',
             card.style.text,
           )}
         >
@@ -125,17 +133,17 @@ function FeatureBounceCard({ card }: { card: CardData }) {
 function BounceCard({
   className,
   children,
-  tall = false,
+  compact = false,
 }: {
   className?: string;
   children: ReactNode;
-  tall?: boolean;
+  compact?: boolean;
 }) {
   return (
     <div
       className={cn(
-        'hp-bounce-card group relative cursor-default overflow-hidden rounded-2xl bg-[var(--muted)] p-6 md:p-8',
-        tall ? 'min-h-[340px]' : 'min-h-[300px]',
+        'hp-bounce-card group relative cursor-default overflow-hidden rounded-2xl bg-[var(--muted)]/45 p-4 shadow-[0_10px_28px_rgba(0,0,0,0.14)] md:p-5',
+        compact ? 'min-h-[248px]' : 'min-h-[220px]',
         className,
       )}
     >
@@ -154,8 +162,8 @@ function CardTitle({
   return (
     <h3
       className={cn(
-        'mx-auto max-w-md text-center font-bold text-[var(--foreground)]',
-        compact ? 'text-lg leading-snug md:text-xl' : 'text-xl md:text-2xl lg:text-3xl',
+        'mx-auto max-w-md text-center font-medium text-[var(--foreground)]',
+        compact ? 'text-base leading-snug md:text-lg' : 'text-lg md:text-xl',
       )}
     >
       {children}

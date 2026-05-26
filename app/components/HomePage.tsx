@@ -5,9 +5,10 @@ import Image from 'next/image';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { LazyWhenVisible } from '@/components/ui/lazy-when-visible';
+import type { MarketingActivity } from '@/lib/marketing-activity-shared';
 
 type MarketingHomePageProps = {
-  activeSalons?: number;
+  activity?: MarketingActivity;
 };
 
 const BouncyCardsFeatures = dynamic(
@@ -52,13 +53,6 @@ const STEPS = [
   },
 ];
 
-const MARQUEE = [
-  'Готов за 15 минути', 'Без технически познания', 'Google Calendar sync',
-  'Telegram нотификации', '0% комисионна', 'Без скрити такси',
-  'Email напомняния', 'Клиентите са твои', 'Мобилна версия',
-  'Хостинг включен', 'Свързи собствен домейн',
-];
-
 const SEO_BENEFITS = [
   {
     title: 'Техническо предимство',
@@ -92,15 +86,6 @@ const PLAN_FEATURES = [
    Scoped CSS — uses .hp theme tokens from globals.css
 ═══════════════════════════════════════════════════════════ */
 const CSS = `
-  @-webkit-keyframes hp-marquee {
-    from { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); }
-    to { -webkit-transform: translate3d(-50%, 0, 0); transform: translate3d(-50%, 0, 0); }
-  }
-  @keyframes hp-marquee {
-    from { transform: translate3d(0, 0, 0); }
-    to { transform: translate3d(-50%, 0, 0); }
-  }
-
   .hp {
     font-family: var(--font-sans);
     background: #ffffff;
@@ -136,45 +121,6 @@ const CSS = `
     font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
     color: var(--muted-foreground); margin-bottom: 16px;
   }
-
-  .hp-mq-wrap {
-    overflow: hidden;
-    position: relative;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    padding: 17px 0;
-    background: var(--card);
-    -webkit-overflow-scrolling: touch;
-  }
-  .hp-mq-track {
-    display: flex;
-    width: max-content;
-    flex-shrink: 0;
-    will-change: transform;
-    -webkit-animation: hp-marquee 32s linear infinite;
-    animation: hp-marquee 32s linear infinite;
-  }
-  .hp-mq-row {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-  }
-  .hp-mq-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 16px;
-    padding: 0 26px;
-    white-space: nowrap;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    flex-shrink: 0;
-  }
-  .hp-mq-wrap::before,.hp-mq-wrap::after {
-    content:''; position:absolute; top:0; bottom:0; width:100px; z-index:2; pointer-events:none;
-  }
-  .hp-mq-wrap::before { left:0; background:linear-gradient(to right,var(--card),transparent); }
-  .hp-mq-wrap::after  { right:0; background:linear-gradient(to left,var(--card),transparent); }
 
   .hp-price-card {
     background: var(--card);
@@ -246,7 +192,6 @@ const CSS = `
 
   @media (prefers-reduced-motion: reduce) {
     [data-reveal] { opacity:1; transform:none; transition:none; }
-    .hp-mq-track { -webkit-animation: none; animation: none; }
     .hp-bounce-card { transition: none; will-change: auto; }
     .hp-bounce-card:hover { transform: none; }
     .hp-bounce-card .group-hover\\:translate-y-4 { transform: none; }
@@ -257,7 +202,7 @@ const CSS = `
 /* ═══════════════════════════════════════════════════════════
    Page
 ═══════════════════════════════════════════════════════════ */
-export default function HomePage({ activeSalons }: MarketingHomePageProps = {}) {
+export default function HomePage({ activity }: MarketingHomePageProps = {}) {
   /* Scroll reveal */
   useEffect(() => {
     const els = document.querySelectorAll('[data-reveal]');
@@ -301,26 +246,10 @@ export default function HomePage({ activeSalons }: MarketingHomePageProps = {}) 
 
       <main id="main-content">
       {/* ── HERO ────────────────────────────────────────────── */}
-      <ClickaHero activeSalons={activeSalons} />
-
-      {/* ── MARQUEE ─────────────────────────────────────────── */}
-      <div className="hp-mq-wrap">
-        <div className="hp-mq-track" aria-hidden="true">
-          {[0, 1].map((copy) => (
-            <div key={copy} className="hp-mq-row" aria-hidden={copy === 1 ? true : undefined}>
-              {MARQUEE.map((item) => (
-                <span key={`${copy}-${item}`} className="hp-mq-item">
-                  <span className="hp-dot" />
-                  {item}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
+      <ClickaHero activity={activity} />
 
       {/* ── ЗАЩО ДА ИЗБЕРЕШ НАС (bouncy cards) ───────────────── */}
-      <LazyWhenVisible className="hp-section-alt" minHeight={480} style={{ borderTop: '1px solid var(--border)' }}>
+      <LazyWhenVisible className="hp-section-alt" minHeight={360} style={{ borderTop: '1px solid var(--border)' }}>
         <BouncyCardsFeatures />
       </LazyWhenVisible>
 
