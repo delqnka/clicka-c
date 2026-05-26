@@ -64,126 +64,96 @@
 
 /* ── Marketing homepage theme (scoped — does not affect salon sites) ─ */
 .hp {
+  color-scheme: light;
+
   --card: #ffffff;
-  --ring: #34a85a;
-  --input: #d4d4d4;
-  --muted: #ddd9c4;
-  --accent: #66d9ef;
-  --border: #d4d4d4;
-  --radius: 0.5rem;
-  --chart-1: #34a85a;
-  --chart-2: #6495ed;
-  --chart-3: #66d9ef;
-  --chart-4: #ff99cc;
-  --chart-5: #33cc33;
+  --ring: #a1a1a1;
+  --input: #e5e5e5;
+  --muted: #f5f5f5;
+  --accent: #f5f5f5;
+  --border: #e5e5e5;
+  --radius: 0.625rem;
+  --chart-1: #91c5ff;
+  --chart-2: #3a81f6;
+  --chart-3: #2563ef;
+  --chart-4: #1a4eda;
+  --chart-5: #1f3fad;
   --popover: #ffffff;
-  --primary: #34a85a;
-  --sidebar: #ffffff;
-  --font-mono: var(--font-marketing-mono), 'Source Code Pro', monospace;
-  --font-sans: var(--font-marketing-sans), Montserrat, system-ui, sans-serif;
-  --secondary: #6495ed;
+  --primary: #171717;
+  --sidebar: #fafafa;
+  --spacing: 0.25rem;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --secondary: #f5f5f5;
   --background: #ffffff;
-  --font-serif: var(--font-marketing-serif), 'Playfair Display', Georgia, serif;
-  --foreground: #333333;
-  --destructive: #ef4444;
-  --sidebar-ring: #34a85a;
-  --sidebar-accent: #66d9ef;
-  --sidebar-border: #d4d4d4;
-  --card-foreground: #333333;
-  --sidebar-primary: #34a85a;
-  --muted-foreground: #6e6e6e;
-  --accent-foreground: #333333;
-  --popover-foreground: #333333;
-  --primary-foreground: #ffffff;
-  --sidebar-foreground: #333333;
-  --secondary-foreground: #ffffff;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --foreground: #0a0a0a;
+  --destructive: #e7000b;
+  --sidebar-ring: #a1a1a1;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-border: #e5e5e5;
+  --card-foreground: #0a0a0a;
+  --sidebar-primary: #171717;
+  --muted-foreground: #737373;
+  --accent-foreground: #171717;
+  --popover-foreground: #0a0a0a;
+  --primary-foreground: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --secondary-foreground: #171717;
   --destructive-foreground: #ffffff;
-  --sidebar-accent-foreground: #333333;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-primary-foreground: #fafafa;
   --shadow-blur: 8px;
   --shadow-color: hsl(0 0% 0%);
   --shadow-spread: -1px;
-  --shadow-opacity: 0.1;
+  --shadow-opacity: 0.08;
   --shadow-offset-x: 0px;
   --shadow-offset-y: 4px;
-  --hp-cta-bg: #333333;
-  --hp-cta-fg: #ffffff;
+  --hp-cta-bg: #171717;
+  --hp-cta-fg: #fafafa;
   --hp-shadow: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur)
     var(--shadow-spread)
     color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
 }
 
+/* Dark tokens only when .dark is set explicitly — not from OS preference */
 .dark .hp,
 .hp.dark {
-  --card: #2f3436;
-  --ring: #33cc33;
-  --input: #444444;
-  --muted: #444444;
-  --accent: #66d9ef;
-  --border: #444444;
-  --chart-1: #33cc33;
-  --chart-2: #87ceeb;
-  --chart-3: #66d9ef;
-  --chart-4: #ff99cc;
-  --chart-5: #ffcc00;
-  --popover: #2f3436;
-  --primary: #33cc33;
-  --sidebar: #1a1d23;
-  --secondary: #87ceeb;
-  --background: #1a1d23;
-  --foreground: #e5e5e5;
-  --sidebar-ring: #33cc33;
-  --sidebar-accent: #66d9ef;
-  --sidebar-border: #444444;
-  --card-foreground: #e5e5e5;
-  --sidebar-primary: #33cc33;
-  --muted-foreground: #a3a3a3;
-  --accent-foreground: #000000;
-  --popover-foreground: #e5e5e5;
-  --primary-foreground: #000000;
-  --sidebar-foreground: #e5e5e5;
-  --secondary-foreground: #000000;
-  --sidebar-accent-foreground: #000000;
-  --sidebar-primary-foreground: #000000;
-  --hp-cta-bg: #1a1d23;
-  --hp-cta-fg: #e5e5e5;
-}
+  color-scheme: dark;
 
-@media (prefers-color-scheme: dark) {
-  .hp {
-    --card: #2f3436;
-    --ring: #33cc33;
-    --input: #444444;
-    --muted: #444444;
-    --accent: #66d9ef;
-    --border: #444444;
-    --chart-1: #33cc33;
-    --chart-2: #87ceeb;
-    --chart-3: #66d9ef;
-    --chart-4: #ff99cc;
-    --chart-5: #ffcc00;
-    --popover: #2f3436;
-    --primary: #33cc33;
-    --sidebar: #1a1d23;
-    --secondary: #87ceeb;
-    --background: #1a1d23;
-    --foreground: #e5e5e5;
-    --sidebar-ring: #33cc33;
-    --sidebar-accent: #66d9ef;
-    --sidebar-border: #444444;
-    --card-foreground: #e5e5e5;
-    --sidebar-primary: #33cc33;
-    --muted-foreground: #a3a3a3;
-    --accent-foreground: #000000;
-    --popover-foreground: #e5e5e5;
-    --primary-foreground: #000000;
-    --sidebar-foreground: #e5e5e5;
-    --secondary-foreground: #000000;
-    --sidebar-accent-foreground: #000000;
-    --sidebar-primary-foreground: #000000;
-    --hp-cta-bg: #1a1d23;
-    --hp-cta-fg: #e5e5e5;
-  }
+  --card: #0a0a0a;
+  --ring: #525252;
+  --input: #262626;
+  --muted: #262626;
+  --accent: #262626;
+  --border: #262626;
+  --chart-1: #91c5ff;
+  --chart-2: #3a81f6;
+  --chart-3: #2563ef;
+  --chart-4: #1a4eda;
+  --chart-5: #1f3fad;
+  --popover: #0a0a0a;
+  --primary: #fafafa;
+  --sidebar: #0a0a0a;
+  --secondary: #262626;
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --destructive: #e7000b;
+  --sidebar-ring: #525252;
+  --sidebar-accent: #262626;
+  --sidebar-border: #262626;
+  --card-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --muted-foreground: #a1a1a1;
+  --accent-foreground: #fafafa;
+  --popover-foreground: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --sidebar-foreground: #fafafa;
+  --secondary-foreground: #fafafa;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-primary-foreground: #0a0a0a;
+  --hp-cta-bg: #0a0a0a;
+  --hp-cta-fg: #fafafa;
 }
 
 /* ── Deferred rendering for below-fold sections ──────── */

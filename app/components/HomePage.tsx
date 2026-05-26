@@ -103,9 +103,11 @@ const CSS = `
 
   .hp {
     font-family: var(--font-sans);
+    background: #ffffff;
     background: var(--background);
     color: var(--foreground);
     overflow-x: hidden;
+    color-scheme: light;
   }
 
   [data-reveal] {
