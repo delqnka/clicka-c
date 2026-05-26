@@ -12,7 +12,7 @@ const GRADIENT_STYLES = [
   { gradient: 'from-amber-400 to-orange-500', text: 'text-orange-50' },
   { gradient: 'from-fuchsia-500 to-[var(--chart-5)]', text: 'text-fuchsia-50' },
   { gradient: 'from-sky-500 to-[var(--chart-2)]', text: 'text-sky-50' },
-  { gradient: 'from-violet-500 to-indigo-600', text: 'text-violet-50' },
+  { gradient: 'from-emerald-500 to-green-600', text: 'text-emerald-50' },
   { gradient: 'from-rose-500 to-red-600', text: 'text-rose-50' },
 ] as const;
 

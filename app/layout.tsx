@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Merriweather } from 'next/font/google';
+import { Inter, Merriweather, Montserrat, Playfair_Display, Source_Code_Pro } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
@@ -16,8 +16,29 @@ const merriweather = Merriweather({
   weight: ['400', '700'],
 });
 
+const montserrat = Montserrat({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-marketing-sans',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-marketing-serif',
+  display: 'swap',
+  weight: ['400', '700'],
+});
+
+const sourceCodePro = Source_Code_Pro({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-marketing-mono',
+  display: 'swap',
+  weight: ['400', '500'],
+});
+
 export const viewport: Viewport = {
-  themeColor: '#f8fafc',
+  themeColor: '#f9f9fa',
   width: 'device-width',
   initialScale: 1,
 };
@@ -30,7 +51,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="bg" className={`${inter.variable} ${merriweather.variable}`}>
+    <html
+      lang="bg"
+      className={`${inter.variable} ${merriweather.variable} ${montserrat.variable} ${playfair.variable} ${sourceCodePro.variable}`}
+    >
       <body>{children}</body>
     </html>
   );
