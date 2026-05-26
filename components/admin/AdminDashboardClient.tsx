@@ -50,6 +50,8 @@ import {
   isSalonCustomDomainLive,
   type LegalDocumentPath,
 } from '@/lib/domain-routing';
+import { LegalCustomDocumentsEditor } from '@/components/admin/legal-custom-documents-editor';
+import { defaultLegalInfoStored, type LegalInfoStored } from '@/lib/legal-custom-documents';
 import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
 import { formatSalonPrice } from '@/lib/salon-currency';
 
@@ -182,13 +184,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
-  const [legalInfo, setLegalInfo] = useState({
-    companyName:  initialSite.legalInfo?.companyName  ?? '',
-    eik:          initialSite.legalInfo?.eik          ?? '',
-    managerName:  initialSite.legalInfo?.managerName  ?? '',
-    address:      initialSite.legalInfo?.address      ?? '',
-    contactEmail: initialSite.legalInfo?.contactEmail ?? '',
-  });
+  const [legalInfo, setLegalInfo] = useState<LegalInfoStored>(
+    () => initialSite.legalInfo ?? defaultLegalInfoStored(),
+  );
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
@@ -766,6 +764,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         body: JSON.stringify({ slug, ...legalInfo }),
       });
       if (!res.ok) throw new Error('save_failed');
+      const data = (await res.json()) as { legalInfo?: LegalInfoStored };
+      if (data.legalInfo) setLegalInfo(data.legalInfo);
       setLegalNotice('Запазено успешно.');
     } catch {
       setLegalNotice('Грешка при запазване.');
@@ -1474,7 +1474,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
           {/* ── Правни документи ── */}
           {activeTab === 'legal' && (
-            <Section title="Правни документи" desc="Попълни данните на фирмата. Те се използват за автоматично генериране на Политика за поверителност, Условия за ползване и Политика за бисквитки.">
+            <Section title="Правни документи" desc="Попълни фирмените данни за автоматични шаблони или включи собствен текст за условия, GDPR и бисквитки.">
               <div style={{ display: 'grid', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Официално наименование на фирмата</label>
@@ -1559,6 +1559,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     ))}
                   </ul>
                 </div>
+                <LegalCustomDocumentsEditor
+                  value={legalInfo.customDocuments}
+                  inputStyle={inp}
+                  onChange={customDocuments => setLegalInfo(p => ({ ...p, customDocuments }))}
+                />
               </div>
             </Section>
           )}

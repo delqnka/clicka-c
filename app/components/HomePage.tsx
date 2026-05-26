@@ -4,18 +4,19 @@ import { useEffect } from 'react';
 import Image from 'next/image';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
+import {
+  MarketingFeaturesSection,
+  MarketingFounderSection,
+  MarketingProblemSection,
+  MarketingPromiseSection,
+} from '@/components/marketing/marketing-home-sections';
 import { ClickaHero } from '@/components/ui/clicka-hero';
-import { LazyWhenVisible } from '@/components/ui/lazy-when-visible';
+import { MARKETING_PRICING } from '@/lib/marketing-home-copy';
 import type { MarketingActivity } from '@/lib/marketing-activity-shared';
 
 type MarketingHomePageProps = {
   activity?: MarketingActivity;
 };
-
-const BouncyCardsFeatures = dynamic(
-  () => import('@/components/ui/bouncy-cards-features').then((m) => ({ default: m.BouncyCardsFeatures })),
-  { ssr: false },
-);
 
 const SeoBenefitsAccordion = dynamic(
   () => import('@/components/ui/seo-benefits-accordion').then((m) => ({ default: m.SeoBenefitsAccordion })),
@@ -37,21 +38,6 @@ const PLANS = [
   { id: 'solo',   name: 'Solo',   price: 299, daily: '0.82', desc: '1 специалист',     popular: false },
   { id: 'ekip',   name: 'Екип',   price: 399, daily: '1.09', desc: 'до 3 специалисти', popular: true  },
   { id: 'studio', name: 'Студио', price: 599, daily: '1.64', desc: 'без ограничения',  popular: false },
-];
-
-const STEPS = [
-  {
-    n: '01', head: 'Въведи 3 неща',
-    body: 'Само: Салон, Град, Имейл. Нищо повече. 30 секунди и продължаваш.',
-  },
-  {
-    n: '02', head: 'Виж своя сайт',
-    body: 'Автоматично ти показваме как ще изглежда сайтът с твоята информация. Харесва ли ти — продължи. Не харесва — промени.',
-  },
-  {
-    n: '03', head: 'Плати и публикувай',
-    body: 'Добави детайли по желание, избери план, плати. Сайтът е активен и приема резервации от минута 1.',
-  },
 ];
 
 const SEO_BENEFITS = [
@@ -137,12 +123,6 @@ const CSS = `
     border-color: var(--primary);
     box-shadow: 0 0 0 1px var(--primary), 0 8px 32px color-mix(in srgb, var(--primary) 18%, transparent);
   }
-
-  .hp-step {
-    display:flex; gap:28px; align-items:flex-start;
-    padding:34px 0; border-bottom:1px solid var(--border);
-  }
-  .hp-step:last-child { border-bottom:none; }
 
   .hp-pricing-grid {
     display: grid;
@@ -237,10 +217,10 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       {/* ── HERO ────────────────────────────────────────────── */}
       <ClickaHero activity={activity} />
 
-      {/* ── ЗАЩО ДА ИЗБЕРЕШ НАС (bouncy cards) ───────────────── */}
-      <LazyWhenVisible className="hp-section-alt" minHeight={360} style={{ borderTop: '1px solid var(--border)' }}>
-        <BouncyCardsFeatures />
-      </LazyWhenVisible>
+      <MarketingProblemSection />
+      <MarketingPromiseSection />
+      <MarketingFeaturesSection />
+      <MarketingFounderSection />
 
       {/* ── SEO 100/100 ─────────────────────────────────────── */}
       <section
@@ -287,36 +267,6 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ────────────────────────────────────── */}
-      <section
-        className="hp-section-alt"
-        style={{ borderTop: '1px solid var(--border)', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
-        aria-labelledby="steps-h"
-      >
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <div className="hp-label">
-            <span className="hp-dot" />
-            Как работи
-          </div>
-
-          <h2 id="steps-h" data-reveal className="font-display" style={{ fontSize: 'clamp(28px,4.2vw,50px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 52, color: 'var(--foreground)' }}>
-            Три стъпки до<br />твоя собствен сайт.
-          </h2>
-
-          {STEPS.map((s, i) => (
-            <div key={i} data-reveal className="hp-step" style={{ transitionDelay: `${i * 0.1}s` }}>
-              <div style={{ width: 52, flexShrink: 0, paddingTop: 3 }}>
-                <span className="font-display" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', letterSpacing: '.06em' }}>{s.n}</span>
-              </div>
-              <div>
-                <h3 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em', color: 'var(--foreground)' }}>{s.head}</h3>
-                <p style={{ fontSize: 16, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0, lineHeight: 1.67 }}>{s.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── PRICING ─────────────────────────────────────────── */}
       <section
         className="hp-section-card"
@@ -326,14 +276,17 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div className="hp-label">
             <span className="hp-dot" />
-            Цени
+            07 · Цени
           </div>
 
           <h2 id="pricing-h" data-reveal className="font-display" style={{ fontSize: 'clamp(28px,4.2vw,50px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 12, color: 'var(--foreground)' }}>
-            Прозрачни цени.<br />Без изненади.
+            {MARKETING_PRICING.title}
           </h2>
-          <p data-reveal style={{ fontSize: 'clamp(15px,1.5vw,17px)', fontWeight: 400, color: 'var(--muted-foreground)', marginBottom: 52, lineHeight: 1.67 }}>
-            Годишна такса. Без комисионна. Без скрити разходи.
+          <p data-reveal style={{ fontSize: 'clamp(15px,1.5vw,17px)', fontWeight: 400, color: 'var(--muted-foreground)', marginBottom: 12, lineHeight: 1.67, maxWidth: 720 }}>
+            {MARKETING_PRICING.subtitle}
+          </p>
+          <p data-reveal style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', marginBottom: 52, lineHeight: 1.6, maxWidth: 720 }}>
+            {MARKETING_PRICING.domainNote}
           </p>
 
           <div className="hp-pricing-grid">

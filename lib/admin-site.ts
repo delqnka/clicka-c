@@ -1,12 +1,18 @@
 import { sql } from '@/lib/db';
 import crypto from 'crypto';
 import {
+  normalizeLegalInfoFromDb,
+  type LegalInfoStored,
+} from '@/lib/legal-custom-documents';
+import {
   normalizeSalonFaqItems,
   normalizeSalonVisitorInfo,
   normalizeVisitorAdditionalInfo,
   type SalonFaqItem,
   type SalonVisitorInfo,
 } from '@/lib/salon-visitor-info';
+
+export type LegalInfoPayload = LegalInfoStored;
 
 export type WorkingDay = {
   open: string;
@@ -36,14 +42,6 @@ export type BookingRecord = {
   notes: string | null;
   created_at: string;
   completed_at: string | null;
-};
-
-export type LegalInfoPayload = {
-  companyName: string;
-  eik: string;
-  managerName: string;
-  address: string;
-  contactEmail: string;
 };
 
 export type AdminSitePayload = {
@@ -76,7 +74,7 @@ export type AdminSitePayload = {
   telegramChatId: string;
   onboardingCode: string;
   siteStatus: string;
-  legalInfo: LegalInfoPayload | null;
+  legalInfo: LegalInfoStored | null;
   faqItems: SalonFaqItem[];
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
@@ -189,15 +187,9 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     onboardingCode: String(row.onboarding_code ?? ''),
     siteStatus: String(row.site_status ?? ''),
     legalInfo: (() => {
-      const li = row.legal_info as Record<string, unknown> | null | undefined;
+      const li = row.legal_info;
       if (!li || typeof li !== 'object') return null;
-      return {
-        companyName:  String(li.companyName  ?? ''),
-        eik:          String(li.eik          ?? ''),
-        managerName:  String(li.managerName  ?? ''),
-        address:      String(li.address      ?? ''),
-        contactEmail: String(li.contactEmail ?? ''),
-      };
+      return normalizeLegalInfoFromDb(li);
     })(),
     faqItems: normalizeSalonFaqItems(row.faq_items),
     visitorInfo: normalizeSalonVisitorInfo(row.visitor_info),
