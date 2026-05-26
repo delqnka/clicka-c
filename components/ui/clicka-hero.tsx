@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { ButtonColorful } from '@/components/ui/button-colorful';
 import { formatHeroTrustPill, MARKETING_ACTIVITY_FLOOR } from '@/lib/marketing-activity-shared';
 import { cn } from '@/lib/utils';
 
@@ -50,26 +50,16 @@ export function ClickaHero({ activeSalons }: ClickaHeroProps) {
         </h1>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link
+          <ButtonColorful
             href="/create"
-            className={cn(
-              'inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-8 py-3.5',
-              'text-base font-bold text-[var(--primary-foreground)] no-underline',
-              'shadow-[var(--hp-shadow)] transition-transform duration-200 hover:-translate-y-0.5',
-            )}
-          >
-            Създай своя сайт сега →
-          </Link>
-          <Link
+            label="Създай своя сайт сега"
+            className="h-12 rounded-full px-8 text-base font-bold"
+          />
+          <ButtonColorful
             href="/demo"
-            className={cn(
-              'inline-flex items-center justify-center rounded-full border-[1.5px] border-[var(--border)]',
-              'bg-[var(--card)] px-7 py-3.5 text-base font-medium text-[var(--foreground)] no-underline',
-              'transition-colors duration-200 hover:border-[var(--ring)]',
-            )}
-          >
-            Виж демо →
-          </Link>
+            label="Виж демо"
+            className="h-12 rounded-full px-7 text-base font-medium"
+          />
         </div>
 
         <p className="mt-5 text-center text-sm font-normal text-[var(--secondary-foreground)]">

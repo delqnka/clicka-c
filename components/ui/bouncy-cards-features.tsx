@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import Link from 'next/link';
+import { ButtonColorful } from '@/components/ui/button-colorful';
 import { cn } from '@/lib/utils';
 import { WHY_US } from '@/lib/marketing-why-us';
 
@@ -67,12 +67,11 @@ export function BouncyCardsFeatures() {
             добро локално позициониране!
           </p>
         </div>
-        <Link
+        <ButtonColorful
           href="/create"
-          className="inline-block shrink-0 whitespace-nowrap rounded-lg bg-[var(--foreground)] px-4 py-2.5 text-sm font-medium text-[var(--card)] shadow-xl transition-transform duration-200 hover:scale-105 hover:bg-[var(--chart-4)] active:scale-95"
-        >
-          Създай сайт сега →
-        </Link>
+          label="Създай сайт сега"
+          className="h-11 shrink-0 rounded-full px-5 text-sm font-semibold"
+        />
       </div>
 
       <div className="flex flex-col gap-4">

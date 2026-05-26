@@ -2,7 +2,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+import { ButtonColorful } from '@/components/ui/button-colorful';
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { LazyWhenVisible } from '@/components/ui/lazy-when-visible';
 
@@ -130,36 +130,6 @@ const CSS = `
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 clamp(16px, 5vw, 60px);
   }
-
-  .hp-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    border-radius: 9999px;
-    font-family: inherit; font-size: 14px; font-weight: 500;
-    text-decoration: none; cursor: pointer; white-space: nowrap;
-    transition: transform .2s ease, box-shadow .2s ease;
-  }
-  .hp-btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
-
-  .hp-btn-ink {
-    background: var(--primary); color: var(--primary-foreground); border: none;
-    padding: 12px 28px;
-    box-shadow: var(--hp-shadow);
-  }
-  .hp-btn-ink:hover { transform: translateY(-1px); box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 35%, transparent); }
-
-  .hp-btn-ghost {
-    background: var(--card); color: var(--foreground); border: 1.5px solid var(--border);
-    padding: 11px 28px;
-  }
-  .hp-btn-ghost:hover { border-color: var(--ring); box-shadow: var(--hp-shadow); }
-
-  .hp-btn-primary {
-    background: var(--primary); color: var(--primary-foreground); border: none;
-    padding: 18px 52px;
-    box-shadow: 0 4px 24px color-mix(in srgb, var(--primary) 35%, transparent);
-    font-size: 17px; font-weight: 700;
-  }
-  .hp-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 36px color-mix(in srgb, var(--primary) 45%, transparent); }
 
   .hp-label {
     display: inline-flex; align-items: center; gap: 7px;
@@ -325,9 +295,7 @@ export default function HomePage({ activeSalons }: MarketingHomePageProps = {}) 
             clicka.bg
           </span>
         </div>
-        <Link href="/create" className="hp-btn hp-btn-ink" style={{ padding: '10px 22px', fontSize: 13 }}>
-          Стартирай →
-        </Link>
+        <ButtonColorful href="/create" label="Стартирай" className="h-9 rounded-full px-5 text-[13px] font-semibold" />
       </nav>
       </header>
 
@@ -486,13 +454,11 @@ export default function HomePage({ activeSalons }: MarketingHomePageProps = {}) 
                   ))}
                 </div>
 
-                <Link
+                <ButtonColorful
                   href="/create"
-                  className={`hp-btn ${plan.popular ? 'hp-btn-ink' : 'hp-btn-ghost'}`}
-                  style={{ textAlign: 'center', width: '100%', padding: '14px 0', fontSize: 15 }}
-                >
-                  Избери {plan.name}
-                </Link>
+                  label={`Избери ${plan.name}`}
+                  className="h-12 w-full rounded-full text-[15px] font-semibold"
+                />
               </div>
             ))}
           </div>
@@ -512,9 +478,11 @@ export default function HomePage({ activeSalons }: MarketingHomePageProps = {}) 
             Нужни ти са само: Салон + Град + Имейл.<br />
             30 секунди и виждаш твоя сайт.
           </p>
-          <Link href="/create" className="hp-btn hp-btn-primary">
-            Стартирай сега
-          </Link>
+          <ButtonColorful
+            href="/create"
+            label="Стартирай сега"
+            className="h-14 rounded-full px-12 text-[17px] font-bold"
+          />
           <p style={{ marginTop: 20, fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 35%, transparent)' }}>
             от 0.82 € / ден · без скрити такси · без комисионна
           </p>
