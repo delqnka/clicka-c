@@ -72,8 +72,8 @@ function AnimatedCount({
 export function ActivityBanner() {
   const initialStartedThisMonth = MARKETING_ACTIVITY_FLOOR.startedThisMonth;
   const initialSettingUpNow = MARKETING_ACTIVITY_FLOOR.settingUpNow;
-  const [startedThisMonth, setStartedThisMonth] = useState(initialStartedThisMonth);
-  const [settingUpNow, setSettingUpNow] = useState(initialSettingUpNow);
+  const [startedThisMonth, setStartedThisMonth] = useState<number>(initialStartedThisMonth);
+  const [settingUpNow, setSettingUpNow] = useState<number>(initialSettingUpNow);
 
   useEffect(() => {
     let cancelled = false;
