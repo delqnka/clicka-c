@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { getPlatformClaimUrl } from '@/lib/domain-routing';
 
 export default function SuccessPage({
@@ -56,10 +57,7 @@ export default function SuccessPage({
 
       {/* Nav */}
       <nav style={{ position:'relative', zIndex:10, height:60, display:'flex', alignItems:'center', padding:'0 24px', borderBottom:'1px solid rgba(0,0,0,.06)', background:'rgba(250,250,248,.9)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
-        <Link href="/" style={{ display:'flex', alignItems:'center', gap:9, textDecoration:'none' }}>
-          <div style={{ width:30, height:30, borderRadius:7, background:'linear-gradient(135deg,#7C3AED,#6D28D9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', boxShadow:'0 3px 10px rgba(124,58,237,.4)' }}>c</div>
-          <span style={{ fontSize:16, fontWeight:700, letterSpacing:'-0.04em', color:'#0D0D12' }}>clicka.bg</span>
-        </Link>
+        <ClickaLogo size="compact" />
       </nav>
 
       {/* Content */}

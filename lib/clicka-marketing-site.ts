@@ -2,8 +2,11 @@
  * Маркетинг начало (sleek landing) — видео фон по желание.
  * В .env.local: NEXT_PUBLIC_HERO_VIDEO_WEBM, NEXT_PUBLIC_HERO_VIDEO_MP4, NEXT_PUBLIC_HERO_POSTER
  */
+export const CLICKA_LOGO_PATH = '/clicka-logo.png';
+
 export const clickaMarketingSite = {
   name: 'clicka.bg',
+  logoSrc: CLICKA_LOGO_PATH,
   legal: 'Clicka',
   title: 'clicka.bg — Твоята лична резервационна система, независима от платформи',
   description:

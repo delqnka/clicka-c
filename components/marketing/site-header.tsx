@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { useCallback, useId, useState } from 'react';
-import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
+import { ClickaLogo } from '@/components/brand/clicka-logo';
 
 const links = [
   { href: '#services', label: 'Какво получаваш' },
@@ -25,9 +25,7 @@ export function SiteHeader() {
       transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="text-sm font-semibold tracking-[-0.06em] text-white/95">
-          {clickaMarketingSite.name}
-        </Link>
+        <ClickaLogo size="nav" variant="on-dark" />
         <nav className="hidden items-center gap-8 sm:flex" aria-label="Основна навигация">
           {links.map((l) => (
             <Link key={l.href} href={l.href} className="text-sm text-white/50 transition hover:text-white">

@@ -2,6 +2,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import Image from 'next/image';
+import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { LazyWhenVisible } from '@/components/ui/lazy-when-visible';
@@ -227,19 +228,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       {/* ── NAV ─────────────────────────────────────────────── */}
       <header>
       <nav className="hp-nav" aria-label="Главна навигация">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            aria-hidden="true"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="var(--primary-foreground)" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <span className="font-display" style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--foreground)' }}>
-            clicka.bg
-          </span>
-        </div>
+        <ClickaLogo size="nav" priority />
         <ButtonColorful href="/create" label="Стартирай" className="h-9 rounded-full px-5 text-[13px] font-semibold" />
       </nav>
       </header>
@@ -423,9 +412,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       {/* ── FOOTER ──────────────────────────────────────────── */}
       <footer style={{ background: 'var(--hp-cta-bg)', borderTop: '1px solid color-mix(in srgb, var(--hp-cta-fg) 12%, transparent)', padding: 'clamp(28px,4vw,44px) clamp(20px,5vw,60px)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <span className="font-display" style={{ fontSize: 16, fontWeight: 700, color: 'color-mix(in srgb, var(--hp-cta-fg) 50%, transparent)', letterSpacing: '-0.03em' }}>
-            clicka.bg
-          </span>
+          <ClickaLogo size="footer" variant="on-dark" href={null} />
           <p style={{ fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 30%, transparent)', margin: 0 }}>
             © {new Date().getFullYear()} clicka.bg · Всички права запазени
           </p>

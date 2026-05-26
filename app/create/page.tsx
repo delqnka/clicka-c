@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { Upload } from 'lucide-react';
 import {
   cityFromOsmResult,
@@ -440,14 +441,7 @@ export default function CreatePage() {
 
       {/* NAV */}
       <nav className="cr-nav" aria-label="Навигация за създаване на сайт">
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: '#1C1917', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="#FAF8F5" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <span className="font-display" style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.03em', color: '#1C1917' }}>clicka.bg</span>
-        </Link>
+        <ClickaLogo size="compact" />
         <button
           onClick={resetAll}
           style={{ background: 'none', border: '1.5px solid #E7E5E4', borderRadius: 9999, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#78716C', fontFamily: 'inherit' }}
