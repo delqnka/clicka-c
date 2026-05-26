@@ -1,17 +1,11 @@
 import { sql } from '@/lib/db';
+import {
+  MARKETING_ACTIVITY_FLOOR,
+  type MarketingActivity,
+} from '@/lib/marketing-activity-shared';
 
-/** Минимални стойности за показ (реалните от БД могат да са по-ниски в dev). */
-export const MARKETING_ACTIVITY_FLOOR = {
-  startedThisMonth: 27,
-  settingUpNow: 4,
-  activeSalons: 12,
-} as const;
-
-export type MarketingActivity = {
-  startedThisMonth: number;
-  settingUpNow: number;
-  activeSalons: number;
-};
+export { MARKETING_ACTIVITY_FLOOR, type MarketingActivity } from '@/lib/marketing-activity-shared';
+export { formatHeroTrustPill } from '@/lib/marketing-activity-shared';
 
 export async function getMarketingActivity(): Promise<MarketingActivity> {
   const rows = await sql`
@@ -55,8 +49,4 @@ export async function getMarketingActivity(): Promise<MarketingActivity> {
       Number(row.active_salons ?? 0),
     ),
   };
-}
-
-export function formatHeroTrustPill(activeSalons: number): string {
-  return `${activeSalons}+ салона вече са независими`;
 }

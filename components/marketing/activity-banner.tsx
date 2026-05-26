@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { MARKETING_ACTIVITY_FLOOR } from '@/lib/marketing-activity';
+import { MARKETING_ACTIVITY_FLOOR } from '@/lib/marketing-activity-shared';
 
 function AnimatedCount({
   initialValue,

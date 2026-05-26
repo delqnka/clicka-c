@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatHeroTrustPill } from '@/lib/marketing-activity';
+import { formatHeroTrustPill, MARKETING_ACTIVITY_FLOOR } from '@/lib/marketing-activity-shared';
 import { cn } from '@/lib/utils';
 
 const EMPHASIS = 'Готов за 15 минути.';
@@ -17,7 +17,7 @@ export function ClickaHero({ activeSalons }: ClickaHeroProps) {
   const heroPill =
     typeof activeSalons === 'number' && Number.isFinite(activeSalons)
       ? formatHeroTrustPill(activeSalons)
-      : formatHeroTrustPill(12);
+      : formatHeroTrustPill(MARKETING_ACTIVITY_FLOOR.activeSalons);
   return (
     <section
       aria-label="Hero"
