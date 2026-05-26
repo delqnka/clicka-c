@@ -22,6 +22,7 @@ type Props = {
   images: string[];
   coverImageUrl: string;
   isMobile: boolean;
+  pendingUrls?: ReadonlySet<string>;
   btnSmGhost: BtnStyle;
   onReorder: (images: string[]) => void;
   onSetCover: (url: string) => void;
@@ -32,6 +33,7 @@ export function GalleryReorderGrid({
   images,
   coverImageUrl,
   isMobile,
+  pendingUrls,
   btnSmGhost,
   onReorder,
   onSetCover,
@@ -124,6 +126,7 @@ export function GalleryReorderGrid({
       {images.map((url, i) => {
         const isDragging = dragIndex === i;
         const isDropTarget = overIndex === i && dragIndex != null && dragIndex !== i;
+        const isPending = pendingUrls?.has(url) ?? url.startsWith('blob:');
 
         return (
           <div
@@ -159,14 +162,40 @@ export function GalleryReorderGrid({
                 src={url}
                 alt={`Снимка ${i + 1}`}
                 draggable={false}
+                decoding="async"
                 style={{
                   width: '100%',
                   aspectRatio: '1',
                   objectFit: 'cover',
                   display: 'block',
                   pointerEvents: 'none',
+                  opacity: isPending ? 0.72 : 1,
                 }}
               />
+              {isPending && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.55)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      border: '3px solid #E5E3DE',
+                      borderTopColor: '#18181B',
+                      animation: 'admin-gallery-spin 0.7s linear infinite',
+                    }}
+                  />
+                </div>
+              )}
               <span
                 style={{
                   position: 'absolute',
@@ -224,21 +253,24 @@ export function GalleryReorderGrid({
                   flex: isMobile ? '0 0 auto' : 1,
                   fontSize: isMobile ? 10 : 11,
                   padding: isMobile ? '6px' : '4px 8px',
-                  width: isMobile ? 32 : undefined,
-                  height: isMobile ? 32 : undefined,
-                  borderRadius: isMobile ? 8 : 8,
+                  width: isMobile ? 44 : undefined,
+                  height: isMobile ? 44 : undefined,
+                  minWidth: isMobile ? 44 : undefined,
+                  minHeight: isMobile ? 44 : undefined,
+                  borderRadius: isMobile ? 10 : 8,
                   ...(coverImageUrl === url
                     ? { background: '#18181B', color: '#fff', borderColor: '#18181B' }
                     : {}),
                 }}
+                disabled={isPending}
                 onClick={e => {
                   e.stopPropagation();
-                  if (suppressClickRef.current) return;
+                  if (suppressClickRef.current || isPending) return;
                   onSetCover(url);
                 }}
               >
                 {isMobile ? (
-                  <Check size={14} strokeWidth={2.5} />
+                  <Check size={16} strokeWidth={2.5} />
                 ) : coverImageUrl === url ? (
                   'Cover ✓'
                 ) : (
@@ -251,19 +283,22 @@ export function GalleryReorderGrid({
                   ...btnSmGhost,
                   color: '#EF4444',
                   padding: isMobile ? '6px' : '4px 8px',
-                  width: isMobile ? 32 : undefined,
-                  height: isMobile ? 32 : undefined,
-                  borderRadius: isMobile ? 8 : 8,
+                  width: isMobile ? 44 : undefined,
+                  height: isMobile ? 44 : undefined,
+                  minWidth: isMobile ? 44 : undefined,
+                  minHeight: isMobile ? 44 : undefined,
+                  borderRadius: isMobile ? 10 : 8,
                   flex: '0 0 auto',
                 }}
                 aria-label="Премахни снимка"
+                disabled={isPending}
                 onClick={e => {
                   e.stopPropagation();
-                  if (suppressClickRef.current) return;
+                  if (suppressClickRef.current || isPending) return;
                   onRemove(i);
                 }}
               >
-                <Trash2 size={isMobile ? 14 : 12} />
+                <Trash2 size={isMobile ? 16 : 12} />
               </button>
             </div>
           </div>

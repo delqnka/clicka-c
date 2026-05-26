@@ -95,6 +95,11 @@ export function getHostAwareSalonPath({
   return normalizedPath ? `/${normalizedPath}` : '/';
 }
 
+export function isSalonCustomDomainLive(domainStatus?: string | null) {
+  const status = String(domainStatus ?? '').trim().toLowerCase();
+  return status === 'active' || status === 'verified' || status === 'connected';
+}
+
 export function getPrimaryPublicUrl({
   slug,
   customDomain,
@@ -105,10 +110,27 @@ export function getPrimaryPublicUrl({
   domainStatus?: string | null;
 }) {
   const custom = String(customDomain ?? '').trim();
-  const status = String(domainStatus ?? '').trim().toLowerCase();
-  if (custom && (status === 'active' || status === 'verified' || status === 'connected')) {
+  if (custom && isSalonCustomDomainLive(domainStatus)) {
     return getCustomDomainOrigin(custom);
   }
 
   return getPlatformPublicUrl(slug);
+}
+
+export type LegalDocumentPath = 'terms' | 'privacy' | 'cookies';
+
+/** Публичен URL на правен документ (собствен домейн или slug.clicka.bg). */
+export function getLegalDocumentUrl({
+  slug,
+  customDomain,
+  domainStatus,
+  document,
+}: {
+  slug: string;
+  customDomain?: string | null;
+  domainStatus?: string | null;
+  document: LegalDocumentPath;
+}) {
+  const origin = getPrimaryPublicUrl({ slug, customDomain, domainStatus });
+  return `${origin}/${document}`;
 }

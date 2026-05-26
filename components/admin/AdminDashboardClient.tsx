@@ -38,8 +38,18 @@ import {
 } from '@/components/admin/price-list-services-import';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
+import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
-import { getHostAwareSalonPath, getPlatformPublicUrl, getPrimaryPublicUrl } from '@/lib/domain-routing';
+import {
+  extractHostname,
+  getHostAwareSalonPath,
+  getLegalDocumentUrl,
+  getPlatformPublicUrl,
+  getPrimaryPublicUrl,
+  isSalonCustomDomainLive,
+  type LegalDocumentPath,
+} from '@/lib/domain-routing';
+import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
 
 /* ─── Constants ───────────────────────────────────────── */
 const DAYS = [
@@ -64,7 +74,7 @@ const TABS = [
   { id: 'legal',         label: 'Правни',         Icon: FileText },
 ] as const;
 
-const TAB_BAR_IDS = new Set<TabId>(['site', 'services', 'bookings', 'notifications']);
+const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings']);
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
 
@@ -122,12 +132,16 @@ function formatDomainStatus(s: string) {
 }
 
 function useIsMobileLayout(bp = 768) {
-  const [m, setM] = useState(false);
+  const [m, setM] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(`(max-width: ${bp - 1}px)`).matches;
+  });
   useEffect(() => {
-    const fn = () => setM(window.innerWidth < bp);
+    const mq = window.matchMedia(`(max-width: ${bp - 1}px)`);
+    const fn = () => setM(mq.matches);
     fn();
-    window.addEventListener('resize', fn);
-    return () => window.removeEventListener('resize', fn);
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
   }, [bp]);
   return m;
 }
@@ -178,11 +192,28 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [navOpen, setNavOpen] = useState(false);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
+  const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
+  const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
   const sitePath      = getHostAwareSalonPath({ host: currentHost, slug });
   const sitePublicUrl = getPrimaryPublicUrl({ slug, customDomain: site.customDomain, domainStatus: site.domainStatus });
+  const publicSiteHost = extractHostname(sitePublicUrl);
+  const legalDocLinks: { kind: LegalDocumentPath; url: string }[] = (
+    ['terms', 'privacy', 'cookies'] as const
+  ).map(kind => ({
+    kind,
+    url: getLegalDocumentUrl({
+      slug,
+      customDomain: site.customDomain,
+      domainStatus: site.domainStatus,
+      document: kind,
+    }),
+  }));
   const claimPath     = getHostAwareSalonPath({ host: currentHost, slug, path: 'claim' });
   const signInPath    = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
   const domainMeta    = getDomainMeta(site);
@@ -281,17 +312,54 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
-  async function saveImages() {
-    setError(''); setNotice(''); setBusyKey('images');
+  async function persistImages(
+    payload: {
+      coverImageUrl: string;
+      logoImageUrl: string;
+      galleryImages: string[];
+      ownerPublicPhotoUrl: string;
+    },
+    opts?: { silent?: boolean },
+  ) {
+    if (!opts?.silent) {
+      setError('');
+      setNotice('');
+    }
+    setBusyKey(opts?.silent ? 'images-auto' : 'images');
+    const galleryImages = payload.galleryImages.filter(u => u && !u.startsWith('blob:'));
+    let coverImageUrl = payload.coverImageUrl;
+    if (!coverImageUrl || coverImageUrl.startsWith('blob:')) {
+      coverImageUrl = galleryImages[0] ?? '';
+    }
     try {
       const res = await fetch(`/api/admin/site-images?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coverImageUrl: site.coverImageUrl, logoImageUrl: site.logoImageUrl, galleryImages: site.galleryImages, ownerPublicPhotoUrl: site.ownerPublicPhotoUrl }),
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coverImageUrl,
+          logoImageUrl: payload.logoImageUrl,
+          galleryImages,
+          ownerPublicPhotoUrl: payload.ownerPublicPhotoUrl,
+        }),
       });
       const data = await guardResponse(res);
       setSite(data.site as AdminSitePayload);
-      setNotice('Снимките са запазени.');
-    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
+      if (!opts?.silent) setNotice('Снимките са запазени.');
+    } catch (e) {
+      if (!opts?.silent) handleErr(e);
+      else setError('Снимките са качени, но не успяхме да ги запазим. Натисни дискетата.');
+    } finally {
+      setBusyKey('');
+    }
+  }
+
+  async function saveImages() {
+    await persistImages({
+      coverImageUrl: site.coverImageUrl,
+      logoImageUrl: site.logoImageUrl,
+      galleryImages: site.galleryImages,
+      ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
+    });
   }
 
   async function saveServices() {
@@ -383,23 +451,90 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     } catch (e) { setBookings(previous); handleErr(e); }
   }
 
-  async function uploadSingleFile(file: File) {
-    const fd = new FormData(); fd.append('file', file);
+  async function uploadSingleFile(file: File, opts?: { compress?: boolean }) {
+    const prepared =
+      opts?.compress === false ? file : await prepareImageForUpload(file, { maxDim: isMobile ? 1400 : 1600 });
+    const fd = new FormData();
+    fd.append('file', prepared);
     const res = await fetch(`/api/upload?slug=${encodeURIComponent(slug)}`, { method: 'POST', body: fd });
     const d = await guardResponse(res);
     return String(d.url ?? '');
   }
 
   async function handleCoverUpload(file: File | null) {
-    if (!file) return; setBusyKey('upload-cover'); setError('');
-    try { const url = await uploadSingleFile(file); setSite(p => ({ ...p, coverImageUrl: url, logoImageUrl: p.logoImageUrl || url })); setNotice('Cover качена. Натисни „Запази снимките".'); }
-    catch (e) { handleErr(e); } finally { setBusyKey(''); }
+    if (!file) return;
+    setBusyKey('upload-cover');
+    setError('');
+    const preview = URL.createObjectURL(file);
+    setSite(p => ({ ...p, coverImageUrl: preview }));
+    try {
+      const url = await uploadSingleFile(file);
+      const nextSite: AdminSitePayload = {
+        ...site,
+        coverImageUrl: url,
+        logoImageUrl: site.logoImageUrl || url,
+      };
+      setSite(nextSite);
+      if (isMobile) {
+        await persistImages(
+          {
+            coverImageUrl: nextSite.coverImageUrl,
+            logoImageUrl: nextSite.logoImageUrl,
+            galleryImages: nextSite.galleryImages,
+            ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
+          },
+          { silent: true },
+        );
+        setNotice('Cover е качен и запазен.');
+      } else {
+        setNotice('Cover качена. Натисни „Запази снимките".');
+      }
+    } catch (e) {
+      handleErr(e);
+      setSite(p => ({
+        ...p,
+        coverImageUrl: p.coverImageUrl === preview ? '' : p.coverImageUrl,
+      }));
+    } finally {
+      URL.revokeObjectURL(preview);
+      setBusyKey('');
+    }
   }
 
   async function handleLogoUpload(file: File | null) {
-    if (!file) return; setBusyKey('upload-logo'); setError('');
-    try { const url = await uploadSingleFile(file); setSite(p => ({ ...p, logoImageUrl: url })); setNotice('Лого качено. Натисни „Запази снимките".'); }
-    catch (e) { handleErr(e); } finally { setBusyKey(''); }
+    if (!file) return;
+    setBusyKey('upload-logo');
+    setError('');
+    const preview = URL.createObjectURL(file);
+    setSite(p => ({ ...p, logoImageUrl: preview }));
+    try {
+      const url = await uploadSingleFile(file);
+      const nextSite: AdminSitePayload = { ...site, logoImageUrl: url };
+      setSite(nextSite);
+      if (isMobile) {
+        await persistImages(
+          {
+            coverImageUrl: nextSite.coverImageUrl,
+            logoImageUrl: nextSite.logoImageUrl,
+            galleryImages: nextSite.galleryImages,
+            ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
+          },
+          { silent: true },
+        );
+        setNotice('Лого е качено и запазено.');
+      } else {
+        setNotice('Лого качено. Натисни „Запази снимките".');
+      }
+    } catch (e) {
+      handleErr(e);
+      setSite(p => ({
+        ...p,
+        logoImageUrl: p.logoImageUrl === preview ? '' : p.logoImageUrl,
+      }));
+    } finally {
+      URL.revokeObjectURL(preview);
+      setBusyKey('');
+    }
   }
 
   async function handleOwnerPhotoUpload(file: File | null) {
@@ -417,25 +552,104 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       setError('Моля, избери само изображения (JPG, PNG, WebP, GIF).');
       return;
     }
-    setBusyKey('upload-gallery');
-    setError('');
-    try {
-      const urls: string[] = [];
-      for (const f of images) urls.push(await uploadSingleFile(f));
-      setSite(p => ({
+
+    const previews = images.map(file => ({
+      file,
+      blob: URL.createObjectURL(file),
+    }));
+    const blobUrls = previews.map(p => p.blob);
+
+    setGalleryPending(prev => {
+      const next = new Set(prev);
+      blobUrls.forEach(b => next.add(b));
+      return next;
+    });
+    setSite(p => {
+      const stable = p.galleryImages.filter(u => !u.startsWith('blob:'));
+      const nextGallery = [...stable, ...blobUrls];
+      return {
         ...p,
-        galleryImages: [...p.galleryImages, ...urls],
-        coverImageUrl: p.coverImageUrl || urls[0] || p.coverImageUrl,
-      }));
-      setNotice(
-        urls.length === 1
-          ? 'Снимката е качена. Натисни „Запази снимките".'
-          : `${urls.length} снимки са качени. Натисни „Запази снимките".`,
-      );
+        galleryImages: nextGallery,
+        coverImageUrl: p.coverImageUrl && !p.coverImageUrl.startsWith('blob:')
+          ? p.coverImageUrl
+          : (nextGallery[0] ?? ''),
+      };
+    });
+
+    setBusyKey('upload-gallery');
+    setGalleryUploadProgress({ done: 0, total: images.length });
+    setError('');
+
+    const uploadedUrls: string[] = [];
+    let progressDone = 0;
+
+    try {
+      await mapWithConcurrency(previews, isMobile ? 3 : 2, async ({ file, blob }) => {
+        try {
+          const url = await uploadSingleFile(file);
+          uploadedUrls.push(url);
+          setSite(p => ({
+            ...p,
+            galleryImages: p.galleryImages.map(u => (u === blob ? url : u)),
+            coverImageUrl:
+              !p.coverImageUrl || p.coverImageUrl === blob ? url : p.coverImageUrl,
+          }));
+        } catch (e) {
+          setSite(p => ({
+            ...p,
+            galleryImages: p.galleryImages.filter(u => u !== blob),
+          }));
+          throw e;
+        } finally {
+          URL.revokeObjectURL(blob);
+          setGalleryPending(prev => {
+            const next = new Set(prev);
+            next.delete(blob);
+            return next;
+          });
+          progressDone += 1;
+          setGalleryUploadProgress({ done: progressDone, total: images.length });
+        }
+      });
+
+      let nextSite = site;
+      setSite(p => {
+        const galleryImages = p.galleryImages.filter(u => !u.startsWith('blob:'));
+        const coverImageUrl =
+          p.coverImageUrl && !p.coverImageUrl.startsWith('blob:')
+            ? p.coverImageUrl
+            : (galleryImages[0] ?? '');
+        nextSite = { ...p, galleryImages, coverImageUrl };
+        return nextSite;
+      });
+
+      if (isMobile) {
+        await persistImages(
+          {
+            coverImageUrl: nextSite.coverImageUrl,
+            logoImageUrl: nextSite.logoImageUrl,
+            galleryImages: nextSite.galleryImages,
+            ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
+          },
+          { silent: true },
+        );
+        setNotice(
+          uploadedUrls.length === 1
+            ? 'Снимката е качена и запазена.'
+            : `${uploadedUrls.length} снимки са качени и запазени.`,
+        );
+      } else {
+        setNotice(
+          uploadedUrls.length === 1
+            ? 'Снимката е качена. Натисни „Запази снимките".'
+            : `${uploadedUrls.length} снимки са качени. Натисни „Запази снимките".`,
+        );
+      }
     } catch (e) {
       handleErr(e);
     } finally {
       setBusyKey('');
+      setGalleryUploadProgress(null);
       if (input) input.value = '';
     }
   }
@@ -504,7 +718,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   }
 
   /* ── Shared styles ── */
-  const inp: CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' };
+  const inp: CSSProperties = {
+    width: '100%',
+    padding: isMobile ? '11px 12px' : '9px 12px',
+    minHeight: isMobile ? 44 : undefined,
+    borderRadius: T.radiusSm,
+    border: `1px solid ${T.border}`,
+    background: T.surface,
+    color: T.text,
+    fontSize: isMobile ? 16 : 14,
+    lineHeight: 1.35,
+    outline: 'none',
+    boxSizing: 'border-box',
+    WebkitAppearance: 'none',
+  };
   const btn = (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost'): CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     borderRadius: variant === 'primary' ? T.radiusSm : T.radiusSm,
@@ -544,7 +771,18 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
   /* ─── Render ─────────────────────────────────────────── */
   return (
-    <div style={{ minHeight: '100dvh', background: T.bg, color: T.text, fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif', WebkitFontSmoothing: 'antialiased', position: 'relative' }}>
+    <div
+      className="admin-mobile-root"
+      style={{
+        minHeight: '100dvh',
+        background: T.bg,
+        color: T.text,
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+        WebkitFontSmoothing: 'antialiased',
+        position: 'relative',
+        touchAction: 'manipulation',
+      }}
+    >
       {/* Background grid + gradient */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: 'linear-gradient(to right, #f0f0f0 1px, transparent 1px), linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)', backgroundSize: '6rem 4rem' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle 800px at 100% 200px, #d5c5ff, transparent)' }} />
@@ -713,7 +951,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         )}
 
         {/* ── Main content ──────────────────────────── */}
-        <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '16px 16px 100px' : '28px 32px 48px' }}>
+        <main
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: isMobile
+              ? '16px max(16px, env(safe-area-inset-left)) calc(92px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right))'
+              : '28px 32px 48px',
+          }}
+        >
 
           {/* Toast messages */}
           {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
@@ -790,7 +1036,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   />
                   <AdminSaveBtn
                     label="Запази снимките"
-                    busy={busyKey === 'images'}
+                    busy={busyKey === 'images' || busyKey === 'images-auto'}
                     mobile={isMobile}
                     onClick={() => void saveImages()}
                   />
@@ -852,9 +1098,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       : 'Галерия'
                   }
                 >
-                  {site.galleryImages.length > 0 ? (
+                  {galleryUploadProgress ? (
+                    <p style={{ margin: '0 0 10px', fontSize: 13, color: T.muted, lineHeight: 1.45 }}>
+                      Качваме {galleryUploadProgress.done}/{galleryUploadProgress.total}…
+                    </p>
+                  ) : site.galleryImages.length > 0 ? (
                     <p style={{ margin: '0 0 10px', fontSize: 12, color: T.subtle, lineHeight: 1.45 }}>
-                      Задръж снимка ~0.5 сек., после плъзни за нов ред. Натисни дискетата, за да запазиш.
+                      {isMobile
+                        ? 'Снимките се появяват веднага; на телефон се запазват автоматично. Задръж ~0.5 сек. и плъзни за нов ред.'
+                        : 'Задръж снимка ~0.5 сек., после плъзни за нов ред. Натисни дискетата, за да запазиш.'}
                     </p>
                   ) : null}
                   <GalleryDropZone busy={busyKey === 'upload-gallery'} mobile={isMobile} onUpload={handleGalleryUpload}>
@@ -863,6 +1115,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         images={site.galleryImages}
                         coverImageUrl={site.coverImageUrl}
                         isMobile={isMobile}
+                        pendingUrls={galleryPending}
                         btnSmGhost={btn('sm-ghost')}
                         onReorder={next => {
                           setSite(p => ({ ...p, galleryImages: next }));
@@ -1203,7 +1456,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Официално наименование на фирмата</label>
                   <input
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    style={inp}
                     value={legalInfo.companyName}
                     onChange={e => setLegalInfo(p => ({ ...p, companyName: e.target.value }))}
                     placeholder="напр. Ню Лукс ООД"
@@ -1212,7 +1465,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>ЕИК / Булстат</label>
                   <input
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    style={inp}
                     value={legalInfo.eik}
                     onChange={e => setLegalInfo(p => ({ ...p, eik: e.target.value }))}
                     placeholder="напр. 123456789"
@@ -1221,7 +1474,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>МОЛ (материалноотговорно лице / управител)</label>
                   <input
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    style={inp}
                     value={legalInfo.managerName}
                     onChange={e => setLegalInfo(p => ({ ...p, managerName: e.target.value }))}
                     placeholder="напр. Деляна Иванова"
@@ -1230,7 +1483,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Адрес на управление</label>
                   <input
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    style={inp}
                     value={legalInfo.address}
                     onChange={e => setLegalInfo(p => ({ ...p, address: e.target.value }))}
                     placeholder="напр. гр. София, ул. Витоша 1"
@@ -1240,7 +1493,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Имейл за връзка (за правни документи)</label>
                   <input
                     type="email"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, fontSize: 14, background: T.surface, color: T.text, boxSizing: 'border-box' }}
+                    inputMode="email"
+                    autoComplete="email"
+                    style={inp}
                     value={legalInfo.contactEmail}
                     onChange={e => setLegalInfo(p => ({ ...p, contactEmail: e.target.value }))}
                     placeholder="напр. info@salon.bg"
@@ -1261,12 +1516,24 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 </div>
                 <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', marginTop: 4 }}>
                   <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
-                    След запазване документите се генерират автоматично на:
+                    След запазване документите са публични на{' '}
+                    <strong style={{ color: T.text }}>{publicSiteHost}</strong>
+                    {isSalonCustomDomainLive(site.domainStatus) ? ' (свързаният ти домейн)' : ''}:
                   </p>
-                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: T.muted, lineHeight: 1.8 }}>
-                    <li><a href={`/${slug}/terms`} target="_blank" rel="noreferrer" style={{ color: T.accent }}>/{slug}/terms</a> — Условия за ползване</li>
-                    <li><a href={`/${slug}/privacy`} target="_blank" rel="noreferrer" style={{ color: T.accent }}>/{slug}/privacy</a> — Политика за поверителност</li>
-                    <li><a href={`/${slug}/cookies`} target="_blank" rel="noreferrer" style={{ color: T.accent }}>/{slug}/cookies</a> — Политика за бисквитки</li>
+                  <ul style={{ margin: '8px 0 0', paddingLeft: 0, listStyle: 'none', fontSize: 13, color: T.muted, lineHeight: 1.85 }}>
+                    {legalDocLinks.map(({ kind, url }) => (
+                      <li key={kind}>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: T.accent, fontWeight: 500, wordBreak: 'break-all' }}
+                        >
+                          {url}
+                        </a>
+                        <span style={{ color: T.subtle }}> — {LEGAL_DOCUMENT_LABELS[kind]}</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </div>

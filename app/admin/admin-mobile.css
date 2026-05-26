@@ -1,0 +1,32 @@
+/* Admin dashboard — mobile-first touch & form fixes (iOS Safari) */
+
+.admin-mobile-root {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (max-width: 767px) {
+  .admin-mobile-root input,
+  .admin-mobile-root textarea,
+  .admin-mobile-root select {
+    font-size: 16px !important;
+    line-height: 1.35;
+  }
+
+  .admin-mobile-root input[type='time'],
+  .admin-mobile-root input[type='date'],
+  .admin-mobile-root input[type='datetime-local'] {
+    min-height: 44px;
+  }
+
+  .admin-mobile-root button,
+  .admin-mobile-root [role='button'] {
+    touch-action: manipulation;
+  }
+}
+
+@keyframes admin-gallery-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
