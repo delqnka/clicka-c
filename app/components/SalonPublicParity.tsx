@@ -1017,7 +1017,7 @@ export default function SalonPublicParity({
               ref={(el) => {
                 sectionRefs.current.offers = el;
               }}
-              className="scroll-mt-36 pt-6"
+              className="cv-defer scroll-mt-36 pt-6"
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Оферти на салона</h2>
               {activeOffers.length > 0 ? (
@@ -1072,7 +1072,7 @@ export default function SalonPublicParity({
               ref={(el) => {
                 sectionRefs.current.services = el;
               }}
-              className="scroll-mt-36 pt-10"
+              className="cv-defer scroll-mt-36 pt-10"
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Услуги</h2>
               {serviceCategories.length > 1 ? (
@@ -1204,7 +1204,7 @@ export default function SalonPublicParity({
                 ref={(el) => {
                   sectionRefs.current.portfolio = el;
                 }}
-                className="scroll-mt-36 pt-10"
+                className="cv-defer scroll-mt-36 pt-10"
               >
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Портфолио</h2>
                 <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
@@ -1226,7 +1226,7 @@ export default function SalonPublicParity({
               ref={(el) => {
                 sectionRefs.current.team = el;
               }}
-              className="scroll-mt-36 pt-10"
+              className="cv-defer scroll-mt-36 pt-10"
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">{publicTeamSectionLabel}</h2>
               {publicTeamMembers.length > 0 ? (
@@ -1259,7 +1259,7 @@ export default function SalonPublicParity({
               ref={(el) => {
                 sectionRefs.current.reviews = el;
               }}
-              className="scroll-mt-36 pt-10"
+              className="cv-defer scroll-mt-36 pt-10"
             >
               <div className="mt-2 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1273,7 +1273,7 @@ export default function SalonPublicParity({
                 </div>
 
                 {reviews.length === 0 ? (
-                  <p className="py-5 text-center text-sm font-light text-black/45">Все още няма отзиви</p>
+                  <p className="py-5 text-center text-sm font-normal text-black/45">Все още няма отзиви</p>
                 ) : (
                   <>
                     <div className="grid gap-3 md:grid-cols-2 md:gap-4">
@@ -1410,7 +1410,7 @@ export default function SalonPublicParity({
               </div>
             </section>
 
-            <section className="pt-10">
+            <section className="cv-defer pt-10">
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Работно време</h2>
               <ul className="mt-3 space-y-2">
                 {DAY_NAMES_EN.map((dayKey) => {
@@ -1434,7 +1434,7 @@ export default function SalonPublicParity({
             </section>
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
-              <section className="pt-10">
+              <section className="cv-defer pt-10">
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
                 <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
                   <iframe

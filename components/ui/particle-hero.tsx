@@ -18,18 +18,6 @@ interface Particle {
 }
 
 const CSS = `
-  @keyframes ph-load {
-    0%   { opacity: 0; }
-    100% { opacity: 1; }
-  }
-  @keyframes ph-up {
-    100% { transform: translateY(0); }
-  }
-  @keyframes ph-pulse {
-    0%   { --ph-p: 0%; }
-    50%  { --ph-p: 300%; }
-    100% { --ph-p: 300%; }
-  }
   @keyframes ph-spotlight {
     0%   { transform: rotateZ(0deg) scale(1);   filter: blur(15px) opacity(0.45); }
     20%  { transform: rotateZ(-1deg) scale(1.2); filter: blur(16px) opacity(0.55); }
@@ -50,18 +38,10 @@ const CSS = `
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.35; }
   }
-  @property --ph-p {
-    syntax: '<percentage>';
-    inherits: false;
-    initial-value: 0%;
-  }
   @media (prefers-reduced-motion: reduce) {
     .ph-canvas { display: none; }
     .ph-spotlight-beam { display: none; }
     .ph-accent-line { animation: none !important; opacity: 0.12 !important; transform: none !important; }
-    .ph-headline { animation: none !important; opacity: 1 !important; transform: none !important; }
-    .ph-sub { animation: none !important; opacity: 1 !important; transform: none !important; }
-    .ph-cta { animation: none !important; opacity: 1 !important; transform: none !important; }
   }
 `
 
@@ -121,10 +101,18 @@ export function ParticleHero() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    canvas.width = window.innerWidth
-    canvas.height = canvas.parentElement?.clientHeight ?? 700
-    initParticles(canvas)
-    animate(canvas, ctx)
+    let cancelled = false
+    const start = () => {
+      if (cancelled) return
+      canvas.width = window.innerWidth
+      canvas.height = canvas.parentElement?.clientHeight ?? 700
+      initParticles(canvas)
+      animate(canvas, ctx)
+    }
+
+    const idle = typeof requestIdleCallback === "function"
+      ? requestIdleCallback(start)
+      : setTimeout(start, 200) as unknown as number
 
     const handleResize = () => {
       canvas.width = window.innerWidth
@@ -133,6 +121,9 @@ export function ParticleHero() {
     }
     window.addEventListener("resize", handleResize)
     return () => {
+      cancelled = true
+      if (typeof cancelIdleCallback === "function") cancelIdleCallback(idle)
+      else clearTimeout(idle)
       window.removeEventListener("resize", handleResize)
       if (animationRef.current) cancelAnimationFrame(animationRef.current)
     }
@@ -140,9 +131,9 @@ export function ParticleHero() {
   }, [])
 
   const spotlightAnims = [
-    "ph-load 2s ease-in-out forwards, ph-loadrot 2s ease-in-out forwards, ph-spotlight 17s ease-in-out infinite",
-    "ph-load 2s ease-in-out forwards, ph-loadrot 2s ease-in-out forwards, ph-spotlight 14s ease-in-out infinite",
-    "ph-load 2s ease-in-out forwards, ph-loadrot 2s ease-in-out forwards, ph-spotlight 21s ease-in-out infinite reverse",
+    "ph-loadrot 2s ease-in-out forwards, ph-spotlight 17s ease-in-out infinite",
+    "ph-loadrot 2s ease-in-out forwards, ph-spotlight 14s ease-in-out infinite",
+    "ph-loadrot 2s ease-in-out forwards, ph-spotlight 21s ease-in-out infinite reverse",
   ]
   const spotlightRotations = ["rotate(20deg)", "rotate(-20deg)", "rotate(0deg)"]
 
@@ -154,6 +145,7 @@ export function ParticleHero() {
         width: "100%",
         minHeight: "100svh",
         overflow: "hidden",
+        backgroundColor: "rgb(5, 6, 15)",
       }}
     >
       {/* Scoped styles */}
@@ -184,7 +176,6 @@ export function ParticleHero() {
           position: "absolute", inset: 0,
           width: "100%", height: "100%",
           pointerEvents: "none", zIndex: 3,
-          animation: "ph-load 0.6s ease-in-out forwards",
         }}
       />
 
@@ -285,8 +276,6 @@ export function ParticleHero() {
             borderRadius: 9999, padding: "6px 16px",
             marginBottom: 36, fontSize: 13, fontWeight: 500,
             color: "rgba(186,214,247,.8)",
-            opacity: 0, transform: "translateY(10px)",
-            animation: "ph-load 1.2s ease-out 2.2s forwards, ph-up 1s ease-out 2.2s forwards",
           }}
         >
           <span
@@ -305,8 +294,6 @@ export function ParticleHero() {
         <div
           className="ph-headline"
           style={{
-            opacity: 0,
-            animation: "ph-load 1.8s ease-in-out 0.4s forwards",
             marginBottom: 24,
           }}
         >
@@ -318,19 +305,10 @@ export function ParticleHero() {
               lineHeight: 1,
               margin: 0,
               fontFamily: "Georgia, 'Times New Roman', serif",
-              background: `
-                radial-gradient(2em 2em at 50% 50%,
-                  transparent calc(var(--ph-p, 0%) - 2em),
-                  #fff calc(var(--ph-p, 0%) - 1em),
-                  #fff calc(var(--ph-p, 0%) - 0.4em),
-                  transparent var(--ph-p, 0%)
-                ),
-                linear-gradient(160deg, #bad1f1 20%, #9dc3f7 60%, #c8dff8 100%)
-              `,
+              background: "linear-gradient(160deg, #bad1f1 20%, #9dc3f7 60%, #c8dff8 100%)",
               backgroundClip: "text",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
-              animation: "ph-pulse 10s linear 1.2s infinite",
             }}
           >
             clicka.bg
@@ -365,8 +343,6 @@ export function ParticleHero() {
             color: "rgba(186,214,247,.75)",
             margin: "0 0 48px",
             maxWidth: 520,
-            opacity: 0, transform: "translateY(12px)",
-            animation: "ph-load 1.6s ease-out 2s forwards, ph-up 1.2s ease-out 2s forwards",
           }}
         >
           Собствен сайт с резервации за твоя салон.{" "}
@@ -381,8 +357,6 @@ export function ParticleHero() {
           style={{
             display: "flex", gap: 12, flexWrap: "wrap",
             justifyContent: "center",
-            opacity: 0, transform: "translateY(12px)",
-            animation: "ph-load 1.4s ease-out 2.4s forwards, ph-up 1.1s ease-out 2.4s forwards",
           }}
         >
           <Link
@@ -438,8 +412,6 @@ export function ParticleHero() {
           style={{
             marginTop: 20, fontSize: 13,
             color: "rgba(186,214,247,.35)",
-            opacity: 0,
-            animation: "ph-load 1.2s ease-out 2.8s forwards",
           }}
         >
           от 0.82 € / ден · без скрити такси · 0% комисионна

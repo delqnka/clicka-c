@@ -137,14 +137,6 @@ const PLAN_FEATURES = [
 const CSS = `
   /* ── Keyframes ─────────────────────────────── */
   @keyframes mq    { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-  @keyframes float { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-12px)} }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
-  @keyframes notifSlide {
-    0%   { opacity:0; transform:translateX(16px); }
-    15%  { opacity:1; transform:translateX(0); }
-    85%  { opacity:1; transform:translateX(0); }
-    100% { opacity:0; transform:translateX(-8px); }
-  }
 
   /* ── Root ──────────────────────────────────── */
   .hp {
@@ -294,19 +286,6 @@ const CSS = `
     box-shadow: 0 0 0 1px #B07D2E, 0 8px 32px rgba(176,125,46,.14);
   }
 
-  /* ── Phone mockup & notifs ─────────────────── */
-  .hp-phone-wrap { animation: float 7s ease-in-out infinite; }
-  .hp-notif {
-    position: absolute; background: #fff;
-    border: 1px solid #E7E5E4; border-radius: 14px;
-    padding: 11px 15px;
-    box-shadow: 0 8px 28px rgba(28,25,23,.1);
-    font-size: 13px; font-weight: 500; color: #1C1917;
-    white-space: nowrap; display: flex; align-items: center; gap: 9px;
-    animation: notifSlide 4s ease-in-out infinite;
-  }
-  .hp-notif-b { animation-delay: 2.2s; }
-
   /* ── Step ──────────────────────────────────── */
   .hp-step {
     display:flex; gap:28px; align-items:flex-start;
@@ -358,8 +337,6 @@ const CSS = `
   /* ── Reduced motion ────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     [data-reveal]     { opacity:1; transform:none; transition:none; }
-    .hp-phone-wrap    { animation:none; }
-    .hp-notif         { animation:none; opacity:1; }
     .hp-mq            { animation:none; }
   }
 `;
@@ -647,104 +624,3 @@ export default function HomePage() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Phone Mockup Component
-═══════════════════════════════════════════════════════════ */
-function PhoneMockup() {
-  return (
-    <div style={{ position: 'relative', width: 290 }}>
-      {/* Floating notification: new booking */}
-      <div
-        className="hp-notif"
-        style={{ top: -18, right: -50 }}
-        role="img"
-        aria-label="Уведомление: нова резервация"
-      >
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block', flexShrink: 0, animation: 'blink 2s infinite' }} />
-        Нова резервация!
-      </div>
-
-      {/* Floating notification: new review */}
-      <div
-        className="hp-notif hp-notif-b"
-        style={{ bottom: 60, left: -52 }}
-        role="img"
-        aria-label="Уведомление: нова Google оценка"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="#B07D2E" aria-hidden="true">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
-        4.9 нова Google оценка
-      </div>
-
-      {/* Phone shell */}
-      <div
-        style={{
-          background: '#1C1917', borderRadius: 44, padding: 10,
-          boxShadow: '0 36px 90px rgba(28,25,23,.24), 0 10px 28px rgba(28,25,23,.14)',
-        }}
-        className="hp-phone-wrap"
-      >
-        {/* Dynamic island */}
-        <div style={{ height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 96, height: 22, background: '#0A0908', borderRadius: 9999 }} />
-        </div>
-
-        {/* Screen */}
-        <div style={{ background: '#FAF8F5', borderRadius: 36, overflow: 'hidden', height: 510 }}>
-          {/* Cover / hero of salon site */}
-          <div style={{ background: '#1C1917', height: 160, position: 'relative', display: 'flex', alignItems: 'flex-end', padding: '0 20px 18px' }}>
-            {/* Salon logo */}
-            <div style={{ position: 'absolute', top: 18, left: 18, width: 44, height: 44, borderRadius: 12, background: '#FAF8F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C1917" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-                <path d="M6 3h12a2 2 0 0 1 2 2v1a2 2 0 0 0-2 2v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 0-2-2V5a2 2 0 0 1 2-2z"/>
-                <path d="M12 12v9M9 15h6"/>
-              </svg>
-            </div>
-            <div>
-              <p style={{ color: '#FAF8F5', fontWeight: 700, fontSize: 17, margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>Салон Мими</p>
-              <p style={{ color: 'rgba(250,248,245,.5)', fontSize: 12, margin: 0 }}>Фризьорски салон · София</p>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div style={{ padding: '14px 14px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* CTA */}
-            <div style={{ background: '#1C1917', borderRadius: 12, padding: '13px', color: '#FAF8F5', fontWeight: 700, fontSize: 14, textAlign: 'center' }}>
-              Резервирай час →
-            </div>
-
-            {/* Services */}
-            {[
-              { name: 'Подстригване', price: '25 €', dur: '45 мин' },
-              { name: 'Боядисване',   price: '60 €', dur: '120 мин' },
-            ].map((svc, i) => (
-              <div key={i} style={{ background: '#fff', borderRadius: 12, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #E7E5E4' }}>
-                <div>
-                  <p style={{ fontWeight: 600, fontSize: 13, margin: 0 }}>{svc.name}</p>
-                  <p style={{ color: '#78716C', fontSize: 11, margin: 0 }}>{svc.dur}</p>
-                </div>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#B07D2E' }}>{svc.price}</span>
-              </div>
-            ))}
-
-            {/* Stars */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3, paddingLeft: 2 }}>
-              {[1,2,3,4,5].map(n => (
-                <svg key={n} width="13" height="13" viewBox="0 0 24 24" fill="#B07D2E" aria-hidden="true">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-              ))}
-              <span style={{ fontSize: 11, color: '#78716C', marginLeft: 5 }}>4.9 (127 ревюта)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Home bar */}
-        <div style={{ height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 80, height: 4, background: 'rgba(250,248,245,.25)', borderRadius: 9999 }} />
-        </div>
-      </div>
-    </div>
-  );
-}

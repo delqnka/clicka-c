@@ -38,18 +38,18 @@ export const BackgroundGradientAnimation = ({
   const tgPos = useRef({ x: 0, y: 0 });
   const rafRef = useRef<number>();
 
-  useEffect(() => {
-    document.body.style.setProperty("--gradient-background-start", gradientBackgroundStart);
-    document.body.style.setProperty("--gradient-background-end", gradientBackgroundEnd);
-    document.body.style.setProperty("--first-color", firstColor);
-    document.body.style.setProperty("--second-color", secondColor);
-    document.body.style.setProperty("--third-color", thirdColor);
-    document.body.style.setProperty("--fourth-color", fourthColor);
-    document.body.style.setProperty("--fifth-color", fifthColor);
-    document.body.style.setProperty("--pointer-color", pointerColor);
-    document.body.style.setProperty("--size", size);
-    document.body.style.setProperty("--blending-value", blendingValue);
-  }, [gradientBackgroundStart, gradientBackgroundEnd, firstColor, secondColor, thirdColor, fourthColor, fifthColor, pointerColor, size, blendingValue]);
+  const cssVars = {
+    '--gradient-background-start': gradientBackgroundStart,
+    '--gradient-background-end': gradientBackgroundEnd,
+    '--first-color': firstColor,
+    '--second-color': secondColor,
+    '--third-color': thirdColor,
+    '--fourth-color': fourthColor,
+    '--fifth-color': fifthColor,
+    '--pointer-color': pointerColor,
+    '--size': size,
+    '--blending-value': blendingValue,
+  } as React.CSSProperties;
 
   useEffect(() => {
     if (!interactive) return;
@@ -76,6 +76,7 @@ export const BackgroundGradientAnimation = ({
   return (
     <div
       onMouseMove={handleMouseMove}
+      style={cssVars}
       className={cn(
         "h-screen w-screen relative overflow-hidden top-0 left-0 bg-[linear-gradient(40deg,var(--gradient-background-start),var(--gradient-background-end))]",
         containerClassName

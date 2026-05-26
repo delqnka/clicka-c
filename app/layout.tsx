@@ -6,14 +6,14 @@ const playfair = Playfair_Display({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-display',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '700'],
 });
 
 const rubik = Rubik({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-body',
   display: 'swap',
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
 });
 
 export const viewport: Viewport = {

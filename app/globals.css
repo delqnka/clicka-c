@@ -62,6 +62,12 @@
   --t-slow:     400ms;
 }
 
+/* ── Deferred rendering for below-fold sections ──────── */
+.cv-defer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
 /* ── Base ──────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
