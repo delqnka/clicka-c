@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { WHY_US } from '@/lib/marketing-why-us';
 
@@ -46,7 +45,7 @@ export function BouncyCardsFeatures() {
 
   return (
     <section
-      className="mx-auto max-w-7xl px-4 py-12 text-[var(--foreground)] md:px-8 lg:py-16"
+      className="cv-defer mx-auto max-w-7xl px-4 py-12 text-[var(--foreground)] md:px-8 lg:py-16"
       aria-labelledby="why-h"
     >
       <div className="mb-10 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
@@ -68,14 +67,12 @@ export function BouncyCardsFeatures() {
             добро локално позициониране!
           </p>
         </div>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="shrink-0">
-          <Link
-            href="/create"
-            className="inline-block whitespace-nowrap rounded-lg bg-[var(--foreground)] px-4 py-2.5 text-sm font-medium text-[var(--card)] shadow-xl transition-colors hover:bg-[var(--chart-4)]"
-          >
-            Създай сайт сега →
-          </Link>
-        </motion.div>
+        <Link
+          href="/create"
+          className="inline-block shrink-0 whitespace-nowrap rounded-lg bg-[var(--foreground)] px-4 py-2.5 text-sm font-medium text-[var(--card)] shadow-xl transition-transform duration-200 hover:scale-105 hover:bg-[var(--chart-4)] active:scale-95"
+        >
+          Създай сайт сега →
+        </Link>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -136,16 +133,15 @@ function BounceCard({
   tall?: boolean;
 }) {
   return (
-    <motion.div
-      whileHover={{ scale: 0.95, rotate: '-1deg' }}
+    <div
       className={cn(
-        'group relative cursor-default overflow-hidden rounded-2xl bg-[var(--muted)] p-6 md:p-8',
+        'hp-bounce-card group relative cursor-default overflow-hidden rounded-2xl bg-[var(--muted)] p-6 md:p-8',
         tall ? 'min-h-[340px]' : 'min-h-[300px]',
         className,
       )}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 

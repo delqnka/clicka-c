@@ -1,9 +1,24 @@
 'use client';
+import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { BouncyCardsFeatures } from '@/components/ui/bouncy-cards-features';
 import { ClickaHero } from '@/components/ui/clicka-hero';
+import { LazyWhenVisible } from '@/components/ui/lazy-when-visible';
+
+type MarketingHomePageProps = {
+  activeSalons?: number;
+};
+
+const BouncyCardsFeatures = dynamic(
+  () => import('@/components/ui/bouncy-cards-features').then((m) => ({ default: m.BouncyCardsFeatures })),
+  { ssr: false },
+);
+
+const SeoBenefitsAccordion = dynamic(
+  () => import('@/components/ui/seo-benefits-accordion').then((m) => ({ default: m.SeoBenefitsAccordion })),
+  { ssr: false },
+);
 
 function IconCheck({ color = 'var(--primary)' }: { color?: string }) {
   return (
@@ -77,7 +92,14 @@ const PLAN_FEATURES = [
    Scoped CSS — uses .hp theme tokens from globals.css
 ═══════════════════════════════════════════════════════════ */
 const CSS = `
-  @keyframes mq { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+  @-webkit-keyframes hp-marquee {
+    from { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); }
+    to { -webkit-transform: translate3d(-50%, 0, 0); transform: translate3d(-50%, 0, 0); }
+  }
+  @keyframes hp-marquee {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+  }
 
   .hp {
     font-family: var(--font-sans);
@@ -143,11 +165,38 @@ const CSS = `
     color: var(--muted-foreground); margin-bottom: 16px;
   }
 
-  .hp-mq { display:flex; animation:mq 36s linear infinite; width:max-content; }
   .hp-mq-wrap {
-    overflow:hidden; position:relative;
-    border-top:1px solid var(--border); border-bottom:1px solid var(--border);
-    padding:17px 0; background:var(--card);
+    overflow: hidden;
+    position: relative;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 17px 0;
+    background: var(--card);
+    -webkit-overflow-scrolling: touch;
+  }
+  .hp-mq-track {
+    display: flex;
+    width: max-content;
+    flex-shrink: 0;
+    will-change: transform;
+    -webkit-animation: hp-marquee 32s linear infinite;
+    animation: hp-marquee 32s linear infinite;
+  }
+  .hp-mq-row {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+  }
+  .hp-mq-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 26px;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    flex-shrink: 0;
   }
   .hp-mq-wrap::before,.hp-mq-wrap::after {
     content:''; position:absolute; top:0; bottom:0; width:100px; z-index:2; pointer-events:none;
@@ -204,13 +253,6 @@ const CSS = `
     box-shadow: var(--hp-shadow);
     background: var(--card);
   }
-  .hp-seo-benefit {
-    padding: 18px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .hp-seo-benefit:last-child { border-bottom: none; padding-bottom: 0; }
-  .hp-seo-benefit:first-child { padding-top: 0; }
-
   .hp-check {
     display:flex; align-items:center; gap:10px;
     font-size:14px; font-weight:400;
@@ -222,16 +264,28 @@ const CSS = `
   .hp-section-card { background: var(--card); border-top: 1px solid var(--border); }
   .hp-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); display: inline-block; }
 
+  .hp-bounce-card {
+    transition: transform 250ms cubic-bezier(.16,1,.3,1);
+    will-change: transform;
+  }
+  .hp-bounce-card:hover {
+    transform: scale(0.98) rotate(-1deg);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     [data-reveal] { opacity:1; transform:none; transition:none; }
-    .hp-mq { animation:none; }
+    .hp-mq-track { -webkit-animation: none; animation: none; }
+    .hp-bounce-card { transition: none; will-change: auto; }
+    .hp-bounce-card:hover { transform: none; }
+    .hp-bounce-card .group-hover\\:translate-y-4 { transform: none; }
+    .hp-bounce-card .group-hover\\:rotate-\\[2deg\\] { transform: none; }
   }
 `;
 
 /* ═══════════════════════════════════════════════════════════
    Page
 ═══════════════════════════════════════════════════════════ */
-export default function HomePage() {
+export default function HomePage({ activeSalons }: MarketingHomePageProps = {}) {
   /* Scroll reveal */
   useEffect(() => {
     const els = document.querySelectorAll('[data-reveal]');
@@ -254,6 +308,7 @@ export default function HomePage() {
       <style>{CSS}</style>
 
       {/* ── NAV ─────────────────────────────────────────────── */}
+      <header>
       <nav className="hp-nav" aria-label="Главна навигация">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div
@@ -272,33 +327,36 @@ export default function HomePage() {
           Стартирай →
         </Link>
       </nav>
+      </header>
 
+      <main id="main-content">
       {/* ── HERO ────────────────────────────────────────────── */}
-      <ClickaHero />
+      <ClickaHero activeSalons={activeSalons} />
 
       {/* ── MARQUEE ─────────────────────────────────────────── */}
-      <div className="hp-mq-wrap" aria-hidden="true">
-        <div className="hp-mq">
-          {[...MARQUEE, ...MARQUEE, ...MARQUEE].map((item, i) => (
-            <span
-              key={i}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 16, padding: '0 26px', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 500, color: 'var(--muted-foreground)' }}
-            >
-              <span className="hp-dot" style={{ flexShrink: 0 }} />
-              {item}
-            </span>
+      <div className="hp-mq-wrap">
+        <div className="hp-mq-track" aria-hidden="true">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="hp-mq-row" aria-hidden={copy === 1 ? true : undefined}>
+              {MARQUEE.map((item) => (
+                <span key={`${copy}-${item}`} className="hp-mq-item">
+                  <span className="hp-dot" />
+                  {item}
+                </span>
+              ))}
+            </div>
           ))}
         </div>
       </div>
 
       {/* ── ЗАЩО ДА ИЗБЕРЕШ НАС (bouncy cards) ───────────────── */}
-      <div className="hp-section-alt" style={{ borderTop: '1px solid var(--border)' }}>
+      <LazyWhenVisible className="hp-section-alt" minHeight={480} style={{ borderTop: '1px solid var(--border)' }}>
         <BouncyCardsFeatures />
-      </div>
+      </LazyWhenVisible>
 
       {/* ── SEO 100/100 ─────────────────────────────────────── */}
       <section
-        className="hp-section-card"
+        className="hp-section-card cv-defer"
         style={{ padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
         aria-labelledby="seo-h"
       >
@@ -309,31 +367,18 @@ export default function HomePage() {
               SEO резултат
             </div>
 
-            <h2 id="seo-h" data-reveal className="font-display" style={{ fontSize: 'clamp(26px,3.8vw,44px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, marginBottom: 20, color: 'var(--foreground)' }}>
+            <h2 id="seo-h" className="font-display" style={{ fontSize: 'clamp(26px,3.8vw,44px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, marginBottom: 20, color: 'var(--foreground)' }}>
               Постигни невъзможното:<br />100/100 SEO резултат
             </h2>
 
-            <p data-reveal style={{ fontSize: 'clamp(15px,1.55vw,17px)', color: 'var(--muted-foreground)', lineHeight: 1.74, marginBottom: 28 }}>
+            <p style={{ fontSize: 'clamp(15px,1.55vw,17px)', color: 'var(--secondary-foreground)', lineHeight: 1.74, margin: 0 }}>
               Докато другите само говорят за SEO, ние го доказваме. Това е реалният резултат от теста на Google Lighthouse
               за нашия демо сайт — перфектна оценка от 100 от 100 за SEO оптимизация. Това означава, че сайтът ти е
               технически безупречен в очите на Google. Това е твоят билет за предна линия в локалното търсене.
             </p>
-
-            <p data-reveal style={{ fontSize: 15, fontWeight: 700, color: 'var(--foreground)', marginBottom: 8, letterSpacing: '-0.01em' }}>
-              Какво получаваш с този перфектен резултат?
-            </p>
-
-            <div data-reveal>
-              {SEO_BENEFITS.map((b) => (
-                <div key={b.title} className="hp-seo-benefit">
-                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em', color: 'var(--foreground)' }}>{b.title}</h3>
-                  <p style={{ fontSize: 15, fontWeight: 400, color: 'var(--muted-foreground)', lineHeight: 1.68, margin: 0 }}>{b.body}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
-          <figure data-reveal className="hp-seo-visual">
+          <figure className="hp-seo-visual">
             <Image
               src="/images/lighthouse-seo-100.webp"
               alt="Google Lighthouse SEO резултат 100 от 100 и мобилен сайт на салон — Google те обича, а с него и клиентите в твоя град"
@@ -341,9 +386,16 @@ export default function HomePage() {
               height={1024}
               sizes="(max-width: 900px) 100vw, 50vw"
               style={{ width: '100%', height: 'auto', display: 'block' }}
-              priority={false}
+              loading="lazy"
             />
           </figure>
+        </div>
+
+        <div style={{ maxWidth: 760, marginTop: 'clamp(32px, 5vw, 48px)' }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--foreground)', marginBottom: 12, letterSpacing: '-0.01em' }}>
+            Какво получаваш с този перфектен резултат?
+          </p>
+          <SeoBenefitsAccordion benefits={SEO_BENEFITS} />
         </div>
       </section>
 
@@ -466,6 +518,8 @@ export default function HomePage() {
           </p>
         </div>
       </section>
+
+      </main>
 
       {/* ── FOOTER ──────────────────────────────────────────── */}
       <footer style={{ background: 'var(--hp-cta-bg)', borderTop: '1px solid color-mix(in srgb, var(--hp-cta-fg) 12%, transparent)', padding: 'clamp(28px,4vw,44px) clamp(20px,5vw,60px)' }}>

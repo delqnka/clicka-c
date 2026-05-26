@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
+import { MARKETING_ACTIVITY_FLOOR } from '@/lib/marketing-activity';
 
 function AnimatedCount({
   initialValue,
@@ -69,8 +70,8 @@ function AnimatedCount({
 }
 
 export function ActivityBanner() {
-  const initialStartedThisMonth = 27;
-  const initialSettingUpNow = 4;
+  const initialStartedThisMonth = MARKETING_ACTIVITY_FLOOR.startedThisMonth;
+  const initialSettingUpNow = MARKETING_ACTIVITY_FLOOR.settingUpNow;
   const [startedThisMonth, setStartedThisMonth] = useState(initialStartedThisMonth);
   const [settingUpNow, setSettingUpNow] = useState(initialSettingUpNow);
 

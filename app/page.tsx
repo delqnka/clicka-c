@@ -5,6 +5,7 @@ import MarketingHomePage from '@/app/components/HomePage';
 import { extractHostname, isPlatformApexHost, getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
+import { getMarketingActivity } from '@/lib/marketing-activity';
 import { buildSalonJsonLd } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
@@ -73,7 +74,8 @@ export default async function HomePage() {
   const host = headers().get('host');
   const hostname = extractHostname(host);
   if (isPlatformApexHost(hostname)) {
-    return <MarketingHomePage />;
+    const { activeSalons } = await getMarketingActivity();
+    return <MarketingHomePage activeSalons={activeSalons} />;
   }
 
   const pageData = await getPublicSalonPageData({ host });
@@ -124,5 +126,6 @@ export default async function HomePage() {
     );
   }
 
-  return <MarketingHomePage />;
+  const { activeSalons } = await getMarketingActivity();
+  return <MarketingHomePage activeSalons={activeSalons} />;
 }

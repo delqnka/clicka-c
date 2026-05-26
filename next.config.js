@@ -11,7 +11,10 @@ const r2Host = hostnameFromUrl(process.env.R2_PUBLIC_URL ?? '');
 
 const nextConfig = {
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion'],
+    optimizePackageImports: ['lucide-react', 'framer-motion', '@radix-ui/react-accordion'],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   images: {
     formats: ['image/avif', 'image/webp'],

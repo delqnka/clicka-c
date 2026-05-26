@@ -28,6 +28,8 @@ const config: Config = {
         'card-hover':  '0 20px 60px rgba(124,58,237,0.12), 0 6px 20px rgba(0,0,0,0.08)',
       },
       animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
         'float-slow': 'float 12s ease-in-out infinite',
         'marquee':    'mq 28s linear infinite',
         first: 'moveVertical 30s ease infinite',
@@ -37,6 +39,14 @@ const config: Config = {
         fifth: 'moveInCircle 20s ease infinite',
       },
       keyframes: {
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
         moveHorizontal: {
           '0%': { transform: 'translateX(-50%) translateY(-10%)' },
           '50%': { transform: 'translateX(50%) translateY(10%)' },
