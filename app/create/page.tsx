@@ -4,6 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
+import {
+  cityFromOsmResult,
+  osmEmbedUrl,
+  type AddressSearchResult,
+  searchAddresses,
+} from '@/lib/address-search';
 
 /* ─── Draft keys ───────────────────────────────────────────── */
 const DRAFT_KEY   = 'clicka-create-draft-v2';
@@ -49,11 +55,6 @@ const STEP_LABELS = ['Начало', 'Preview', 'Детайли', 'План', '�
 /* ─── Types ────────────────────────────────────────────────── */
 type WorkingDay = { open: string; close: string; closed: boolean };
 type Service    = { name: string; price: number; duration_min: number };
-type OSMResult  = {
-  display_name: string; lat: string; lon: string;
-  address?: { city?: string; town?: string; village?: string; county?: string };
-};
-
 const DEFAULT_HOURS: Record<string, WorkingDay> = {
   monday:    { open: '09:00', close: '18:00', closed: false },
   tuesday:   { open: '09:00', close: '18:00', closed: false },
@@ -266,7 +267,7 @@ export default function CreatePage() {
   const [pickedLat, setPickedLat]         = useState<number | null>(null);
   const [pickedLng, setPickedLng]         = useState<number | null>(null);
   const [addressQuery, setAddressQuery]   = useState('');
-  const [addressResults, setAddressResults] = useState<OSMResult[]>([]);
+  const [addressResults, setAddressResults] = useState<AddressSearchResult[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
 
   const [password, setPassword]     = useState('');
@@ -308,7 +309,7 @@ export default function CreatePage() {
     }));
   }, [step, planId, smsAddon, form, hours, logoUrl, galleryUrls, coverUrl, priceListUrls, services, googleMapsUrl, pickedLat, pickedLng]);
 
-  /* ── OSM address search ────────────────────────────────── */
+  /* ── Address search (OpenStreetMap / Nominatim) ── */
   useEffect(() => {
     if (step !== 3) return;
     const q = addressQuery.trim();
@@ -317,13 +318,13 @@ export default function CreatePage() {
     const t = setTimeout(async () => {
       setAddressLoading(true);
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=bg&q=${encodeURIComponent(q)}`;
-        const res = await fetch(url, { signal: ctrl.signal });
-        const data = (await res.json()) as OSMResult[];
-        setAddressResults(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if ((e as Error).name !== 'AbortError') setAddressResults([]);
-      } finally { setAddressLoading(false); }
+        const data = await searchAddresses(q);
+        if (!ctrl.signal.aborted) setAddressResults(data);
+      } catch {
+        if (!ctrl.signal.aborted) setAddressResults([]);
+      } finally {
+        if (!ctrl.signal.aborted) setAddressLoading(false);
+      }
     }, 350);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [addressQuery, step]);
@@ -368,11 +369,6 @@ export default function CreatePage() {
     } catch (err) {
       setServices([]); setServicesError(err instanceof Error ? err.message : 'Грешка при анализ');
     } finally { setServicesLoading(false); }
-  }
-
-  function osmEmbedUrl(lat: number, lng: number) {
-    const d = 0.01;
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${(lng-d).toFixed(6)}%2C${(lat-d).toFixed(6)}%2C${(lng+d).toFixed(6)}%2C${(lat+d).toFixed(6)}&layer=mapnik&marker=${lat.toFixed(6)}%2C${lng.toFixed(6)}`;
   }
 
   /* ── Validation ────────────────────────────────────────── */
@@ -831,13 +827,18 @@ export default function CreatePage() {
                     <div style={{ marginTop: 6, border: '1.5px solid #E7E5E4', borderRadius: 14, overflow: 'hidden', maxHeight: 200, overflowY: 'auto', background: '#fff' }}>
                       {addressLoading && <div style={{ padding: '10px 14px', fontSize: 13, color: '#78716C' }}>Търсим…</div>}
                       {!addressLoading && addressResults.map((r, i) => (
-                        <button key={`${r.lat}-${r.lon}`} type="button"
+                        <button key={`${r.lat}-${r.lon}-${i}`} type="button"
                           onClick={() => {
-                            const lat = Number(r.lat), lng = Number(r.lon);
-                            const city = r.address?.city || r.address?.town || r.address?.village || form.city;
-                            setForm(f => ({ ...f, address: r.display_name, city }));
+                            const lat = Number(r.lat);
+                            const lng = Number(r.lon);
+                            setForm(f => ({
+                              ...f,
+                              address: r.display_name,
+                              city: cityFromOsmResult(r, f.city),
+                            }));
                             setAddressQuery(r.display_name);
-                            setPickedLat(lat); setPickedLng(lng);
+                            setPickedLat(lat);
+                            setPickedLng(lng);
                             setGoogleMapsUrl(osmEmbedUrl(lat, lng));
                             setAddressResults([]);
                           }}

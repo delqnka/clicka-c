@@ -47,6 +47,18 @@ export async function PATCH(request: NextRequest) {
       typeof body.googleMapsUrl === 'string' ? body.googleMapsUrl.trim() : current.googleMapsUrl,
     googlePlaceId:
       typeof body.googlePlaceId === 'string' ? body.googlePlaceId.trim() : current.googlePlaceId,
+    latitude:
+      body.latitude === null
+        ? null
+        : typeof body.latitude === 'number' && Number.isFinite(body.latitude)
+          ? body.latitude
+          : current.latitude,
+    longitude:
+      body.longitude === null
+        ? null
+        : typeof body.longitude === 'number' && Number.isFinite(body.longitude)
+          ? body.longitude
+          : current.longitude,
     ownerName: typeof body.ownerName === 'string' ? body.ownerName.trim() : current.ownerName,
     ownerPublicRole:
       typeof body.ownerPublicRole === 'string'
@@ -75,6 +87,8 @@ export async function PATCH(request: NextRequest) {
       facebook_username = ${next.facebook || ''},
       tiktok_username = ${next.tiktok || null},
       google_maps_url = ${next.googleMapsUrl || ''},
+      latitude = ${next.latitude},
+      longitude = ${next.longitude},
       google_place_id = ${next.googlePlaceId || null},
       owner_name = ${next.ownerName || null},
       owner_public_role = ${next.ownerPublicRole || null},

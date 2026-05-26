@@ -52,6 +52,8 @@ export type AdminSitePayload = {
   facebook: string;
   tiktok: string;
   googleMapsUrl: string;
+  latitude: number | null;
+  longitude: number | null;
   coverImageUrl: string;
   logoImageUrl: string;
   galleryImages: string[];
@@ -130,7 +132,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       services, working_hours,
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code,
-      site_status, legal_info
+      site_status, legal_info, latitude, longitude
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -158,6 +160,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     facebook: String(row.facebook_username ?? ''),
     tiktok: String(row.tiktok_username ?? ''),
     googleMapsUrl: String(row.google_maps_url ?? ''),
+    latitude: row.latitude != null && Number.isFinite(Number(row.latitude)) ? Number(row.latitude) : null,
+    longitude: row.longitude != null && Number.isFinite(Number(row.longitude)) ? Number(row.longitude) : null,
     coverImageUrl: String(row.cover_image_url ?? ''),
     logoImageUrl: String(row.logo_image_url ?? ''),
     galleryImages: normalizeImageList(row.gallery_images),

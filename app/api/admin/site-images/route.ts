@@ -59,6 +59,7 @@ export async function PATCH(request: NextRequest) {
       cover_image_url = ${normalizedCoverImageUrl},
       logo_image_url = ${normalizedLogoImageUrl},
       gallery_images = ${JSON.stringify(galleryImages)}::jsonb,
+      portfolio_images = ${JSON.stringify(galleryImages)}::jsonb,
       owner_public_photo_url = ${ownerPublicPhotoUrl || null},
       updated_at = now()
     WHERE slug = ${auth.salon.slug}

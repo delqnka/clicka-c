@@ -421,10 +421,16 @@ export default function SalonPublicParity({
   const allGalleryWired = useMemo(() => galleryList.map((u) => wireMediaUri(u)), [galleryList]);
   const headerImage = galleryList[0] ?? null;
   const portfolioDisplay = useMemo(() => {
+    const galleryOnly = Array.isArray(galleryDb)
+      ? galleryDb.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      : [];
     const pf = portfolioArr.filter(isValidImageUri).map(wireMediaUri);
-    if (!headerImage) return pf;
-    return pf.filter((u) => u !== wireMediaUri(headerImage)).map(wireMediaUri);
-  }, [portfolioArr, headerImage, isValidImageUri]);
+    const gf = galleryOnly.filter(isValidImageUri).map(wireMediaUri);
+    const source = pf.length > 0 ? pf : gf;
+    if (!headerImage) return source;
+    const headerWired = wireMediaUri(headerImage);
+    return source.filter(u => u !== headerWired);
+  }, [portfolioArr, galleryDb, headerImage, isValidImageUri]);
 
   const servicesWithImages = useMemo(
     () =>

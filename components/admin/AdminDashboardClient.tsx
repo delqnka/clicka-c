@@ -29,8 +29,16 @@ import {
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
+import { GalleryReorderGrid } from '@/components/admin/gallery-reorder-grid';
+import { AddressAutocompleteField } from '@/components/admin/address-autocomplete-field';
+import {
+  AdminPriceListScanBtn,
+  PriceListServicesImport,
+} from '@/components/admin/price-list-services-import';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
+import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
 import { getHostAwareSalonPath, getPlatformPublicUrl, getPrimaryPublicUrl } from '@/lib/domain-routing';
 
 /* ─── Constants ───────────────────────────────────────── */
@@ -168,6 +176,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
+  const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
+  const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
@@ -236,7 +246,21 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     try {
       const res = await fetch(`/api/admin/site-settings?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: site.name, category: site.category, phone: site.phone, city: site.city, address: site.address, about: site.about, instagram: site.instagram, facebook: site.facebook, tiktok: site.tiktok, googleMapsUrl: site.googleMapsUrl, googlePlaceId: site.googlePlaceId }),
+        body: JSON.stringify({
+          name: site.name,
+          category: site.category,
+          phone: site.phone,
+          city: site.city,
+          address: site.address,
+          about: site.about,
+          instagram: site.instagram,
+          facebook: site.facebook,
+          tiktok: site.tiktok,
+          googleMapsUrl: site.googleMapsUrl,
+          googlePlaceId: site.googlePlaceId,
+          latitude: site.latitude,
+          longitude: site.longitude,
+        }),
       });
       const data = await guardResponse(res);
       setSite(data.site as AdminSitePayload);
@@ -414,6 +438,60 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       setBusyKey('');
       if (input) input.value = '';
     }
+  }
+
+  async function runPriceListAnalysis(urls: string[]) {
+    if (!urls.length) return;
+    setPriceListAnalyzing(true);
+    setError('');
+    try {
+      const extracted = await analyzePriceListImages(urls);
+      if (!extracted.length) {
+        setError('Не открихме услуги на снимката. Опитай с по-ясна снимка.');
+        return;
+      }
+      let added = 0;
+      setSite(p => {
+        const merged = mergeServiceLists(p.services, extracted);
+        added = merged.length - p.services.length;
+        return { ...p, services: merged };
+      });
+      setNotice(
+        added > 0
+          ? `Добавени ${added} услуги от ценоразписа. Натисни „Запази".`
+          : 'Услугите от ценоразписа вече са в списъка. Натисни „Запази", ако си правил промени.',
+      );
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setPriceListAnalyzing(false);
+    }
+  }
+
+  async function handlePriceListUpload(
+    files: FileList | null,
+    input?: HTMLInputElement | null,
+  ) {
+    if (!files?.length) return;
+    setBusyKey('upload-pricelist');
+    setError('');
+    try {
+      const urls: string[] = [];
+      for (const f of Array.from(files)) urls.push(await uploadSingleFile(f));
+      const combined = [...priceListUrls, ...urls];
+      setPriceListUrls(combined);
+      await runPriceListAnalysis(combined);
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+      if (input) input.value = '';
+    }
+  }
+
+  function removePriceListAt(index: number) {
+    const next = priceListUrls.filter((_, i) => i !== index);
+    setPriceListUrls(next);
   }
 
   async function installAsApp() {
@@ -654,7 +732,22 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <Field label="Телефон"><input value={site.phone} onChange={e => setSite(p => ({ ...p, phone: e.target.value }))} style={inp} /></Field>
                 <Field label="Имейл"><input value={site.email} readOnly style={{ ...inp, color: T.muted, cursor: 'default' }} /></Field>
                 <Field label="Град"><input value={site.city} onChange={e => setSite(p => ({ ...p, city: e.target.value }))} style={inp} /></Field>
-                <Field label="Адрес"><input value={site.address} onChange={e => setSite(p => ({ ...p, address: e.target.value }))} style={inp} /></Field>
+                <AddressAutocompleteField
+                  label="Адрес"
+                  value={site.address}
+                  inputStyle={inp}
+                  onChange={address => setSite(p => ({ ...p, address }))}
+                  onSelect={({ address, city, lat, lng, googleMapsUrl }) =>
+                    setSite(p => ({
+                      ...p,
+                      address,
+                      city: city || p.city,
+                      latitude: lat,
+                      longitude: lng,
+                      googleMapsUrl,
+                    }))
+                  }
+                />
                 <Field label="Instagram"><input value={site.instagram} onChange={e => setSite(p => ({ ...p, instagram: e.target.value }))} style={inp} /></Field>
                 <Field label="Facebook"><input value={site.facebook} onChange={e => setSite(p => ({ ...p, facebook: e.target.value }))} style={inp} /></Field>
                 <Field label="TikTok"><input value={site.tiktok} onChange={e => setSite(p => ({ ...p, tiktok: e.target.value }))} style={inp} /></Field>
@@ -666,6 +759,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   <textarea value={site.about} onChange={e => setSite(p => ({ ...p, about: e.target.value }))} style={{ ...inp, minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
                 </Field>
               </div>
+              {site.googleMapsUrl ? (
+                <iframe
+                  src={site.googleMapsUrl}
+                  title="Локация на картата"
+                  loading="lazy"
+                  style={{
+                    width: '100%',
+                    height: isMobile ? 160 : 200,
+                    marginTop: 14,
+                    borderRadius: 12,
+                    border: `1px solid ${T.border}`,
+                  }}
+                />
+              ) : null}
             </Section>
           )}
 
@@ -676,12 +783,18 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               desc={isMobile ? undefined : 'Cover, лого и галерия за публичния сайт.'}
               compact={isMobile}
               action={
-                <AdminSaveBtn
-                  label="Запази снимките"
-                  busy={busyKey === 'images'}
-                  mobile={isMobile}
-                  onClick={() => void saveImages()}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <AdminGalleryAddBtn
+                    busy={busyKey === 'upload-gallery'}
+                    onUpload={handleGalleryUpload}
+                  />
+                  <AdminSaveBtn
+                    label="Запази снимките"
+                    busy={busyKey === 'images'}
+                    mobile={isMobile}
+                    onClick={() => void saveImages()}
+                  />
+                </div>
               }
             >
               <div
@@ -739,98 +852,53 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       : 'Галерия'
                   }
                 >
+                  {site.galleryImages.length > 0 ? (
+                    <p style={{ margin: '0 0 10px', fontSize: 12, color: T.subtle, lineHeight: 1.45 }}>
+                      Задръж снимка ~0.5 сек., после плъзни за нов ред. Натисни дискетата, за да запазиш.
+                    </p>
+                  ) : null}
                   <GalleryDropZone busy={busyKey === 'upload-gallery'} mobile={isMobile} onUpload={handleGalleryUpload}>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: isMobile
-                        ? 'repeat(3, minmax(0, 1fr))'
-                        : 'repeat(auto-fill, minmax(min(140px, 100%), 1fr))',
-                      gap: isMobile ? 8 : 10,
-                    }}
-                  >
-                    {site.galleryImages.map((url, i) => (
+                    {site.galleryImages.length > 0 ? (
+                      <GalleryReorderGrid
+                        images={site.galleryImages}
+                        coverImageUrl={site.coverImageUrl}
+                        isMobile={isMobile}
+                        btnSmGhost={btn('sm-ghost')}
+                        onReorder={next => {
+                          setSite(p => ({ ...p, galleryImages: next }));
+                          setNotice('Редът е променен. Натисни дискетата, за да запазиш.');
+                        }}
+                        onSetCover={url => setSite(p => ({ ...p, coverImageUrl: url }))}
+                        onRemove={i =>
+                          setSite(p => {
+                            const removed = p.galleryImages[i];
+                            const galleryImages = p.galleryImages.filter((_, j) => j !== i);
+                            return {
+                              ...p,
+                              galleryImages,
+                              coverImageUrl:
+                                p.coverImageUrl === removed
+                                  ? (galleryImages[0] ?? '')
+                                  : p.coverImageUrl,
+                            };
+                          })
+                        }
+                      />
+                    ) : (
                       <div
-                        key={`${url}-${i}`}
                         style={{
-                          border: `1px solid ${site.coverImageUrl === url ? T.text : T.border}`,
-                          borderRadius: T.radiusSm,
-                          overflow: 'hidden',
-                          background: T.surface,
+                          padding: '28px 16px',
+                          textAlign: 'center',
+                          border: `1.5px dashed ${T.border}`,
+                          borderRadius: 14,
+                          color: T.muted,
+                          fontSize: 13,
+                          lineHeight: 1.5,
                         }}
                       >
-                        <img
-                          src={url}
-                          alt={`Gallery ${i + 1}`}
-                          style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
-                        />
-                        <div
-                          style={{
-                            padding: isMobile ? '4px' : '6px 8px',
-                            display: 'flex',
-                            gap: isMobile ? 4 : 6,
-                            justifyContent: isMobile ? 'center' : 'stretch',
-                          }}
-                        >
-                          <button
-                            type="button"
-                            aria-label={site.coverImageUrl === url ? 'Начална снимка' : 'Задай за cover'}
-                            style={{
-                              ...btn('sm-ghost'),
-                              flex: isMobile ? '0 0 auto' : 1,
-                              fontSize: isMobile ? 10 : 11,
-                              padding: isMobile ? '6px' : '4px 8px',
-                              width: isMobile ? 32 : undefined,
-                              height: isMobile ? 32 : undefined,
-                              borderRadius: isMobile ? 8 : T.radiusSm,
-                              ...(site.coverImageUrl === url
-                                ? { background: T.text, color: '#fff', borderColor: T.text }
-                                : {}),
-                            }}
-                            onClick={() => setSite(p => ({ ...p, coverImageUrl: url }))}
-                          >
-                            {isMobile ? (
-                              <Check size={14} strokeWidth={2.5} />
-                            ) : site.coverImageUrl === url ? (
-                              'Cover ✓'
-                            ) : (
-                              'Cover'
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            style={{
-                              ...btn('sm-ghost'),
-                              color: '#EF4444',
-                              padding: isMobile ? '6px' : '4px 8px',
-                              width: isMobile ? 32 : undefined,
-                              height: isMobile ? 32 : undefined,
-                              borderRadius: isMobile ? 8 : T.radiusSm,
-                              flex: '0 0 auto',
-                            }}
-                            aria-label="Премахни снимка"
-                            onClick={() =>
-                              setSite(p => ({
-                                ...p,
-                                galleryImages: p.galleryImages.filter((_, j) => j !== i),
-                                coverImageUrl:
-                                  p.coverImageUrl === url
-                                    ? (p.galleryImages.find((_, j) => j !== i) ?? '')
-                                    : p.coverImageUrl,
-                              }))
-                            }
-                          >
-                            <Trash2 size={isMobile ? 14 : 12} />
-                          </button>
-                        </div>
+                        Няма снимки в галерията. Натисни зеления + или плъзни файлове тук.
                       </div>
-                    ))}
-                    <GalleryUploadTile
-                      busy={busyKey === 'upload-gallery'}
-                      mobile={isMobile}
-                      onUpload={handleGalleryUpload}
-                    />
-                  </div>
+                    )}
                   </GalleryDropZone>
                 </Field>
               </div>
@@ -864,34 +932,152 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'services' && (
             <Section
               title="Услуги"
-              desc="Добави, редактирай и премахвай услуги."
+              desc={isMobile ? undefined : 'Добави ръчно или качи снимка на ценоразпис — AI попълва услугите.'}
+              compact={isMobile}
               action={
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" style={btn('ghost')} onClick={() => setSite(p => ({ ...p, services: [...p.services, { name: '', price: 0, duration_min: 30 }] }))}>
-                    <Plus size={14} />Добави
-                  </button>
-                  <button type="button" style={btn('primary')} onClick={saveServices} disabled={busyKey === 'services'}>{busyKey === 'services' ? 'Запазваме…' : 'Запази'}</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <AdminPriceListScanBtn
+                    busy={busyKey === 'upload-pricelist' || priceListAnalyzing}
+                    onUpload={handlePriceListUpload}
+                  />
+                  {!isMobile ? (
+                    <button
+                      type="button"
+                      style={btn('ghost')}
+                      onClick={() =>
+                        setSite(p => ({
+                          ...p,
+                          services: [...p.services, { name: '', price: 0, duration_min: 30 }],
+                        }))
+                      }
+                    >
+                      <Plus size={14} />
+                      Добави
+                    </button>
+                  ) : null}
+                  <AdminSaveBtn
+                    label="Запази услугите"
+                    busy={busyKey === 'services'}
+                    mobile={isMobile}
+                    onClick={() => void saveServices()}
+                  />
                 </div>
               }
             >
-              {site.services.length === 0 ? (
-                <EmptyState title="Няма услуги" desc='Натисни "Добави" за да добавиш първата услуга.' />
+              <PriceListServicesImport
+                urls={priceListUrls}
+                busy={busyKey === 'upload-pricelist'}
+                analyzing={priceListAnalyzing}
+                isMobile={isMobile}
+                onUpload={handlePriceListUpload}
+                onRemove={removePriceListAt}
+                onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
+              />
+
+              {isMobile ? (
+                <button
+                  type="button"
+                  style={{ ...btn('ghost'), width: '100%', marginBottom: 12, justifyContent: 'center' }}
+                  onClick={() =>
+                    setSite(p => ({
+                      ...p,
+                      services: [...p.services, { name: '', price: 0, duration_min: 30 }],
+                    }))
+                  }
+                >
+                  <Plus size={14} />
+                  Добави услуга ръчно
+                </button>
+              ) : null}
+
+              {site.services.length === 0 && !priceListAnalyzing ? (
+                <EmptyState
+                  title="Няма услуги"
+                  desc="Качи снимка на ценоразписа (зелената икона) или добави услуга ръчно."
+                />
               ) : (
-                <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gap: isMobile ? 12 : 10 }}>
                   {site.services.map((svc, i) => (
-                    <div key={`svc-${i}`} style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: 14, background: T.surface }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 10, alignItems: 'end' }}>
-                        <Field label="Услуга">
-                          <input value={svc.name} onChange={e => setSite(p => ({ ...p, services: p.services.map((s, j) => j === i ? { ...s, name: e.target.value } : s) }))} style={inp} placeholder="Напр. Подстригване" />
+                    <div
+                      key={`svc-${i}`}
+                      style={{
+                        border: `1px solid ${T.border}`,
+                        borderRadius: isMobile ? 14 : T.radiusSm,
+                        padding: isMobile ? 12 : 14,
+                        background: T.surface,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: isMobile
+                            ? '1fr 1fr'
+                            : '1fr auto auto auto',
+                          gap: isMobile ? 10 : 10,
+                          alignItems: 'end',
+                        }}
+                      >
+                        <Field label="Услуга" style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
+                          <input
+                            value={svc.name}
+                            onChange={e =>
+                              setSite(p => ({
+                                ...p,
+                                services: p.services.map((s, j) =>
+                                  j === i ? { ...s, name: e.target.value } : s,
+                                ),
+                              }))
+                            }
+                            style={inp}
+                            placeholder="Напр. Подстригване"
+                          />
                         </Field>
-                        <Field label="Цена (лв)">
-                          <input type="number" value={svc.price} onChange={e => setSite(p => ({ ...p, services: p.services.map((s, j) => j === i ? { ...s, price: Number(e.target.value) || 0 } : s) }))} style={{ ...inp, width: 80 }} />
+                        <Field label="Цена (€)">
+                          <input
+                            type="number"
+                            value={svc.price}
+                            onChange={e =>
+                              setSite(p => ({
+                                ...p,
+                                services: p.services.map((s, j) =>
+                                  j === i ? { ...s, price: Number(e.target.value) || 0 } : s,
+                                ),
+                              }))
+                            }
+                            style={{ ...inp, width: isMobile ? '100%' : 80 }}
+                          />
                         </Field>
                         <Field label="Мин">
-                          <input type="number" value={svc.duration_min} onChange={e => setSite(p => ({ ...p, services: p.services.map((s, j) => j === i ? { ...s, duration_min: Number(e.target.value) || 30 } : s) }))} style={{ ...inp, width: 70 }} />
+                          <input
+                            type="number"
+                            value={svc.duration_min}
+                            onChange={e =>
+                              setSite(p => ({
+                                ...p,
+                                services: p.services.map((s, j) =>
+                                  j === i ? { ...s, duration_min: Number(e.target.value) || 30 } : s,
+                                ),
+                              }))
+                            }
+                            style={{ ...inp, width: isMobile ? '100%' : 70 }}
+                          />
                         </Field>
-                        <button type="button" style={{ ...btn('ghost'), color: '#EF4444', padding: '8px 10px', alignSelf: 'flex-end' }} onClick={() => setSite(p => ({ ...p, services: p.services.filter((_, j) => j !== i) }))}>
+                        <button
+                          type="button"
+                          style={{
+                            ...btn('ghost'),
+                            color: '#EF4444',
+                            padding: isMobile ? '10px' : '8px 10px',
+                            width: isMobile ? '100%' : undefined,
+                            gridColumn: isMobile ? '1 / -1' : undefined,
+                            justifyContent: 'center',
+                          }}
+                          onClick={() =>
+                            setSite(p => ({ ...p, services: p.services.filter((_, j) => j !== i) }))
+                          }
+                        >
                           <Trash2 size={14} />
+                          {isMobile ? ' Премахни' : null}
                         </button>
                       </div>
                     </div>
@@ -1531,111 +1717,6 @@ function GalleryDropZone({
         </div>
       )}
       {children}
-    </div>
-  );
-}
-
-function GalleryUploadTile({
-  busy,
-  mobile = false,
-  onUpload,
-}: {
-  busy: boolean;
-  mobile?: boolean;
-  onUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [tileDrag, setTileDrag] = useState(false);
-  const tileDepthRef = useRef(0);
-
-  const onTileDragEnter = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (busy) return;
-    tileDepthRef.current += 1;
-    setTileDrag(true);
-  };
-
-  const onTileDragLeave = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    tileDepthRef.current = Math.max(0, tileDepthRef.current - 1);
-    if (tileDepthRef.current === 0) setTileDrag(false);
-  };
-
-  const onTileDrop = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    tileDepthRef.current = 0;
-    setTileDrag(false);
-    if (busy) return;
-    void onUpload(e.dataTransfer.files, inputRef.current);
-  };
-
-  return (
-    <div
-      role="button"
-      tabIndex={busy ? -1 : 0}
-      aria-label="Добави още снимки"
-      onClick={() => !busy && inputRef.current?.click()}
-      onKeyDown={e => {
-        if ((e.key === 'Enter' || e.key === ' ') && !busy) {
-          e.preventDefault();
-          inputRef.current?.click();
-        }
-      }}
-      onDragEnter={onTileDragEnter}
-      onDragOver={e => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!busy) {
-          e.dataTransfer.dropEffect = 'copy';
-          setTileDrag(true);
-        }
-      }}
-      onDragLeave={onTileDragLeave}
-      onDrop={onTileDrop}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: mobile ? 0 : 6,
-        minHeight: mobile ? 0 : 120,
-        aspectRatio: '1',
-        border: `1.5px dashed ${tileDrag ? T.text : T.border}`,
-        borderRadius: mobile ? 12 : T.radiusSm,
-        background: tileDrag ? '#F4F4F5' : '#FAFAFA',
-        cursor: busy ? 'wait' : 'pointer',
-        padding: mobile ? 8 : 12,
-        textAlign: 'center',
-        outline: 'none',
-      }}
-    >
-      {mobile ? (
-        busy ? (
-          <RefreshCw size={22} color={T.muted} strokeWidth={2} />
-        ) : (
-          <Plus size={24} color={tileDrag ? T.text : T.muted} strokeWidth={2} />
-        )
-      ) : (
-        <>
-          <Upload size={22} color={tileDrag ? T.text : T.muted} strokeWidth={1.75} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: tileDrag ? T.text : T.muted, lineHeight: 1.35 }}>
-            {busy ? 'Качваме…' : 'Добави още снимки'}
-          </span>
-          <span style={{ fontSize: 11, color: T.subtle }}>клик или плъзни тук</span>
-        </>
-      )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        disabled={busy}
-        style={{ display: 'none' }}
-        onChange={e => void onUpload(e.target.files, e.target)}
-      />
     </div>
   );
 }
