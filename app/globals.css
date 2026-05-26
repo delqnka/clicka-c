@@ -78,11 +78,11 @@
   --chart-5: #33cc33;
   --popover: #ffffff;
   --primary: #34a85a;
-  --sidebar: #f9f9fa;
+  --sidebar: #ffffff;
   --font-mono: var(--font-marketing-mono), 'Source Code Pro', monospace;
   --font-sans: var(--font-marketing-sans), Montserrat, system-ui, sans-serif;
   --secondary: #6495ed;
-  --background: #f9f9fa;
+  --background: #ffffff;
   --font-serif: var(--font-marketing-serif), 'Playfair Display', Georgia, serif;
   --foreground: #333333;
   --destructive: #ef4444;

@@ -38,7 +38,7 @@ const sourceCodePro = Source_Code_Pro({
 });
 
 export const viewport: Viewport = {
-  themeColor: '#f9f9fa',
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
 };
