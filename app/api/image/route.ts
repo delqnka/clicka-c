@@ -17,7 +17,7 @@ const r2 = new S3Client({
   },
 });
 
-const ALLOWED_WIDTHS = new Set([320, 480, 640, 768, 1024, 1280]);
+const ALLOWED_WIDTHS = new Set([128, 320, 480, 640, 768, 1024, 1280]);
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

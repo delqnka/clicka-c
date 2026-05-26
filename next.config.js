@@ -10,7 +10,11 @@ function hostnameFromUrl(maybeUrl) {
 const r2Host = hostnameFromUrl(process.env.R2_PUBLIC_URL ?? '');
 
 const nextConfig = {
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       ...(r2Host
         ? [

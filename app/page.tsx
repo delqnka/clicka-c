@@ -1,11 +1,15 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import MarketingHomePage from '@/app/components/HomePage';
+import nextDynamic from 'next/dynamic';
 import SalonPublicParity from '@/app/components/SalonPublicParity';
 import { extractHostname, isPlatformApexHost, getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 import { buildSalonJsonLd } from '@/lib/seo';
+
+const MarketingHomePage = nextDynamic(() => import('@/app/components/HomePage'), {
+  loading: () => null,
+});
 
 export const dynamic = 'force-dynamic';
 

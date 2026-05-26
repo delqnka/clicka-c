@@ -500,8 +500,9 @@ export default function SalonPublicParity({
     ];
   }, [teamJson, ownerName, ownerRole, ownerPhoto, name]);
 
-  useEffect(() => {
+  const requestGeolocation = useCallback(() => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return;
+    if (userLocation) return;
     navigator.geolocation.getCurrentPosition(
       (position) =>
         setUserLocation({
@@ -511,7 +512,7 @@ export default function SalonPublicParity({
       () => {},
       { enableHighAccuracy: false, timeout: 8000 }
     );
-  }, []);
+  }, [userLocation]);
 
   useEffect(() => {
     const saved = localStorage.getItem('clicka-cookie-consent');
@@ -880,6 +881,7 @@ export default function SalonPublicParity({
                     }
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={requestGeolocation}
                     className="mt-2 inline-flex max-w-full items-center gap-1 text-sm font-medium underline-offset-2 hover:underline"
                     style={{ color: APPLE_LINK_BLUE }}
                   >
@@ -1016,11 +1018,15 @@ export default function SalonPublicParity({
                       ) : null}
                       {offerImagesList(o.images)[0] ? (
                         <img
-                          src={wireMediaUri(offerImagesList(o.images)[0])}
+                          src={optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 640)}
+                          srcSet={`${optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 480)} 480w, ${optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 640)} 640w`}
+                          sizes="(max-width: 768px) 92vw, 340px"
                           alt={name}
                           className="absolute inset-0 h-full w-full object-cover opacity-90"
                           loading="lazy"
                           decoding="async"
+                          width={340}
+                          height={200}
                         />
                       ) : (
                         <div className="absolute inset-0 bg-black" />
@@ -1190,7 +1196,7 @@ export default function SalonPublicParity({
                       onClick={() => setGalleryModal({ uris: portfolioDisplay, index: idx })}
                       className="relative h-44 w-[45%] shrink-0 overflow-hidden rounded-xl sm:h-52 sm:w-[200px]"
                     >
-                      <img src={uri} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                      <img src={optimizedSrc(uri, 480)} srcSet={`${optimizedSrc(uri, 320)} 320w, ${optimizedSrc(uri, 480)} 480w`} sizes="(max-width: 640px) 45vw, 200px" alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" width={200} height={220} />
                     </button>
                   ))}
                 </div>
@@ -1213,7 +1219,7 @@ export default function SalonPublicParity({
                     >
                       <div className="h-16 w-16 overflow-hidden rounded-full">
                         {member.photoUrl ? (
-                          <img src={member.photoUrl} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                          <img src={optimizedSrc(member.photoUrl, 128)} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" width={64} height={64} />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <User className="h-7 w-7 text-black/35" aria-hidden />
@@ -1570,6 +1576,7 @@ export default function SalonPublicParity({
                       }
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={requestGeolocation}
                       className="mt-2 inline-block pl-6 text-sm font-medium underline-offset-2 hover:underline"
                       style={{ color: APPLE_LINK_BLUE }}
                     >
