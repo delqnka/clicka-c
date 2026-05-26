@@ -1,23 +1,23 @@
 import type { Metadata, Viewport } from 'next';
-import { Playfair_Display, Rubik } from 'next/font/google';
+import { Inter, Merriweather } from 'next/font/google';
 import './globals.css';
 
-const playfair = Playfair_Display({
+const inter = Inter({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-body',
+  display: 'swap',
+  weight: ['400', '500', '700'],
+});
+
+const merriweather = Merriweather({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-display',
   display: 'swap',
   weight: ['400', '700'],
 });
 
-const rubik = Rubik({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-body',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
 export const viewport: Viewport = {
-  themeColor: '#FAF8F5',
+  themeColor: '#f8fafc',
   width: 'device-width',
   initialScale: 1,
 };
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="bg" className={`${playfair.variable} ${rubik.variable}`}>
+    <html lang="bg" className={`${inter.variable} ${merriweather.variable}`}>
       <body>{children}</body>
     </html>
   );

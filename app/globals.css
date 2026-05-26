@@ -62,6 +62,94 @@
   --t-slow:     400ms;
 }
 
+/* ── Marketing homepage theme (scoped — does not affect salon sites) ─ */
+.hp {
+  --card: #ffffff;
+  --ring: #6366f1;
+  --input: #d1d5db;
+  --muted: #f3f4f6;
+  --accent: #e0e7ff;
+  --border: #d1d5db;
+  --radius: 0.5rem;
+  --chart-1: #6366f1;
+  --chart-2: #4f46e5;
+  --chart-3: #4338ca;
+  --chart-4: #3730a3;
+  --chart-5: #312e81;
+  --popover: #ffffff;
+  --primary: #6366f1;
+  --sidebar: #f3f4f6;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-body), Inter, system-ui, sans-serif;
+  --secondary: #e5e7eb;
+  --background: #f8fafc;
+  --font-serif: var(--font-display), Merriweather, Georgia, serif;
+  --foreground: #1e293b;
+  --destructive: #ef4444;
+  --shadow-blur: 8px;
+  --shadow-color: hsl(0 0% 0%);
+  --sidebar-ring: #6366f1;
+  --shadow-spread: -1px;
+  --shadow-opacity: 0.1;
+  --sidebar-accent: #e0e7ff;
+  --sidebar-border: #d1d5db;
+  --card-foreground: #1e293b;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 4px;
+  --sidebar-primary: #6366f1;
+  --muted-foreground: #6b7280;
+  --accent-foreground: #374151;
+  --popover-foreground: #1e293b;
+  --primary-foreground: #ffffff;
+  --sidebar-foreground: #1e293b;
+  --secondary-foreground: #374151;
+  --destructive-foreground: #ffffff;
+  --sidebar-accent-foreground: #374151;
+  --sidebar-primary-foreground: #ffffff;
+  --hp-cta-bg: #0f172a;
+  --hp-cta-fg: #e2e8f0;
+  --hp-shadow: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur)
+    var(--shadow-spread)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .hp.hp-auto-dark {
+    --card: #1e293b;
+    --ring: #818cf8;
+    --input: #4b5563;
+    --muted: #1e293b;
+    --accent: #374151;
+    --border: #4b5563;
+    --chart-1: #818cf8;
+    --chart-2: #6366f1;
+    --chart-3: #4f46e5;
+    --chart-4: #4338ca;
+    --chart-5: #3730a3;
+    --popover: #1e293b;
+    --primary: #818cf8;
+    --sidebar: #1e293b;
+    --secondary: #2d3748;
+    --background: #0f172a;
+    --foreground: #e2e8f0;
+    --sidebar-ring: #818cf8;
+    --sidebar-accent: #374151;
+    --sidebar-border: #4b5563;
+    --card-foreground: #e2e8f0;
+    --sidebar-primary: #818cf8;
+    --muted-foreground: #9ca3af;
+    --accent-foreground: #d1d5db;
+    --popover-foreground: #e2e8f0;
+    --primary-foreground: #0f172a;
+    --sidebar-foreground: #e2e8f0;
+    --secondary-foreground: #d1d5db;
+    --sidebar-accent-foreground: #d1d5db;
+    --sidebar-primary-foreground: #0f172a;
+    --hp-cta-bg: #020617;
+    --hp-cta-fg: #e2e8f0;
+  }
+}
+
 /* ── Deferred rendering for below-fold sections ──────── */
 .cv-defer {
   content-visibility: auto;
@@ -78,7 +166,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: var(--font-body, 'Rubik', system-ui, -apple-system, sans-serif);
+  font-family: var(--font-body, 'Inter', system-ui, -apple-system, sans-serif);
   background: #ffffff;
   color: var(--ink);
   margin: 0;

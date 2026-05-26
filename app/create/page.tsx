@@ -76,7 +76,7 @@ const CSS = `
 
   .cr-page {
     min-height:100dvh; background:#FAF8F5; color:#1C1917;
-    font-family: var(--font-body,'DM Sans',system-ui,sans-serif);
+    font-family: var(--font-body,'Inter',system-ui,sans-serif);
     -webkit-font-smoothing:antialiased;
   }
   .cr-nav {
@@ -93,7 +93,7 @@ const CSS = `
     max-width:680px; margin:0 auto;
     padding:36px 20px 88px;
   }
-  .font-display { font-family:var(--font-display,'Playfair Display',Georgia,serif); }
+  .font-display { font-family:var(--font-display,'Merriweather',Georgia,serif); }
 
   /* Progress */
   .cr-progress { display:flex; align-items:center; gap:0; margin-bottom:48px; }
