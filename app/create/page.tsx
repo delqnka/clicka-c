@@ -51,7 +51,7 @@ const PLAN_FEATURES = [
   'Хостинг включен',
 ];
 
-const STEP_LABELS = ['Начало', 'Preview', 'Детайли', 'План', 'Плащане'];
+const STEP_LABELS = ['Информация', 'Детайли', 'План', 'Плащане'];
 
 /* ─── Types ────────────────────────────────────────────────── */
 type WorkingDay = { open: string; close: string; closed: boolean };
@@ -271,9 +271,6 @@ export default function CreatePage() {
   const [addressResults, setAddressResults] = useState<AddressSearchResult[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
 
-  const [password, setPassword]     = useState('');
-  const [showPass, setShowPass]     = useState(false);
-
   const tempSlug = useRef(`draft-${Math.random().toString(36).slice(2, 8)}`);
 
   /* ── Restore draft ─────────────────────────────────────── */
@@ -283,7 +280,7 @@ export default function CreatePage() {
       const raw = window.localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
       const d = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof d.step === 'number') setStep(Math.min(Math.max(d.step, 1), 5));
+      if (typeof d.step === 'number') setStep(Math.min(Math.max(d.step, 1), 4));
       if (typeof d.planId === 'string') setPlanId(d.planId);
       if (typeof d.smsAddon === 'boolean') setSmsAddon(d.smsAddon);
       if (d.form && typeof d.form === 'object') setForm(f => ({ ...f, ...(d.form as typeof f) }));
@@ -312,7 +309,7 @@ export default function CreatePage() {
 
   /* ── Address search (OpenStreetMap / Nominatim) ── */
   useEffect(() => {
-    if (step !== 3) return;
+    if (step !== 2) return;
     const q = addressQuery.trim();
     if (q.length < 3) { setAddressResults([]); setAddressLoading(false); return; }
     const ctrl = new AbortController();
@@ -374,9 +371,8 @@ export default function CreatePage() {
 
   /* ── Validation ────────────────────────────────────────── */
   function canProceed() {
-    if (step === 1) return !!(form.name.trim() && form.city.trim() && form.email.trim());
-    if (step === 3) return !!(form.phone.trim());
-    if (step === 4) return planId !== '';
+    if (step === 1) return !!(form.name.trim() && form.city.trim() && form.email.trim() && form.phone.trim());
+    if (step === 3) return planId !== '';
     return true;
   }
 
@@ -431,7 +427,7 @@ export default function CreatePage() {
     setLogoUrl(''); setGalleryUrls([]); setCoverUrl('');
     setPriceListUrls([]); setServices([]); setServicesError('');
     setGoogleMapsUrl(''); setPickedLat(null); setPickedLng(null);
-    setPassword(''); setError('');
+    setError('');
   }
 
   /* ── Render ────────────────────────────────────────────── */
@@ -497,7 +493,7 @@ export default function CreatePage() {
               Нека започнем
             </h1>
             <p style={{ color: '#78716C', marginBottom: 36, fontSize: 16, lineHeight: 1.6 }}>
-              Само три неща — ще видиш твоя сайт за 30 секунди.
+              Попълни основните данни за твоя салон.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -540,7 +536,22 @@ export default function CreatePage() {
                   autoComplete="email"
                   aria-required="true"
                 />
-                <p className="cr-hint" style={{ marginTop: 6 }}>Ще изпратим детайлите за сайта на този имейл.</p>
+                <p className="cr-hint" style={{ marginTop: 6 }}>На този имейл ще получиш код за достъп до панела.</p>
+              </div>
+
+              <div className="cr-grid-2">
+                <div>
+                  <label className="cr-label" htmlFor="cr-phone">Телефон *</label>
+                  <input id="cr-phone" type="tel" className="cr-input" value={form.phone} placeholder="+359 88 888 8888"
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} autoComplete="tel" aria-required="true" />
+                </div>
+                <div>
+                  <label className="cr-label" htmlFor="cr-category">Категория</label>
+                  <select id="cr-category" className="cr-input" value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -548,7 +559,7 @@ export default function CreatePage() {
 
             <div style={{ marginTop: 32 }}>
               <button className="cr-btn-primary" onClick={next} disabled={!canProceed()}>
-                Виж твоя сайт →
+                Продължи →
               </button>
             </div>
 
@@ -567,111 +578,18 @@ export default function CreatePage() {
         )}
 
         {/* ══════════════════════════════════════════
-            STEP 2 — Preview
+            STEP 2 — Enrich / Details
         ══════════════════════════════════════════ */}
         {step === 2 && (
-          <div>
-            <h1 className="font-display" style={{ fontSize: 'clamp(26px,4.5vw,40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '0 0 8px', lineHeight: 1.15 }}>
-              Ето как ще изглежда
-            </h1>
-            <p style={{ color: '#78716C', marginBottom: 36, fontSize: 16, lineHeight: 1.6 }}>
-              Всичко може да бъде персонализирано — снимки, услуги, работно време, лого.
-            </p>
-
-            {/* Static phone preview with their info */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 36 }}>
-              <div className="cr-preview-phone" style={{ width: 260 }}>
-                {/* Shell */}
-                <div style={{ background: '#1C1917', borderRadius: 40, padding: 9, boxShadow: '0 28px 72px rgba(28,25,23,.2)' }}>
-                  {/* Dynamic island */}
-                  <div style={{ height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 88, height: 20, background: '#0A0908', borderRadius: 9999 }} aria-hidden="true" />
-                  </div>
-                  {/* Screen */}
-                  <div style={{ background: '#FAF8F5', borderRadius: 32, overflow: 'hidden', height: 460 }}>
-                    {/* Hero cover */}
-                    <div style={{ background: '#1C1917', height: 150, position: 'relative', display: 'flex', alignItems: 'flex-end', padding: '0 18px 16px' }}>
-                      <div style={{ position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderRadius: 11, background: '#FAF8F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C1917" strokeWidth="1.5" strokeLinecap="round"><path d="M6 3h12a2 2 0 0 1 2 2v1a2 2 0 0 0-2 2v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 0-2-2V5a2 2 0 0 1 2-2z"/><path d="M12 12v9M9 15h6"/></svg>
-                      </div>
-                      <div>
-                        <p style={{ color: '#FAF8F5', fontWeight: 700, fontSize: 16, margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>{form.name || 'Твоят салон'}</p>
-                        <p style={{ color: 'rgba(250,248,245,.55)', fontSize: 11, margin: 0 }}>Фризьорски салон · {form.city || 'Града'}</p>
-                      </div>
-                    </div>
-                    {/* Content */}
-                    <div style={{ padding: '13px 12px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
-                      <div style={{ background: '#1C1917', borderRadius: 11, padding: '12px', color: '#FAF8F5', fontWeight: 700, fontSize: 13, textAlign: 'center' }}>
-                        Резервирай час →
-                      </div>
-                      {[['Подстригване','25 €','45 мин'],['Боядисване','60 €','120 мин']].map(([n, p, d]) => (
-                        <div key={n} style={{ background: '#fff', borderRadius: 11, padding: '10px 13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #E7E5E4' }}>
-                          <div><p style={{ fontWeight: 600, fontSize: 12, margin: 0 }}>{n}</p><p style={{ color: '#78716C', fontSize: 10, margin: 0 }}>{d}</p></div>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: '#B07D2E' }}>{p}</span>
-                        </div>
-                      ))}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, paddingLeft: 1 }}>
-                        {[1,2,3,4,5].map(i => (
-                          <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill="#B07D2E" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        ))}
-                        <span style={{ fontSize: 10, color: '#78716C', marginLeft: 4 }}>4.9 (127)</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 72, height: 3, background: 'rgba(250,248,245,.2)', borderRadius: 9999 }} aria-hidden="true" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* "Хареса ли ти?" card */}
-            <div style={{ background: '#fff', border: '1.5px solid #E7E5E4', borderRadius: 20, padding: '22px 22px', textAlign: 'center' }}>
-              <p className="font-display" style={{ fontSize: 20, fontWeight: 600, margin: '0 0 6px' }}>Харесва ти?</p>
-              <p style={{ color: '#78716C', fontSize: 14, margin: '0 0 20px', lineHeight: 1.6 }}>
-                Ще добавим снимки, услуги и детайли в следващата стъпка.
-              </p>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button className="cr-btn-ghost" onClick={back}>
-                  ← Промени
-                </button>
-                <button className="cr-btn-primary" style={{ width: 'auto', padding: '14px 36px' }} onClick={next}>
-                  Да, харесва ми →
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════
-            STEP 3 — Enrich / Details
-        ══════════════════════════════════════════ */}
-        {step === 3 && (
           <div>
             <h1 className="font-display" style={{ fontSize: 'clamp(26px,4.5vw,40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '0 0 8px', lineHeight: 1.15 }}>
               Добави детайли
             </h1>
             <p style={{ color: '#78716C', marginBottom: 36, fontSize: 15, lineHeight: 1.6 }}>
-              Всичко по-долу е по желание — освен телефон. Можеш да редактираш и по-късно.
+              Всичко по-долу е по желание. Можеш да редактираш и по-късно.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-
-              {/* Phone + Category */}
-              <div className="cr-grid-2">
-                <div>
-                  <label className="cr-label" htmlFor="cr-phone">Телефон *</label>
-                  <input id="cr-phone" type="tel" className="cr-input" value={form.phone} placeholder="+359 88 888 8888"
-                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} autoComplete="tel" aria-required="true" />
-                </div>
-                <div>
-                  <label className="cr-label" htmlFor="cr-category">Категория</label>
-                  <select id="cr-category" className="cr-input" value={form.category}
-                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-              </div>
 
               {/* Logo */}
               <FileUploadField
@@ -912,9 +830,9 @@ export default function CreatePage() {
         )}
 
         {/* ══════════════════════════════════════════
-            STEP 4 — Choose plan
+            STEP 3 — Choose plan
         ══════════════════════════════════════════ */}
-        {step === 4 && (
+        {step === 3 && (
           <div>
             <h1 className="font-display" style={{ fontSize: 'clamp(26px,4.5vw,40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '0 0 8px', lineHeight: 1.15 }}>
               Избери план
@@ -996,9 +914,9 @@ export default function CreatePage() {
         )}
 
         {/* ══════════════════════════════════════════
-            STEP 5 — Payment
+            STEP 4 — Payment
         ══════════════════════════════════════════ */}
-        {step === 5 && (
+        {step === 4 && (
           <div>
             <h1 className="font-display" style={{ fontSize: 'clamp(26px,4.5vw,40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '0 0 8px', lineHeight: 1.15 }}>
               Потвърди поръчката
@@ -1046,38 +964,6 @@ export default function CreatePage() {
               </div>
             </div>
 
-            {/* Set password */}
-            {!SKIP_PAYMENT && (
-              <div style={{ background: '#fff', border: '1.5px solid #E7E5E4', borderRadius: 20, padding: '22px', marginBottom: 14 }}>
-                <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>Задай парола за акаунта</p>
-                <p style={{ fontSize: 13, color: '#78716C', margin: '0 0 14px' }}>Ще ти трябва за достъп до admin панела.</p>
-                <label className="cr-label" htmlFor="cr-pass">Парола</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    id="cr-pass"
-                    type={showPass ? 'text' : 'password'}
-                    className="cr-input"
-                    value={password}
-                    placeholder="Минимум 8 символа"
-                    onChange={e => setPassword(e.target.value)}
-                    autoComplete="new-password"
-                    minLength={8}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(v => !v)}
-                    style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#A8A29E', padding: 4 }}
-                    aria-label={showPass ? 'Скрий паролата' : 'Покажи паролата'}
-                  >
-                    {showPass
-                      ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    }
-                  </button>
-                </div>
-              </div>
-            )}
-
             {error && <div className="cr-error" role="alert">{error}</div>}
 
             <button onClick={handlePay} className="cr-btn-primary" disabled={isSubmitting} style={{ marginBottom: 12 }}>
@@ -1096,26 +982,22 @@ export default function CreatePage() {
         )}
 
         {/* ── NAVIGATION BUTTONS ───────────────────────────── */}
-        {step !== 2 && step !== 5 && (
+        {(step === 2 || step === 3) && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 36, gap: 12 }}>
-            {step > 1 && (
-              <button className="cr-btn-ghost" onClick={back}>
-                ← Назад
-              </button>
-            )}
-            {step < 5 && step !== 2 && (
-              <button
-                className="cr-btn-primary"
-                onClick={next}
-                disabled={!canProceed()}
-                style={{ marginLeft: 'auto', width: step === 1 ? '100%' : 'auto', padding: '16px 40px' }}
-              >
-                {step === 3 ? 'Продължи към план →' : step === 4 ? 'Продължи към плащане →' : 'Продължи →'}
-              </button>
-            )}
+            <button className="cr-btn-ghost" onClick={back}>
+              ← Назад
+            </button>
+            <button
+              className="cr-btn-primary"
+              onClick={next}
+              disabled={!canProceed()}
+              style={{ marginLeft: 'auto', padding: '16px 40px' }}
+            >
+              {step === 2 ? 'Продължи към план →' : 'Продължи към плащане →'}
+            </button>
           </div>
         )}
-        {step === 5 && (
+        {step === 4 && (
           <div style={{ marginTop: 12 }}>
             <button className="cr-btn-ghost" onClick={back} style={{ fontSize: 13 }}>
               ← Промени плана

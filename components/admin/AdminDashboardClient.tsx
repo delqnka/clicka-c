@@ -723,32 +723,34 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   /* ── Shared styles ── */
   const inp: CSSProperties = {
     width: '100%',
-    padding: isMobile ? '11px 12px' : '9px 12px',
-    minHeight: isMobile ? 44 : undefined,
-    borderRadius: T.radiusSm,
-    border: `1px solid ${T.border}`,
-    background: T.surface,
+    padding: isMobile ? '14px 16px' : '9px 12px',
+    minHeight: isMobile ? 48 : undefined,
+    borderRadius: isMobile ? 14 : T.radiusSm,
+    border: isMobile ? '1.5px solid transparent' : `1px solid ${T.border}`,
+    background: isMobile ? '#F4F4F5' : T.surface,
     color: T.text,
     fontSize: isMobile ? 16 : 14,
-    lineHeight: 1.35,
+    lineHeight: 1.4,
     outline: 'none',
     boxSizing: 'border-box',
     WebkitAppearance: 'none',
+    transition: 'border-color 200ms ease',
   };
   const btn = (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost'): CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderRadius: variant === 'primary' ? T.radiusSm : T.radiusSm,
-    border: variant === 'primary' ? `1px solid ${T.accent}` : variant === 'danger' ? 'none' : `1px solid ${T.border}`,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderRadius: isMobile && variant !== 'sm-ghost' ? 14 : T.radiusSm,
+    border: variant === 'primary' ? 'none' : variant === 'danger' ? 'none' : `1px solid ${T.border}`,
     background: variant === 'primary' ? T.accent : 'transparent',
     color: variant === 'primary' ? '#fff' : variant === 'danger' ? '#EF4444' : T.text,
-    padding: variant === 'sm-ghost' ? '6px 12px' : isMobile ? '6px 12px' : '8px 16px',
-    fontSize: variant === 'sm-ghost' ? 13 : isMobile ? 12 : 14,
-    fontWeight: 500,
+    padding: variant === 'sm-ghost' ? '6px 12px' : isMobile ? '12px 20px' : '8px 16px',
+    fontSize: variant === 'sm-ghost' ? 13 : isMobile ? 15 : 14,
+    fontWeight: variant === 'primary' ? 600 : 500,
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
     flexShrink: 0,
+    transition: 'transform 150ms ease, opacity 150ms ease',
   });
-  const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 12 };
+  const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: isMobile ? 14 : 12 };
 
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); setNavOpen(false); };
@@ -794,44 +796,61 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       </div>
 
       {/* ── Top nav ───────────────────────────────────── */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: `1px solid ${T.border}`, height: 56 }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Hamburger (mobile only) */}
-          {isMobile && (
-            <button type="button" onClick={() => setNavOpen(o => !o)} style={{ border: 'none', background: 'none', padding: 4, cursor: 'pointer', color: T.text, flexShrink: 0 }}>
-              {navOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-          )}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        background: isMobile ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.85)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: isMobile ? '0.5px solid rgba(0,0,0,0.06)' : `1px solid ${T.border}`,
+        height: isMobile ? 52 : 56,
+      }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '0 16px' : '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Brand */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>c</div>
-            <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.name || slug}</span>
+            {!isMobile && (
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>c</div>
+            )}
+            <span style={{ fontSize: isMobile ? 17 : 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>{site.name || slug}</span>
             {!isMobile && (
               <span style={{ fontSize: 12, color: T.subtle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{ownerEmail}</span>
             )}
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 8, flexShrink: 0 }}>
             {site.siteStatus !== 'active' && (
               <button
                 type="button"
                 onClick={() => void publishSite()}
                 disabled={busyKey === 'publish'}
-                style={{ ...btn('primary'), fontSize: isMobile ? 12 : 13, padding: isMobile ? '5px 10px' : '6px 14px' }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  borderRadius: isMobile ? 12 : T.radiusSm, border: 'none',
+                  background: T.accent, color: '#fff',
+                  padding: isMobile ? '8px 14px' : '6px 14px',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
               >
-                {busyKey === 'publish' ? '…' : '🚀'}
-                {!isMobile && (busyKey === 'publish' ? ' Публикуване…' : ' Публикувай сайта')}
+                {busyKey === 'publish' ? '…' : (isMobile ? 'Публикувай' : 'Публикувай сайта')}
               </button>
             )}
             <a
               href={sitePublicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ ...btn('sm-ghost'), textDecoration: 'none', padding: isMobile ? '5px 8px' : '6px 12px' }}
+              aria-label="Виж сайта"
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: isMobile ? 36 : undefined, height: isMobile ? 36 : undefined,
+                borderRadius: isMobile ? 10 : T.radiusSm,
+                border: isMobile ? 'none' : `1px solid ${T.border}`,
+                background: isMobile ? '#F4F4F5' : 'transparent',
+                textDecoration: 'none', color: T.muted,
+                padding: isMobile ? 0 : '6px 12px',
+                fontSize: 13, cursor: 'pointer',
+              }}
             >
-              <ExternalLink size={isMobile ? 15 : 13} />
-              {!isMobile && 'Виж сайта'}
+              <ExternalLink size={isMobile ? 16 : 13} />
+              {!isMobile && <span style={{ marginLeft: 6 }}>Виж сайта</span>}
             </a>
             {showInstallButton && !isMobile && (
               <button type="button" onClick={() => void installAsApp()} style={btn('sm-ghost')}>
@@ -842,29 +861,50 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               type="button"
               onClick={logout}
               disabled={busyKey === 'logout'}
-              style={{ ...btn('sm-ghost'), color: T.muted, padding: isMobile ? '5px 8px' : '6px 12px' }}
+              aria-label="Изход"
               title="Изход"
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: isMobile ? 36 : undefined, height: isMobile ? 36 : undefined,
+                borderRadius: isMobile ? 10 : T.radiusSm,
+                border: isMobile ? 'none' : `1px solid ${T.border}`,
+                background: isMobile ? '#F4F4F5' : 'transparent',
+                color: T.muted,
+                padding: isMobile ? 0 : '6px 12px',
+                fontSize: 13, cursor: 'pointer',
+              }}
             >
               <LogOut size={14} />
-              {!isMobile && (busyKey === 'logout' ? 'Излизане…' : 'Изход')}
+              {!isMobile && <span style={{ marginLeft: 6 }}>{busyKey === 'logout' ? 'Излизане…' : 'Изход'}</span>}
             </button>
           </div>
         </div>
       </header>
 
-      {/* ── Mobile slide-out navbar ───────────────────── */}
+      {/* ── Mobile bottom sheet nav ───────────────────── */}
       {isMobile && navOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 45 }} onClick={() => setNavOpen(false)}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 55 }} onClick={() => setNavOpen(false)}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.32)', animation: 'fadeIn 200ms ease' }} />
           <div
-            style={{ position: 'absolute', top: 56, left: 0, bottom: 0, width: 280, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRight: `1px solid ${T.border}`, padding: '20px 16px', overflowY: 'auto' }}
+            style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0,
+              background: '#fff',
+              borderRadius: '20px 20px 0 0',
+              padding: '0 0 max(20px, env(safe-area-inset-bottom, 20px))',
+              animation: 'slideUp 280ms cubic-bezier(0.32, 0.72, 0, 1)',
+              maxHeight: '70dvh', overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
             onClick={e => e.stopPropagation()}
           >
-            <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.subtle }}>Още</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5E5' }} />
+            </div>
+
+            <div style={{ padding: '4px 16px 8px' }}>
               {NAVBAR_TABS.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
-                const [gFrom, gTo] = NAVBAR_GRADIENTS[id] ?? ['#a955ff', '#ea51ff'];
                 return (
                   <button
                     key={id}
@@ -872,35 +912,36 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     onClick={() => switchTab(id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14,
-                      padding: '12px 14px', borderRadius: 14, border: 'none',
-                      background: active ? `linear-gradient(135deg, ${gFrom}, ${gTo})` : T.surface,
-                      boxShadow: active ? `0 4px 16px ${gFrom}40` : '0 1px 3px rgba(0,0,0,0.06)',
-                      color: active ? '#fff' : T.text,
+                      padding: '14px 12px', borderRadius: 14, border: 'none',
+                      background: active ? '#F4F4F5' : 'transparent',
+                      color: T.text,
                       cursor: 'pointer', width: '100%', textAlign: 'left',
-                      transition: 'all 200ms ease',
-                      minHeight: 48,
+                      minHeight: 52,
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                   >
                     <div style={{
-                      width: 36, height: 36, borderRadius: 10,
-                      background: active ? 'rgba(255,255,255,0.2)' : `linear-gradient(135deg, ${gFrom}20, ${gTo}20)`,
+                      width: 40, height: 40, borderRadius: 12,
+                      background: active ? T.accent : '#F4F4F5',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      transition: 'background 200ms ease',
                     }}>
-                      <Icon size={18} strokeWidth={2} style={{ color: active ? '#fff' : gFrom }} />
+                      <Icon size={20} strokeWidth={1.8} style={{ color: active ? '#fff' : T.muted }} />
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: active ? 600 : 500 }}>{label}</span>
+                    <span style={{ fontSize: 16, fontWeight: active ? 600 : 400, letterSpacing: '-0.01em' }}>{label}</span>
+                    {active && <ChevronRight size={16} style={{ marginLeft: 'auto', color: T.subtle }} />}
                   </button>
                 );
               })}
             </div>
 
-            <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
-              <a href={sitePublicUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, textDecoration: 'none', color: T.muted, fontSize: 13 }}>
-                <ExternalLink size={16} /> Виж сайта
+            <div style={{ margin: '0 16px', paddingTop: 12, borderTop: `1px solid #F4F4F5` }}>
+              <a href={sitePublicUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 12px', borderRadius: 12, textDecoration: 'none', color: T.muted, fontSize: 15 }}>
+                <ExternalLink size={18} /> Виж сайта
               </a>
               {showInstallButton && (
-                <button type="button" onClick={() => void installAsApp()} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: 'none', color: T.muted, fontSize: 13, cursor: 'pointer', width: '100%' }}>
-                  <Plus size={16} /> Инсталирай
+                <button type="button" onClick={() => void installAsApp()} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 12px', borderRadius: 12, border: 'none', background: 'none', color: T.muted, fontSize: 15, cursor: 'pointer', width: '100%' }}>
+                  <Plus size={18} /> Добави на екрана
                 </button>
               )}
             </div>
@@ -961,7 +1002,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             flex: 1,
             minWidth: 0,
             padding: isMobile
-              ? '16px max(16px, env(safe-area-inset-left)) calc(92px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right))'
+              ? '20px 20px calc(80px + env(safe-area-inset-bottom)) 20px'
               : '28px 32px 48px',
           }}
         >
@@ -1163,16 +1204,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     ) : (
                       <div
                         style={{
-                          padding: '28px 16px',
+                          padding: isMobile ? '40px 20px' : '28px 16px',
                           textAlign: 'center',
-                          border: `1.5px dashed ${T.border}`,
-                          borderRadius: 14,
+                          border: isMobile ? 'none' : `1.5px dashed ${T.border}`,
+                          borderRadius: isMobile ? 20 : 14,
+                          background: isMobile ? '#FAFAFA' : 'transparent',
                           color: T.muted,
-                          fontSize: 13,
+                          fontSize: isMobile ? 14 : 13,
                           lineHeight: 1.5,
                         }}
                       >
-                        Няма снимки в галерията. Натисни зеления + или плъзни файлове тук.
+                        {isMobile
+                          ? 'Натисни + за да добавиш снимки'
+                          : 'Няма снимки в галерията. Натисни зеления + или плъзни файлове тук.'
+                        }
                       </div>
                     )}
                   </GalleryDropZone>
@@ -1277,10 +1322,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     <div
                       key={`svc-${i}`}
                       style={{
-                        border: `1px solid ${T.border}`,
-                        borderRadius: isMobile ? 14 : T.radiusSm,
-                        padding: isMobile ? 12 : 14,
+                        border: isMobile ? 'none' : `1px solid ${T.border}`,
+                        borderRadius: isMobile ? 18 : T.radiusSm,
+                        padding: isMobile ? '16px 18px' : 14,
                         background: T.surface,
+                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
                       }}
                     >
                       <div
@@ -1370,21 +1416,63 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               desc="Настрой часовете за всеки ден от седмицата."
               action={<button type="button" onClick={saveHours} style={btn('primary')} disabled={busyKey === 'hours'}>{busyKey === 'hours' ? 'Запазваме…' : 'Запази'}</button>}
             >
-              <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
                 {DAYS.map(day => {
                   const d = site.workingHours[day.key];
                   return (
-                    <div key={day.key} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '130px 1fr auto auto', gap: 10, alignItems: 'center', padding: '12px 14px', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, background: T.surface, opacity: d.closed ? 0.55 : 1 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500 }}>{day.label}</span>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input type="time" value={d.open} disabled={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], open: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
-                        <span style={{ color: T.muted, fontSize: 12 }}>–</span>
-                        <input type="time" value={d.close} disabled={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], close: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
+                    <div key={day.key} style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '130px 1fr auto auto',
+                      gap: isMobile ? 12 : 10,
+                      alignItems: 'center',
+                      padding: isMobile ? '16px 18px' : '12px 14px',
+                      border: isMobile ? 'none' : `1px solid ${T.border}`,
+                      borderRadius: isMobile ? 18 : T.radiusSm,
+                      background: T.surface,
+                      boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                      opacity: d.closed ? 0.5 : 1,
+                      transition: 'opacity 200ms ease',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: isMobile ? 16 : 14, fontWeight: isMobile ? 600 : 500, letterSpacing: '-0.01em' }}>{day.label}</span>
+                        {isMobile && (
+                          <button
+                            type="button"
+                            onClick={() => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], closed: !d.closed } } }))}
+                            style={{
+                              width: 48, height: 28, borderRadius: 14, border: 'none',
+                              background: d.closed ? '#E5E7EB' : T.accent,
+                              position: 'relative', cursor: 'pointer',
+                              transition: 'background 200ms ease',
+                            }}
+                          >
+                            <div style={{
+                              width: 22, height: 22, borderRadius: 11,
+                              background: '#fff',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                              position: 'absolute', top: 3,
+                              left: d.closed ? 3 : 23,
+                              transition: 'left 200ms ease',
+                            }} />
+                          </button>
+                        )}
                       </div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.muted, whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], closed: e.target.checked } } }))} />
-                        Почивен
-                      </label>
+                      {!d.closed && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input type="time" value={d.open} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], open: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
+                          <span style={{ color: T.muted, fontSize: 13 }}>–</span>
+                          <input type="time" value={d.close} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], close: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
+                        </div>
+                      )}
+                      {d.closed && isMobile && (
+                        <span style={{ fontSize: 14, color: T.subtle }}>Почивен ден</span>
+                      )}
+                      {!isMobile && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.muted, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], closed: e.target.checked } } }))} />
+                          Почивен
+                        </label>
+                      )}
                     </div>
                   );
                 })}
@@ -1396,49 +1484,97 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'bookings' && (
             <Section
               title="Резервации"
-              desc={`Общо ${bookings.length} резервации`}
+              desc={`${bookings.length} общо`}
               action={
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
-                  <option value="all">Всички</option>
-                  <option value="pending">Чакащи</option>
-                  <option value="confirmed">Потвърдени</option>
-                  <option value="completed">Завършени</option>
-                  <option value="cancelled">Отказани</option>
-                </select>
+                !isMobile ? (
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
+                    <option value="all">Всички</option>
+                    <option value="pending">Чакащи</option>
+                    <option value="confirmed">Потвърдени</option>
+                    <option value="completed">Завършени</option>
+                    <option value="cancelled">Отказани</option>
+                  </select>
+                ) : undefined
               }
             >
+              {/* Mobile filter chips */}
+              {isMobile && (
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+                  {([['all', 'Всички'], ['pending', 'Чакащи'], ['confirmed', 'Потвърдени'], ['completed', 'Завършени'], ['cancelled', 'Отказани']] as const).map(([val, lbl]) => {
+                    const isActive = statusFilter === val;
+                    const count = val === 'all' ? bookings.length : bookings.filter(b => b.status === val).length;
+                    return (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setStatusFilter(val)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '8px 16px',
+                          borderRadius: 100, border: 'none',
+                          background: isActive ? T.accent : '#F4F4F5',
+                          color: isActive ? '#fff' : T.muted,
+                          fontSize: 13, fontWeight: isActive ? 600 : 500,
+                          cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      >
+                        {lbl}
+                        {count > 0 && <span style={{ fontSize: 11, opacity: 0.7 }}>{count}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {filteredBookings.length === 0 ? (
                 <EmptyState title="Няма резервации" desc="Когато клиент резервира през сайта, ще я видиш тук." />
               ) : (
-                <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
                   {filteredBookings.map(b => {
                     const cfg = STATUS_CFG[b.status];
                     return (
-                      <div key={b.id} style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: '14px 16px', background: T.surface }}>
+                      <div key={b.id} style={{
+                        border: isMobile ? 'none' : `1px solid ${T.border}`,
+                        borderRadius: isMobile ? 18 : T.radiusSm,
+                        padding: isMobile ? '16px 18px' : '14px 16px',
+                        background: T.surface,
+                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                      }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                              <span style={{ fontSize: 15, fontWeight: 600 }}>{b.client_name}</span>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.text, fontSize: 11, fontWeight: 600 }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                              <span style={{ fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{b.client_name}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, background: cfg.bg, color: cfg.text, fontSize: 11, fontWeight: 600 }}>
                                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
                                 {cfg.label}
                               </span>
                             </div>
-                            <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+                            <p style={{ margin: 0, fontSize: isMobile ? 14 : 13, color: T.text, lineHeight: 1.5, fontWeight: 500 }}>
                               {b.service_name}
                               {typeof b.service_price === 'number' ? ` · ${formatSalonPrice(b.service_price)}` : ''}
+                            </p>
+                            <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
+                              {b.date} · {b.time}
                               {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
                             </p>
-                            <p style={{ margin: '2px 0 0', fontSize: 13, color: T.muted }}>
-                              {b.date} · {b.time} · {b.client_phone}
+                            <p style={{ margin: '2px 0 0', fontSize: 13, color: T.subtle }}>
+                              {b.client_phone}
                               {b.client_email ? ` · ${b.client_email}` : ''}
                             </p>
-                            {b.notes && <p style={{ margin: '4px 0 0', fontSize: 12, color: T.subtle }}>Бележка: {b.notes}</p>}
+                            {b.notes && <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle, fontStyle: 'italic' }}>{b.notes}</p>}
                           </div>
                           <select
                             value={b.status}
                             onChange={e => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
-                            style={{ ...inp, width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+                            style={{
+                              ...inp,
+                              width: isMobile ? '100%' : 'auto',
+                              cursor: 'pointer', flexShrink: 0,
+                              marginTop: isMobile ? 8 : 0,
+                              background: isMobile ? '#F4F4F5' : T.surface,
+                              textAlign: 'center',
+                            }}
                           >
                             <option value="pending">Чакаща</option>
                             <option value="confirmed">Потвърдена</option>
@@ -1643,29 +1779,66 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
       {/* ── Mobile bottom tab bar ────────────────────── */}
       {isMobile && (
-        <nav aria-label="Навигация" style={{ position: 'fixed', left: 8, right: 8, bottom: 8, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-          <div style={{ background: 'rgba(255,255,255,0.96)', border: `1px solid ${T.border}`, borderRadius: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '4px 6px', display: 'flex', gap: 2 }}>
+        <nav aria-label="Навигация" style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50,
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          borderTop: '0.5px solid rgba(0,0,0,0.08)',
+        }}>
+          <div style={{ display: 'flex', paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))' }}>
             {TAB_BAR_TABS.map(({ id, label, Icon }) => {
               const active = activeTab === id && !navOpen;
               return (
                 <button key={id} type="button" onClick={() => switchTab(id)}
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 4px', borderRadius: 16, border: 'none', background: active ? '#F4F4F5' : 'transparent', color: active ? T.text : T.muted, cursor: 'pointer', minHeight: 44 }}>
-                  <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
-                  <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{label.split(' ')[0]}</span>
+                  style={{
+                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                    padding: '10px 4px 4px', border: 'none', background: 'transparent',
+                    color: active ? T.text : T.subtle,
+                    cursor: 'pointer', minHeight: 50,
+                    WebkitTapHighlightColor: 'transparent',
+                    position: 'relative',
+                  }}>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon size={22} strokeWidth={active ? 2.2 : 1.5} />
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, letterSpacing: '-0.01em' }}>{label.split(' ')[0]}</span>
+                  {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2.5, borderRadius: 2, background: T.text }} />}
                 </button>
               );
             })}
             {/* Още button */}
             <button type="button" onClick={() => setNavOpen(o => !o)}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 4px', borderRadius: 16, border: 'none', background: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? '#F4F4F5' : 'transparent', color: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? T.text : T.muted, cursor: 'pointer', minHeight: 44 }}>
-              <Menu size={18} strokeWidth={navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 2.2 : 1.8} />
-              <span style={{ fontSize: 10, fontWeight: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 700 : 400, whiteSpace: 'nowrap' }}>Още</span>
+              style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                padding: '10px 4px 4px', border: 'none', background: 'transparent',
+                color: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? T.text : T.subtle,
+                cursor: 'pointer', minHeight: 50,
+                WebkitTapHighlightColor: 'transparent',
+                position: 'relative',
+              }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Menu size={22} strokeWidth={navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 2.2 : 1.5} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 600 : 400 }}>Още</span>
+              {(navOpen || !TAB_BAR_IDS.has(activeTab)) && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2.5, borderRadius: 2, background: T.text }} />}
             </button>
           </div>
         </nav>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .admin-mobile-root input:focus, .admin-mobile-root textarea:focus, .admin-mobile-root select:focus {
+          border-color: #18181B !important;
+          outline: none;
+        }
+        .admin-mobile-root button:active {
+          transform: scale(0.97);
+        }
+      `}</style>
     </div>
   );
 }
@@ -1685,15 +1858,16 @@ function Section({
   children: ReactNode;
   compact?: boolean;
 }) {
+  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
-    <div>
+    <div style={{ animation: 'slideInUp 300ms ease' }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: compact ? 'center' : 'flex-start',
           gap: compact ? 10 : 16,
-          marginBottom: compact ? 14 : 18,
+          marginBottom: isMbl ? (compact ? 16 : 20) : (compact ? 14 : 18),
           flexWrap: compact ? 'nowrap' : 'wrap',
         }}
       >
@@ -1701,16 +1875,17 @@ function Section({
           <h2
             style={{
               margin: 0,
-              fontSize: compact ? 17 : 18,
+              fontSize: isMbl ? (compact ? 20 : 24) : (compact ? 17 : 18),
               fontWeight: 700,
-              letterSpacing: '-0.02em',
+              letterSpacing: '-0.025em',
               color: T.text,
+              lineHeight: 1.2,
             }}
           >
             {title}
           </h2>
           {desc ? (
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>{desc}</p>
+            <p style={{ margin: isMbl ? '6px 0 0' : '4px 0 0', fontSize: isMbl ? 14 : 13, color: T.muted, lineHeight: 1.5 }}>{desc}</p>
           ) : null}
         </div>
         {action ? <div style={{ flexShrink: 0, marginLeft: 'auto' }}>{action}</div> : null}
@@ -1740,10 +1915,10 @@ function AdminSaveBtn({
         aria-label={label}
         title={label}
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 12,
-          border: `1px solid ${T.accent}`,
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          border: 'none',
           background: T.accent,
           color: '#fff',
           display: 'inline-flex',
@@ -1751,10 +1926,11 @@ function AdminSaveBtn({
           justifyContent: 'center',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(24,24,27,0.12)',
+          boxShadow: '0 4px 12px rgba(24,24,27,0.18)',
+          transition: 'transform 150ms ease, box-shadow 150ms ease',
         }}
       >
-        {busy ? <RefreshCw size={17} strokeWidth={2} /> : <Save size={17} strokeWidth={2.25} />}
+        {busy ? <RefreshCw size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={18} strokeWidth={2.25} />}
       </button>
     );
   }
@@ -1769,7 +1945,7 @@ function AdminSaveBtn({
         alignItems: 'center',
         gap: 6,
         borderRadius: 10,
-        border: `1px solid ${T.accent}`,
+        border: 'none',
         background: T.accent,
         color: '#fff',
         padding: '7px 14px',
@@ -1853,18 +2029,18 @@ function IconUploadBtn({ label, busy, children }: { label: string; busy: boolean
         width: 44,
         height: 44,
         borderRadius: 14,
-        border: `1px solid ${T.border}`,
-        background: '#fff',
+        border: 'none',
+        background: '#F4F4F5',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: busy ? 'wait' : 'pointer',
         flexShrink: 0,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         color: T.text,
+        transition: 'transform 150ms ease',
       }}
     >
-      {busy ? <RefreshCw size={18} strokeWidth={2} /> : <ImagePlus size={20} strokeWidth={2} />}
+      {busy ? <RefreshCw size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> : <ImagePlus size={20} strokeWidth={1.8} />}
       {children}
     </label>
   );
@@ -1933,19 +2109,27 @@ function GooglePlaceIdField({
 }
 
 function Field({ label, children, style }: { label: string; children: ReactNode; style?: CSSProperties }) {
+  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
-    <label style={{ display: 'grid', gap: 5, ...style }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: T.muted, letterSpacing: '0.02em' }}>{label}</span>
+    <label style={{ display: 'grid', gap: isMbl ? 6 : 5, ...style }}>
+      <span style={{ fontSize: isMbl ? 13 : 12, fontWeight: 600, color: T.muted, letterSpacing: '0.01em' }}>{label}</span>
       {children}
     </label>
   );
 }
 
 function EmptyState({ title, desc }: { title: string; desc: string }) {
+  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
-    <div style={{ padding: '32px 20px', textAlign: 'center', border: `1px dashed ${T.border}`, borderRadius: T.radiusSm }}>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: T.muted }}>{title}</p>
-      <p style={{ margin: '6px 0 0', fontSize: 13, color: T.subtle }}>{desc}</p>
+    <div style={{
+      padding: isMbl ? '40px 24px' : '32px 20px',
+      textAlign: 'center',
+      background: isMbl ? '#FAFAFA' : 'transparent',
+      border: isMbl ? 'none' : `1px dashed ${T.border}`,
+      borderRadius: isMbl ? 20 : T.radiusSm,
+    }}>
+      <p style={{ margin: 0, fontSize: isMbl ? 16 : 14, fontWeight: 600, color: T.muted }}>{title}</p>
+      <p style={{ margin: '8px 0 0', fontSize: isMbl ? 14 : 13, color: T.subtle, lineHeight: 1.5 }}>{desc}</p>
     </div>
   );
 }
@@ -1968,11 +2152,12 @@ function PreviewImg({
       style={{
         display: 'block',
         marginTop: mobile ? 0 : 8,
-        width: round ? (mobile ? 72 : 80) : '100%',
-        height: round ? (mobile ? 72 : 80) : mobile ? 160 : 140,
+        width: round ? (mobile ? 80 : 80) : '100%',
+        height: round ? (mobile ? 80 : 80) : mobile ? 180 : 140,
         objectFit: 'cover',
-        borderRadius: round ? '50%' : mobile ? 14 : T.radiusSm,
-        border: `1px solid ${T.border}`,
+        borderRadius: round ? '50%' : mobile ? 18 : T.radiusSm,
+        border: mobile ? 'none' : `1px solid ${T.border}`,
+        boxShadow: mobile ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
       }}
     />
   );
@@ -2092,14 +2277,27 @@ function GalleryDropZone({
 }
 
 function InfoCard({ title, status, children }: { title: string; status: 'connected' | 'pending'; children: ReactNode }) {
+  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
-    <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: '14px 16px', background: T.surface }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+    <div style={{
+      border: isMbl ? 'none' : `1px solid ${T.border}`,
+      borderRadius: isMbl ? 18 : T.radiusSm,
+      padding: isMbl ? '18px 20px' : '14px 16px',
+      background: T.surface,
+      boxShadow: isMbl ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         {status === 'connected'
-          ? <CheckCircle2 size={14} style={{ color: '#10B981', flexShrink: 0 }} />
-          : <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#E5E7EB', flexShrink: 0, display: 'inline-block' }} />}
-        <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{title}</span>
-        <span style={{ fontSize: 11, color: status === 'connected' ? '#10B981' : T.subtle, marginLeft: 'auto' }}>
+          ? <CheckCircle2 size={isMbl ? 18 : 14} style={{ color: '#10B981', flexShrink: 0 }} />
+          : <span style={{ width: isMbl ? 18 : 14, height: isMbl ? 18 : 14, borderRadius: '50%', background: '#E5E7EB', flexShrink: 0, display: 'inline-block' }} />}
+        <span style={{ fontSize: isMbl ? 16 : 13, fontWeight: 600, color: T.text }}>{title}</span>
+        <span style={{
+          fontSize: 12, fontWeight: 500,
+          color: status === 'connected' ? '#10B981' : T.subtle,
+          marginLeft: 'auto',
+          padding: '3px 10px', borderRadius: 100,
+          background: status === 'connected' ? '#ECFDF5' : '#F4F4F5',
+        }}>
           {status === 'connected' ? 'Свързан' : 'Не е свързан'}
         </span>
       </div>
@@ -2109,6 +2307,31 @@ function InfoCard({ title, status, children }: { title: string; status: 'connect
 }
 
 function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDismiss: () => void; children: ReactNode }) {
+  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  if (isMbl) {
+    return (
+      <div style={{
+        position: 'fixed', left: 16, right: 16,
+        bottom: 'calc(70px + env(safe-area-inset-bottom, 0px))',
+        zIndex: 60,
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '14px 16px',
+        borderRadius: 16,
+        background: tone === 'error' ? '#18181B' : '#18181B',
+        color: '#fff',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+        animation: 'slideInUp 250ms ease',
+      }}>
+        {tone === 'error'
+          ? <XCircle size={18} style={{ color: '#F87171', flexShrink: 0 }} />
+          : <CheckCircle2 size={18} style={{ color: '#34D399', flexShrink: 0 }} />}
+        <span style={{ flex: 1, fontSize: 14, lineHeight: 1.4, fontWeight: 500 }}>{children}</span>
+        <button type="button" onClick={onDismiss} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: 4, fontSize: 18, lineHeight: 1, flexShrink: 0 }}>×</button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: T.radiusSm, border: `1px solid ${tone === 'error' ? '#FECACA' : '#A7F3D0'}`, background: tone === 'error' ? '#FEF2F2' : '#ECFDF5', marginBottom: 16 }}>
       {tone === 'error'
@@ -2121,15 +2344,22 @@ function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDis
 }
 
 function StepCard({ step, title, done, children }: { step: number; title: string; done: boolean; children: ReactNode }) {
+  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
-    <div style={{ border: `1px solid ${done ? '#A7F3D0' : T.border}`, borderRadius: T.radiusLg, background: done ? '#F0FDF4' : T.surface, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: `1px solid ${done ? '#A7F3D0' : T.border}` }}>
-        <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? '#10B981' : T.accent, color: '#fff', fontSize: 12, fontWeight: 700 }}>
-          {done ? <Check size={13} /> : step}
+    <div style={{
+      border: isMbl ? 'none' : `1px solid ${done ? '#A7F3D0' : T.border}`,
+      borderRadius: isMbl ? 20 : T.radiusLg,
+      background: done ? '#F0FDF4' : T.surface,
+      overflow: 'hidden',
+      boxShadow: isMbl ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: isMbl ? '16px 20px' : '14px 18px', borderBottom: `1px solid ${done ? '#A7F3D0' : isMbl ? '#F4F4F5' : T.border}` }}>
+        <div style={{ width: isMbl ? 30 : 26, height: isMbl ? 30 : 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? '#10B981' : T.accent, color: '#fff', fontSize: isMbl ? 13 : 12, fontWeight: 700 }}>
+          {done ? <Check size={14} /> : step}
         </div>
-        <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{title}</span>
+        <span style={{ fontSize: isMbl ? 16 : 14, fontWeight: 600, color: T.text }}>{title}</span>
       </div>
-      <div style={{ padding: '14px 18px' }}>{children}</div>
+      <div style={{ padding: isMbl ? '16px 20px' : '14px 18px' }}>{children}</div>
     </div>
   );
 }
