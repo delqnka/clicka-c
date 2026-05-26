@@ -295,10 +295,11 @@ export default function SalonPublicParity({
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
   const tabParam = (tabParamProp ?? '').trim();
 
-  const basePath = useMemo(() => {
-    if (typeof window === 'undefined') return `/${salonSlug}`;
+  const [basePath, setBasePath] = useState(`/${salonSlug}`);
+
+  useEffect(() => {
     const path = window.location.pathname;
-    return path.startsWith(`/${salonSlug}`) ? `/${salonSlug}` : '';
+    setBasePath(path.startsWith(`/${salonSlug}`) ? `/${salonSlug}` : '');
   }, [salonSlug]);
 
   const primary =
@@ -336,8 +337,12 @@ export default function SalonPublicParity({
     workingHours,
     rawSalon.opening_hours
   );
-  const currentStatusLabel = getCurrentStatusString(openingHoursMerged);
+  const [currentStatusLabel, setCurrentStatusLabel] = useState('');
   const currentStatusIsOpen = currentStatusLabel.startsWith('Отворено');
+
+  useEffect(() => {
+    setCurrentStatusLabel(getCurrentStatusString(openingHoursMerged));
+  }, [openingHoursMerged]);
 
   const venueRaw = rawSalon.venue_extras ?? rawSalon.venueExtras;
   const ve = parseSalonVenueExtras(venueRaw);
@@ -516,7 +521,13 @@ export default function SalonPublicParity({
 
   useEffect(() => {
     const saved = localStorage.getItem('clicka-cookie-consent');
-    if (saved !== null) setCookieConsent(saved === '1');
+    setCookieConsent(saved === null ? null : saved === '1');
+  }, []);
+
+  useEffect(() => {
+    const d = new Date();
+    const idx = (d.getDay() + 6) % 7;
+    setTodayDayName(DAY_NAMES_EN[idx]);
   }, []);
 
   useEffect(() => {
@@ -720,11 +731,18 @@ export default function SalonPublicParity({
     return generateSlots(h.open, h.close);
   })();
 
-  const today = new Date();
-  const minDate = today.toISOString().split('T')[0];
-  const maxDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60)
-    .toISOString()
-    .split('T')[0];
+  const [minDate, setMinDate] = useState('');
+  const [maxDate, setMaxDate] = useState('');
+
+  useEffect(() => {
+    const today = new Date();
+    setMinDate(today.toISOString().split('T')[0]);
+    setMaxDate(
+      new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60)
+        .toISOString()
+        .split('T')[0]
+    );
+  }, []);
 
   async function submitBooking(e: React.FormEvent) {
     e.preventDefault();
@@ -770,7 +788,8 @@ export default function SalonPublicParity({
 
   const [showAllPlatformReviews, setShowAllPlatformReviews] = useState(false);
   const [showAllGoogleReviews, setShowAllGoogleReviews] = useState(false);
-  const [cookieConsent, setCookieConsent] = useState<boolean | null>(null);
+  const [cookieConsent, setCookieConsent] = useState<boolean | null>(true);
+  const [todayDayName, setTodayDayName] = useState<string | null>(null);
   useEffect(() => {
     const hid = highlightReviewId?.trim();
     if (!hid) return;
@@ -1398,11 +1417,7 @@ export default function SalonPublicParity({
                   const hours = getEffectiveHours(openingHoursMerged, dayKey);
                   const isOpen = hours != null;
                   const label = DAY_LABELS_BG[dayKey] ?? dayKey;
-                  const isToday = (() => {
-                    const d = new Date();
-                    const idx = (d.getDay() + 6) % 7;
-                    return DAY_NAMES_EN[idx] === dayKey;
-                  })();
+                  const isToday = todayDayName === dayKey;
                   return (
                     <li key={dayKey} className="flex items-center gap-2 text-sm">
                       <span

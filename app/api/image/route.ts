@@ -19,6 +19,23 @@ const r2 = new S3Client({
 
 const ALLOWED_WIDTHS = new Set([128, 320, 480, 640, 768, 1024, 1280]);
 
+const CACHE_MAX_ENTRIES = 200;
+const CACHE_MAX_BYTES = 150 * 1024 * 1024;
+const processedCache = new Map<string, { buf: Buffer; type: string; size: number }>();
+let cacheTotalBytes = 0;
+
+function evictIfNeeded(needed: number) {
+  while (
+    (processedCache.size >= CACHE_MAX_ENTRIES || cacheTotalBytes + needed > CACHE_MAX_BYTES) &&
+    processedCache.size > 0
+  ) {
+    const oldest = processedCache.keys().next().value!;
+    const entry = processedCache.get(oldest)!;
+    cacheTotalBytes -= entry.size;
+    processedCache.delete(oldest);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const key = searchParams.get('key');
@@ -29,11 +46,26 @@ export async function GET(request: NextRequest) {
 
   const wParam = parseInt(searchParams.get('w') ?? '', 10);
   const targetWidth = ALLOWED_WIDTHS.has(wParam) ? wParam : 0;
-  const quality = Math.min(Math.max(parseInt(searchParams.get('q') ?? '75', 10), 10), 100);
+  const quality = Math.min(Math.max(parseInt(searchParams.get('q') ?? '70', 10), 10), 100);
 
   const accept = request.headers.get('accept') ?? '';
   const supportsAvif = accept.includes('image/avif');
   const supportsWebp = accept.includes('image/webp');
+  const fmt = supportsAvif ? 'avif' : supportsWebp ? 'webp' : 'jpeg';
+
+  const cacheKey = `${key}:${targetWidth}:${fmt}:${quality}`;
+  const cached = processedCache.get(cacheKey);
+  if (cached) {
+    processedCache.delete(cacheKey);
+    processedCache.set(cacheKey, cached);
+    return new NextResponse(cached.buf as unknown as BodyInit, {
+      headers: {
+        'Content-Type': cached.type,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Vary': 'Accept',
+      },
+    });
+  }
 
   try {
     const command = new GetObjectCommand({
@@ -79,6 +111,10 @@ export async function GET(request: NextRequest) {
     }
 
     const optimized = await pipeline.toBuffer();
+
+    evictIfNeeded(optimized.length);
+    processedCache.set(cacheKey, { buf: optimized, type: outputType, size: optimized.length });
+    cacheTotalBytes += optimized.length;
 
     return new NextResponse(optimized as unknown as BodyInit, {
       headers: {
