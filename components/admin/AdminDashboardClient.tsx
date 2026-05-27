@@ -34,10 +34,6 @@ import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
 import { GalleryReorderGrid } from '@/components/admin/gallery-reorder-grid';
 import { AddressAutocompleteField } from '@/components/admin/address-autocomplete-field';
 import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
-import {
-  AdminPriceListScanBtn,
-  PriceListServicesImport,
-} from '@/components/admin/price-list-services-import';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
@@ -238,7 +234,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
-  const [serviceAddPickerOpen, setServiceAddPickerOpen] = useState(false);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [newServiceDraft, setNewServiceDraft] = useState({
+    name: '',
+    category: '',
+    description: '',
+    price: 0,
+    duration_min: 30,
+  });
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
@@ -246,7 +249,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     done: number;
     total: number;
   } | null>(null);
-  const serviceAddPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
@@ -918,10 +920,21 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); setNavOpen(false); };
   function addManualService() {
-    setSite(p => ({
+    setSite((p) => ({
       ...p,
-      services: [...p.services, { name: '', description: '', category: '', price: 0, duration_min: 30 }],
+      services: [
+        ...p.services,
+        {
+          name: newServiceDraft.name.trim(),
+          category: newServiceDraft.category.trim(),
+          description: newServiceDraft.description.trim(),
+          price: Math.max(0, Number(newServiceDraft.price) || 0),
+          duration_min: Math.max(5, Number(newServiceDraft.duration_min) || 30),
+        },
+      ],
     }));
+    setNewServiceDraft({ name: '', category: '', description: '', price: 0, duration_min: 30 });
+    setServiceModalOpen(false);
   }
 
   /* ── Save legal info ── */
@@ -1450,25 +1463,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'services' && (
             <Section
               title="Услуги"
-              desc={isMobile ? undefined : 'Добави ръчно или качи снимка на ценоразпис — AI попълва услугите.'}
+              desc={isMobile ? undefined : 'Управлявай услугите и категориите на салона.'}
               compact={isMobile}
               action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative' }}>
-                  <input
-                    ref={serviceAddPhotoInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={e => {
-                      void handlePriceListUpload(e.target.files, e.target);
-                      setServiceAddPickerOpen(false);
-                    }}
-                  />
-                  <AdminPriceListScanBtn
-                    busy={busyKey === 'upload-pricelist' || priceListAnalyzing}
-                    onUpload={handlePriceListUpload}
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   <button
                     type="button"
                     style={{
@@ -1478,47 +1476,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
                       boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
                     }}
-                    onClick={() => setServiceAddPickerOpen((v) => !v)}
+                    onClick={() => setServiceModalOpen(true)}
                   >
                     <Plus size={14} />
                     Добави услуга
                   </button>
-                  {serviceAddPickerOpen ? (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 8px)',
-                        right: 0,
-                        zIndex: 30,
-                        minWidth: 220,
-                        borderRadius: 14,
-                        border: `1px solid ${T.border}`,
-                        background: '#fff',
-                        boxShadow: '0 16px 38px rgba(0,0,0,0.14)',
-                        padding: 8,
-                        display: 'grid',
-                        gap: 6,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        style={{ ...btn('ghost'), justifyContent: 'flex-start', width: '100%' }}
-                        onClick={() => serviceAddPhotoInputRef.current?.click()}
-                      >
-                        Снимка на ценоразпис
-                      </button>
-                      <button
-                        type="button"
-                        style={{ ...btn('ghost'), justifyContent: 'flex-start', width: '100%' }}
-                        onClick={() => {
-                          addManualService();
-                          setServiceAddPickerOpen(false);
-                        }}
-                      >
-                        Добави ръчно
-                      </button>
-                    </div>
-                  ) : null}
                   <AdminSaveBtn
                     label="Запази услугите"
                     busy={busyKey === 'services'}
@@ -1528,20 +1490,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 </div>
               }
             >
-              <PriceListServicesImport
-                urls={priceListUrls}
-                busy={busyKey === 'upload-pricelist'}
-                analyzing={priceListAnalyzing}
-                isMobile={isMobile}
-                onUpload={handlePriceListUpload}
-                onRemove={removePriceListAt}
-                onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
-              />
-
               {site.services.length === 0 && !priceListAnalyzing ? (
                 <EmptyState
                   title="Няма услуги"
-                  desc="Качи снимка на ценоразписа (зелената икона) или добави услуга ръчно."
+                  desc="Добави първата си услуга от бутона горе."
                 />
               ) : (
                 <div style={{ display: 'grid', gap: isMobile ? 12 : 10 }}>
@@ -1562,13 +1514,38 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         <div
                           key={`svc-${i}`}
                           style={{
-                            border: isMobile ? 'none' : `1px solid ${T.border}`,
+                            border: `1px solid ${T.border}`,
                             borderRadius: isMobile ? 18 : T.radiusSm,
                             padding: isMobile ? '16px 18px' : 14,
-                            background: T.surface,
-                            boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                            background: '#fff',
+                            boxShadow: 'none',
+                            position: 'relative',
                           }}
                         >
+                          <button
+                            type="button"
+                            aria-label="Премахни услуга"
+                            onClick={() =>
+                              setSite((p) => ({ ...p, services: p.services.filter((_, j) => j !== i) }))
+                            }
+                            style={{
+                              position: 'absolute',
+                              top: 10,
+                              right: 10,
+                              width: 26,
+                              height: 26,
+                              borderRadius: 999,
+                              border: `1px solid ${T.border}`,
+                              background: '#fff',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#111',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <X size={14} />
+                          </button>
                           <div
                             style={{
                               display: 'grid',
@@ -1642,23 +1619,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                                 style={{ ...inp, width: isMobile ? '100%' : 70 }}
                               />
                             </Field>
-                            <button
-                              type="button"
-                              style={{
-                                ...btn('ghost'),
-                                color: '#EF4444',
-                                padding: isMobile ? '10px' : '8px 10px',
-                                width: isMobile ? '100%' : undefined,
-                                gridColumn: isMobile ? '1 / -1' : undefined,
-                                justifyContent: 'center',
-                              }}
-                              onClick={() =>
-                                setSite(p => ({ ...p, services: p.services.filter((_, j) => j !== i) }))
-                              }
-                            >
-                              <Trash2 size={14} />
-                              {isMobile ? ' Премахни' : null}
-                            </button>
                           </div>
                         </div>
                       ))}
@@ -1668,6 +1628,42 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               )}
             </Section>
           )}
+
+          {activeTab === 'services' && serviceModalOpen ? (
+            <div
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.36)', zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+              onClick={() => setServiceModalOpen(false)}
+            >
+              <div
+                style={{ width: '100%', maxWidth: 520, borderRadius: 16, background: '#fff', border: `1px solid ${T.border}`, padding: 16 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>Добави услуга</p>
+                <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                  <Field label="Име"><input style={inp} value={newServiceDraft.name} onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))} /></Field>
+                  <Field label="Категория"><input style={inp} value={newServiceDraft.category} onChange={(e) => setNewServiceDraft((p) => ({ ...p, category: e.target.value }))} /></Field>
+                  <Field label="Описание"><input style={inp} value={newServiceDraft.description} onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))} /></Field>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <Field label="Цена (€)"><input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} /></Field>
+                    <Field label="Мин"><input type="number" style={inp} value={newServiceDraft.duration_min} onChange={(e) => setNewServiceDraft((p) => ({ ...p, duration_min: Number(e.target.value) || 30 }))} /></Field>
+                  </div>
+                </div>
+                <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button type="button" style={btn('ghost')} onClick={() => setServiceModalOpen(false)}>Отказ</button>
+                  <button
+                    type="button"
+                    style={{ ...btn('primary'), border: 'none', background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }}
+                    onClick={() => {
+                      if (!newServiceDraft.name.trim()) return;
+                      addManualService();
+                    }}
+                  >
+                    Добави
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {/* ── Работно време ── */}
           {activeTab === 'hours' && (
