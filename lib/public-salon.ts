@@ -1,5 +1,9 @@
 import { sql } from '@/lib/db';
-import { buildStaticMapUrl, fetchGoogleReviewsForPlace } from '@/lib/google-place-server';
+import {
+  buildStaticMapUrl,
+  fetchGoogleReviewsForPlace,
+  resolveGooglePlaceId,
+} from '@/lib/google-place-server';
 import { extractHostname, getPlatformSubdomain, isPlatformApexHost } from '@/lib/domain-routing';
 
 type PublicSalonLookup = {
@@ -111,7 +115,10 @@ export async function getPublicSalonPageData({
     reviews = [];
   }
 
-  const placeId = typeof salon.google_place_id === 'string' ? salon.google_place_id.trim() : '';
+  const placeId = await resolveGooglePlaceId({
+    explicitPlaceId: typeof salon.google_place_id === 'string' ? salon.google_place_id : '',
+    mapsUrl: typeof salon.google_maps_url === 'string' ? salon.google_maps_url : '',
+  });
   const googleReviews = placeId ? await fetchGoogleReviewsForPlace(placeId) : [];
 
   const lat = salon.latitude != null ? Number(salon.latitude) : NaN;

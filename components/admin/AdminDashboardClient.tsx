@@ -35,6 +35,7 @@ import { GalleryReorderGrid } from '@/components/admin/gallery-reorder-grid';
 import { AddressAutocompleteField } from '@/components/admin/address-autocomplete-field';
 import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
+import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
@@ -1639,6 +1640,17 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 onClick={(e) => e.stopPropagation()}
               >
                 <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>Добави услуга</p>
+                <div style={{ marginTop: 12 }}>
+                  <PriceListServicesImport
+                    urls={priceListUrls}
+                    busy={busyKey === 'upload-pricelist'}
+                    analyzing={priceListAnalyzing}
+                    isMobile={isMobile}
+                    onUpload={handlePriceListUpload}
+                    onRemove={removePriceListAt}
+                    onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
+                  />
+                </div>
                 <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
                   <Field label="Име"><input style={inp} value={newServiceDraft.name} onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))} /></Field>
                   <Field label="Категория"><input style={inp} value={newServiceDraft.category} onChange={(e) => setNewServiceDraft((p) => ({ ...p, category: e.target.value }))} /></Field>

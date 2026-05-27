@@ -23,13 +23,10 @@ export type WorkingDay = {
 
 export type WorkingHours = Record<string, WorkingDay>;
 
-export type ServiceItem = {
-  name: string;
-  description?: string;
-  category?: string;
-  price: number;
-  duration_min: number;
-};
+import { normalizeServices, type ServiceItem } from '@/lib/salon-services';
+
+export type { ServiceItem };
+export { normalizeServices };
 
 export type BookingRecord = {
   id: string;
@@ -93,24 +90,6 @@ export const DEFAULT_WORKING_HOURS: WorkingHours = {
   saturday: { open: '10:00', close: '16:00', closed: false },
   sunday: { open: '', close: '', closed: true },
 };
-
-export function normalizeServices(raw: unknown): ServiceItem[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map(item => {
-      const row = item as Record<string, unknown>;
-      const name = String(row.name ?? '').trim();
-      if (!name) return null;
-      return {
-        name,
-        description: String(row.description ?? '').trim() || undefined,
-        category: String(row.category ?? '').trim() || undefined,
-        price: Math.max(0, Number(row.price ?? 0) || 0),
-        duration_min: Math.max(5, Number(row.duration_min ?? row.duration ?? 30) || 30),
-      };
-    })
-    .filter(Boolean) as ServiceItem[];
-}
 
 export function normalizeWorkingHours(raw: unknown): WorkingHours {
   const base = JSON.parse(JSON.stringify(DEFAULT_WORKING_HOURS)) as WorkingHours;

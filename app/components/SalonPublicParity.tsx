@@ -58,6 +58,7 @@ import {
   normalizeVisitorAdditionalInfo,
 } from '@/lib/salon-visitor-info';
 import { PublicVisitorFaq } from '@/components/salon/public-visitor-faq';
+import { parseSalonServices } from '@/lib/salon-services';
 
 const APPLE_LINK_BLUE = '#0A84FF';
 
@@ -442,27 +443,10 @@ export default function SalonPublicParity({
   const pay = ve.paymentPreference ? SALON_PAYMENT_LABELS_BG[ve.paymentPreference] : null;
   const showVenueBlock = activeExtraKeys.length > 0 || showParking || !!pay;
 
-  const servicesFromDb = useMemo((): ServiceRow[] => {
-    const raw = rawSalon.services;
-    if (!Array.isArray(raw)) return [];
-    return raw.map((s: unknown, i: number) => {
-      const o = s as Record<string, unknown>;
-      const duration = Number(o.duration ?? o.duration_min ?? 30) || 30;
-      const price = o.price != null ? Number(o.price) : undefined;
-      const variants = Array.isArray(o.variants)
-        ? (o.variants as { label: string; price: number; duration?: number }[])
-        : undefined;
-      return {
-        id: String(o.id ?? `svc-${i}`),
-        name: String(o.name ?? 'Услуга'),
-        duration,
-        price,
-        category: typeof o.category === 'string' ? o.category : undefined,
-        images: Array.isArray(o.images) ? (o.images as string[]) : undefined,
-        variants,
-      };
-    });
-  }, [rawSalon.services]);
+  const servicesFromDb = useMemo(
+    (): ServiceRow[] => parseSalonServices(rawSalon.services),
+    [rawSalon.services],
+  );
 
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
   const scrollSpySuppressUntilRef = useRef(0);
@@ -951,7 +935,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className={`min-h-screen bg-white pb-6 text-[#1a1a1a] lg:pb-10${bookingOpen ? ' overflow-x-hidden' : ''}`}
+      className={`min-h-screen bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen ? ' overflow-x-hidden' : ''}`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -1082,51 +1066,6 @@ export default function SalonPublicParity({
                 </button>
               ) : null}
 
-              {(() => {
-                const igUrl = salonPublicInstagramUrl(instagram);
-                const ttUrl = salonPublicTikTokUrl(tiktok);
-                const fbUrl = salonPublicFacebookUrl(facebook);
-                if (!igUrl && !ttUrl && !fbUrl) return null;
-                return (
-                  <div className="mt-6 rounded-xl border border-black/10 bg-white p-4">
-                    <p className="text-sm font-medium text-[#1a1a1a]">Последвайте ни в социалните мрежи</p>
-                    {igUrl ? (
-                      <a
-                        href={igUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 block text-sm underline"
-                        style={{ color: APPLE_LINK_BLUE }}
-                      >
-                        @{String(instagram ?? '').replace(/^@/, '')}
-                      </a>
-                    ) : null}
-                    {ttUrl ? (
-                      <a
-                        href={ttUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 block text-sm underline"
-                        style={{ color: APPLE_LINK_BLUE }}
-                      >
-                        TikTok @{String(tiktok ?? '').replace(/^@/, '')}
-                      </a>
-                    ) : null}
-                    {fbUrl ? (
-                      <a
-                        href={fbUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 block text-sm underline"
-                        style={{ color: APPLE_LINK_BLUE }}
-                      >
-                        Facebook
-                      </a>
-                    ) : null}
-                  </div>
-                );
-              })()}
-
               <PublicVisitorFaq
                 faqItems={faqItems}
                 visitorInfo={visitorInfo}
@@ -1230,13 +1169,8 @@ export default function SalonPublicParity({
                         className={`rounded-full border px-3 py-1 text-sm font-normal shadow-[0_8px_20px_rgba(0,0,0,0.05)] transition ${
                           isSelected
                             ? 'border-[color:var(--salon-primary)] text-[color:var(--salon-primary)]'
-                            : 'border-black/25 bg-white hover:border-[color:var(--salon-primary)]'
+                            : 'border-black/25 hover:border-[color:var(--salon-primary)]'
                         }`}
-                        style={
-                          isSelected
-                            ? { backgroundColor: `color-mix(in srgb, ${primary} 14%, white)` }
-                            : undefined
-                        }
                       >
                         {cat.label}
                       </button>
@@ -1257,7 +1191,7 @@ export default function SalonPublicParity({
                   const effective = getEffectiveServiceCb(service, selectedVariant);
                   return (
                     <li
-                      key={service.id}
+                      key={`${service.id}-${idxInPage}`}
                       className="rounded-[26px] border border-black/10 bg-white px-4 py-5 shadow-[0_14px_28px_rgba(0,0,0,0.16)]"
                     >
                       <div className="flex flex-row items-start gap-4">
@@ -1270,7 +1204,7 @@ export default function SalonPublicParity({
                                 onClick={() =>
                                   setVariantDropdownOpenForServiceId((prev) => (prev === service.id ? null : service.id))
                                 }
-                                className="flex w-full items-center justify-between rounded-full border border-black/15 bg-white px-4 py-2 text-left text-sm transition hover:border-black/30"
+                                className="flex w-full items-center justify-between rounded-full border border-black/15 bg-transparent px-4 py-2 text-left text-sm transition hover:border-black/30"
                               >
                                 <span className="truncate">{selectedVariantLabel ?? 'Изберете вариант'}</span>
                                 <ChevronDown
@@ -1335,9 +1269,8 @@ export default function SalonPublicParity({
                     className="text-sm font-semibold text-[color:var(--salon-primary)]"
                     onClick={() => setServicesExpanded(true)}
                   >
-                    Виж всички
+                    Виж още ({displayListRaw.length - 5})
                   </button>
-                  <p className="mt-1 text-xs text-black/45">{displayListRaw.length} услуги</p>
                 </div>
               ) : null}
             </section>
@@ -1812,6 +1745,40 @@ export default function SalonPublicParity({
           </div>
         </footer>
       </main>
+
+      {!disableStickySectionTabs ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-sm lg:hidden">
+          <div className="mx-auto flex w-full max-w-[min(100%,1180px)] items-center gap-2">
+            <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto scrollbar-none">
+              {salonTabsWithTeamLabel.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={`bottom-${tab.id}`}
+                    type="button"
+                    onClick={() => scrollToSection(tab.id)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      isActive
+                        ? 'border-[color:var(--salon-primary)] text-[color:var(--salon-primary)]'
+                        : 'border-black/20 text-black/65'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => openBookingModal()}
+              className="shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-white"
+              style={{ background: primary }}
+            >
+              Резервирай
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {galleryModal && galleryModal.uris.length > 0 ? (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" role="dialog" aria-modal aria-label="Галерия">

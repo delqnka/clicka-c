@@ -10,59 +10,63 @@ import { getOpenRouterApiKey } from '@/lib/openrouter';
 export type { GoogleReviewLite };
 export type GoogleReviewsProbe = {
   reviews: GoogleReviewLite[];
-  source: 'openrouter' | 'google_maps' | 'none';
+  source: 'openrouter' | 'none';
   reason?: string;
 };
 
-async function fetchGoogleReviewsFromMapsApi(placeId: string): Promise<GoogleReviewLite[]> {
-  const key = process.env.GOOGLE_MAPS_SERVER_KEY;
-  if (!key) return [];
-
-  const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId.trim())}&fields=reviews&reviews_sort=newest&key=${encodeURIComponent(key)}`;
+export function extractGooglePlaceIdFromMapsUrl(url: string | null | undefined): string | null {
+  const raw = String(url ?? '').trim();
+  if (!raw) return null;
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return [];
-    const data = (await res.json()) as {
-      result?: { reviews?: { author_name?: string; rating?: number; text?: string }[] };
-    };
-    const rev = data.result?.reviews;
-    if (!Array.isArray(rev)) return [];
-    return rev.map((r) => ({
-      author_name: String(r.author_name ?? ''),
-      rating: Number(r.rating) || 0,
-      text: String(r.text ?? ''),
-    }));
+    const parsed = new URL(raw);
+    const queryPlaceId = parsed.searchParams.get('query_place_id')?.trim();
+    if (queryPlaceId) return queryPlaceId;
+
+    const q = parsed.searchParams.get('q')?.trim() ?? parsed.searchParams.get('query')?.trim() ?? '';
+    if (q.toLowerCase().startsWith('place_id:')) {
+      const id = q.slice('place_id:'.length).trim();
+      if (id) return id;
+    }
+
+    const pathMatch = parsed.href.match(/!1s([^!/?&]+)/);
+    if (pathMatch?.[1]) return decodeURIComponent(pathMatch[1]);
   } catch {
-    return [];
+    const textMatch = raw.match(/place_id:([A-Za-z0-9_-]+)/i);
+    if (textMatch?.[1]) return textMatch[1];
   }
+
+  return null;
+}
+
+export async function resolveGooglePlaceId(options: {
+  explicitPlaceId?: string | null | undefined;
+  mapsUrl?: string | null | undefined;
+}): Promise<string | null> {
+  const explicit = String(options.explicitPlaceId ?? '').trim();
+  if (explicit) return explicit;
+
+  const fromMapsUrl = extractGooglePlaceIdFromMapsUrl(options.mapsUrl);
+  if (fromMapsUrl) return fromMapsUrl;
+
+  return null;
 }
 
 export async function probeGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewsProbe> {
   const id = placeId.trim();
   if (!id) return { reviews: [], source: 'none', reason: 'missing_place_id' };
 
-  if (getOpenRouterApiKey()) {
-    const fromOpenRouter = await fetchGoogleReviewsViaOpenRouter(id);
-    if (fromOpenRouter.length > 0) return { reviews: fromOpenRouter, source: 'openrouter' };
+  if (!getOpenRouterApiKey()) {
+    return { reviews: [], source: 'none', reason: 'missing_openrouter_key' };
   }
 
-  const hasMapsKey = Boolean(process.env.GOOGLE_MAPS_SERVER_KEY?.trim());
-  if (hasMapsKey) {
-    const fromMaps = await fetchGoogleReviewsFromMapsApi(id);
-    if (fromMaps.length > 0) return { reviews: fromMaps, source: 'google_maps' };
-  }
-
-  if (!getOpenRouterApiKey() && !hasMapsKey) {
-    return { reviews: [], source: 'none', reason: 'missing_openrouter_and_maps_keys' };
-  }
-
+  const fromOpenRouter = await fetchGoogleReviewsViaOpenRouter(id);
+  if (fromOpenRouter.length > 0) return { reviews: fromOpenRouter, source: 'openrouter' };
   return { reviews: [], source: 'none', reason: 'no_reviews_or_invalid_place_id' };
 }
 
 /**
- * 1) OpenRouter (perplexity/sonar) — основен път, изисква OPENROUTER_API_KEY
- * 2) Google Places API — резервен, ако има GOOGLE_MAPS_SERVER_KEY
+ * OpenRouter only — изисква OPENROUTER_API_KEY и валиден place_id.
  */
 export async function fetchGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewLite[]> {
   const id = placeId.trim();

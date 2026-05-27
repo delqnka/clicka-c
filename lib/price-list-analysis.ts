@@ -1,4 +1,4 @@
-import type { ServiceItem } from '@/lib/admin-site';
+import type { ServiceItem } from '@/lib/salon-services';
 
 export async function analyzePriceListImages(
   imageUrls: string[],
