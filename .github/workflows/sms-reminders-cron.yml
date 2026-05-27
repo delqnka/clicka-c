@@ -1,0 +1,27 @@
+# Hobby Vercel allows cron at most once/day — SMS needs ~10 min checks.
+# Add repo secrets: CRON_SECRET (same as Vercel), optional CRON_APP_URL (default https://clicka.bg).
+name: SMS reminders cron
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sms-reminders API
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_APP_URL: ${{ secrets.CRON_APP_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Missing GitHub secret CRON_SECRET (same value as in Vercel env)."
+            exit 1
+          fi
+          base="${CRON_APP_URL:-https://clicka.bg}"
+          base="${base%/}"
+          curl -sfS -X POST "${base}/api/cron/sms-reminders" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json"
