@@ -24,6 +24,9 @@ ALTER TABLE bookings ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
 -- completed_at on bookings — set when status flips to 'completed'
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS completed_at timestamptz;
 
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_reminder_consent boolean NOT NULL DEFAULT false;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_reminder_consent_at timestamptz;
+
 -- Index for fast lookups of completed bookings
 CREATE INDEX IF NOT EXISTS bookings_completed_at_idx ON bookings(completed_at)
 WHERE completed_at IS NOT NULL;

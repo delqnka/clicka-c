@@ -34,6 +34,14 @@ export async function ensureBookingsSchema() {
         ADD COLUMN IF NOT EXISTS completed_at timestamptz
       `;
       await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS sms_reminder_consent boolean NOT NULL DEFAULT false
+      `;
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS sms_reminder_consent_at timestamptz
+      `;
+      await sql`
         CREATE INDEX IF NOT EXISTS bookings_salon_id_idx ON bookings(salon_id)
       `;
     })().catch((err) => {

@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
     date: string;
     time: string;
     notes?: string;
+    smsReminderConsent?: boolean;
   };
 
   try {
@@ -129,8 +130,10 @@ export async function POST(request: NextRequest) {
     date,
     time,
     notes,
+    smsReminderConsent,
   } = body;
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
+  const hasSmsReminderConsent = smsReminderConsent === true;
 
 
   if (!clientName || !clientPhone || !clientEmail || !serviceName || !date || !time) {
@@ -178,14 +181,17 @@ export async function POST(request: NextRequest) {
       INSERT INTO bookings (
         id, salon_id, client_name, client_phone, client_email,
         service_name, service_price, service_duration,
-        date, time, status, notes
+        date, time, status, notes,
+        sms_reminder_consent, sms_reminder_consent_at
       )
       VALUES (
         ${bookingId},
         ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')},
         ${clientName}, ${clientPhone}, ${normalizedClientEmail},
         ${serviceName}, ${priceValue}, ${durationValue},
-        ${date}, ${time}, 'pending', ${normalizedNotes}
+        ${date}, ${time}, 'pending', ${normalizedNotes},
+        ${hasSmsReminderConsent},
+        ${hasSmsReminderConsent ? new Date().toISOString() : null}
       )
       RETURNING id
     `) as { id: string }[];
@@ -252,6 +258,7 @@ export async function POST(request: NextRequest) {
     time,
     smsEnabled: (resolved.salon as Record<string, unknown>).sms_enabled === true,
     smsReminderMode: (resolved.salon as Record<string, unknown>).sms_reminder_mode,
+    smsReminderConsent: hasSmsReminderConsent,
   }).catch((err) => console.error('[bookings POST] schedule SMS', err));
 
   return NextResponse.json({

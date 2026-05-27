@@ -27,11 +27,12 @@ export async function scheduleBookingSmsReminders(opts: {
   time: string;
   smsEnabled: boolean;
   smsReminderMode: unknown;
+  smsReminderConsent: boolean;
 }) {
   await ensureSmsSchema();
 
   const mode = normalizeSmsReminderMode(opts.smsReminderMode);
-  if (!opts.smsEnabled || mode === 'off') {
+  if (!opts.smsReminderConsent || !opts.smsEnabled || mode === 'off') {
     await cancelBookingSmsReminders(opts.bookingId);
     return;
   }
@@ -161,7 +162,9 @@ export async function processDueSmsReminders(limit = 40): Promise<{ processed: n
     FROM booking_sms_reminders r
     INNER JOIN bookings b ON b.id = r.booking_id
     INNER JOIN salons s ON s.id::text = r.salon_id
-    WHERE r.status = 'pending' AND r.send_at <= now()
+    WHERE r.status = 'pending'
+      AND r.send_at <= now()
+      AND b.sms_reminder_consent = true
     ORDER BY r.send_at ASC
     LIMIT ${limit}
   `;

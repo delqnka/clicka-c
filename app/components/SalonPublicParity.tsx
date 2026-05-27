@@ -468,6 +468,7 @@ export default function SalonPublicParity({
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [smsReminderConsent, setSmsReminderConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
@@ -776,6 +777,7 @@ export default function SalonPublicParity({
     setClientPhone('');
     setClientEmail('');
     setNotes('');
+    setSmsReminderConsent(false);
     setBookingOpen(true);
     document.body.style.overflow = 'hidden';
   }
@@ -884,6 +886,7 @@ export default function SalonPublicParity({
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
+          smsReminderConsent,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -1871,6 +1874,10 @@ export default function SalonPublicParity({
         clientPhone={clientPhone}
         clientEmail={clientEmail}
         notes={notes}
+        smsReminderConsent={smsReminderConsent}
+        salonName={name}
+        termsHref={`${basePath}/terms`}
+        privacyHref={`${basePath}/privacy`}
         minDate={minDate}
         maxDate={maxDate}
         timeSlots={timeSlots}
@@ -1895,6 +1902,7 @@ export default function SalonPublicParity({
         onClientPhoneChange={setClientPhone}
         onClientEmailChange={setClientEmail}
         onNotesChange={setNotes}
+        onSmsReminderConsentChange={setSmsReminderConsent}
         onSubmit={submitBooking}
       />
 
