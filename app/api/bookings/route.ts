@@ -6,6 +6,10 @@ import { sendBookingNotification, sendBookingConfirmation, sendGoogleReviewInvit
 import { sendBookingTelegram } from '@/lib/telegram';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
+import {
+  cancelBookingSmsReminders,
+  scheduleBookingSmsReminders,
+} from '@/lib/sms-reminders';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
@@ -29,8 +33,8 @@ async function resolveSalonFromRequest(request: NextRequest) {
 
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address,
-           telegram_chat_id, google_place_id
-           , opening_hours
+           telegram_chat_id, google_place_id, opening_hours,
+           sms_enabled, sms_reminder_mode
     FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
   `;
@@ -240,6 +244,16 @@ export async function POST(request: NextRequest) {
 
   await Promise.allSettled(notifPromises);
 
+  const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+  void scheduleBookingSmsReminders({
+    salonId,
+    bookingId: bookings[0].id,
+    date,
+    time,
+    smsEnabled: (resolved.salon as Record<string, unknown>).sms_enabled === true,
+    smsReminderMode: (resolved.salon as Record<string, unknown>).sms_reminder_mode,
+  }).catch((err) => console.error('[bookings POST] schedule SMS', err));
+
   return NextResponse.json({
     success: true,
     bookingId: bookings[0].id,
@@ -284,6 +298,12 @@ export async function PATCH(request: NextRequest) {
 
   if (updated.length === 0) {
     return NextResponse.json({ error: 'Резервацията не е намерена' }, { status: 404 });
+  }
+
+  if (status === 'cancelled') {
+    void cancelBookingSmsReminders(bookingId).catch((err) =>
+      console.error('[bookings PATCH] cancel SMS', err),
+    );
   }
 
   if (status === 'completed') {

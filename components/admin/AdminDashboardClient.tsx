@@ -53,6 +53,12 @@ import { LegalCustomDocumentsEditor } from '@/components/admin/legal-custom-docu
 import { defaultLegalInfoStored, type LegalInfoStored } from '@/lib/legal-custom-documents';
 import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
 import { formatSalonPrice } from '@/lib/salon-currency';
+import {
+  SMS_PACK_CREDITS,
+  SMS_PACK_PRICE_EUR,
+  smsCreditsPerBooking,
+  type SmsReminderMode,
+} from '@/lib/sms-shared';
 
 /* ─── Constants ───────────────────────────────────────── */
 const DAYS = [
@@ -245,6 +251,21 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   });
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
+  const [smsDraftEnabled, setSmsDraftEnabled] = useState(initialSite.smsEnabled);
+  const [smsDraftMode, setSmsDraftMode] = useState<SmsReminderMode>(initialSite.smsReminderMode);
+  const [smsTransactions, setSmsTransactions] = useState<
+    {
+      id: string;
+      kind: string;
+      delta: number;
+      balance_after: number | null;
+      note: string | null;
+      client_phone: string | null;
+      created_at: string;
+    }[]
+  >([]);
+  const [smsPanelLoading, setSmsPanelLoading] = useState(false);
+  const [smsPendingReminders, setSmsPendingReminders] = useState(0);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
   const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
     done: number;
@@ -410,6 +431,60 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       cancelled = true;
     };
   }, [activeTab, site.googlePlaceId, slug, googleReviewsProbeTick]);
+
+  useEffect(() => {
+    setSmsDraftEnabled(site.smsEnabled);
+    setSmsDraftMode(site.smsReminderMode);
+  }, [site.smsEnabled, site.smsReminderMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'notifications') setActiveTab('notifications');
+    if (params.get('smsPurchase') === 'success') {
+      setNotice(`Добавени са ${SMS_PACK_CREDITS} SMS. Балансът е обновен.`);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'notifications') return;
+    let cancelled = false;
+    const run = async () => {
+      setSmsPanelLoading(true);
+      try {
+        const res = await fetch(`/api/admin/sms?slug=${encodeURIComponent(slug)}`);
+        const data = await readJson(res);
+        if (!res.ok) throw new Error((data as { error?: string }).error || 'Грешка');
+        if (cancelled) return;
+        const payload = data as {
+          balance: number;
+          enabled: boolean;
+          reminderMode: SmsReminderMode;
+          pendingReminders: number;
+          transactions: typeof smsTransactions;
+        };
+        setSite((p) => ({
+          ...p,
+          smsBalance: payload.balance,
+          smsEnabled: payload.enabled,
+          smsReminderMode: payload.reminderMode,
+        }));
+        setSmsDraftEnabled(payload.enabled);
+        setSmsDraftMode(payload.reminderMode);
+        setSmsPendingReminders(payload.pendingReminders);
+        setSmsTransactions(Array.isArray(payload.transactions) ? payload.transactions : []);
+      } catch (e) {
+        if (!cancelled) handleErr(e);
+      } finally {
+        if (!cancelled) setSmsPanelLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, slug]);
 
   /* ── Handlers ── */
   async function guardResponse(res: Response) {
@@ -920,6 +995,55 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); setNavOpen(false); };
+  async function saveSmsSettings() {
+    setError('');
+    setNotice('');
+    setBusyKey('sms-settings');
+    try {
+      const res = await fetch(`/api/admin/sms?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: smsDraftEnabled,
+          reminderMode: smsDraftMode,
+        }),
+      });
+      const data = await guardResponse(res) as {
+        enabled: boolean;
+        reminderMode: SmsReminderMode;
+      };
+      setSite((p) => ({
+        ...p,
+        smsEnabled: data.enabled,
+        smsReminderMode: data.reminderMode,
+      }));
+      setSmsDraftEnabled(data.enabled);
+      setSmsDraftMode(data.reminderMode);
+      setNotice('SMS настройките са запазени.');
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }
+
+  async function buySmsPack() {
+    setError('');
+    setBusyKey('sms-checkout');
+    try {
+      const res = await fetch(`/api/admin/sms-checkout?slug=${encodeURIComponent(slug)}`, {
+        method: 'POST',
+      });
+      const data = await guardResponse(res) as { checkoutUrl?: string };
+      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+      else throw new Error('Липсва линк за плащане.');
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }
+
   function addManualService() {
     setSite((p) => ({
       ...p,
@@ -2222,8 +2346,126 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
           {/* ── Известия ── */}
           {activeTab === 'notifications' && (
-            <Section title="Известия" desc="Настрой нотификациите за резервации.">
+            <Section title="Известия" desc="Telegram, Google и SMS напомняния към клиенти.">
               <div style={{ display: 'grid', gap: 10 }}>
+                <InfoCard
+                  title="SMS напомняния"
+                  status={site.smsEnabled && site.smsBalance > 0 ? 'connected' : 'pending'}
+                >
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10 }}>
+                      <span style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.03em' }}>
+                        {site.smsBalance}
+                      </span>
+                      <span style={{ fontSize: 14, color: T.muted }}>налични SMS</span>
+                      {smsPanelLoading ? (
+                        <span style={{ fontSize: 12, color: T.subtle }}>Обновяваме…</span>
+                      ) : null}
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.55 }}>
+                      Пакет: <strong>{SMS_PACK_CREDITS} SMS за {SMS_PACK_PRICE_EUR} €</strong>.
+                      При режим „24ч + 1ч“ всяка резервация използва <strong>2 SMS</strong>.
+                      При „1 час“ — <strong>1 SMS</strong>. При 0 баланс изпращането спира автоматично.
+                    </p>
+                    {smsPendingReminders > 0 ? (
+                      <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>
+                        Планирани напомняния: {smsPendingReminders}
+                      </p>
+                    ) : null}
+
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: T.text }}>Кога да изпращаме</p>
+                      {(
+                        [
+                          { id: 'off' as const, label: 'Изключено' },
+                          { id: '1h' as const, label: '1 час преди часа' },
+                          { id: '24h_and_1h' as const, label: '24 часа + 1 час преди' },
+                        ] as const
+                      ).map((opt) => (
+                        <label
+                          key={opt.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: 13,
+                            color: T.text,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="sms-mode"
+                            checked={smsDraftMode === opt.id}
+                            onChange={() => {
+                              setSmsDraftMode(opt.id);
+                              if (opt.id !== 'off') setSmsDraftEnabled(true);
+                              if (opt.id === 'off') setSmsDraftEnabled(false);
+                            }}
+                          />
+                          {opt.label}
+                          {opt.id !== 'off' ? (
+                            <span style={{ color: T.subtle }}>
+                              ({smsCreditsPerBooking(opt.id)} SMS / резервация)
+                            </span>
+                          ) : null}
+                        </label>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => void saveSmsSettings()}
+                        style={btn('primary')}
+                        disabled={busyKey === 'sms-settings'}
+                      >
+                        {busyKey === 'sms-settings' ? 'Запазваме…' : 'Запази SMS настройки'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void buySmsPack()}
+                        style={btn('ghost')}
+                        disabled={busyKey === 'sms-checkout'}
+                      >
+                        {busyKey === 'sms-checkout'
+                          ? 'Пренасочваме…'
+                          : `Купи ${SMS_PACK_CREDITS} SMS (${SMS_PACK_PRICE_EUR} €)`}
+                      </button>
+                    </div>
+
+                    {smsTransactions.length > 0 ? (
+                      <div style={{ marginTop: 4 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>
+                          Последна активност
+                        </p>
+                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+                          {smsTransactions.slice(0, 8).map((tx) => (
+                            <li
+                              key={tx.id}
+                              style={{
+                                fontSize: 12,
+                                color: T.muted,
+                                borderTop: `1px solid ${T.border}`,
+                                paddingTop: 6,
+                              }}
+                            >
+                              <span style={{ color: tx.delta > 0 ? '#16a34a' : T.text, fontWeight: 600 }}>
+                                {tx.delta > 0 ? `+${tx.delta}` : tx.delta}
+                              </span>
+                              {' · '}
+                              {tx.note || tx.kind}
+                              {tx.client_phone ? ` · ${tx.client_phone}` : ''}
+                              {' · '}
+                              {new Date(tx.created_at).toLocaleString('bg-BG')}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </InfoCard>
+
                 {/* Telegram */}
                 <InfoCard
                   title="Telegram"

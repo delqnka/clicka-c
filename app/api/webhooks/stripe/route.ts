@@ -14,6 +14,8 @@ import {
 } from '@/lib/domain-routing';
 import { generateAdminMagicLink } from '@/lib/admin-auth';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
+import { creditSmsPack } from '@/lib/sms-reminders';
+import { SMS_PACK_CREDITS } from '@/lib/sms-shared';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -107,6 +109,19 @@ export async function POST(request: NextRequest) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const { flow, domainPurchaseRequestId, salonSlug, templateId, planType } = session.metadata ?? {};
+
+    if (flow === 'sms_pack') {
+      const salonId = String(session.metadata?.salonId ?? '').trim();
+      const credits = Math.max(1, Number(session.metadata?.credits ?? SMS_PACK_CREDITS) || SMS_PACK_CREDITS);
+      if (salonId && session.payment_status === 'paid') {
+        await creditSmsPack({
+          salonId,
+          credits,
+          stripeSessionId: session.id,
+        });
+      }
+      return NextResponse.json({ received: true });
+    }
 
     if (flow === 'domain_purchase_request' && domainPurchaseRequestId) {
       await ensureDomainPurchaseSchema();

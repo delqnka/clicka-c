@@ -12,6 +12,8 @@ import {
   type SalonVisitorInfo,
 } from '@/lib/salon-visitor-info';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
+import { normalizeSmsReminderMode, type SmsReminderMode } from '@/lib/sms-shared';
+import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
 
 export type LegalInfoPayload = LegalInfoStored;
 
@@ -79,6 +81,9 @@ export type AdminSitePayload = {
   faqItems: SalonFaqItem[];
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
+  smsBalance: number;
+  smsEnabled: boolean;
+  smsReminderMode: SmsReminderMode;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -116,6 +121,8 @@ export function normalizeImageList(raw: unknown): string[] {
 }
 
 export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
+  await ensureSmsSchema().catch(() => {});
+
   const rows = await sql`
     SELECT
       slug, name, category, phone, email, city, address, about,
@@ -126,7 +133,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code,
       site_status, legal_info, latitude, longitude,
-      faq_items, visitor_info, visitor_additional_info
+      faq_items, visitor_info, visitor_additional_info,
+      sms_balance, sms_enabled, sms_reminder_mode
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -184,6 +192,9 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     faqItems: normalizeSalonFaqItems(row.faq_items),
     visitorInfo: normalizeSalonVisitorInfo(row.visitor_info),
     visitorAdditionalInfo: normalizeVisitorAdditionalInfo(row.visitor_additional_info),
+    smsBalance: Math.max(0, Number(row.sms_balance ?? 0) || 0),
+    smsEnabled: row.sms_enabled === true,
+    smsReminderMode: normalizeSmsReminderMode(row.sms_reminder_mode),
   };
 }
 
