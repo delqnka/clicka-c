@@ -109,7 +109,7 @@ export function SalonBookingModal({
         role="dialog"
         aria-modal
         aria-label="Резервация"
-        className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-h-[100dvh] w-full max-w-[100vw] flex-col overflow-hidden rounded-t-[1.4rem] border border-white/35 bg-[linear-gradient(160deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
+        className="absolute inset-x-2 bottom-2 z-10 mx-auto flex max-h-[calc(100dvh-0.75rem)] w-auto max-w-none flex-col overflow-hidden rounded-[1.4rem] border border-white/35 bg-[linear-gradient(160deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -206,7 +206,7 @@ export function SalonBookingModal({
                     </label>
                     <input
                       type="date"
-                      className={`${fieldClass} w-[min(100%,15rem)]`}
+                      className={`${fieldClass} w-[min(100%,11.5rem)] py-2.5 text-sm`}
                       min={minDate}
                       max={maxDate}
                       value={selectedDate}

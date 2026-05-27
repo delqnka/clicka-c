@@ -118,6 +118,8 @@ export async function POST(request: NextRequest) {
     time,
     notes,
   } = body;
+  const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
+
 
   if (!clientName || !clientPhone || !clientEmail || !serviceName || !date || !time) {
     return NextResponse.json(
@@ -153,7 +155,7 @@ export async function POST(request: NextRequest) {
         ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')},
         ${clientName}, ${clientPhone}, ${normalizedClientEmail},
         ${serviceName}, ${priceValue}, ${durationValue},
-        ${date}, ${time}, 'pending', ${notes ?? null}
+        ${date}, ${time}, 'pending', ${normalizedNotes}
       )
       RETURNING id
     `) as { id: string }[];
@@ -181,7 +183,7 @@ export async function POST(request: NextRequest) {
     serviceDuration,
     date,
     time,
-    notes,
+    notes: normalizedNotes || undefined,
     salonName: resolved.salon.name,
     salonEmail: resolved.salon.email || undefined,
     salonPhone: resolved.salon.phone || undefined,
