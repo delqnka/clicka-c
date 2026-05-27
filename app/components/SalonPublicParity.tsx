@@ -1192,7 +1192,7 @@ export default function SalonPublicParity({
                   return (
                     <li
                       key={`${service.id}-${idxInPage}`}
-                      className="rounded-[26px] border border-black/10 bg-white px-4 py-5 shadow-[0_14px_28px_rgba(0,0,0,0.16)]"
+                      className="rounded-[26px] border border-black/10 bg-white px-4 py-5 shadow-none"
                     >
                       <div className="flex flex-row items-start gap-4">
                         <div className="min-w-0 flex-1">
@@ -1283,17 +1283,53 @@ export default function SalonPublicParity({
                 className="cv-defer scroll-mt-36 pt-10"
               >
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Портфолио</h2>
-                <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
-                  {portfolioDisplay.map((uri, idx) => (
-                    <button
-                      key={`${uri}-${idx}`}
-                      type="button"
-                      onClick={() => setGalleryModal({ uris: portfolioDisplay, index: idx })}
-                      className="relative h-44 w-[45%] shrink-0 overflow-hidden rounded-xl sm:h-52 sm:w-[200px]"
-                    >
-                      <img src={optimizedSrc(uri, 480)} srcSet={`${optimizedSrc(uri, 320)} 320w, ${optimizedSrc(uri, 480)} 480w`} sizes="(max-width: 640px) 45vw, 200px" alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" width={200} height={220} />
-                    </button>
-                  ))}
+                <div className="mt-3 grid gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {portfolioDisplay.slice(0, 2).map((uri, idx) => (
+                      <button
+                        key={`hero-${uri}-${idx}`}
+                        type="button"
+                        onClick={() => setGalleryModal({ uris: portfolioDisplay, index: idx })}
+                        className="relative h-48 overflow-hidden rounded-2xl sm:h-64"
+                      >
+                        <img
+                          src={optimizedSrc(uri, 960)}
+                          srcSet={`${optimizedSrc(uri, 480)} 480w, ${optimizedSrc(uri, 960)} 960w`}
+                          sizes="(max-width: 640px) 50vw, 40vw"
+                          alt={name}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          width={560}
+                          height={420}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  {portfolioDisplay.length > 2 ? (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {portfolioDisplay.slice(2).map((uri, idx) => (
+                        <button
+                          key={`thumb-${uri}-${idx}`}
+                          type="button"
+                          onClick={() => setGalleryModal({ uris: portfolioDisplay, index: idx + 2 })}
+                          className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl sm:h-24 sm:w-32"
+                        >
+                          <img
+                            src={optimizedSrc(uri, 320)}
+                            srcSet={`${optimizedSrc(uri, 240)} 240w, ${optimizedSrc(uri, 320)} 320w`}
+                            sizes="112px"
+                            alt={name}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            width={128}
+                            height={96}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </section>
             ) : null}
@@ -1747,31 +1783,12 @@ export default function SalonPublicParity({
       </main>
 
       {!disableStickySectionTabs ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-sm lg:hidden">
-          <div className="mx-auto flex w-full max-w-[min(100%,1180px)] items-center gap-2">
-            <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto scrollbar-none">
-              {salonTabsWithTeamLabel.map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={`bottom-${tab.id}`}
-                    type="button"
-                    onClick={() => scrollToSection(tab.id)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                      isActive
-                        ? 'border-[color:var(--salon-primary)] text-[color:var(--salon-primary)]'
-                        : 'border-black/20 text-black/65'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.7rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm lg:hidden">
+          <div className="mx-auto w-full max-w-[min(100%,1180px)]">
             <button
               type="button"
               onClick={() => openBookingModal()}
-              className="shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-white"
+              className="block w-full rounded-full py-3.5 text-base font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.2)]"
               style={{ background: primary }}
             >
               Резервирай
