@@ -99,6 +99,30 @@ export function SalonBookingModal({
     [selectedServiceIdxs, services]
   );
 
+  const dateOptions = useMemo(() => {
+    if (!minDate || !maxDate) return [];
+    const out: { iso: string; weekday: string; day: string }[] = [];
+    const start = new Date(`${minDate}T12:00:00`);
+    const end = new Date(`${maxDate}T12:00:00`);
+    const cursor = new Date(start);
+    while (cursor <= end && out.length < 45) {
+      const iso = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+      out.push({
+        iso,
+        weekday: cursor.toLocaleDateString('bg-BG', { weekday: 'short' }),
+        day: cursor.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' }),
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return out;
+  }, [minDate, maxDate]);
+
+  function goToStep(target: 1 | 2 | 3) {
+    if (target === 2 && !hasServices) return;
+    if (target === 3 && (!hasServices || !selectedTime)) return;
+    setStep(target);
+  }
+
   if (!open) return null;
 
   return (
@@ -131,21 +155,33 @@ export function SalonBookingModal({
         </div>
 
         <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5">
-          <div className="mb-3 flex items-center gap-2">
-            {[1, 2, 3].map((n) => {
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {(
+              [
+                { n: 1 as const, label: 'Услуги' },
+                { n: 2 as const, label: 'Дата' },
+                { n: 3 as const, label: 'Данни' },
+              ] as const
+            ).map(({ n, label }) => {
               const active = step === n;
               const complete = step > n;
+              const disabled =
+                (n === 2 && !hasServices) || (n === 3 && (!hasServices || !selectedTime));
               return (
-                <div key={n} className="flex items-center gap-2">
-                  <span
-                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                      active || complete ? 'bg-[color:var(--salon-primary)] text-white' : 'bg-black/10 text-black/55'
-                    }`}
-                  >
-                    {complete ? <Check className="h-3.5 w-3.5" /> : n}
-                  </span>
-                  {n < 3 ? <span className="h-px w-6 bg-black/15" /> : null}
-                </div>
+                <button
+                  key={n}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => goToStep(n)}
+                  className={`inline-flex h-11 min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl border px-2 text-[10px] font-semibold leading-tight transition disabled:opacity-40 ${
+                    active || complete
+                      ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)] text-white'
+                      : 'border-white/60 bg-white/70 text-black/55'
+                  }`}
+                >
+                  <span className="text-[11px]">{complete && !active ? '✓' : n}</span>
+                  <span className="mt-0.5 max-w-[4.5rem] truncate font-medium opacity-90">{label}</span>
+                </button>
               );
             })}
           </div>
@@ -158,9 +194,29 @@ export function SalonBookingModal({
             <form onSubmit={onSubmit} className="min-w-0 space-y-3.5">
               {step === 1 ? (
                 <div className="space-y-2.5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
-                    1/3 Услуги
-                  </p>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
+                      1/3 Услуги
+                    </p>
+                    <p className="mt-1 text-sm text-black/55">
+                      Изберете една или повече услуги — докоснете всяка, за да я добавите.
+                    </p>
+                  </div>
+
+                  {hasServices ? (
+                    <div className="rounded-2xl border border-[color:var(--salon-primary)]/25 bg-[color:var(--salon-primary)]/8 px-3 py-2.5">
+                      <p className="text-xs font-semibold text-[color:var(--salon-primary)]">
+                        Избрани: {selectedServices.length}
+                      </p>
+                      <p className="mt-1 text-sm text-black/65 truncate">
+                        {selectedServices.map((s) => s.name).join(' · ')}
+                      </p>
+                      <p className="mt-1.5 text-xs text-black/45">
+                        За още услуга — докоснете ред от списъка по-долу.
+                      </p>
+                    </div>
+                  ) : null}
+
                   {services.map((s, i) => {
                     const active = selectedServiceIdxs.includes(i);
                     return (
@@ -181,13 +237,23 @@ export function SalonBookingModal({
                           </span>
                         </span>
                         <span
-                          className={`ml-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                          className={`ml-3 inline-flex shrink-0 items-center gap-1 rounded-xl border px-2 py-1.5 text-xs font-semibold ${
                             active
                               ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)] text-white'
-                              : 'border-black/15 bg-white text-black/60'
+                              : 'border-black/15 bg-white text-black/70'
                           }`}
                         >
-                          {active ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                          {active ? (
+                            <>
+                              <Check className="h-3.5 w-3.5" />
+                              Добавена
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-3.5 w-3.5" />
+                              Добави
+                            </>
+                          )}
                         </span>
                       </button>
                     );
@@ -197,22 +263,52 @@ export function SalonBookingModal({
 
               {step === 2 ? (
                 <div className="space-y-3.5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
-                    2/3 Дата и час
-                  </p>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
+                      2/3 Дата и час
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-white/60 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-[color:var(--salon-primary)]"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Добави услуга
+                    </button>
+                  </div>
+
+                  {hasServices ? (
+                    <p className="text-sm text-black/55 truncate">
+                      {selectedServices.map((s) => s.name).join(' + ')}
+                    </p>
+                  ) : null}
+
                   <div className="min-w-0">
                     <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
                       Дата
                     </label>
-                    <input
-                      type="date"
-                      className={`${fieldClass} w-[min(100%,11.5rem)] py-2.5 text-sm`}
-                      min={minDate}
-                      max={maxDate}
-                      value={selectedDate}
-                      onChange={(e) => onDateChange(e.target.value)}
-                      required
-                    />
+                    <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
+                      {dateOptions.map((d) => {
+                        const active = selectedDate === d.iso;
+                        return (
+                          <button
+                            key={d.iso}
+                            type="button"
+                            onClick={() => onDateChange(d.iso)}
+                            className={`flex h-[4.25rem] w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-xl border text-center transition ${
+                              active
+                                ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/14 text-[color:var(--salon-primary)]'
+                                : 'border-white/60 bg-white/75 text-black/70'
+                            }`}
+                          >
+                            <span className="text-[10px] font-medium uppercase leading-none opacity-80">
+                              {d.weekday}
+                            </span>
+                            <span className="mt-1 text-[12px] font-bold leading-tight">{d.day}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="min-w-0">
@@ -353,7 +449,10 @@ export function SalonBookingModal({
                       if (step === 2 && !selectedTime) return;
                       setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
                     }}
-                    disabled={(step === 1 && !hasServices) || (step === 2 && !selectedTime)}
+                    disabled={
+                      (step === 1 && !hasServices) ||
+                      (step === 2 && (!selectedDate || !selectedTime))
+                    }
                     className="rounded-full border border-white/60 py-3 text-sm font-semibold text-white disabled:opacity-50"
                     style={{
                       background: `linear-gradient(135deg, color-mix(in srgb, ${primaryColor} 92%, white), color-mix(in srgb, ${primaryColor} 74%, #2b2b2b))`,
