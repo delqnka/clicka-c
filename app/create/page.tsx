@@ -34,7 +34,6 @@ function CreatePageContent() {
   const planParam = searchParams.get('plan');
   const initialPlan = planParam || 'ekip';
   const [planId, setPlanId]             = useState(() => PLANS.some(p => p.id === initialPlan) ? initialPlan : 'ekip');
-  const [smsAddon, setSmsAddon]         = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError]               = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -49,7 +48,7 @@ function CreatePageContent() {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planType: planId, smsAddon }),
+        body: JSON.stringify({ planType: planId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
@@ -206,40 +205,8 @@ function CreatePageContent() {
           </>
         )}
 
-        {/* ── SMS add-on ── */}
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setSmsAddon(v => !v)}
-            className={`flex w-full items-center gap-3.5 rounded-2xl border-[1.5px] p-5 text-left transition-all duration-200 ${
-              smsAddon
-                ? 'border-rose-500 bg-rose-500 text-white'
-                : 'border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]'
-            }`}
-            role="checkbox"
-            aria-checked={smsAddon}
-          >
-            <div className="flex-1">
-              <p className="text-[15px] font-bold">SMS напомняния</p>
-              <p className="mt-0.5 text-[13px] opacity-65">Автоматични SMS напомняния до клиентите</p>
-            </div>
-            <span className="shrink-0 text-[15px] font-bold">+ 9 € / мес.</span>
-            <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
-                smsAddon ? 'border-white bg-white' : 'border-[var(--border)]'
-              }`}
-            >
-              {smsAddon && (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M20 6L9 17l-5-5" stroke={smsAddon ? '#f43f5e' : 'var(--foreground)'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </span>
-          </button>
-        </div>
-
         {/* ── Terms checkbox ── */}
-        <label className="mt-6 flex cursor-pointer items-start gap-3">
+        <label className="mt-8 flex cursor-pointer items-start gap-3">
           <span
             className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] transition-all ${
               termsAccepted
