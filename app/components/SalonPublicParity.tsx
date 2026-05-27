@@ -12,7 +12,6 @@ import {
   Clock,
   Facebook,
   Instagram,
-  Loader2,
   MapPin,
   Phone,
   Share2,
@@ -29,6 +28,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { SalonBookingModal } from '@/components/salon/SalonBookingModal';
 import { getGradientColorsForUser, getInitialsDotted } from '@/lib/avatar-gradient';
 import { formatDistanceFromUserToSalon, getDistanceKm } from '@/lib/geo';
 import { offerEffectiveForClient } from '@/lib/offer-validity';
@@ -851,14 +851,20 @@ export default function SalonPublicParity({
           clientPhone: clientPhone.trim(),
           serviceName: svc.name,
           servicePrice: svc.price ?? 0,
-          serviceDuration: svc.duration,
+          serviceDuration: Number(svc.duration) || 30,
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(json.error || `Грешка ${res.status}`);
+      if (!res.ok) {
+        const fallback =
+          res.status === 500
+            ? 'Резервацията не можа да бъде записана. Моля опитайте отново или се обадете по телефона.'
+            : `Грешка ${res.status}`;
+        throw new Error(json.error || fallback);
+      }
       const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('bg-BG', {
         weekday: 'long',
         day: 'numeric',
@@ -900,7 +906,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className="min-h-screen bg-white pb-6 text-[#1a1a1a] lg:pb-10"
+      className={`min-h-screen bg-white pb-6 text-[#1a1a1a] lg:pb-10${bookingOpen ? ' overflow-x-hidden' : ''}`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -1823,135 +1829,34 @@ export default function SalonPublicParity({
         </div>
       ) : null}
 
-      {bookingOpen ? (
-        <div
-          className="fixed inset-0 z-[110] flex items-end justify-center overflow-hidden bg-black/50 p-0 sm:items-center sm:p-4"
-          role="dialog"
-          aria-modal
-          aria-label="Резервация"
-        >
-          <div className="box-border max-h-[92dvh] w-full max-w-md overflow-x-hidden overflow-y-auto overscroll-contain rounded-t-2xl border border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl sm:rounded-2xl sm:p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[#1a1a1a]">Резервация</h3>
-              <button type="button" className="rounded-full p-2 text-black/55 hover:bg-black/5" onClick={closeBookingModal} aria-label="Затвори">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            {bookingSuccess ? (
-              <p className="text-sm text-[#1a1a1a]">{bookingSuccess}</p>
-            ) : (
-              <form onSubmit={submitBooking} className="min-w-0 space-y-3">
-                <div className="min-w-0">
-                  <label className="block text-xs font-medium text-black/55">Услуга</label>
-                  <select
-                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
-                    value={bookingServiceIdx === '' ? '' : String(bookingServiceIdx)}
-                    onChange={(e) => setBookingServiceIdx(e.target.value === '' ? '' : Number(e.target.value))}
-                    required
-                  >
-                    <option value="">Изберете…</option>
-                    {servicesFromDb.map((s, i) => (
-                      <option key={s.id} value={i}>
-                        {s.name}
-                        {s.price != null ? ` — ${s.price} €` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="min-w-0 space-y-3">
-                  <div className="min-w-0">
-                    <label className="block text-xs font-medium text-black/55">Дата</label>
-                    <input
-                      type="date"
-                      className="mt-1 box-border w-full max-w-full min-w-0 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
-                      min={minDate}
-                      max={maxDate}
-                      value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value);
-                        setSelectedTime('');
-                      }}
-                      required
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <label className="block text-xs font-medium text-black/55">Час</label>
-                    {!selectedDate ? (
-                      <p className="mt-1 text-sm text-black/45">Първо изберете дата.</p>
-                    ) : timeSlots === 'closed' ? (
-                      <p className="mt-1 text-sm text-black/45">В този ден салонът е затворен.</p>
-                    ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
-                      <p className="mt-1 text-sm text-black/45">Няма свободни часове за този ден.</p>
-                    ) : Array.isArray(timeSlots) ? (
-                      <div className="mt-2 grid max-w-full grid-cols-3 gap-2 sm:grid-cols-4">
-                        {timeSlots.map((t) => {
-                          const active = selectedTime === t;
-                          return (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setSelectedTime(t)}
-                              className={`min-w-0 rounded-lg border px-1 py-2.5 text-center text-sm font-medium transition ${
-                                active
-                                  ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/10 text-[color:var(--salon-primary)]'
-                                  : 'border-black/15 bg-white text-[#1a1a1a] hover:border-black/25'
-                              }`}
-                            >
-                              {t}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-sm text-black/45">Първо изберете услуга.</p>
-                    )}
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <label className="block text-xs font-medium text-black/55">Име</label>
-                  <input
-                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="min-w-0">
-                  <label className="block text-xs font-medium text-black/55">Телефон</label>
-                  <input
-                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="min-w-0">
-                  <label className="block text-xs font-medium text-black/55">Бележки (по желание)</label>
-                  <textarea
-                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
-                    rows={2}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
-                </div>
-                {bookingError ? <p className="text-sm text-red-600">{bookingError}</p> : null}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !selectedTime}
-                  className="flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white disabled:opacity-60"
-                  style={{ background: primary }}
-                >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Изпрати заявка
-                </button>
-              </form>
-            )}
-            <button type="button" className="mt-4 w-full text-sm text-[color:var(--salon-primary)]" onClick={closeBookingModal}>
-              Затвори
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <SalonBookingModal
+        open={bookingOpen}
+        primaryColor={primary}
+        services={servicesFromDb}
+        serviceIdx={bookingServiceIdx}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        clientName={clientName}
+        clientPhone={clientPhone}
+        notes={notes}
+        minDate={minDate}
+        maxDate={maxDate}
+        timeSlots={timeSlots}
+        isSubmitting={isSubmitting}
+        bookingError={bookingError}
+        bookingSuccess={bookingSuccess}
+        onClose={closeBookingModal}
+        onServiceChange={setBookingServiceIdx}
+        onDateChange={(date) => {
+          setSelectedDate(date);
+          setSelectedTime('');
+        }}
+        onTimeChange={setSelectedTime}
+        onClientNameChange={setClientName}
+        onClientPhoneChange={setClientPhone}
+        onNotesChange={setNotes}
+        onSubmit={submitBooking}
+      />
 
       {cookieConsent === null ? (
         <div className="fixed bottom-4 left-4 right-4 z-30 pb-[env(safe-area-inset-bottom,0px)] lg:bottom-6 lg:left-auto lg:right-6 lg:max-w-sm lg:pb-0">

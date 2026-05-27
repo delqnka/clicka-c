@@ -1,5 +1,7 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 import { sendBookingNotification, sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resend';
 import { sendBookingTelegram } from '@/lib/telegram';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
@@ -74,6 +76,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    await ensureBookingsSchema();
+  } catch (err) {
+    console.error('[bookings POST] schema', err);
+    return NextResponse.json(
+      { error: 'Резервационната система не е налична. Моля опитайте по-късно.' },
+      { status: 503 },
+    );
+  }
+
   const resolved = await resolveSalonFromRequest(request);
   if ('error' in resolved) return resolved.error;
 
@@ -114,6 +126,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const bookingId = crypto.randomUUID();
+  const priceValue =
+    servicePrice != null && Number.isFinite(Number(servicePrice)) ? Number(servicePrice) : null;
+  const durationValue =
+    serviceDuration != null && Number.isFinite(Number(serviceDuration))
+      ? Math.round(Number(serviceDuration))
+      : null;
+
   let bookings: { id: string }[];
   try {
     bookings = (await sql`
@@ -123,10 +143,10 @@ export async function POST(request: NextRequest) {
         date, time, status, notes
       )
       VALUES (
-        gen_random_uuid()::text,
+        ${bookingId},
         ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')},
         ${clientName}, ${clientPhone}, ${clientEmail ?? null},
-        ${serviceName}, ${servicePrice ?? null}, ${serviceDuration ?? null},
+        ${serviceName}, ${priceValue}, ${durationValue},
         ${date}, ${time}, 'pending', ${notes ?? null}
       )
       RETURNING id
