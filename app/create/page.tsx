@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
@@ -29,7 +29,7 @@ function IconCheck({ color = 'var(--primary)' }: { color?: string }) {
   );
 }
 
-export default function CreatePage() {
+function CreatePageContent() {
   const searchParams = useSearchParams();
   const planParam = searchParams.get('plan');
   const initialPlan = planParam || 'ekip';
@@ -310,5 +310,24 @@ export default function CreatePage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function CreatePageFallback() {
+  return (
+    <div
+      className="flex min-h-dvh items-center justify-center bg-[var(--background)] text-[var(--muted-foreground)]"
+      style={{ fontFamily: "var(--font-body, 'Inter', system-ui, sans-serif)" }}
+    >
+      Зареждане…
+    </div>
+  );
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={<CreatePageFallback />}>
+      <CreatePageContent />
+    </Suspense>
   );
 }
