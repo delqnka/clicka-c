@@ -114,19 +114,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const bookings = await sql`
-    INSERT INTO bookings (
-      salon_id, client_name, client_phone, client_email,
-      service_name, service_price, service_duration,
-      date, time, status, notes
-    )
-    VALUES (
-      ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')}, ${clientName}, ${clientPhone}, ${clientEmail ?? null},
-      ${serviceName}, ${servicePrice ?? null}, ${serviceDuration ?? null},
-      ${date}, ${time}, 'pending', ${notes ?? null}
-    )
-    RETURNING id
-  `;
+  let bookings: { id: string }[];
+  try {
+    bookings = (await sql`
+      INSERT INTO bookings (
+        id, salon_id, client_name, client_phone, client_email,
+        service_name, service_price, service_duration,
+        date, time, status, notes
+      )
+      VALUES (
+        gen_random_uuid()::text,
+        ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')},
+        ${clientName}, ${clientPhone}, ${clientEmail ?? null},
+        ${serviceName}, ${servicePrice ?? null}, ${serviceDuration ?? null},
+        ${date}, ${time}, 'pending', ${notes ?? null}
+      )
+      RETURNING id
+    `) as { id: string }[];
+  } catch (err) {
+    console.error('[bookings POST]', err);
+    return NextResponse.json(
+      { error: 'Резервацията не можа да бъде записана. Моля опитайте отново.' },
+      { status: 500 }
+    );
+  }
+
+  if (!bookings[0]?.id) {
+    return NextResponse.json(
+      { error: 'Резервацията не можа да бъде записана. Моля опитайте отново.' },
+      { status: 500 }
+    );
+  }
 
   const bookingDetails = {
     clientName,

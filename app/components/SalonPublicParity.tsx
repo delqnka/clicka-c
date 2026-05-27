@@ -805,7 +805,7 @@ export default function SalonPublicParity({
     return slots;
   }
 
-  const wh = workingHours ?? {};
+  const wh = openingHoursMerged ?? {};
   const timeSlots: string[] | 'closed' | null = (() => {
     if (bookingServiceIdx === '') return null;
     if (!selectedDate) return null;
@@ -1825,12 +1825,12 @@ export default function SalonPublicParity({
 
       {bookingOpen ? (
         <div
-          className="fixed inset-0 z-[110] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[110] flex items-end justify-center overflow-hidden bg-black/50 p-0 sm:items-center sm:p-4"
           role="dialog"
           aria-modal
           aria-label="Резервация"
         >
-          <div className="max-h-[92vh] w-full max-w-md overflow-auto rounded-t-2xl border border-black/10 bg-white p-5 shadow-xl sm:rounded-2xl">
+          <div className="box-border max-h-[92dvh] w-full max-w-md overflow-x-hidden overflow-y-auto overscroll-contain rounded-t-2xl border border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl sm:rounded-2xl sm:p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-[#1a1a1a]">Резервация</h3>
               <button type="button" className="rounded-full p-2 text-black/55 hover:bg-black/5" onClick={closeBookingModal} aria-label="Затвори">
@@ -1840,11 +1840,11 @@ export default function SalonPublicParity({
             {bookingSuccess ? (
               <p className="text-sm text-[#1a1a1a]">{bookingSuccess}</p>
             ) : (
-              <form onSubmit={submitBooking} className="space-y-3">
-                <div>
+              <form onSubmit={submitBooking} className="min-w-0 space-y-3">
+                <div className="min-w-0">
                   <label className="block text-xs font-medium text-black/55">Услуга</label>
                   <select
-                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
                     value={bookingServiceIdx === '' ? '' : String(bookingServiceIdx)}
                     onChange={(e) => setBookingServiceIdx(e.target.value === '' ? '' : Number(e.target.value))}
                     required
@@ -1858,64 +1858,77 @@ export default function SalonPublicParity({
                     ))}
                   </select>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="min-w-0 space-y-3">
                   <div className="min-w-0">
                     <label className="block text-xs font-medium text-black/55">Дата</label>
                     <input
                       type="date"
-                      className="mt-1 w-full min-w-0 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+                      className="mt-1 box-border w-full max-w-full min-w-0 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
                       min={minDate}
                       max={maxDate}
                       value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedDate(e.target.value);
+                        setSelectedTime('');
+                      }}
                       required
                     />
                   </div>
                   <div className="min-w-0">
                     <label className="block text-xs font-medium text-black/55">Час</label>
-                    <select
-                      className="mt-1 w-full min-w-0 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                      required
-                    >
-                      <option value="">—</option>
-                      {timeSlots === 'closed' ? (
-                        <option value="" disabled>
-                          Затворено
-                        </option>
-                      ) : Array.isArray(timeSlots)
-                        ? timeSlots.map((t) => (
-                            <option key={t} value={t}>
+                    {!selectedDate ? (
+                      <p className="mt-1 text-sm text-black/45">Първо изберете дата.</p>
+                    ) : timeSlots === 'closed' ? (
+                      <p className="mt-1 text-sm text-black/45">В този ден салонът е затворен.</p>
+                    ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
+                      <p className="mt-1 text-sm text-black/45">Няма свободни часове за този ден.</p>
+                    ) : Array.isArray(timeSlots) ? (
+                      <div className="mt-2 grid max-w-full grid-cols-3 gap-2 sm:grid-cols-4">
+                        {timeSlots.map((t) => {
+                          const active = selectedTime === t;
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setSelectedTime(t)}
+                              className={`min-w-0 rounded-lg border px-1 py-2.5 text-center text-sm font-medium transition ${
+                                active
+                                  ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/10 text-[color:var(--salon-primary)]'
+                                  : 'border-black/15 bg-white text-[#1a1a1a] hover:border-black/25'
+                              }`}
+                            >
                               {t}
-                            </option>
-                          ))
-                        : null}
-                    </select>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-sm text-black/45">Първо изберете услуга.</p>
+                    )}
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-medium text-black/55">Име</label>
                   <input
-                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     required
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-medium text-black/55">Телефон</label>
                   <input
-                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     required
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-medium text-black/55">Бележки (по желание)</label>
                   <textarea
-                    className="mt-1 w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+                    className="mt-1 box-border w-full max-w-full rounded-xl border border-black/15 bg-white px-3 py-2.5 text-base shadow-[0_10px_24px_rgba(0,0,0,0.12)] sm:text-sm"
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -1924,7 +1937,7 @@ export default function SalonPublicParity({
                 {bookingError ? <p className="text-sm text-red-600">{bookingError}</p> : null}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !selectedTime}
                   className="flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white disabled:opacity-60"
                   style={{ background: primary }}
                 >

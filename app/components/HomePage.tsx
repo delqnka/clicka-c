@@ -1,14 +1,19 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 import Image from 'next/image';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 import {
+  MarketingAudienceSection,
   MarketingFeaturesSection,
+  MarketingStepsSection,
+  MarketingComparisonSection,
   MarketingFounderSection,
-  MarketingProblemSection,
-  MarketingPromiseSection,
 } from '@/components/marketing/marketing-home-sections';
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { MARKETING_PRICING } from '@/lib/marketing-home-copy';
@@ -31,9 +36,6 @@ function IconCheck({ color = 'var(--primary)' }: { color?: string }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Data
-═══════════════════════════════════════════════════════════ */
 const PLANS = [
   { id: 'solo',   name: 'Solo',   price: 299, daily: '0.82', desc: '1 специалист',     popular: false },
   { id: 'ekip',   name: 'Екип',   price: 399, daily: '1.09', desc: 'до 3 специалисти', popular: true  },
@@ -43,7 +45,7 @@ const PLANS = [
 const SEO_BENEFITS = [
   {
     title: 'Техническо предимство',
-    body: 'Google разбира, че сайтът ти е бърз, сигурен и добре структуриран, което автоматично му дава предимство. Как това ти носи нови клиенти?',
+    body: 'Google разбира, че сайтът ти е бърз, сигурен и добре структуриран, което автоматично му дава предимство.',
   },
   {
     title: 'Безплатни посещения',
@@ -51,11 +53,11 @@ const SEO_BENEFITS = [
   },
   {
     title: 'Бързина, която продава',
-    body: 'Високият SEO резултат означава и светкавично бърз сайт на телефона на клиента, което ги подтиква да направят резервация.',
+    body: 'Високият SEO резултат означава светкавично бърз сайт на телефона на клиента.',
   },
   {
-    title: 'Гарантирано класиране',
-    body: 'Твоят салон ще излиза много по-напред, когато някой в твоя град търси „фризьор в центъра“ или „добър козметик“.',
+    title: 'Локално класиране',
+    body: 'Твоят салон излиза напред, когато някой в твоя град търси „фризьор" или „козметик".',
   },
 ];
 
@@ -69,13 +71,17 @@ const PLAN_FEATURES = [
   'Хостинг включен',
 ];
 
-/* ═══════════════════════════════════════════════════════════
-   Scoped CSS — uses .hp theme tokens from globals.css
-═══════════════════════════════════════════════════════════ */
+const SECTION_LINKS = [
+  { id: 'audience', label: 'За кого е' },
+  { id: 'features', label: 'Какво получаваш' },
+  { id: 'steps', label: 'Как работи' },
+  { id: 'pricing', label: 'Цени' },
+  { id: 'cta', label: 'Старт' },
+] as const;
+
 const CSS = `
   .hp {
     font-family: var(--font-body, 'Inter', system-ui, sans-serif);
-    background: #ffffff;
     background: var(--background);
     color: var(--foreground);
     overflow-x: hidden;
@@ -94,15 +100,52 @@ const CSS = `
     background: color-mix(in srgb, var(--background) 93%, transparent);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 clamp(16px, 5vw, 60px);
   }
 
-  .hp-label {
-    display: inline-flex; align-items: center; gap: 7px;
-    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted-foreground); margin-bottom: 16px;
+  .hp-section-nav {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    z-index: 95;
+    background: color-mix(in srgb, var(--background) 90%, transparent);
+    backdrop-filter: blur(16px) saturate(170%);
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .hp-section-nav::-webkit-scrollbar { display: none; }
+  .hp-section-nav-wrap {
+    display: flex;
+    gap: clamp(16px, 4vw, 28px);
+    padding: 12px clamp(12px, 4vw, 60px);
+    min-width: max-content;
+  }
+  .hp-section-link {
+    display: inline-block;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted-foreground);
+    background: none;
+    border: none;
+    border-radius: 0;
+    text-decoration: none;
+    transition: color .2s ease, text-decoration-color .2s ease;
+    white-space: nowrap;
+  }
+  .hp-section-link:hover {
+    color: #ec4899;
+  }
+  .hp-section-link.active {
+    color: #ec4899;
+    font-weight: 400;
+    text-decoration: underline;
+    text-decoration-color: #ec4899;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
   }
 
   .hp-price-card {
@@ -155,9 +198,9 @@ const CSS = `
     line-height:1.5; padding:4px 0;
   }
 
-  .hp-section-alt { background: var(--background); }
-  .hp-section-card { background: var(--card); border-top: 1px solid var(--border); }
-  .hp-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); display: inline-block; }
+  [data-home-section] {
+    scroll-margin-top: 128px;
+  }
 
   .hp-heading {
     font-weight: 700;
@@ -171,11 +214,19 @@ const CSS = `
   }
 `;
 
-/* ═══════════════════════════════════════════════════════════
-   Page
-═══════════════════════════════════════════════════════════ */
+const HOME_SECTION_IDS = SECTION_LINKS.map((s) => s.id);
+const HEADER_OFFSET = 128;
+
+function getHomeSectionElement(id: string): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>(`[data-home-section="${id}"]`) ??
+    document.getElementById(id)
+  );
+}
+
 export default function HomePage({ activity }: MarketingHomePageProps = {}) {
-  /* Scroll reveal */
+  const [activeSection, setActiveSection] = useState<string>('audience');
+
   useEffect(() => {
     const els = document.querySelectorAll('[data-reveal]');
     const obs = new IntersectionObserver(
@@ -192,55 +243,104 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
     return () => obs.disconnect();
   }, []);
 
+  useEffect(() => {
+    const triggers: ScrollTrigger[] = [];
+
+    const bindSectionSpy = () => {
+      triggers.forEach((t) => t.kill());
+      triggers.length = 0;
+
+      HOME_SECTION_IDS.forEach((id) => {
+        const el = getHomeSectionElement(id);
+        if (!el) return;
+
+        triggers.push(
+          ScrollTrigger.create({
+            trigger: el,
+            start: `top ${HEADER_OFFSET}px`,
+            end: `bottom ${HEADER_OFFSET}px`,
+            onEnter: () => setActiveSection(id),
+            onEnterBack: () => setActiveSection(id),
+          }),
+        );
+      });
+    };
+
+    bindSectionSpy();
+    // FlowArt инициализира pin след mount — превързваме spy след refresh.
+    const delayed = window.setTimeout(bindSectionSpy, 500);
+    const delayedAgain = window.setTimeout(bindSectionSpy, 1200);
+
+    return () => {
+      window.clearTimeout(delayed);
+      window.clearTimeout(delayedAgain);
+      triggers.forEach((t) => t.kill());
+    };
+  }, []);
+
   return (
     <div className="hp">
       <style>{CSS}</style>
 
-      {/* ── NAV ─────────────────────────────────────────────── */}
+      {/* ── NAV ─────────────────────────────────────────── */}
       <header>
       <nav className="hp-nav" aria-label="Главна навигация">
         <ClickaLogo size="nav" priority />
         <ButtonColorful href="/create" label="Стартирай" className="h-9 rounded-full px-5 text-[13px] font-semibold" />
       </nav>
+      <nav className="hp-section-nav" aria-label="Навигация по секции">
+        <div className="hp-section-nav-wrap">
+          {SECTION_LINKS.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className={`hp-section-link ${activeSection === section.id ? 'active' : ''}`}
+            >
+              {section.label}
+            </a>
+          ))}
+        </div>
+      </nav>
       </header>
 
       <main id="main-content">
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* ── HERO ──────────────────────────────────────── */}
       <ClickaHero activity={activity} />
 
-      <MarketingProblemSection />
-      <MarketingPromiseSection />
-      <MarketingFeaturesSection />
-      <MarketingFounderSection />
+      {/* ── FOR WHOM ──────────────────────────────────── */}
+      <MarketingAudienceSection />
 
-      {/* ── SEO 100/100 ─────────────────────────────────────── */}
+      {/* ── WHAT YOU GET ──────────────────────────────── */}
+      <MarketingFeaturesSection />
+
+      {/* ── HOW IT WORKS ──────────────────────────────── */}
+      <MarketingStepsSection />
+
+      {/* ── COMPARISON ────────────────────────────────── */}
+      <MarketingComparisonSection />
+
+      {/* ── SEO 100/100 ───────────────────────────────── */}
       <section
-        className="hp-section-card cv-defer"
+        className="border-t border-[var(--border)] bg-[var(--card)]"
         style={{ padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
         aria-labelledby="seo-h"
       >
         <div className="hp-seo-grid">
           <div>
-            <div className="hp-label">
-              <span className="hp-dot" />
-              SEO резултат
-            </div>
-
             <h2 id="seo-h" className="hp-heading" style={{ fontSize: 'clamp(26px,3.8vw,44px)', marginBottom: 20 }}>
-              Постигни невъзможното:<br />100/100 SEO резултат
+              100/100 SEO резултат в Google
             </h2>
 
             <p style={{ fontSize: 'clamp(15px,1.55vw,17px)', color: 'var(--secondary-foreground)', lineHeight: 1.74, margin: 0 }}>
-              Докато другите само говорят за SEO, ние го доказваме. Това е реалният резултат от теста на Google Lighthouse
-              за нашия демо сайт — перфектна оценка от 100 от 100 за SEO оптимизация. Това означава, че сайтът ти е
-              технически безупречен в очите на Google. Това е твоят билет за предна линия в локалното търсене.
+              Това е реалният резултат от Google Lighthouse за нашия демо сайт. Перфектна оценка от 100 от 100.
+              Сайтът ти е технически безупречен в очите на Google и излиза напред в локалното търсене.
             </p>
           </div>
 
           <figure className="hp-seo-visual">
             <Image
               src="/images/lighthouse-seo-100.webp"
-              alt="Google Lighthouse SEO резултат 100 от 100 и мобилен сайт на салон — Google те обича, а с него и клиентите в твоя град"
+              alt="Google Lighthouse SEO резултат 100 от 100"
               width={576}
               height={1024}
               sizes="(max-width: 900px) 100vw, 50vw"
@@ -252,24 +352,24 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
 
         <div style={{ maxWidth: 760, marginTop: 'clamp(32px, 5vw, 48px)' }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--foreground)', marginBottom: 12, letterSpacing: '-0.01em' }}>
-            Какво получаваш с този перфектен резултат?
+            Какво означава това за теб?
           </p>
           <SeoBenefitsAccordion benefits={SEO_BENEFITS} />
         </div>
       </section>
 
-      {/* ── PRICING ─────────────────────────────────────────── */}
+      {/* ── FOUNDER ───────────────────────────────────── */}
+      <MarketingFounderSection />
+
+      {/* ── PRICING ───────────────────────────────────── */}
       <section
-        className="hp-section-card"
+        id="pricing"
+        data-home-section="pricing"
+        className="border-t border-[var(--border)] bg-[var(--background)]"
         style={{ padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
         aria-labelledby="pricing-h"
       >
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div className="hp-label">
-            <span className="hp-dot" />
-            07 · Цени
-          </div>
-
           <h2 id="pricing-h" data-reveal className="hp-heading" style={{ fontSize: 'clamp(28px,4.2vw,50px)', lineHeight: 1.1, marginBottom: 12 }}>
             {MARKETING_PRICING.title}
           </h2>
@@ -327,42 +427,42 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         </div>
       </section>
 
-      {/* ── FINAL CTA ───────────────────────────────────────── */}
+      {/* ── FINAL CTA ─────────────────────────────────── */}
       <section
+        id="cta"
+        data-home-section="cta"
         style={{ background: 'var(--hp-cta-bg)', padding: 'clamp(80px,12vw,140px) clamp(20px,5vw,60px)', textAlign: 'center' }}
         aria-labelledby="cta-h"
       >
         <div data-reveal style={{ maxWidth: 600, margin: '0 auto' }}>
-          <h2 id="cta-h" className="hp-heading" style={{ fontSize: 'clamp(30px,5vw,58px)', lineHeight: 1.1, color: 'var(--hp-cta-fg)', marginBottom: 20 }}>
-            Готов ли си да спреш<br />да даваш % на другите?
+          <h2 id="cta-h" className="hp-heading" style={{ fontSize: 'clamp(30px,5vw,52px)', lineHeight: 1.1, color: 'var(--hp-cta-fg)', marginBottom: 20 }}>
+            Готов ли си за собствен сайт?
           </h2>
           <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 55%, transparent)', marginBottom: 44, lineHeight: 1.67 }}>
-            Попълни данните, избери план, плати — и сайтът ти е онлайн.<br />
-            Без процент от резервациите. Без скрити такси.
+            Попълни данните, избери план и сайтът ти е онлайн за 15 минути.
           </p>
           <ButtonColorful
             href="/create"
-            label="Стартирай сега"
+            label="Създай своя сайт"
             className="h-14 rounded-full px-12 text-[17px] font-bold"
           />
           <p style={{ marginTop: 20, fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 35%, transparent)' }}>
-            от 0.82 € / ден · без скрити такси · без комисионна
+            от 0.82 € на ден. 0% комисионна. Без скрити такси.
           </p>
         </div>
       </section>
 
       </main>
 
-      {/* ── FOOTER ──────────────────────────────────────────── */}
+      {/* ── FOOTER ────────────────────────────────────── */}
       <footer style={{ background: 'var(--hp-cta-bg)', borderTop: '1px solid color-mix(in srgb, var(--hp-cta-fg) 12%, transparent)', padding: 'clamp(28px,4vw,44px) clamp(20px,5vw,60px)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <ClickaLogo size="footer" variant="on-dark" href={null} />
           <p style={{ fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 30%, transparent)', margin: 0 }}>
-            © {new Date().getFullYear()} clicka.bg · Всички права запазени
+            © {new Date().getFullYear()} clicka.bg
           </p>
         </div>
       </footer>
     </div>
   );
 }
-
