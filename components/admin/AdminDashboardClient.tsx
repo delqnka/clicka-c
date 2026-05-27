@@ -238,6 +238,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
+  const [serviceAddPickerOpen, setServiceAddPickerOpen] = useState(false);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
@@ -245,6 +246,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     done: number;
     total: number;
   } | null>(null);
+  const serviceAddPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
@@ -915,6 +917,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); setNavOpen(false); };
+  function addManualService() {
+    setSite(p => ({
+      ...p,
+      services: [...p.services, { name: '', description: '', category: '', price: 0, duration_min: 30 }],
+    }));
+  }
 
   /* ── Save legal info ── */
   async function saveLegalInfo() {
@@ -1445,52 +1453,71 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               desc={isMobile ? undefined : 'Добави ръчно или качи снимка на ценоразпис — AI попълва услугите.'}
               compact={isMobile}
               action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative' }}>
+                  <input
+                    ref={serviceAddPhotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      void handlePriceListUpload(e.target.files, e.target);
+                      setServiceAddPickerOpen(false);
+                    }}
+                  />
                   <AdminPriceListScanBtn
                     busy={busyKey === 'upload-pricelist' || priceListAnalyzing}
                     onUpload={handlePriceListUpload}
                   />
-                  {!isMobile ? (
-                    <button
-                      type="button"
+                  <button
+                    type="button"
+                    style={{
+                      ...btn('ghost'),
+                      border: 'none',
+                      color: '#fff',
+                      background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                      boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
+                    }}
+                    onClick={() => setServiceAddPickerOpen((v) => !v)}
+                  >
+                    <Plus size={14} />
+                    Добави услуга
+                  </button>
+                  {serviceAddPickerOpen ? (
+                    <div
                       style={{
-                        ...btn('ghost'),
-                        border: 'none',
-                        color: '#fff',
-                        background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
-                        boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        zIndex: 30,
+                        minWidth: 220,
+                        borderRadius: 14,
+                        border: `1px solid ${T.border}`,
+                        background: '#fff',
+                        boxShadow: '0 16px 38px rgba(0,0,0,0.14)',
+                        padding: 8,
+                        display: 'grid',
+                        gap: 6,
                       }}
-                      onClick={() =>
-                        setSite(p => ({
-                          ...p,
-                          services: [...p.services, { name: '', description: '', category: '', price: 0, duration_min: 30 }],
-                        }))
-                      }
                     >
-                      <Plus size={14} />
-                      Добави услуга
-                    </button>
-                  ) : null}
-                  {isMobile ? (
-                    <button
-                      type="button"
-                      style={{
-                        ...btn('ghost'),
-                        border: 'none',
-                        color: '#fff',
-                        background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
-                        boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
-                      }}
-                      onClick={() =>
-                        setSite(p => ({
-                          ...p,
-                          services: [...p.services, { name: '', description: '', category: '', price: 0, duration_min: 30 }],
-                        }))
-                      }
-                    >
-                      <Plus size={14} />
-                      Добави услуга
-                    </button>
+                      <button
+                        type="button"
+                        style={{ ...btn('ghost'), justifyContent: 'flex-start', width: '100%' }}
+                        onClick={() => serviceAddPhotoInputRef.current?.click()}
+                      >
+                        Снимка на ценоразпис
+                      </button>
+                      <button
+                        type="button"
+                        style={{ ...btn('ghost'), justifyContent: 'flex-start', width: '100%' }}
+                        onClick={() => {
+                          addManualService();
+                          setServiceAddPickerOpen(false);
+                        }}
+                      >
+                        Добави ръчно
+                      </button>
+                    </div>
                   ) : null}
                   <AdminSaveBtn
                     label="Запази услугите"
