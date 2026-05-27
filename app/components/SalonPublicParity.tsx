@@ -789,7 +789,7 @@ export default function SalonPublicParity({
     document.body.style.overflow = '';
   }
 
-  const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+  const DAY_KEYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
   function pad(n: number) {
     return String(n).padStart(2, '0');
   }
@@ -811,8 +811,8 @@ export default function SalonPublicParity({
     if (!selectedDate) return null;
     const d = new Date(selectedDate + 'T12:00:00');
     const dayKey = DAY_KEYS[d.getDay()];
-    const h = wh[dayKey] as { open?: string; close?: string; closed?: boolean } | undefined;
-    if (!h || h.closed) return 'closed';
+    const h = wh[dayKey] as { open?: string; close?: string } | null | undefined;
+    if (!h) return 'closed';
     if (!h.open || !h.close) return [];
     return generateSlots(h.open, h.close);
   })();
@@ -821,12 +821,14 @@ export default function SalonPublicParity({
   const [maxDate, setMaxDate] = useState('');
 
   useEffect(() => {
+    const toLocalISODate = (date: Date) => {
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return local.toISOString().split('T')[0];
+    };
     const today = new Date();
-    setMinDate(today.toISOString().split('T')[0]);
+    setMinDate(toLocalISODate(today));
     setMaxDate(
-      new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60)
-        .toISOString()
-        .split('T')[0]
+      toLocalISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60))
     );
   }, []);
 

@@ -36,7 +36,7 @@ type SalonBookingModalProps = {
 };
 
 const fieldClass =
-  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-xl border border-black/15 bg-white px-3 py-3 text-base text-[#1a1a1a] outline-none focus:border-black/30 focus:ring-2 focus:ring-black/10';
+  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-white/60 bg-white/72 px-3.5 py-3 text-[15px] text-[#111] shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_26px_rgba(0,0,0,0.05)] outline-none backdrop-blur-md transition focus:border-white/80 focus:ring-2 focus:ring-white/55';
 
 export function SalonBookingModal({
   open,
@@ -66,27 +66,27 @@ export function SalonBookingModal({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[110] overflow-hidden"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/50" aria-hidden />
+    <div className="fixed inset-0 z-[110] overflow-hidden" role="presentation" onClick={onClose}>
+      <div className="absolute inset-0 bg-[#0b1020]/45 backdrop-blur-[2px]" aria-hidden />
 
       <div
         role="dialog"
         aria-modal
         aria-label="Резервация"
-        className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-h-[min(92dvh,92vh)] w-full max-w-[100vw] flex-col overflow-hidden rounded-t-[1.25rem] bg-white shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
+        className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-h-[100dvh] w-full max-w-[100vw] flex-col overflow-hidden rounded-t-[1.4rem] border border-white/35 bg-[linear-gradient(160deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
         onClick={(e) => e.stopPropagation()}
       >
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.7),transparent_68%)]"
+          aria-hidden
+        />
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-black/15 sm:hidden" aria-hidden />
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/8 px-4 py-3 sm:px-5">
-          <h3 className="text-lg font-semibold text-[#1a1a1a]">Резервация</h3>
+        <div className="relative z-[1] flex shrink-0 items-center justify-between gap-3 border-b border-white/45 bg-white/38 px-4 py-3.5 backdrop-blur-xl sm:px-5">
+          <h3 className="text-lg font-semibold tracking-tight text-[#161616]">Резервация</h3>
           <button
             type="button"
-            className="shrink-0 rounded-full p-2 text-black/55 hover:bg-black/5"
+            className="shrink-0 rounded-full border border-white/60 bg-white/55 p-2 text-black/55 shadow-sm transition hover:bg-white/75"
             onClick={onClose}
             aria-label="Затвори"
           >
@@ -94,13 +94,17 @@ export function SalonBookingModal({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
+        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5">
           {bookingSuccess ? (
-            <p className="text-sm leading-relaxed text-[#1a1a1a]">{bookingSuccess}</p>
+            <p className="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 px-3.5 py-3 text-sm leading-relaxed text-[#0f5132]">
+              {bookingSuccess}
+            </p>
           ) : (
-            <form onSubmit={onSubmit} className="min-w-0 space-y-4">
+            <form onSubmit={onSubmit} className="min-w-0 space-y-3.5">
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-black/55">Услуга</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                  Услуга
+                </label>
                 <select
                   className={`${fieldClass} truncate`}
                   value={serviceIdx === '' ? '' : String(serviceIdx)}
@@ -120,10 +124,12 @@ export function SalonBookingModal({
               </div>
 
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-black/55">Дата</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                  Дата
+                </label>
                 <input
                   type="date"
-                  className={fieldClass}
+                  className={`${fieldClass} w-[min(100%,15rem)]`}
                   min={minDate}
                   max={maxDate}
                   value={selectedDate}
@@ -133,7 +139,9 @@ export function SalonBookingModal({
               </div>
 
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-black/55">Час</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                  Час
+                </label>
                 {!selectedDate ? (
                   <p className="mt-1.5 text-sm text-black/45">Първо изберете дата.</p>
                 ) : timeSlots === 'closed' ? (
@@ -149,10 +157,10 @@ export function SalonBookingModal({
                           key={t}
                           type="button"
                           onClick={() => onTimeChange(t)}
-                          className={`min-w-0 touch-manipulation rounded-lg border px-1 py-2.5 text-center text-sm font-medium transition ${
+                          className={`min-w-0 touch-manipulation rounded-xl border px-1 py-2.5 text-center text-sm font-medium shadow-sm backdrop-blur-md transition ${
                             active
-                              ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/12 text-[color:var(--salon-primary)]'
-                              : 'border-black/15 bg-white text-[#1a1a1a] active:bg-black/5'
+                              ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/16 text-[color:var(--salon-primary)]'
+                              : 'border-white/60 bg-white/65 text-[#1a1a1a] active:bg-white/85'
                           }`}
                         >
                           {t}
@@ -166,7 +174,9 @@ export function SalonBookingModal({
               </div>
 
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-black/55">Име</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                  Име
+                </label>
                 <input
                   className={fieldClass}
                   value={clientName}
@@ -177,7 +187,9 @@ export function SalonBookingModal({
               </div>
 
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-black/55">Телефон</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                  Телефон
+                </label>
                 <input
                   type="tel"
                   className={fieldClass}
@@ -190,7 +202,9 @@ export function SalonBookingModal({
               </div>
 
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-black/55">Бележки (по желание)</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                  Бележки (по желание)
+                </label>
                 <textarea
                   className={`${fieldClass} resize-none`}
                   rows={2}
@@ -208,8 +222,10 @@ export function SalonBookingModal({
               <button
                 type="submit"
                 disabled={isSubmitting || !selectedTime}
-                className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-full py-3.5 text-base font-semibold text-white disabled:opacity-50"
-                style={{ background: primaryColor }}
+                className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-full border border-white/60 py-3.5 text-base font-semibold text-white shadow-[0_12px_28px_rgba(20,20,30,0.25)] disabled:opacity-50"
+                style={{
+                  background: `linear-gradient(135deg, color-mix(in srgb, ${primaryColor} 92%, white), color-mix(in srgb, ${primaryColor} 74%, #2b2b2b))`,
+                }}
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
                 Изпрати заявка
@@ -219,7 +235,7 @@ export function SalonBookingModal({
 
           <button
             type="button"
-            className="mt-4 w-full py-2 text-sm text-[color:var(--salon-primary)]"
+            className="mt-4 w-full rounded-2xl border border-white/60 bg-white/45 py-2.5 text-sm font-medium text-[color:var(--salon-primary)] shadow-sm"
             onClick={onClose}
           >
             Затвори
