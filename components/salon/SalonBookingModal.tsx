@@ -1,6 +1,7 @@
 'use client';
 
-import { Loader2, X } from 'lucide-react';
+import { Check, Loader2, Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 export type BookingServiceOption = {
   id: string;
@@ -13,11 +14,14 @@ type SalonBookingModalProps = {
   open: boolean;
   primaryColor: string;
   services: BookingServiceOption[];
-  serviceIdx: number | '';
+  selectedServiceIdxs: number[];
   selectedDate: string;
   selectedTime: string;
+  totalDuration: number;
+  totalPrice: number;
   clientName: string;
   clientPhone: string;
+  clientEmail: string;
   notes: string;
   minDate: string;
   maxDate: string;
@@ -26,27 +30,40 @@ type SalonBookingModalProps = {
   bookingError: string;
   bookingSuccess: string;
   onClose: () => void;
-  onServiceChange: (idx: number | '') => void;
+  onToggleService: (idx: number) => void;
   onDateChange: (date: string) => void;
   onTimeChange: (time: string) => void;
   onClientNameChange: (v: string) => void;
   onClientPhoneChange: (v: string) => void;
+  onClientEmailChange: (v: string) => void;
   onNotesChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
 };
 
 const fieldClass =
-  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-white/60 bg-white/72 px-3.5 py-3 text-[15px] text-[#111] shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_26px_rgba(0,0,0,0.05)] outline-none backdrop-blur-md transition focus:border-white/80 focus:ring-2 focus:ring-white/55';
+  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-white/60 bg-white/72 px-3.5 py-3 text-base text-[#111] shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_26px_rgba(0,0,0,0.05)] outline-none backdrop-blur-md transition focus:border-white/80 focus:ring-2 focus:ring-white/55';
+
+function addMinutesToTime(time: string, minutesToAdd: number): string {
+  const [h, m] = time.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return time;
+  const total = h * 60 + m + minutesToAdd;
+  const outH = Math.floor(total / 60) % 24;
+  const outM = total % 60;
+  return `${String(outH).padStart(2, '0')}:${String(outM).padStart(2, '0')}`;
+}
 
 export function SalonBookingModal({
   open,
   primaryColor,
   services,
-  serviceIdx,
+  selectedServiceIdxs,
   selectedDate,
   selectedTime,
+  totalDuration,
+  totalPrice,
   clientName,
   clientPhone,
+  clientEmail,
   notes,
   minDate,
   maxDate,
@@ -55,14 +72,33 @@ export function SalonBookingModal({
   bookingError,
   bookingSuccess,
   onClose,
-  onServiceChange,
+  onToggleService,
   onDateChange,
   onTimeChange,
   onClientNameChange,
   onClientPhoneChange,
+  onClientEmailChange,
   onNotesChange,
   onSubmit,
 }: SalonBookingModalProps) {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  useEffect(() => {
+    if (open) setStep(1);
+  }, [open]);
+
+  const hasServices = selectedServiceIdxs.length > 0;
+  const endTime = useMemo(
+    () => (selectedTime ? addMinutesToTime(selectedTime, Math.max(5, totalDuration || 0)) : ''),
+    [selectedTime, totalDuration]
+  );
+  const selectedServices = useMemo(
+    () =>
+      selectedServiceIdxs
+        .map((idx) => services[idx])
+        .filter((svc): svc is BookingServiceOption => Boolean(svc)),
+    [selectedServiceIdxs, services]
+  );
+
   if (!open) return null;
 
   return (
@@ -95,123 +131,204 @@ export function SalonBookingModal({
         </div>
 
         <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5">
+          <div className="mb-3 flex items-center gap-2">
+            {[1, 2, 3].map((n) => {
+              const active = step === n;
+              const complete = step > n;
+              return (
+                <div key={n} className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                      active || complete ? 'bg-[color:var(--salon-primary)] text-white' : 'bg-black/10 text-black/55'
+                    }`}
+                  >
+                    {complete ? <Check className="h-3.5 w-3.5" /> : n}
+                  </span>
+                  {n < 3 ? <span className="h-px w-6 bg-black/15" /> : null}
+                </div>
+              );
+            })}
+          </div>
+
           {bookingSuccess ? (
             <p className="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 px-3.5 py-3 text-sm leading-relaxed text-[#0f5132]">
               {bookingSuccess}
             </p>
           ) : (
             <form onSubmit={onSubmit} className="min-w-0 space-y-3.5">
-              <div className="min-w-0">
-                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
-                  Услуга
-                </label>
-                <select
-                  className={`${fieldClass} truncate`}
-                  value={serviceIdx === '' ? '' : String(serviceIdx)}
-                  onChange={(e) =>
-                    onServiceChange(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  required
-                >
-                  <option value="">Изберете услуга</option>
-                  {services.map((s, i) => (
-                    <option key={s.id} value={i} title={s.name}>
-                      {s.name}
-                      {s.price != null ? ` — ${s.price} €` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="min-w-0">
-                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
-                  Дата
-                </label>
-                <input
-                  type="date"
-                  className={`${fieldClass} w-[min(100%,15rem)]`}
-                  min={minDate}
-                  max={maxDate}
-                  value={selectedDate}
-                  onChange={(e) => onDateChange(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="min-w-0">
-                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
-                  Час
-                </label>
-                {!selectedDate ? (
-                  <p className="mt-1.5 text-sm text-black/45">Първо изберете дата.</p>
-                ) : timeSlots === 'closed' ? (
-                  <p className="mt-1.5 text-sm text-black/45">В този ден салонът е затворен.</p>
-                ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
-                  <p className="mt-1.5 text-sm text-black/45">Няма свободни часове.</p>
-                ) : Array.isArray(timeSlots) ? (
-                  <div className="mt-2 grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4">
-                    {timeSlots.map((t) => {
-                      const active = selectedTime === t;
-                      return (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => onTimeChange(t)}
-                          className={`min-w-0 touch-manipulation rounded-xl border px-1 py-2.5 text-center text-sm font-medium shadow-sm backdrop-blur-md transition ${
+              {step === 1 ? (
+                <div className="space-y-2.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
+                    1/3 Услуги
+                  </p>
+                  {services.map((s, i) => {
+                    const active = selectedServiceIdxs.includes(i);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => onToggleService(i)}
+                        className={`flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${
+                          active
+                            ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/12'
+                            : 'border-white/60 bg-white/70'
+                        }`}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-[15px] font-semibold text-[#131313]">{s.name}</span>
+                          <span className="mt-0.5 block text-sm text-black/55">
+                            {s.duration} мин · {s.price ?? 0} EUR
+                          </span>
+                        </span>
+                        <span
+                          className={`ml-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
                             active
-                              ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/16 text-[color:var(--salon-primary)]'
-                              : 'border-white/60 bg-white/65 text-[#1a1a1a] active:bg-white/85'
+                              ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)] text-white'
+                              : 'border-black/15 bg-white text-black/60'
                           }`}
                         >
-                          {t}
-                        </button>
-                      );
-                    })}
+                          {active ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {step === 2 ? (
+                <div className="space-y-3.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
+                    2/3 Дата и час
+                  </p>
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                      Дата
+                    </label>
+                    <input
+                      type="date"
+                      className={`${fieldClass} w-[min(100%,15rem)]`}
+                      min={minDate}
+                      max={maxDate}
+                      value={selectedDate}
+                      onChange={(e) => onDateChange(e.target.value)}
+                      required
+                    />
                   </div>
-                ) : (
-                  <p className="mt-1.5 text-sm text-black/45">Първо изберете услуга.</p>
-                )}
-              </div>
 
-              <div className="min-w-0">
-                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
-                  Име
-                </label>
-                <input
-                  className={fieldClass}
-                  value={clientName}
-                  onChange={(e) => onClientNameChange(e.target.value)}
-                  autoComplete="name"
-                  required
-                />
-              </div>
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                      Час
+                    </label>
+                    {!selectedDate ? (
+                      <p className="mt-1.5 text-sm text-black/45">Първо изберете дата.</p>
+                    ) : timeSlots === 'closed' ? (
+                      <p className="mt-1.5 text-sm text-black/45">В този ден салонът е затворен.</p>
+                    ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
+                      <p className="mt-1.5 text-sm text-black/45">Няма свободни часове за избраните услуги.</p>
+                    ) : Array.isArray(timeSlots) ? (
+                      <div className="mt-2 grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4">
+                        {timeSlots.map((t) => {
+                          const active = selectedTime === t;
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => onTimeChange(t)}
+                              className={`min-w-0 touch-manipulation rounded-xl border px-1 py-2.5 text-center text-sm font-medium shadow-sm backdrop-blur-md transition ${
+                                active
+                                  ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/16 text-[color:var(--salon-primary)]'
+                                  : 'border-white/60 bg-white/65 text-[#1a1a1a] active:bg-white/85'
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="mt-1.5 text-sm text-black/45">Първо изберете услуга.</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
 
-              <div className="min-w-0">
-                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
-                  Телефон
-                </label>
-                <input
-                  type="tel"
-                  className={fieldClass}
-                  value={clientPhone}
-                  onChange={(e) => onClientPhoneChange(e.target.value)}
-                  autoComplete="tel"
-                  inputMode="tel"
-                  required
-                />
-              </div>
+              {step === 3 ? (
+                <div className="space-y-3.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
+                    3/3 Данни за контакт
+                  </p>
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                      Име
+                    </label>
+                    <input
+                      className={fieldClass}
+                      value={clientName}
+                      onChange={(e) => onClientNameChange(e.target.value)}
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
 
-              <div className="min-w-0">
-                <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
-                  Бележки (по желание)
-                </label>
-                <textarea
-                  className={`${fieldClass} resize-none`}
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => onNotesChange(e.target.value)}
-                />
-              </div>
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                      Телефон
+                    </label>
+                    <input
+                      type="tel"
+                      className={fieldClass}
+                      value={clientPhone}
+                      onChange={(e) => onClientPhoneChange(e.target.value)}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                      Имейл
+                    </label>
+                    <input
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      className={fieldClass}
+                      value={clientEmail}
+                      onChange={(e) => onClientEmailChange(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                      Бележки (по желание)
+                    </label>
+                    <textarea
+                      className={`${fieldClass} resize-none`}
+                      rows={2}
+                      value={notes}
+                      onChange={(e) => onNotesChange(e.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {hasServices ? (
+                <div className="rounded-2xl border border-white/65 bg-white/60 px-3.5 py-3">
+                  <p className="text-sm font-semibold text-[#171717]">
+                    Общо: {Math.max(0, totalDuration)} мин · {totalPrice.toFixed(2)} EUR
+                  </p>
+                  {selectedTime ? (
+                    <p className="mt-1 text-sm text-black/60">
+                      Старт {selectedTime} · Готови около {endTime}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-black/45 truncate">
+                    {selectedServices.map((s) => s.name).join(' + ')}
+                  </p>
+                </div>
+              ) : null}
 
               {bookingError ? (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
@@ -219,17 +336,45 @@ export function SalonBookingModal({
                 </p>
               ) : null}
 
-              <button
-                type="submit"
-                disabled={isSubmitting || !selectedTime}
-                className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-full border border-white/60 py-3.5 text-base font-semibold text-white shadow-[0_12px_28px_rgba(20,20,30,0.25)] disabled:opacity-50"
-                style={{
-                  background: `linear-gradient(135deg, color-mix(in srgb, ${primaryColor} 92%, white), color-mix(in srgb, ${primaryColor} 74%, #2b2b2b))`,
-                }}
-              >
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                Изпрати заявка
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
+                  disabled={step === 1}
+                  className="rounded-full border border-white/60 bg-white/60 py-3 text-sm font-semibold text-black/65 disabled:opacity-40"
+                >
+                  Назад
+                </button>
+                {step < 3 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (step === 1 && !hasServices) return;
+                      if (step === 2 && !selectedTime) return;
+                      setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
+                    }}
+                    disabled={(step === 1 && !hasServices) || (step === 2 && !selectedTime)}
+                    className="rounded-full border border-white/60 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                    style={{
+                      background: `linear-gradient(135deg, color-mix(in srgb, ${primaryColor} 92%, white), color-mix(in srgb, ${primaryColor} 74%, #2b2b2b))`,
+                    }}
+                  >
+                    Продължи
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !selectedTime || !hasServices}
+                    className="flex items-center justify-center gap-2 rounded-full border border-white/60 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                    style={{
+                      background: `linear-gradient(135deg, color-mix(in srgb, ${primaryColor} 92%, white), color-mix(in srgb, ${primaryColor} 74%, #2b2b2b))`,
+                    }}
+                  >
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                    Изпрати заявка
+                  </button>
+                )}
+              </div>
             </form>
           )}
 

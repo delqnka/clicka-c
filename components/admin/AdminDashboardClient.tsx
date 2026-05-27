@@ -12,6 +12,7 @@ import {
   ImagePlus,
   Scissors,
   UserRound,
+  Users,
   Save,
   ExternalLink,
   LogOut,
@@ -73,12 +74,13 @@ const TABS = [
   { id: 'services',      label: 'Услуги',         Icon: Scissors },
   { id: 'hours',         label: 'Работно време',  Icon: Clock3 },
   { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
+  { id: 'clients',       label: 'Клиенти',        Icon: Users },
   { id: 'domain',        label: 'Домейн',         Icon: Globe },
   { id: 'notifications', label: 'Известия',       Icon: Bell },
   { id: 'legal',         label: 'Правни',         Icon: FileText },
 ] as const;
 
-const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings']);
+const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings', 'clients']);
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
 
@@ -100,6 +102,15 @@ type Props = {
 };
 
 type BookingStatus = BookingRecord['status'];
+type ClientSummary = {
+  key: string;
+  name: string;
+  phone: string;
+  email: string;
+  visits: number;
+  totalSpent: number;
+  lastVisit: string;
+};
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -222,6 +233,37 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     statusFilter === 'all' ? bookings : bookings.filter(b => b.status === statusFilter),
     [bookings, statusFilter]
   );
+  const clients = useMemo<ClientSummary[]>(() => {
+    const map = new Map<string, ClientSummary>();
+    for (const b of bookings) {
+      const phone = String(b.client_phone ?? '').trim();
+      const email = String(b.client_email ?? '').trim().toLowerCase();
+      const name = String(b.client_name ?? '').trim();
+      const key = email || phone || b.id;
+      const spent = typeof b.service_price === 'number' ? b.service_price : 0;
+      const visitMoment = `${b.date}T${b.time || '00:00'}:00`;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, {
+          key,
+          name: name || 'Клиент',
+          phone,
+          email,
+          visits: 1,
+          totalSpent: spent,
+          lastVisit: visitMoment,
+        });
+      } else {
+        existing.visits += 1;
+        existing.totalSpent += spent;
+        if (visitMoment > existing.lastVisit) existing.lastVisit = visitMoment;
+        if (!existing.phone && phone) existing.phone = phone;
+        if (!existing.email && email) existing.email = email;
+        if (existing.name === 'Клиент' && name) existing.name = name;
+      }
+    }
+    return [...map.values()].sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
+  }, [bookings]);
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -1585,6 +1627,50 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </Section>
+          )}
+
+          {/* ── Клиенти ── */}
+          {activeTab === 'clients' && (
+            <Section title="Клиенти" desc={`${clients.length} уникални`}>
+              {clients.length === 0 ? (
+                <EmptyState title="Няма клиенти" desc="Когато имаш резервации, тук ще се появят клиентите ти." />
+              ) : (
+                <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
+                  {clients.map(client => (
+                    <div
+                      key={client.key}
+                      style={{
+                        border: isMobile ? 'none' : `1px solid ${T.border}`,
+                        borderRadius: isMobile ? 18 : T.radiusSm,
+                        padding: isMobile ? '16px 18px' : '14px 16px',
+                        background: T.surface,
+                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600 }}>{client.name}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted }}>
+                            {client.phone || 'Няма телефон'}
+                            {client.email ? ` · ${client.email}` : ''}
+                          </p>
+                          <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle }}>
+                            Последна резервация: {new Date(client.lastVisit).toLocaleString('bg-BG', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>Посещения</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>{client.visits}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: T.muted }}>
+                            {formatSalonPrice(client.totalSpent)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </Section>

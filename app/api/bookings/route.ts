@@ -119,11 +119,17 @@ export async function POST(request: NextRequest) {
     notes,
   } = body;
 
-  if (!clientName || !clientPhone || !serviceName || !date || !time) {
+  if (!clientName || !clientPhone || !clientEmail || !serviceName || !date || !time) {
     return NextResponse.json(
       { error: 'Моля попълнете всички задължителни полета' },
       { status: 400 }
     );
+  }
+
+  const normalizedClientEmail = String(clientEmail).trim().toLowerCase();
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(normalizedClientEmail)) {
+    return NextResponse.json({ error: 'Моля, въведете валиден имейл адрес.' }, { status: 400 });
   }
 
   const bookingId = crypto.randomUUID();
@@ -145,7 +151,7 @@ export async function POST(request: NextRequest) {
       VALUES (
         ${bookingId},
         ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')},
-        ${clientName}, ${clientPhone}, ${clientEmail ?? null},
+        ${clientName}, ${clientPhone}, ${normalizedClientEmail},
         ${serviceName}, ${priceValue}, ${durationValue},
         ${date}, ${time}, 'pending', ${notes ?? null}
       )
@@ -169,7 +175,7 @@ export async function POST(request: NextRequest) {
   const bookingDetails = {
     clientName,
     clientPhone,
-    clientEmail,
+    clientEmail: normalizedClientEmail,
     serviceName,
     servicePrice,
     serviceDuration,
@@ -192,16 +198,14 @@ export async function POST(request: NextRequest) {
     notifPromises.push(sendBookingNotification(resolved.salon.email, bookingDetails));
   }
 
-  if (clientEmail) {
-    notifPromises.push(sendBookingConfirmation(clientEmail, bookingDetails));
-  }
+  notifPromises.push(sendBookingConfirmation(normalizedClientEmail, bookingDetails));
 
   const telegramChatId = String((resolved.salon as Record<string, unknown>).telegram_chat_id ?? '').trim();
   if (telegramChatId) {
     notifPromises.push(
       sendBookingTelegram(telegramChatId, {
         ...bookingDetails,
-        clientEmail: clientEmail ?? null,
+        clientEmail: normalizedClientEmail,
       })
     );
   }

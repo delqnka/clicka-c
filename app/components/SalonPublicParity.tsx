@@ -467,11 +467,12 @@ export default function SalonPublicParity({
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const [bookingOpen, setBookingOpen] = useState(false);
-  const [bookingServiceIdx, setBookingServiceIdx] = useState<number | ''>('');
+  const [bookingServiceIdxs, setBookingServiceIdxs] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
@@ -773,12 +774,13 @@ export default function SalonPublicParity({
   function openBookingModal(serviceIdx?: number) {
     setBookingError('');
     setBookingSuccess('');
-    if (serviceIdx !== undefined) setBookingServiceIdx(serviceIdx);
-    else setBookingServiceIdx('');
+    if (serviceIdx !== undefined && serviceIdx >= 0) setBookingServiceIdxs([serviceIdx]);
+    else setBookingServiceIdxs([]);
     setSelectedDate('');
     setSelectedTime('');
     setClientName('');
     setClientPhone('');
+    setClientEmail('');
     setNotes('');
     setBookingOpen(true);
     document.body.style.overflow = 'hidden';
@@ -806,15 +808,39 @@ export default function SalonPublicParity({
   }
 
   const wh = openingHoursMerged ?? {};
+  const selectedBookingServices = useMemo(
+    () =>
+      bookingServiceIdxs
+        .map((idx) => servicesFromDb[idx])
+        .filter((svc): svc is ServiceRow => Boolean(svc)),
+    [bookingServiceIdxs, servicesFromDb]
+  );
+  const bookingTotalDuration = useMemo(
+    () => selectedBookingServices.reduce((sum, svc) => sum + (Number(svc.duration) || 0), 0),
+    [selectedBookingServices]
+  );
+  const bookingTotalPrice = useMemo(
+    () => selectedBookingServices.reduce((sum, svc) => sum + (Number(svc.price) || 0), 0),
+    [selectedBookingServices]
+  );
   const timeSlots: string[] | 'closed' | null = (() => {
-    if (bookingServiceIdx === '') return null;
+    if (bookingServiceIdxs.length === 0) return null;
     if (!selectedDate) return null;
     const d = new Date(selectedDate + 'T12:00:00');
     const dayKey = DAY_KEYS[d.getDay()];
     const h = wh[dayKey] as { open?: string; close?: string } | null | undefined;
     if (!h) return 'closed';
     if (!h.open || !h.close) return [];
-    return generateSlots(h.open, h.close);
+    const totalDuration = Math.max(5, bookingTotalDuration || 30);
+    const [oh, om] = h.open.split(':').map(Number);
+    const [ch, cm] = h.close.split(':').map(Number);
+    const start = oh * 60 + om;
+    const latestStart = ch * 60 + cm - totalDuration;
+    const slots: string[] = [];
+    for (let t = start; t <= latestStart; t += 30) {
+      slots.push(`${pad(Math.floor(t / 60))}:${pad(t % 60)}`);
+    }
+    return slots;
   })();
 
   const [minDate, setMinDate] = useState('');
@@ -836,13 +862,15 @@ export default function SalonPublicParity({
     e.preventDefault();
     setBookingError('');
     setBookingSuccess('');
-    if (bookingServiceIdx === '') return setBookingError('Моля, изберете услуга.');
+    if (bookingServiceIdxs.length === 0) return setBookingError('Моля, изберете поне една услуга.');
     if (!clientName.trim()) return setBookingError('Моля, въведете вашето име.');
     if (!clientPhone.trim()) return setBookingError('Моля, въведете телефонен номер.');
+    if (!clientEmail.trim()) return setBookingError('Моля, въведете имейл.');
     if (!selectedDate) return setBookingError('Моля, изберете дата.');
     if (!selectedTime) return setBookingError('Моля, изберете час.');
-    const svc = servicesFromDb[Number(bookingServiceIdx)];
-    if (!svc) return setBookingError('Невалидна услуга.');
+    if (selectedBookingServices.length === 0) return setBookingError('Невалидна услуга.');
+    const combinedServiceName = selectedBookingServices.map((s) => s.name).join(' + ');
+    const combinedDuration = bookingTotalDuration || 30;
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/bookings?slug=${encodeURIComponent(salonSlug)}`, {
@@ -851,9 +879,10 @@ export default function SalonPublicParity({
         body: JSON.stringify({
           clientName: clientName.trim(),
           clientPhone: clientPhone.trim(),
-          serviceName: svc.name,
-          servicePrice: svc.price ?? 0,
-          serviceDuration: Number(svc.duration) || 30,
+          clientEmail: clientEmail.trim().toLowerCase(),
+          serviceName: combinedServiceName,
+          servicePrice: bookingTotalPrice,
+          serviceDuration: combinedDuration,
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
@@ -872,7 +901,7 @@ export default function SalonPublicParity({
         day: 'numeric',
         month: 'long',
       });
-      setBookingSuccess(`${svc.name} — ${dateLabel} в ${selectedTime} ч.`);
+      setBookingSuccess(`${combinedServiceName} — ${dateLabel} в ${selectedTime} ч.`);
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
     } finally {
@@ -1835,11 +1864,14 @@ export default function SalonPublicParity({
         open={bookingOpen}
         primaryColor={primary}
         services={servicesFromDb}
-        serviceIdx={bookingServiceIdx}
+        selectedServiceIdxs={bookingServiceIdxs}
         selectedDate={selectedDate}
         selectedTime={selectedTime}
+        totalDuration={bookingTotalDuration}
+        totalPrice={bookingTotalPrice}
         clientName={clientName}
         clientPhone={clientPhone}
+        clientEmail={clientEmail}
         notes={notes}
         minDate={minDate}
         maxDate={maxDate}
@@ -1848,7 +1880,14 @@ export default function SalonPublicParity({
         bookingError={bookingError}
         bookingSuccess={bookingSuccess}
         onClose={closeBookingModal}
-        onServiceChange={setBookingServiceIdx}
+        onToggleService={(idx) => {
+          setBookingServiceIdxs((prev) => {
+            const has = prev.includes(idx);
+            const next = has ? prev.filter((x) => x !== idx) : [...prev, idx];
+            return next;
+          });
+          setSelectedTime('');
+        }}
         onDateChange={(date) => {
           setSelectedDate(date);
           setSelectedTime('');
@@ -1856,6 +1895,7 @@ export default function SalonPublicParity({
         onTimeChange={setSelectedTime}
         onClientNameChange={setClientName}
         onClientPhoneChange={setClientPhone}
+        onClientEmailChange={setClientEmail}
         onNotesChange={setNotes}
         onSubmit={submitBooking}
       />
