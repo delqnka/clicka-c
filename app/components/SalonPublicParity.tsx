@@ -40,6 +40,7 @@ import {
   mergeOpeningHours,
   type OpeningDayRecord,
 } from '@/lib/salon-opening-hours';
+import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 import {
   parseSalonVenueExtras,
   SALON_PARKING_KEYS,
@@ -416,6 +417,15 @@ export default function SalonPublicParity({
   const openingHoursMerged: OpeningDayRecord = mergeOpeningHours(
     workingHours,
     rawSalon.opening_hours
+  );
+  const bookingBlocks = useMemo(
+    () =>
+      normalizeBookingBlocks(
+        rawSalon.opening_hours && typeof rawSalon.opening_hours === 'object'
+          ? (rawSalon.opening_hours as Record<string, unknown>).booking_blocks
+          : null
+      ),
+    [rawSalon.opening_hours]
   );
   const [currentStatusLabel, setCurrentStatusLabel] = useState('');
   const currentStatusIsOpen = currentStatusLabel.startsWith('Отворено');
@@ -830,6 +840,7 @@ export default function SalonPublicParity({
     const dayKey = DAY_KEYS[d.getDay()];
     const h = wh[dayKey] as { open?: string; close?: string } | null | undefined;
     if (!h) return 'closed';
+    if (isDateBlockedAllDay(bookingBlocks, selectedDate)) return 'closed';
     if (!h.open || !h.close) return [];
     const totalDuration = Math.max(5, bookingTotalDuration || 30);
     const [oh, om] = h.open.split(':').map(Number);
@@ -838,7 +849,10 @@ export default function SalonPublicParity({
     const latestStart = ch * 60 + cm - totalDuration;
     const slots: string[] = [];
     for (let t = start; t <= latestStart; t += 30) {
-      slots.push(`${pad(Math.floor(t / 60))}:${pad(t % 60)}`);
+      const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
+      if (!isBlockedForStartTime(bookingBlocks, selectedDate, slot, totalDuration)) {
+        slots.push(slot);
+      }
     }
     return slots;
   })();

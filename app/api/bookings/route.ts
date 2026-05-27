@@ -5,6 +5,7 @@ import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 import { sendBookingNotification, sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resend';
 import { sendBookingTelegram } from '@/lib/telegram';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
+import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
@@ -29,6 +30,7 @@ async function resolveSalonFromRequest(request: NextRequest) {
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address,
            telegram_chat_id, google_place_id
+           , opening_hours
     FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
   `;
@@ -147,6 +149,24 @@ export async function POST(request: NextRequest) {
     serviceDuration != null && Number.isFinite(Number(serviceDuration))
       ? Math.round(Number(serviceDuration))
       : null;
+
+  const bookingBlocks = normalizeBookingBlocks(
+    resolved.salon.opening_hours && typeof resolved.salon.opening_hours === 'object'
+      ? (resolved.salon.opening_hours as Record<string, unknown>).booking_blocks
+      : null
+  );
+  if (isDateBlockedAllDay(bookingBlocks, date)) {
+    return NextResponse.json(
+      { error: 'Салонът не работи на избраната дата. Моля изберете друга.' },
+      { status: 400 }
+    );
+  }
+  if (isBlockedForStartTime(bookingBlocks, date, time, durationValue ?? 30)) {
+    return NextResponse.json(
+      { error: 'Избраният час е блокиран. Моля изберете друг свободен час.' },
+      { status: 400 }
+    );
+  }
 
   let bookings: { id: string }[];
   try {

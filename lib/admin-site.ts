@@ -11,6 +11,7 @@ import {
   type SalonFaqItem,
   type SalonVisitorInfo,
 } from '@/lib/salon-visitor-info';
+import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 
 export type LegalInfoPayload = LegalInfoStored;
 
@@ -67,6 +68,7 @@ export type AdminSitePayload = {
   ownerPublicPhotoUrl: string;
   services: ServiceItem[];
   workingHours: WorkingHours;
+  bookingBlocks: BookingBlock[];
   customDomain: string;
   domainStatus: string;
   domainConfig: unknown;
@@ -137,7 +139,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       cover_image_url, logo_image_url, gallery_images,
       owner_name, owner_public_role, owner_public_photo_url,
-      services, working_hours,
+      services, working_hours, opening_hours,
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code,
       site_status, legal_info, latitude, longitude,
@@ -179,6 +181,11 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),
     services: normalizeServices(row.services),
     workingHours: normalizeWorkingHours(row.working_hours),
+    bookingBlocks: normalizeBookingBlocks(
+      row.opening_hours && typeof row.opening_hours === 'object'
+        ? (row.opening_hours as Record<string, unknown>).booking_blocks
+        : null
+    ),
     customDomain: String(row.custom_domain ?? ''),
     domainStatus: String(row.domain_status ?? ''),
     domainConfig: row.domain_config ?? null,

@@ -40,6 +40,7 @@ import {
 } from '@/components/admin/price-list-services-import';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
+import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
 import {
@@ -539,10 +540,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     try {
       const res = await fetch(`/api/admin/site-hours?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workingHours: site.workingHours }),
+        body: JSON.stringify({ workingHours: site.workingHours, bookingBlocks: site.bookingBlocks }),
       });
       const data = await guardResponse(res);
-      setSite(prev => ({ ...prev, workingHours: data.workingHours as WorkingHours }));
+      setSite(prev => ({
+        ...prev,
+        workingHours: data.workingHours as WorkingHours,
+        bookingBlocks: (data.bookingBlocks ?? []) as BookingBlock[],
+      }));
       setNotice('Работното време е запазено.');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
@@ -960,6 +965,28 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         height: isMobile ? 52 : 56,
       }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '0 16px' : '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={() => setNavOpen(true)}
+              aria-label="Отвори меню"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: 'none',
+                background: '#F4F4F5',
+                color: T.text,
+                flexShrink: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <Menu size={18} />
+            </button>
+          ) : null}
           {/* Brand */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
             {!isMobile && (
@@ -1054,7 +1081,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
+            <div
+              style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'pointer' }}
+              onClick={() => setNavOpen(false)}
+              role="button"
+              aria-label="Затвори менюто"
+            >
               <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5E5' }} />
             </div>
 
@@ -1569,7 +1601,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'hours' && (
             <Section
               title="Работно време"
-              desc="Настрой часовете за всеки ден от седмицата."
+              desc="Настрой часовете и блокирай конкретни дни/часове."
               action={<button type="button" onClick={saveHours} style={btn('primary')} disabled={busyKey === 'hours'}>{busyKey === 'hours' ? 'Запазваме…' : 'Запази'}</button>}
             >
               <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
@@ -1633,6 +1665,118 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   );
                 })}
               </div>
+
+              <div style={{ marginTop: 14 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: T.text }}>
+                  Изключения (блокирани дни и часове)
+                </p>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {site.bookingBlocks.map((block, i) => (
+                    <div
+                      key={`${block.date}-${block.start ?? 'allday'}-${i}`}
+                      style={{
+                        border: isMobile ? 'none' : `1px solid ${T.border}`,
+                        borderRadius: isMobile ? 16 : T.radiusSm,
+                        padding: isMobile ? '14px 14px' : '10px 12px',
+                        background: T.surface,
+                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                      }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '160px 110px 110px auto', gap: 8 }}>
+                        <input
+                          type="date"
+                          value={block.date}
+                          onChange={(e) =>
+                            setSite((p) => ({
+                              ...p,
+                              bookingBlocks: p.bookingBlocks.map((b, j) =>
+                                j === i ? { ...b, date: e.target.value } : b
+                              ),
+                            }))
+                          }
+                          style={inp}
+                        />
+                        <input
+                          type="time"
+                          value={block.start ?? ''}
+                          onChange={(e) =>
+                            setSite((p) => ({
+                              ...p,
+                              bookingBlocks: p.bookingBlocks.map((b, j) =>
+                                j === i ? { ...b, allDay: false, start: e.target.value || '00:00' } : b
+                              ),
+                            }))
+                          }
+                          disabled={block.allDay}
+                          style={inp}
+                        />
+                        <input
+                          type="time"
+                          value={block.end ?? ''}
+                          onChange={(e) =>
+                            setSite((p) => ({
+                              ...p,
+                              bookingBlocks: p.bookingBlocks.map((b, j) =>
+                                j === i ? { ...b, allDay: false, end: e.target.value || '23:59' } : b
+                              ),
+                            }))
+                          }
+                          disabled={block.allDay}
+                          style={inp}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, gridColumn: isMobile ? '1 / -1' : undefined }}>
+                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.muted }}>
+                            <input
+                              type="checkbox"
+                              checked={block.allDay}
+                              onChange={(e) =>
+                                setSite((p) => ({
+                                  ...p,
+                                  bookingBlocks: p.bookingBlocks.map((b, j) =>
+                                    j === i
+                                      ? e.target.checked
+                                        ? { ...b, allDay: true, start: undefined, end: undefined }
+                                        : { ...b, allDay: false, start: b.start || '09:00', end: b.end || '10:00' }
+                                      : b
+                                  ),
+                                }))
+                              }
+                            />
+                            Цял ден
+                          </label>
+                          <button
+                            type="button"
+                            style={{ ...btn('ghost'), color: '#EF4444', padding: '6px 10px' }}
+                            onClick={() =>
+                              setSite((p) => ({
+                                ...p,
+                                bookingBlocks: p.bookingBlocks.filter((_, j) => j !== i),
+                              }))
+                            }
+                          >
+                            Премахни
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    style={{ ...btn('ghost'), justifyContent: 'center' }}
+                    onClick={() => {
+                      const today = new Date();
+                      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                      setSite((p) => ({
+                        ...p,
+                        bookingBlocks: [...p.bookingBlocks, { date, allDay: true }],
+                      }));
+                    }}
+                  >
+                    <Plus size={14} />
+                    Добави блокиран ден/часове
+                  </button>
+                </div>
+              </div>
             </Section>
           )}
 
@@ -1640,17 +1784,21 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'bookings' && (
             <Section
               title="Резервации"
-              desc={`${bookings.length} общо`}
               action={
-                !isMobile ? (
-                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
-                    <option value="all">Всички</option>
-                    <option value="pending">Чакащи</option>
-                    <option value="confirmed">Потвърдени</option>
-                    <option value="completed">Завършени</option>
-                    <option value="cancelled">Отказани</option>
-                  </select>
-                ) : undefined
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
+                    {bookings.length} общо
+                  </span>
+                  {!isMobile ? (
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
+                      <option value="all">Всички</option>
+                      <option value="pending">Чакащи</option>
+                      <option value="confirmed">Потвърдени</option>
+                      <option value="completed">Завършени</option>
+                      <option value="cancelled">Отказани</option>
+                    </select>
+                  ) : null}
+                </div>
               }
             >
               {/* Mobile filter chips */}
@@ -1829,7 +1977,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
           {/* ── Клиенти ── */}
           {activeTab === 'clients' && (
-            <Section title="Клиенти" desc={`${clients.length} уникални`}>
+            <Section
+              title="Клиенти"
+              action={
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
+                  {clients.length} уникални
+                </span>
+              }
+            >
               {clients.length === 0 ? (
                 <EmptyState title="Няма клиенти" desc="Когато имаш резервации, тук ще се появят клиентите ти." />
               ) : (
@@ -2079,43 +2234,41 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
           borderTop: '0.5px solid rgba(0,0,0,0.08)',
         }}>
-          <div style={{ display: 'flex', paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))' }}>
+          <div style={{ display: 'flex', paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))' }}>
             {TAB_BAR_TABS.map(({ id, label, Icon }) => {
               const active = activeTab === id && !navOpen;
               return (
                 <button key={id} type="button" onClick={() => switchTab(id)}
                   style={{
                     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                    padding: '10px 4px 4px', border: 'none', background: 'transparent',
+                    padding: '12px 4px 6px', border: 'none', background: 'transparent',
                     color: active ? T.text : T.subtle,
-                    cursor: 'pointer', minHeight: 50,
+                    cursor: 'pointer', minHeight: 58,
                     WebkitTapHighlightColor: 'transparent',
                     position: 'relative',
                   }}>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon size={22} strokeWidth={active ? 2.2 : 1.5} />
+                  <div
+                    style={{
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: active ? 34 : 28,
+                      height: active ? 34 : 28,
+                      borderRadius: 999,
+                      background: active ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' : 'transparent',
+                      color: active ? '#fff' : T.subtle,
+                      boxShadow: active ? '0 8px 20px rgba(124,58,237,0.35)' : 'none',
+                      transition: 'all 180ms ease',
+                    }}
+                  >
+                    <Icon size={active ? 22 : 20} strokeWidth={active ? 2.3 : 1.5} />
                   </div>
                   <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, letterSpacing: '-0.01em' }}>{label.split(' ')[0]}</span>
-                  {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2.5, borderRadius: 2, background: T.text }} />}
+                  {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 3, borderRadius: 3, background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }} />}
                 </button>
               );
             })}
-            {/* Още button */}
-            <button type="button" onClick={() => setNavOpen(o => !o)}
-              style={{
-                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                padding: '10px 4px 4px', border: 'none', background: 'transparent',
-                color: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? T.text : T.subtle,
-                cursor: 'pointer', minHeight: 50,
-                WebkitTapHighlightColor: 'transparent',
-                position: 'relative',
-              }}>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Menu size={22} strokeWidth={navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 2.2 : 1.5} />
-              </div>
-              <span style={{ fontSize: 10, fontWeight: navOpen || (!TAB_BAR_IDS.has(activeTab)) ? 600 : 400 }}>Още</span>
-              {(navOpen || !TAB_BAR_IDS.has(activeTab)) && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2.5, borderRadius: 2, background: T.text }} />}
-            </button>
           </div>
         </nav>
       )}
