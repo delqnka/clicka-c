@@ -976,10 +976,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 justifyContent: 'center',
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: 999,
                 border: 'none',
-                background: '#F4F4F5',
-                color: T.text,
+                background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                color: '#fff',
+                boxShadow: '0 8px 20px rgba(124,58,237,0.32)',
                 flexShrink: 0,
                 cursor: 'pointer',
               }}
@@ -1083,11 +1084,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             {/* Handle */}
             <div
               style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'pointer' }}
-              onClick={() => setNavOpen(false)}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setNavOpen(false); }}
               role="button"
               aria-label="Затвори менюто"
             >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5E5' }} />
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D4D4D8' }} />
             </div>
 
             <div style={{ padding: '4px 16px 8px' }}>
@@ -1110,11 +1111,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   >
                     <div style={{
                       width: 40, height: 40, borderRadius: 12,
-                      background: active ? T.accent : '#F4F4F5',
+                      background: active ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' : '#F4F4F5',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                       transition: 'background 200ms ease',
                     }}>
-                      <Icon size={20} strokeWidth={1.8} style={{ color: active ? '#fff' : T.muted }} />
+                      <Icon size={20} strokeWidth={1.8} style={{ color: active ? '#fff' : '#000' }} />
                     </div>
                     <span style={{ fontSize: 16, fontWeight: active ? 600 : 400, letterSpacing: '-0.01em' }}>{label}</span>
                     {active && <ChevronRight size={16} style={{ marginLeft: 'auto', color: T.subtle }} />}
@@ -1452,16 +1453,43 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   {!isMobile ? (
                     <button
                       type="button"
-                      style={btn('ghost')}
+                      style={{
+                        ...btn('ghost'),
+                        border: 'none',
+                        color: '#fff',
+                        background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                        boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
+                      }}
                       onClick={() =>
                         setSite(p => ({
                           ...p,
-                          services: [...p.services, { name: '', price: 0, duration_min: 30 }],
+                          services: [...p.services, { name: '', description: '', category: '', price: 0, duration_min: 30 }],
                         }))
                       }
                     >
                       <Plus size={14} />
-                      Добави
+                      Добави услуга
+                    </button>
+                  ) : null}
+                  {isMobile ? (
+                    <button
+                      type="button"
+                      style={{
+                        ...btn('ghost'),
+                        border: 'none',
+                        color: '#fff',
+                        background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                        boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
+                      }}
+                      onClick={() =>
+                        setSite(p => ({
+                          ...p,
+                          services: [...p.services, { name: '', description: '', category: '', price: 0, duration_min: 30 }],
+                        }))
+                      }
+                    >
+                      <Plus size={14} />
+                      Добави услуга
                     </button>
                   ) : null}
                   <AdminSaveBtn
@@ -1483,22 +1511,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
               />
 
-              {isMobile ? (
-                <button
-                  type="button"
-                  style={{ ...btn('ghost'), width: '100%', marginBottom: 12, justifyContent: 'center' }}
-                  onClick={() =>
-                    setSite(p => ({
-                      ...p,
-                      services: [...p.services, { name: '', price: 0, duration_min: 30 }],
-                    }))
-                  }
-                >
-                  <Plus size={14} />
-                  Добави услуга ръчно
-                </button>
-              ) : null}
-
               {site.services.length === 0 && !priceListAnalyzing ? (
                 <EmptyState
                   title="Няма услуги"
@@ -1506,90 +1518,123 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 />
               ) : (
                 <div style={{ display: 'grid', gap: isMobile ? 12 : 10 }}>
-                  {site.services.map((svc, i) => (
-                    <div
-                      key={`svc-${i}`}
-                      style={{
-                        border: isMobile ? 'none' : `1px solid ${T.border}`,
-                        borderRadius: isMobile ? 18 : T.radiusSm,
-                        padding: isMobile ? '16px 18px' : 14,
-                        background: T.surface,
-                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: isMobile
-                            ? '1fr 1fr'
-                            : '1fr auto auto auto',
-                          gap: isMobile ? 10 : 10,
-                          alignItems: 'end',
-                        }}
-                      >
-                        <Field label="Услуга" style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-                          <input
-                            value={svc.name}
-                            onChange={e =>
-                              setSite(p => ({
-                                ...p,
-                                services: p.services.map((s, j) =>
-                                  j === i ? { ...s, name: e.target.value } : s,
-                                ),
-                              }))
-                            }
-                            style={inp}
-                            placeholder="Напр. Подстригване"
-                          />
-                        </Field>
-                        <Field label="Цена (€)">
-                          <input
-                            type="number"
-                            value={svc.price}
-                            onChange={e =>
-                              setSite(p => ({
-                                ...p,
-                                services: p.services.map((s, j) =>
-                                  j === i ? { ...s, price: Number(e.target.value) || 0 } : s,
-                                ),
-                              }))
-                            }
-                            style={{ ...inp, width: isMobile ? '100%' : 80 }}
-                          />
-                        </Field>
-                        <Field label="Мин">
-                          <input
-                            type="number"
-                            value={svc.duration_min}
-                            onChange={e =>
-                              setSite(p => ({
-                                ...p,
-                                services: p.services.map((s, j) =>
-                                  j === i ? { ...s, duration_min: Number(e.target.value) || 30 } : s,
-                                ),
-                              }))
-                            }
-                            style={{ ...inp, width: isMobile ? '100%' : 70 }}
-                          />
-                        </Field>
-                        <button
-                          type="button"
+                  {Array.from(
+                    site.services.reduce((map, svc, i) => {
+                      const key = String((svc as { category?: string }).category ?? '').trim() || 'Без категория';
+                      const arr = map.get(key) ?? [];
+                      arr.push({ svc, i });
+                      map.set(key, arr);
+                      return map;
+                    }, new Map<string, { svc: (typeof site.services)[number]; i: number }[]>())
+                  ).map(([category, items]) => (
+                    <div key={category} style={{ display: 'grid', gap: 8 }}>
+                      <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {category}
+                      </p>
+                      {items.map(({ svc, i }) => (
+                        <div
+                          key={`svc-${i}`}
                           style={{
-                            ...btn('ghost'),
-                            color: '#EF4444',
-                            padding: isMobile ? '10px' : '8px 10px',
-                            width: isMobile ? '100%' : undefined,
-                            gridColumn: isMobile ? '1 / -1' : undefined,
-                            justifyContent: 'center',
+                            border: isMobile ? 'none' : `1px solid ${T.border}`,
+                            borderRadius: isMobile ? 18 : T.radiusSm,
+                            padding: isMobile ? '16px 18px' : 14,
+                            background: T.surface,
+                            boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
                           }}
-                          onClick={() =>
-                            setSite(p => ({ ...p, services: p.services.filter((_, j) => j !== i) }))
-                          }
                         >
-                          <Trash2 size={14} />
-                          {isMobile ? ' Премахни' : null}
-                        </button>
-                      </div>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr auto auto auto',
+                              gap: isMobile ? 10 : 10,
+                              alignItems: 'end',
+                            }}
+                          >
+                            <Field label="Услуга" style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
+                              <input
+                                value={svc.name}
+                                onChange={e =>
+                                  setSite(p => ({
+                                    ...p,
+                                    services: p.services.map((s, j) => (j === i ? { ...s, name: e.target.value } : s)),
+                                  }))
+                                }
+                                style={inp}
+                                placeholder="Напр. Подстригване"
+                              />
+                            </Field>
+                            <Field label="Категория" style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
+                              <input
+                                value={(svc as { category?: string }).category ?? ''}
+                                onChange={e =>
+                                  setSite(p => ({
+                                    ...p,
+                                    services: p.services.map((s, j) => (j === i ? { ...s, category: e.target.value } : s)),
+                                  }))
+                                }
+                                style={inp}
+                                placeholder="Напр. Коса"
+                              />
+                            </Field>
+                            <Field label="Описание" style={isMobile ? { gridColumn: '1 / -1' } : { gridColumn: '1 / -1' }}>
+                              <input
+                                value={(svc as { description?: string }).description ?? ''}
+                                onChange={e =>
+                                  setSite(p => ({
+                                    ...p,
+                                    services: p.services.map((s, j) => (j === i ? { ...s, description: e.target.value } : s)),
+                                  }))
+                                }
+                                style={inp}
+                                placeholder="Кратко описание на услугата"
+                              />
+                            </Field>
+                            <Field label="Цена (€)">
+                              <input
+                                type="number"
+                                value={svc.price}
+                                onChange={e =>
+                                  setSite(p => ({
+                                    ...p,
+                                    services: p.services.map((s, j) => (j === i ? { ...s, price: Number(e.target.value) || 0 } : s)),
+                                  }))
+                                }
+                                style={{ ...inp, width: isMobile ? '100%' : 80 }}
+                              />
+                            </Field>
+                            <Field label="Мин">
+                              <input
+                                type="number"
+                                value={svc.duration_min}
+                                onChange={e =>
+                                  setSite(p => ({
+                                    ...p,
+                                    services: p.services.map((s, j) => (j === i ? { ...s, duration_min: Number(e.target.value) || 30 } : s)),
+                                  }))
+                                }
+                                style={{ ...inp, width: isMobile ? '100%' : 70 }}
+                              />
+                            </Field>
+                            <button
+                              type="button"
+                              style={{
+                                ...btn('ghost'),
+                                color: '#EF4444',
+                                padding: isMobile ? '10px' : '8px 10px',
+                                width: isMobile ? '100%' : undefined,
+                                gridColumn: isMobile ? '1 / -1' : undefined,
+                                justifyContent: 'center',
+                              }}
+                              onClick={() =>
+                                setSite(p => ({ ...p, services: p.services.filter((_, j) => j !== i) }))
+                              }
+                            >
+                              <Trash2 size={14} />
+                              {isMobile ? ' Премахни' : null}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -2242,7 +2287,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   style={{
                     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                     padding: '12px 4px 6px', border: 'none', background: 'transparent',
-                    color: active ? T.text : T.subtle,
+                    color: '#000',
                     cursor: 'pointer', minHeight: 58,
                     WebkitTapHighlightColor: 'transparent',
                     position: 'relative',
@@ -2257,14 +2302,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       height: active ? 34 : 28,
                       borderRadius: 999,
                       background: active ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' : 'transparent',
-                      color: active ? '#fff' : T.subtle,
+                      color: active ? '#fff' : '#000',
                       boxShadow: active ? '0 8px 20px rgba(124,58,237,0.35)' : 'none',
                       transition: 'all 180ms ease',
                     }}
                   >
                     <Icon size={active ? 22 : 20} strokeWidth={active ? 2.3 : 1.5} />
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, letterSpacing: '-0.01em' }}>{label.split(' ')[0]}</span>
+                  <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, letterSpacing: '-0.01em', color: '#000' }}>{label.split(' ')[0]}</span>
                   {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 3, borderRadius: 3, background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }} />}
                 </button>
               );

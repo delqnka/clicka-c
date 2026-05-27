@@ -25,6 +25,8 @@ export type WorkingHours = Record<string, WorkingDay>;
 
 export type ServiceItem = {
   name: string;
+  description?: string;
+  category?: string;
   price: number;
   duration_min: number;
 };
@@ -101,6 +103,8 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
       if (!name) return null;
       return {
         name,
+        description: String(row.description ?? '').trim() || undefined,
+        category: String(row.category ?? '').trim() || undefined,
         price: Math.max(0, Number(row.price ?? 0) || 0),
         duration_min: Math.max(5, Number(row.duration_min ?? row.duration ?? 30) || 30),
       };

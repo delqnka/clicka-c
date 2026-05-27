@@ -74,10 +74,10 @@ export function PriceListServicesImport({
       <div
         style={{
           marginBottom: 16,
-          padding: isMobile ? '16px 14px' : '18px 16px',
-          border: '1.5px dashed #E5E3DE',
-          borderRadius: 14,
-          background: '#FAFAFA',
+          padding: isMobile ? '10px 0' : '10px 0',
+          border: 'none',
+          borderRadius: 0,
+          background: 'transparent',
           display: 'flex',
           alignItems: isMobile ? 'stretch' : 'center',
           justifyContent: 'space-between',
@@ -86,7 +86,7 @@ export function PriceListServicesImport({
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#18181B' }}>Ценоразпис с AI</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#18181B' }}>Ценоразпис с AI</p>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
             Снимай хартиения си ценоразпис — услугите се добавят автоматично.
           </p>
