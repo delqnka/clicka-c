@@ -111,6 +111,13 @@ type ClientSummary = {
   totalSpent: number;
   lastVisit: string;
 };
+type GoogleReviewsStatus = {
+  loading: boolean;
+  connected: boolean;
+  count: number;
+  source: 'openrouter' | 'google_maps' | 'none' | null;
+  reason: string | null;
+};
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -145,6 +152,22 @@ function formatDomainStatus(s: string) {
   };
   return map[s] ?? s ?? 'Не е свързан';
 }
+
+function formatBgDateDMY(dateStr: string) {
+  const s = String(dateStr ?? '').trim();
+  if (!s) return '';
+  const direct = new Date(`${s}T12:00:00`);
+  if (!Number.isNaN(direct.getTime())) {
+    return direct.toLocaleDateString('bg-BG');
+  }
+  return s;
+}
+
+function ymdKey(year: number, monthIndex: number, day: number) {
+  return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+const CALENDAR_DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 
 function useIsMobileLayout(bp = 768) {
   const [m, setM] = useState(() => {
@@ -192,6 +215,19 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [error, setError]         = useState('');
   const [notice, setNotice]       = useState('');
   const [busyKey, setBusyKey]     = useState('');
+  const [googleReviewsStatus, setGoogleReviewsStatus] = useState<GoogleReviewsStatus>({
+    loading: false,
+    connected: false,
+    count: 0,
+    source: null,
+    reason: null,
+  });
+  const [googleReviewsProbeTick, setGoogleReviewsProbeTick] = useState(0);
+  const [calendarCursor, setCalendarCursor] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
@@ -233,6 +269,34 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     statusFilter === 'all' ? bookings : bookings.filter(b => b.status === statusFilter),
     [bookings, statusFilter]
   );
+  const visibleBookings = useMemo(
+    () =>
+      selectedCalendarDate
+        ? filteredBookings.filter(b => String(b.date) === selectedCalendarDate)
+        : filteredBookings,
+    [filteredBookings, selectedCalendarDate]
+  );
+  const bookingsCountByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const b of filteredBookings) {
+      const key = String(b.date ?? '').trim();
+      if (!key) continue;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return map;
+  }, [filteredBookings]);
+  const calendarMonthLabel = useMemo(
+    () => calendarCursor.toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' }),
+    [calendarCursor]
+  );
+  const calendarMeta = useMemo(() => {
+    const year = calendarCursor.getFullYear();
+    const month = calendarCursor.getMonth();
+    const first = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const mondayFirstOffset = (first.getDay() + 6) % 7;
+    return { year, month, daysInMonth, mondayFirstOffset };
+  }, [calendarCursor]);
   const clients = useMemo<ClientSummary[]>(() => {
     const map = new Map<string, ClientSummary>();
     for (const b of bookings) {
@@ -290,6 +354,56 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     const t = window.setTimeout(() => void refreshDomainStatus(true), 6000);
     return () => window.clearTimeout(t);
   }, [activeTab, site.customDomain, site.domainStatus, busyKey]);
+
+  useEffect(() => {
+    if (!site.googlePlaceId.trim()) {
+      setGoogleReviewsStatus({
+        loading: false,
+        connected: false,
+        count: 0,
+        source: null,
+        reason: 'missing_place_id',
+      });
+      return;
+    }
+    if (activeTab !== 'notifications') return;
+    let cancelled = false;
+    const run = async () => {
+      setGoogleReviewsStatus((prev) => ({ ...prev, loading: true }));
+      try {
+        const res = await fetch(`/api/admin/google-reviews-status?slug=${encodeURIComponent(slug)}`);
+        const data = await readJson(res) as {
+          connected?: boolean;
+          count?: number;
+          source?: 'openrouter' | 'google_maps' | 'none';
+          reason?: string | null;
+        };
+        if (!cancelled) {
+          setGoogleReviewsStatus({
+            loading: false,
+            connected: data.connected === true,
+            count: Number(data.count ?? 0) || 0,
+            source: data.source ?? 'none',
+            reason: data.reason ?? null,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setGoogleReviewsStatus({
+            loading: false,
+            connected: false,
+            count: 0,
+            source: 'none',
+            reason: 'probe_failed',
+          });
+        }
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, site.googlePlaceId, slug, googleReviewsProbeTick]);
 
   /* ── Handlers ── */
   async function guardResponse(res: Response) {
@@ -1569,11 +1683,92 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 </div>
               )}
 
-              {filteredBookings.length === 0 ? (
+              <div
+                style={{
+                  marginBottom: 14,
+                  border: isMobile ? 'none' : `1px solid ${T.border}`,
+                  borderRadius: isMobile ? 18 : 14,
+                  background: T.surface,
+                  padding: isMobile ? '14px 14px 12px' : '14px 16px',
+                  boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                    style={{ ...btn('ghost'), padding: '6px 10px' }}
+                  >
+                    ←
+                  </button>
+                  <p style={{ margin: 0, fontSize: isMobile ? 15 : 14, fontWeight: 700, textTransform: 'capitalize' }}>
+                    {calendarMonthLabel}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    style={{ ...btn('ghost'), padding: '6px 10px' }}
+                  >
+                    →
+                  </button>
+                </div>
+
+                <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
+                  {CALENDAR_DAY_NAMES.map((day) => (
+                    <div key={day} style={{ textAlign: 'center', fontSize: 11, color: T.subtle, fontWeight: 700 }}>
+                      {day}
+                    </div>
+                  ))}
+                  {Array.from({ length: calendarMeta.mondayFirstOffset }).map((_, i) => (
+                    <div key={`offset-${i}`} />
+                  ))}
+                  {Array.from({ length: calendarMeta.daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const key = ymdKey(calendarMeta.year, calendarMeta.month, day);
+                    const count = bookingsCountByDate.get(key) ?? 0;
+                    const active = selectedCalendarDate === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedCalendarDate(prev => (prev === key ? null : key))}
+                        style={{
+                          border: 'none',
+                          borderRadius: 12,
+                          minHeight: 42,
+                          background: active ? T.accent : count > 0 ? '#4F46E5' : '#F4F4F5',
+                          color: active || count > 0 ? '#fff' : T.text,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: '6px 4px',
+                        }}
+                      >
+                        <div>{day}</div>
+                        {count > 0 ? <div style={{ fontSize: 10, opacity: 0.85 }}>{count}</div> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedCalendarDate ? (
+                  <p style={{ margin: '10px 2px 0', fontSize: 12, color: T.muted }}>
+                    Филтър: {formatBgDateDMY(selectedCalendarDate)}{' '}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCalendarDate(null)}
+                      style={{ border: 'none', background: 'none', color: T.accent, cursor: 'pointer', padding: 0 }}
+                    >
+                      (изчисти)
+                    </button>
+                  </p>
+                ) : null}
+              </div>
+
+              {visibleBookings.length === 0 ? (
                 <EmptyState title="Няма резервации" desc="Когато клиент резервира през сайта, ще я видиш тук." />
               ) : (
                 <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
-                  {filteredBookings.map(b => {
+                  {visibleBookings.map(b => {
                     const cfg = STATUS_CFG[b.status];
                     return (
                       <div key={b.id} style={{
@@ -1597,7 +1792,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                               {typeof b.service_price === 'number' ? ` · ${formatSalonPrice(b.service_price)}` : ''}
                             </p>
                             <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
-                              {b.date} · {b.time}
+                              {formatBgDateDMY(b.date)} · {b.time}
                               {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
                             </p>
                             <p style={{ margin: '2px 0 0', fontSize: 13, color: T.subtle }}>
@@ -1836,11 +2031,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 {/* Google Reviews */}
                 <InfoCard
                   title="Google Reviews"
-                  status={site.googlePlaceId ? 'connected' : 'pending'}
+                  status={googleReviewsStatus.connected ? 'connected' : 'pending'}
                 >
                   <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
                     {site.googlePlaceId
-                      ? 'Google Place ID е зададен. Отзивите се извличат за сайта и клиентите получават покана след завършена услуга.'
+                      ? googleReviewsStatus.loading
+                        ? 'Проверяваме реално дали се зареждат ревюта от Google...'
+                        : googleReviewsStatus.connected
+                          ? `Ревютата са активни (${googleReviewsStatus.count}). Източник: ${googleReviewsStatus.source === 'google_maps' ? 'Google Maps API' : 'OpenRouter'}.`
+                          : 'Place ID е зададен, но не успяхме да заредим ревюта. Провери дали ID е на правилния профил и дали API ключовете са налични.'
                       : (
                         <>
                           Добави Google Place ID в раздел <strong>Сайт</strong> — виж{' '}
@@ -1856,6 +2055,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         </>
                       )}
                   </p>
+                  {site.googlePlaceId ? (
+                    <button
+                      type="button"
+                      onClick={() => setGoogleReviewsProbeTick((v) => v + 1)}
+                      style={{ ...btn('sm-ghost'), marginTop: 8 }}
+                    >
+                      Обнови статуса
+                    </button>
+                  ) : null}
                 </InfoCard>
               </div>
             </Section>

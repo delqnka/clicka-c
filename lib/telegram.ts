@@ -3,6 +3,12 @@ import { formatSalonPrice } from '@/lib/salon-currency';
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
+function formatBgDateDMY(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('bg-BG');
+}
+
 async function telegramPost(method: string, body: Record<string, unknown>): Promise<void> {
   if (!BOT_TOKEN) return;
   try {
@@ -37,6 +43,7 @@ export async function sendBookingTelegram(
   chatId: string,
   booking: BookingTelegramDetails
 ): Promise<void> {
+  const formattedDate = formatBgDateDMY(booking.date);
   const lines: string[] = [
     `<b>📅 Нова резервация</b>`,
     `<b>${booking.salonName}</b>`,
@@ -52,7 +59,7 @@ export async function sendBookingTelegram(
   if (booking.servicePrice != null) lines.push(`💰 ${formatSalonPrice(booking.servicePrice)}`);
   if (booking.serviceDuration) lines.push(`⏱ ${booking.serviceDuration} мин`);
 
-  lines.push(`🗓 ${booking.date} в ${booking.time}`);
+  lines.push(`🗓 ${formattedDate} в ${booking.time}`);
 
   if (booking.notes) lines.push(`📝 ${booking.notes}`);
 

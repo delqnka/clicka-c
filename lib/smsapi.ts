@@ -3,6 +3,12 @@ const SMSAPI_ENDPOINT = 'https://api.smsapi.com/sms.do';
 const TEMPLATE =
   'Здравейте {clientName}, напомняме Ви, че имате резервация за {serviceName} в {salonName} {date} от {time} часа. При невъзможност, моля свържете се с нас на {phone}.';
 
+function formatBgDateDMY(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('bg-BG');
+}
+
 function formatPhone(phone: string): string {
   const cleaned = phone.replace(/\s+/g, '');
   return cleaned.startsWith('0') ? '+359' + cleaned.slice(1) : cleaned;
@@ -17,11 +23,12 @@ export async function sendSmsReminder(
   date: string,
   time: string
 ): Promise<{ success: boolean; error?: string }> {
+  const formattedDate = formatBgDateDMY(date);
   const message = TEMPLATE
     .replace('{clientName}', clientName)
     .replace('{serviceName}', serviceName)
     .replace('{salonName}', salonName)
-    .replace('{date}', date)
+    .replace('{date}', formattedDate)
     .replace('{time}', time)
     .replace('{phone}', salonPhone);
 

@@ -3,6 +3,12 @@ import { formatSalonPrice } from '@/lib/salon-currency';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+function formatBgDateDMY(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('bg-BG');
+}
+
 export interface BookingDetails {
   clientName: string;
   clientPhone: string;
@@ -46,6 +52,7 @@ export async function sendBookingNotification(
   salonEmail: string,
   booking: BookingDetails
 ): Promise<void> {
+  const formattedDate = formatBgDateDMY(booking.date);
   const salonRows = [
     renderRow('Клиент', booking.clientName),
     renderRow('Телефон', booking.clientPhone),
@@ -53,7 +60,7 @@ export async function sendBookingNotification(
     renderRow('Услуга', booking.serviceName),
     booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
     booking.servicePrice != null ? renderRow('Цена', formatSalonPrice(booking.servicePrice)) : '',
-    renderRow('Дата', booking.date),
+    renderRow('Дата', formattedDate),
     renderRow('Час', booking.time),
     booking.notes ? renderRow('Бележка', booking.notes) : '',
   ].join('');
@@ -122,12 +129,13 @@ export async function sendBookingConfirmation(
   clientEmail: string,
   booking: BookingDetails
 ): Promise<void> {
+  const formattedDate = formatBgDateDMY(booking.date);
   const clientRows = [
     renderRow('Име', booking.clientName),
     renderRow('Услуга', booking.serviceName),
     booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
     booking.servicePrice != null ? renderRow('Цена', formatSalonPrice(booking.servicePrice)) : '',
-    renderRow('Дата', booking.date),
+    renderRow('Дата', formattedDate),
     renderRow('Час', booking.time),
     booking.salonPhone ? renderRow('Телефон на салона', booking.salonPhone) : '',
     booking.salonAddress ? renderRow('Адрес', booking.salonAddress) : '',
@@ -138,7 +146,7 @@ export async function sendBookingConfirmation(
     from: senderFromSalonName(booking.salonName),
     to: clientEmail,
     reply_to: booking.salonEmail || undefined,
-    subject: `Резервация в ${booking.salonName} – ${booking.date} ${booking.time}`,
+    subject: `Резервация в ${booking.salonName} – ${formattedDate} ${booking.time}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="margin: 0 0 16px; color: #000;">Получихме вашата резервация</h2>

@@ -8,6 +8,11 @@ import {
 import { getOpenRouterApiKey } from '@/lib/openrouter';
 
 export type { GoogleReviewLite };
+export type GoogleReviewsProbe = {
+  reviews: GoogleReviewLite[];
+  source: 'openrouter' | 'google_maps' | 'none';
+  reason?: string;
+};
 
 async function fetchGoogleReviewsFromMapsApi(placeId: string): Promise<GoogleReviewLite[]> {
   const key = process.env.GOOGLE_MAPS_SERVER_KEY;
@@ -33,16 +38,26 @@ async function fetchGoogleReviewsFromMapsApi(placeId: string): Promise<GoogleRev
   }
 }
 
-async function fetchGoogleReviewsForPlaceUncached(placeId: string): Promise<GoogleReviewLite[]> {
+export async function probeGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewsProbe> {
   const id = placeId.trim();
-  if (!id) return [];
+  if (!id) return { reviews: [], source: 'none', reason: 'missing_place_id' };
 
   if (getOpenRouterApiKey()) {
     const fromOpenRouter = await fetchGoogleReviewsViaOpenRouter(id);
-    if (fromOpenRouter.length > 0) return fromOpenRouter;
+    if (fromOpenRouter.length > 0) return { reviews: fromOpenRouter, source: 'openrouter' };
   }
 
-  return fetchGoogleReviewsFromMapsApi(id);
+  const hasMapsKey = Boolean(process.env.GOOGLE_MAPS_SERVER_KEY?.trim());
+  if (hasMapsKey) {
+    const fromMaps = await fetchGoogleReviewsFromMapsApi(id);
+    if (fromMaps.length > 0) return { reviews: fromMaps, source: 'google_maps' };
+  }
+
+  if (!getOpenRouterApiKey() && !hasMapsKey) {
+    return { reviews: [], source: 'none', reason: 'missing_openrouter_and_maps_keys' };
+  }
+
+  return { reviews: [], source: 'none', reason: 'no_reviews_or_invalid_place_id' };
 }
 
 /**
@@ -54,7 +69,7 @@ export async function fetchGoogleReviewsForPlace(placeId: string): Promise<Googl
   if (!id) return [];
 
   return unstable_cache(
-    () => fetchGoogleReviewsForPlaceUncached(id),
+    async () => (await probeGoogleReviewsForPlace(id)).reviews,
     ['google-reviews', id],
     { revalidate: 3600 },
   )();

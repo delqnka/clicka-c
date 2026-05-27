@@ -8,6 +8,12 @@ import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
+function formatBgDateDMY(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('bg-BG');
+}
+
 async function resolveSalonFromRequest(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const lookup = await resolveSalonBySlugOrHost({
@@ -217,7 +223,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     bookingId: bookings[0].id,
-    message: `Резервацията е потвърдена за ${date} в ${time}. Очакваме ви!`,
+    message: `Резервацията е потвърдена за ${formatBgDateDMY(date)} в ${time}. Очакваме ви!`,
   });
 }
 
