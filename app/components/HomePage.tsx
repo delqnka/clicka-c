@@ -327,7 +327,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       >
         <div className="hp-seo-grid">
           <div>
-            <h2 id="seo-h" className="hp-heading" style={{ fontSize: 'clamp(26px,3.8vw,44px)', marginBottom: 20 }}>
+            <h2 id="seo-h" className="hp-heading bg-clip-text" style={{ fontSize: 'clamp(26px,3.8vw,44px)', marginBottom: 20, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', color: 'transparent' }}>
               100/100 SEO резултат в Google
             </h2>
 
@@ -370,7 +370,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         aria-labelledby="pricing-h"
       >
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <h2 id="pricing-h" data-reveal className="hp-heading" style={{ fontSize: 'clamp(28px,4.2vw,50px)', lineHeight: 1.1, marginBottom: 12 }}>
+          <h2 id="pricing-h" data-reveal className="hp-heading bg-clip-text" style={{ fontSize: 'clamp(28px,4.2vw,50px)', lineHeight: 1.1, marginBottom: 12, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', color: 'transparent' }}>
             {MARKETING_PRICING.title}
           </h2>
           <p data-reveal style={{ fontSize: 'clamp(15px,1.5vw,17px)', fontWeight: 400, color: 'var(--muted-foreground)', marginBottom: 12, lineHeight: 1.67, maxWidth: 720 }}>
@@ -417,7 +417,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
                 </div>
 
                 <ButtonColorful
-                  href="/create"
+                  href={`/create?plan=${plan.id}`}
                   label={`Избери ${plan.name}`}
                   className="h-12 w-full rounded-full text-[15px] font-semibold"
                 />
@@ -435,7 +435,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         aria-labelledby="cta-h"
       >
         <div data-reveal style={{ maxWidth: 600, margin: '0 auto' }}>
-          <h2 id="cta-h" className="hp-heading" style={{ fontSize: 'clamp(30px,5vw,52px)', lineHeight: 1.1, color: 'var(--hp-cta-fg)', marginBottom: 20 }}>
+          <h2 id="cta-h" className="hp-heading bg-clip-text" style={{ fontSize: 'clamp(30px,5vw,52px)', lineHeight: 1.1, marginBottom: 20, backgroundImage: 'linear-gradient(135deg, #fb7185, #e879f9, #c084fc)', color: 'transparent' }}>
             Готов ли си за собствен сайт?
           </h2>
           <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 55%, transparent)', marginBottom: 44, lineHeight: 1.67 }}>

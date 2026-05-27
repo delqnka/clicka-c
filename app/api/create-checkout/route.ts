@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
 import Stripe from 'stripe';
-import crypto from 'crypto';
-import { Resend } from 'resend';
-import {
-  getPlatformClaimUrl,
-  getPlatformInstantClaimUrl,
-  getPlatformPublicUrl,
-} from '@/lib/domain-routing';
-import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
-    throw new Error('Липсва STRIPE_SECRET_KEY');
-  }
+  if (!key) throw new Error('Липсва STRIPE_SECRET_KEY');
   return new Stripe(key, { apiVersion: '2024-06-20' });
 }
 
@@ -30,74 +19,8 @@ const PLAN_NAMES: Record<string, string> = {
   studio: 'СТУДИО — неограничени специалисти',
 };
 
-const MONO_THEME = { primary: '#111111', light: '#f3f4f6' };
-
-/* ── Transliterate Bulgarian → Latin slug ─────────────── */
-const TRANSLIT: Record<string, string> = {
-  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',
-  и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',
-  р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'ts',ч:'ch',
-  ш:'sh',щ:'sht',ъ:'a',ь:'',ю:'yu',я:'ya',
-};
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .split('')
-    .map(c => TRANSLIT[c] ?? c)
-    .join('')
-    .replace(/[^a-z0-9]+/g, '')
-    .slice(0, 32) || 'salon';
-}
-
-async function generateUniqueSalonSlug(name: string) {
-  const base = toSlug(name);
-
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const suffix = attempt === 0 ? '' : String(attempt + 1);
-    const maxBaseLength = Math.max(1, 32 - suffix.length);
-    const candidate = `${base.slice(0, maxBaseLength)}${suffix}`;
-
-    const rows = await sql`
-      SELECT slug
-      FROM salons
-      WHERE slug = ${candidate}
-      LIMIT 1
-    `;
-
-    if (rows.length === 0) {
-      return candidate;
-    }
-  }
-
-  throw new Error('Не успяхме да генерираме свободен адрес за сайта');
-}
-
 export async function POST(request: NextRequest) {
-  let body: {
-    templateId: number;
-    planType: string;
-    smsAddon: boolean;
-    salonData: {
-      name: string;
-      category: string;
-      phone: string;
-      email: string;
-      city: string;
-      address: string;
-      about: string;
-      instagram: string;
-      facebook: string;
-      workingHours: Record<string, { open: string; close: string; closed: boolean }>;
-      coverImageUrl: string;
-      logoImageUrl: string;
-      galleryImages: string[];
-      priceListUrl?: string;
-      priceListUrls?: string[];
-      googleMapsUrl: string;
-      services?: { name: string; price: number; duration_min: number }[];
-    };
-  };
+  let body: { planType: string; smsAddon?: boolean };
 
   try {
     body = await request.json();
@@ -105,189 +28,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
   }
 
-  const { templateId, planType, salonData } = body;
+  const { planType, smsAddon } = body;
 
   if (!PLAN_PRICES[planType]) {
     return NextResponse.json({ error: 'Невалиден план' }, { status: 400 });
   }
 
-  const normalizedAbout =
-    String(salonData.about || '').trim() ||
-    `${salonData.name} предлага онлайн резервации през собствен сайт.`;
-  const normalizedAddress = String(salonData.address || '').trim();
-  const normalizedInstagram = String(salonData.instagram || '').trim();
-  const normalizedFacebook = String(salonData.facebook || '').trim();
-  const normalizedGoogleMapsUrl = String(salonData.googleMapsUrl || '').trim();
-  const normalizedGalleryImages = Array.isArray(salonData.galleryImages)
-    ? salonData.galleryImages.map(item => String(item || '').trim()).filter(Boolean)
-    : [];
-  const normalizedCoverImageUrl =
-    String(salonData.coverImageUrl || '').trim() ||
-    normalizedGalleryImages[0] ||
-    String(salonData.logoImageUrl || '').trim() ||
-    '';
-  const normalizedLogoImageUrl =
-    String(salonData.logoImageUrl || '').trim() ||
-    normalizedCoverImageUrl ||
-    normalizedGalleryImages[0] ||
-    '';
-
-  /* ── Services: prefer client-provided, else analyze ──── */
-  let services: { name: string; price: number; duration_min: number }[] = Array.isArray(salonData.services)
-    ? salonData.services
-    : [];
-
-  const uploadedPriceLists = Array.isArray(salonData.priceListUrls)
-    ? salonData.priceListUrls
-    : salonData.priceListUrl
-      ? [salonData.priceListUrl]
-      : [];
-
-  if (services.length === 0 && uploadedPriceLists.length > 0) {
-    try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-      const merged: { name: string; price: number; duration_min: number }[] = [];
-      const seen = new Set<string>();
-
-      for (const imageUrl of uploadedPriceLists) {
-        const analyzeRes = await fetch(`${appUrl}/api/analyze-price-list`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl }),
-        });
-        if (analyzeRes.ok) {
-          const part = (await analyzeRes.json()) as { name: string; price: number; duration_min: number }[];
-          for (const s of part) {
-            const key = `${String(s.name).toLowerCase()}|${Number(s.price) || 0}|${Number(s.duration_min) || 30}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              merged.push({
-                name: String(s.name || '').trim(),
-                price: Number(s.price) || 0,
-                duration_min: Math.max(5, Number(s.duration_min) || 30),
-              });
-            }
-          }
-        }
-      }
-      services = merged;
-    } catch (err) {
-      console.error('[create-checkout] Price list analysis failed:', err);
-    }
-  }
-
   try {
-    /* ── Generate unique slug ───────────────────────────── */
-    const slug = await generateUniqueSalonSlug(salonData.name);
-    const salonId = crypto.randomUUID();
-    const publicUrl = getPlatformPublicUrl(slug);
-    const claimUrl = getPlatformClaimUrl(slug);
-    const instantClaimUrl = getPlatformInstantClaimUrl(slug);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
-    const colors = MONO_THEME;
-
-    /* ── Save salon to Neon ─────────────────────────────── */
-    const rows = await sql`
-      INSERT INTO salons (
-        id, slug, name, category, phone, email,
-        city, address, about,
-        cover_image_url, logo_image_url, gallery_images,
-        instagram_username, facebook_username,
-        google_maps_url,
-        working_hours, services,
-        template_id, primary_color, primary_color_light,
-        plan_type, is_active, site_status,
-        onboarding_code
-      ) VALUES (
-        ${salonId},
-        ${slug},
-        ${salonData.name},
-        ${salonData.category},
-        ${salonData.phone},
-        ${salonData.email},
-        ${salonData.city},
-        ${normalizedAddress},
-        ${normalizedAbout},
-        ${normalizedCoverImageUrl},
-        ${normalizedLogoImageUrl},
-        ${JSON.stringify(normalizedGalleryImages)}::jsonb,
-        ${normalizedInstagram},
-        ${normalizedFacebook},
-        ${normalizedGoogleMapsUrl},
-        ${JSON.stringify(salonData.workingHours)}::jsonb,
-        ${JSON.stringify(services)}::jsonb,
-        ${templateId},
-        ${colors.primary},
-        ${colors.light},
-        ${planType},
-        false,
-        'pending',
-        ${crypto.randomBytes(4).toString('hex').toUpperCase()}
-      )
-      RETURNING id
-    `;
-    const createdSalonId = rows[0].id ?? salonId;
-
-    await ensurePlatformSubdomain(slug);
-
-    /* ── Demo / скриншоти: без Stripe (само при CLICKA_SKIP_CHECKOUT на сървъра) ── */
-    const skipCheckout =
-      process.env.CLICKA_SKIP_CHECKOUT === '1' ||
-      process.env.CLICKA_SKIP_CHECKOUT === 'true';
-
-    if (skipCheckout) {
-      await sql`
-        UPDATE salons
-        SET
-          is_active = true,
-          site_status = 'active',
-          stripe_session_id = NULL
-        WHERE id = ${createdSalonId}
-      `;
-
-      if (process.env.RESEND_API_KEY && salonData.email) {
-        try {
-          const resend = new Resend(process.env.RESEND_API_KEY);
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-          // Use apex domain claim URL — subdomain may not be ready immediately after creation
-          const panelUrl = `${appUrl}/${slug}/claim`;
-
-          await resend.emails.send({
-            from: `${salonData.name} <noreply@clicka.bg>`,
-            to: salonData.email,
-            subject: `Твоят сайт е готов! 🎉`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #000; margin: 0 0 16px;">Твоят сайт е готов!</h2>
-                <p style="line-height: 1.7;">Здравей!</p>
-                <p style="line-height: 1.7;">
-                  Сайтът на <strong>${salonData.name}</strong> вече е активен.<br>
-                </p>
-                <p style="margin: 24px 0 8px; line-height: 1.7;">
-                  Натисни бутона, за да claim-неш сайта и да влезеш в панела:
-                </p>
-                <p style="margin: 0 0 24px;">
-                  <a href="${panelUrl}"
-                     style="display:inline-block;background:#000;color:#fff;text-decoration:none;
-                            padding:14px 24px;border-radius:999px;font-weight:700;font-size:15px;">
-                    Отвори панела →
-                  </a>
-                </p>
-                <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">
-                  Ако не сте поръчали сайт, игнорирайте имейла.
-                </p>
-              </div>
-            `,
-          });
-        } catch (emailErr) {
-          console.error('[create-checkout] Failed to send welcome email:', emailErr);
-        }
-      }
-
-      return NextResponse.json({ skipCheckout: true, slug, publicUrl, claimUrl, instantClaimUrl });
-    }
-
-    /* ── Stripe checkout ────────────────────────────────── */
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
       currency: 'eur',
@@ -299,28 +48,24 @@ export async function POST(request: NextRequest) {
             unit_amount: PLAN_PRICES[planType],
             product_data: {
               name: `Clicka.bg — ${PLAN_NAMES[planType]}`,
-              description: `Сайт за ${salonData.name}`,
             },
           },
         },
       ],
       metadata: {
-        salonSlug: slug,
-        salonId: String(createdSalonId),
-        templateId: String(templateId),
         planType,
+        smsAddon: smsAddon ? '1' : '0',
       },
-      customer_email: salonData.email,
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}&salon=${slug}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/create`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/create`,
     });
 
-    return NextResponse.json({ checkoutUrl: session.url, publicUrl, claimUrl, instantClaimUrl });
+    return NextResponse.json({ checkoutUrl: session.url });
   } catch (error) {
     console.error('[create-checkout] failed:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Грешка при създаване на сайта' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Грешка при създаване на checkout' },
+      { status: 500 },
     );
   }
 }

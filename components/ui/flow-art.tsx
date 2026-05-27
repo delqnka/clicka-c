@@ -85,7 +85,21 @@ const FlowArt: React.FC<FlowArtProps> = ({
         const inner = section.querySelector<HTMLElement>('.flow-art-container');
         if (!inner) return;
 
-        if (i > 0) {
+        if (i === 0) {
+          gsap.set(inner, { yPercent: 8, scale: 0.96, opacity: 0 });
+          gsap.to(inner, {
+            yPercent: 0,
+            scale: 1,
+            opacity: 1,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: section,
+              start: 'top bottom',
+              end: 'top 40%',
+              scrub: true,
+            },
+          });
+        } else {
           gsap.set(inner, { rotation: 30, transformOrigin: 'bottom left' });
           gsap.to(inner, {
             rotation: 0,
@@ -103,8 +117,6 @@ const FlowArt: React.FC<FlowArtProps> = ({
           ScrollTrigger.create({
             trigger: section,
             start: 'bottom bottom',
-            // Минимален pin обхват: пази ефекта, без да добавя
-            // излишно празно пространство след последната flow секция.
             end: '+=1',
             pin: true,
             pinSpacing: false,

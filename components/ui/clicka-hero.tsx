@@ -18,7 +18,7 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
   return (
     <section
       aria-label="Hero"
-      className="clicka-hero relative flex min-h-[100svh] w-full flex-col overflow-hidden"
+      className="clicka-hero relative flex min-h-[85svh] w-full flex-col overflow-hidden"
     >
       <div
         className="absolute inset-0 z-0"
@@ -41,7 +41,10 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
           <p className="text-center text-[10px] text-[var(--muted-foreground)] sm:text-[11px]">{citiesTrustLine}</p>
         </div>
 
-        <h1 className="mb-6 w-full text-center text-[clamp(2.35rem,9.2vw,3.85rem)] font-bold leading-[1.05] tracking-[-0.02em] text-[var(--foreground)]">
+        <h1
+          className="mb-6 w-full bg-clip-text text-center text-[clamp(2.35rem,9.2vw,3.85rem)] font-bold leading-[1.05] tracking-[-0.02em] text-transparent"
+          style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)' }}
+        >
           Собствен сайт с резервации за твоя салон
         </h1>
 
@@ -58,20 +61,20 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
           <ButtonColorful
             href="/create"
             label="Създай своя сайт"
-            className="h-12 w-full rounded-full px-8 text-base font-bold sm:w-auto"
+            className="h-10 w-full rounded-full px-7 text-sm font-bold sm:w-auto"
           />
           <ButtonColorful
             href="https://salonurban.online/"
             label="Виж демо"
             variant="outline"
-            className="h-12 w-full sm:w-auto"
+            className="h-10 w-full sm:w-auto"
           />
         </div>
 
       </div>
 
       <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[12] h-28 bg-gradient-to-b from-transparent to-white"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[9] h-48 bg-gradient-to-b from-transparent via-[#f9d4da] to-[#fff1f2]"
         aria-hidden
       />
     </section>

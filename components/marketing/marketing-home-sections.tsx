@@ -2,44 +2,97 @@
 
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
-import DotPattern from '@/components/ui/dot-pattern-1';
 import FlowArt, { FlowSection } from '@/components/ui/flow-art';
 import {
+  MARKETING_AUDIENCE,
   MARKETING_COMPARISON,
   MARKETING_FEATURES,
   MARKETING_FOUNDER,
   MARKETING_STEPS,
 } from '@/lib/marketing-home-copy';
 
-/* ── Audience strip ───────────────────────────────────── */
+const GRADIENT_HEADING = 'bg-clip-text text-transparent';
+const GRADIENT_BG = { backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)' } as const;
+
+/* ── Audience marquee ─────────────────────────────────── */
+
+const TAGS_ROW_1 = [
+  'Фризьори', 'Козметици', 'Маникюристи', 'Бръснари',
+  'Масажисти', 'Груумъри', 'Студия за красота',
+];
+const TAGS_ROW_2 = [
+  'Барбършопове', 'Педикюристи', 'Стилисти', 'Визажисти',
+  'Спа центрове', 'Терапевти', 'Салони',
+];
+
+const TAG_STYLES = [
+  'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/20',
+  'border border-rose-200 bg-rose-50/80 text-rose-700',
+  'border border-rose-300/50 bg-white text-rose-500',
+] as const;
+
+function MarqueeRow({ tags, duration = 30, reverse = false }: { tags: string[]; duration?: number; reverse?: boolean }) {
+  const doubled = [...tags, ...tags];
+  return (
+    <div
+      className="flex w-max gap-3"
+      style={{
+        animation: `${reverse ? 'aud-marquee-r' : 'aud-marquee'} ${duration}s linear infinite`,
+      }}
+    >
+      {doubled.map((tag, i) => (
+        <span
+          key={`${tag}-${i}`}
+          className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold tracking-wide whitespace-nowrap ${TAG_STYLES[i % 3]}`}
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export function MarketingAudienceSection() {
   return (
     <section
       id="audience"
       data-home-section="audience"
-      className="bg-[var(--background)]"
-      style={{ padding: 'clamp(48px,8vw,72px) clamp(20px,5vw,60px)' }}
+      className="relative overflow-hidden bg-rose-50"
+      style={{ padding: 'clamp(24px,4vw,40px) 0 clamp(56px,10vw,96px)' }}
       aria-label="За кого е"
     >
-      <div className="mx-auto max-w-7xl px-0">
-        <div className="relative overflow-hidden border border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50 to-fuchsia-50">
-          <DotPattern width={5} height={5} />
+      <style>{`
+        @keyframes aud-marquee   { from { transform: translateX(0) }    to { transform: translateX(-50%) } }
+        @keyframes aud-marquee-r { from { transform: translateX(-50%) } to { transform: translateX(0) } }
+      `}</style>
 
-          <div className="absolute -left-1.5 -top-1.5 h-3 w-3 bg-gradient-to-br from-rose-400 to-fuchsia-500" />
-          <div className="absolute -bottom-1.5 -left-1.5 h-3 w-3 bg-gradient-to-br from-rose-400 to-fuchsia-500" />
-          <div className="absolute -right-1.5 -top-1.5 h-3 w-3 bg-gradient-to-br from-rose-400 to-fuchsia-500" />
-          <div className="absolute -bottom-1.5 -right-1.5 h-3 w-3 bg-gradient-to-br from-rose-400 to-fuchsia-500" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white pointer-events-none" />
 
-          <div className="relative z-20 mx-auto max-w-6xl px-6 py-10 text-center md:px-10 md:py-14 xl:py-16">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500 md:text-sm">
-              За кого е?
-            </p>
-            <h2 className="mt-4 text-balance text-[clamp(1.5rem,4.3vw,3rem)] font-bold leading-[1.15] tracking-[-0.02em] text-[var(--foreground)]">
-              За фризьори, фризьорски салони, бръснари, маникюристи, козметици, масажисти, груумъри и всеки, който работи с часове
-            </h2>
-          </div>
-        </div>
+      <div className="relative mx-auto max-w-3xl px-5 text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-rose-500 md:text-sm">
+          За кого е?
+        </p>
+        <h2
+          className={`mt-5 text-balance text-[clamp(1.75rem,5vw,3.25rem)] font-bold leading-[1.08] tracking-[-0.03em] ${GRADIENT_HEADING}`}
+          style={GRADIENT_BG}
+        >
+          {MARKETING_AUDIENCE.headline}
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.95rem,2vw,1.1rem)] leading-relaxed text-[var(--muted-foreground)]">
+          {MARKETING_AUDIENCE.subtitle}
+        </p>
+      </div>
+
+      <div
+        className="relative mt-10 space-y-3 overflow-hidden"
+        aria-hidden="true"
+        style={{
+          maskImage: 'linear-gradient(to right, transparent 2%, black 12%, black 88%, transparent 98%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 2%, black 12%, black 88%, transparent 98%)',
+        }}
+      >
+        <MarqueeRow tags={TAGS_ROW_1} duration={35} />
+        <MarqueeRow tags={TAGS_ROW_2} duration={28} reverse />
       </div>
     </section>
   );
@@ -186,7 +239,8 @@ export function MarketingStepsSection() {
         <h2
           id="steps-h"
           data-reveal
-          className="mb-3 text-center text-[clamp(1.65rem,4.5vw,2.5rem)] font-bold leading-[1.12] tracking-[-0.02em] text-[var(--foreground)]"
+          className={`mb-3 text-center text-[clamp(1.65rem,4.5vw,2.5rem)] font-bold leading-[1.12] tracking-[-0.02em] ${GRADIENT_HEADING}`}
+          style={GRADIENT_BG}
         >
           {MARKETING_STEPS.title}
         </h2>
@@ -244,7 +298,8 @@ export function MarketingComparisonSection() {
         <h2
           id="comparison-h"
           data-reveal
-          className="mb-10 text-center text-[clamp(1.5rem,4vw,2.25rem)] font-bold leading-[1.12] tracking-[-0.02em] text-[var(--foreground)]"
+          className={`mb-10 text-center text-[clamp(1.5rem,4vw,2.25rem)] font-bold leading-[1.12] tracking-[-0.02em] ${GRADIENT_HEADING}`}
+          style={GRADIENT_BG}
         >
           {MARKETING_COMPARISON.title}
         </h2>
@@ -306,7 +361,8 @@ export function MarketingFounderSection() {
         <h2
           id="founder-h"
           data-reveal
-          className="mb-5 text-[clamp(1.5rem,5vw,2.25rem)] font-bold leading-tight tracking-[-0.02em] text-[var(--foreground)]"
+          className={`mb-5 text-[clamp(1.5rem,5vw,2.25rem)] font-bold leading-tight tracking-[-0.02em] ${GRADIENT_HEADING}`}
+          style={GRADIENT_BG}
         >
           {MARKETING_FOUNDER.title}
         </h2>
