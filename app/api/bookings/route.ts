@@ -51,6 +51,28 @@ async function resolveSalonFromRequest(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const { searchParams: requestSearchParams } = new URL(request.url);
+
+  if (requestSearchParams.get('public') === '1' && requestSearchParams.get('date')) {
+    const resolved = await resolveSalonFromRequest(request);
+    if ('error' in resolved) return resolved.error;
+    const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+    const date = String(requestSearchParams.get('date') ?? '').trim();
+    if (!date) return NextResponse.json({ occupied: [] });
+    const occupiedRows = await sql`
+      SELECT time, service_duration
+      FROM bookings
+      WHERE salon_id = ${salonId}
+        AND date = ${date}
+        AND status IN ('pending', 'confirmed')
+      ORDER BY time ASC
+    `;
+    const occupied = occupiedRows.map((r) => ({
+      time: String((r as Record<string, unknown>).time ?? ''),
+      duration: Math.max(5, Number((r as Record<string, unknown>).service_duration ?? 30) || 30),
+    }));
+    return NextResponse.json({ occupied });
+  }
+
   const auth = await requireAdminRequestAccess(request, requestSearchParams.get('slug'));
   if (!auth.ok) return auth.response;
 
@@ -236,6 +258,30 @@ export async function POST(request: NextRequest) {
 
   let bookings: { id: string }[];
   try {
+    const requestedStartMinutes =
+      Number.parseInt(time.slice(0, 2), 10) * 60 + Number.parseInt(time.slice(3, 5), 10);
+    const requestedDurationMinutes = Math.max(5, durationValue ?? 30);
+    const requestedEndMinutes = requestedStartMinutes + requestedDurationMinutes;
+    const overlaps = await sql`
+      SELECT id
+      FROM bookings
+      WHERE salon_id = ${salonId}
+        AND date = ${date}
+        AND status IN ('pending', 'confirmed')
+        AND (
+          (split_part(time, ':', 1)::int * 60 + split_part(time, ':', 2)::int) < ${requestedEndMinutes}
+          AND
+          ((split_part(time, ':', 1)::int * 60 + split_part(time, ':', 2)::int) + GREATEST(5, COALESCE(service_duration, 30))) > ${requestedStartMinutes}
+        )
+      LIMIT 1
+    `;
+    if (overlaps.length > 0) {
+      return NextResponse.json(
+        { error: 'Този час току-що беше зает. Моля изберете друг свободен час.' },
+        { status: 409 },
+      );
+    }
+
     bookings = (await sql`
       INSERT INTO bookings (
         id, salon_id, client_name, client_phone, client_email,

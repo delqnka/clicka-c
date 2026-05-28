@@ -165,7 +165,7 @@ export function SalonBookingModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] overflow-hidden" role="presentation" onClick={onClose}>
+    <div className="fixed inset-0 z-[110] overflow-hidden" role="presentation">
       <div className="absolute inset-0 bg-[#0b1020]/45 backdrop-blur-[2px]" aria-hidden />
 
       <div

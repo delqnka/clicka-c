@@ -460,6 +460,7 @@ export default function SalonPublicParity({
   const [bookingServiceIdxs, setBookingServiceIdxs] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [occupiedSlotsByDate, setOccupiedSlotsByDate] = useState<Record<string, Array<{ time: string; duration: number }>>>({});
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -845,6 +846,7 @@ export default function SalonPublicParity({
     if (isDateBlockedAllDay(bookingBlocks, date)) return 'closed';
     if (!h.open || !h.close) return [];
     const totalDuration = Math.max(5, durationMin || 30);
+    const occupied = occupiedSlotsByDate[date] ?? [];
     const [oh, om] = h.open.split(':').map(Number);
     const [ch, cm] = h.close.split(':').map(Number);
     const start = oh * 60 + om;
@@ -852,6 +854,15 @@ export default function SalonPublicParity({
     const slots: string[] = [];
     for (let t = start; t <= latestStart; t += 30) {
       const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
+      const slotStart = t;
+      const slotEnd = t + totalDuration;
+      const overlapsExisting = occupied.some((b) => {
+        const [bh, bm] = b.time.split(':').map(Number);
+        const existingStart = (Number.isFinite(bh) ? bh : 0) * 60 + (Number.isFinite(bm) ? bm : 0);
+        const existingEnd = existingStart + Math.max(5, Number(b.duration) || 30);
+        return existingStart < slotEnd && existingEnd > slotStart;
+      });
+      if (overlapsExisting) continue;
       if (!isBlockedForStartTime(bookingBlocks, date, slot, totalDuration)) {
         slots.push(slot);
       }
@@ -867,6 +878,38 @@ export default function SalonPublicParity({
 
   const [minDate, setMinDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    if (occupiedSlotsByDate[selectedDate]) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/bookings?public=1&slug=${encodeURIComponent(salonSlug)}&date=${encodeURIComponent(selectedDate)}`,
+          { cache: 'no-store' },
+        );
+        const data = (await res.json().catch(() => ({}))) as {
+          occupied?: Array<{ time?: string; duration?: number }>;
+        };
+        if (!res.ok || cancelled) return;
+        const occupied = Array.isArray(data.occupied)
+          ? data.occupied
+              .map((x) => ({
+                time: String(x?.time ?? ''),
+                duration: Math.max(5, Number(x?.duration ?? 30) || 30),
+              }))
+              .filter((x) => x.time.length >= 4)
+          : [];
+        if (!cancelled) setOccupiedSlotsByDate((prev) => ({ ...prev, [selectedDate]: occupied }));
+      } catch {
+        if (cancelled) return;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [occupiedSlotsByDate, salonSlug, selectedDate]);
 
   useEffect(() => {
     const toLocalISODate = (date: Date) => {
