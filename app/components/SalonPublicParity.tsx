@@ -169,7 +169,7 @@ function SalonFooterSocialLink({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-[0_2px_12px_rgba(0,0,0,0.25)] backdrop-blur-sm transition hover:scale-105 hover:bg-white/20"
+      className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-white/12 text-white shadow-[0_4px_14px_rgba(0,0,0,0.2)] backdrop-blur-sm transition hover:scale-105 hover:bg-white/22 sm:h-9 sm:w-9"
     >
       {children}
     </a>
@@ -1634,7 +1634,7 @@ export default function SalonPublicParity({
                 <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
                   <iframe
                     title="Карта на салона"
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008},${lat - 0.005},${lng + 0.008},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}&z=15&output=embed`}
                     className="h-52 w-full border-0"
                     loading="lazy"
                     referrerPolicy="no-referrer"
@@ -1738,37 +1738,37 @@ export default function SalonPublicParity({
         <footer
           className="mt-10 border-t border-white/10 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-px lg:mt-12"
           style={{
-            background: `linear-gradient(115deg, #0a0a0a 0%, color-mix(in srgb, ${primary} 42%, #141018) 48%, #050505 100%)`,
-            boxShadow: '0 -12px 40px rgba(0,0,0,0.12)',
+            background: `linear-gradient(150deg, color-mix(in srgb, ${primary} 36%, #151515) 0%, #15121f 38%, #0f1118 68%, #090b12 100%)`,
+            boxShadow: '0 -14px 48px rgba(4,8,20,0.28)',
           }}
         >
-          <div className="mx-auto flex max-w-[min(100%,1180px)] flex-col items-center gap-3 px-4 py-3.5 sm:flex-row sm:justify-between sm:gap-4">
+          <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col items-center gap-2.5 overflow-hidden px-3 py-2.5 sm:flex-row sm:justify-between sm:gap-4 sm:px-4 sm:py-3.5">
             <nav
-              className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start"
+              className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-start"
               aria-label="Правни документи"
             >
               <a
                 href={`${basePath}/terms`}
-                className="text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
+                className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85 sm:text-[11px]"
               >
                 Условия
               </a>
               <a
                 href={`${basePath}/privacy`}
-                className="text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
+                className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85 sm:text-[11px]"
               >
                 Поверителност
               </a>
               <a
                 href={`${basePath}/cookies`}
-                className="text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
+                className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85 sm:text-[11px]"
               >
                 Бисквитки
               </a>
             </nav>
 
             {footerSocial.length > 0 ? (
-              <div className="flex items-center gap-2.5" aria-label="Социални мрежи">
+              <div className="flex w-full max-w-[200px] items-center justify-center gap-1.5 sm:w-auto sm:max-w-none sm:justify-end sm:gap-2.5" aria-label="Социални мрежи">
                 {footerSocial.map((item) => (
                   <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
                     {item.node}
@@ -1779,7 +1779,7 @@ export default function SalonPublicParity({
               <span className="hidden h-8 sm:block" aria-hidden />
             )}
 
-            <p className="text-center text-[10px] text-white/40 sm:text-right">
+            <p className="max-w-full text-center text-[9px] leading-relaxed text-white/45 sm:text-right sm:text-[10px]">
               <span className="text-white/30">{name}</span>
               <span className="mx-1.5 text-white/20">·</span>
               <a
@@ -1796,12 +1796,12 @@ export default function SalonPublicParity({
       </main>
 
       {!disableStickySectionTabs ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.7rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm lg:hidden">
-          <div className="mx-auto w-full max-w-[min(100%,1180px)]">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-3.5 shadow-[0_-10px_30px_rgba(0,0,0,0.14)] backdrop-blur-sm lg:hidden">
+          <div className="mx-auto w-full max-w-[min(100%,1180px)] drop-shadow-[0_10px_20px_rgba(0,0,0,0.22)]">
             <button
               type="button"
               onClick={() => openBookingModal()}
-              className="block w-full rounded-full py-3.5 text-base font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.2)]"
+              className="block w-full rounded-full py-4 text-[17px] font-semibold text-white shadow-[0_14px_30px_rgba(0,0,0,0.28)]"
               style={{ background: primary }}
             >
               Резервирай
