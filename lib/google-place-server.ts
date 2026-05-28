@@ -73,26 +73,57 @@ async function fetchReviewsViaOutscraper(
 
     const data = (await res.json()) as {
       status?: string;
-      data?: {
-        author_title?: string;
-        review_rating?: number;
-        review_text?: string;
-      }[][];
+      data?: unknown;
     };
 
-    const raw = data.data?.[0];
-    if (!Array.isArray(raw) || raw.length === 0) {
+    const collectRows = (input: unknown): Array<Record<string, unknown>> => {
+      if (!Array.isArray(input)) return [];
+      const out: Array<Record<string, unknown>> = [];
+      for (const item of input) {
+        if (!item) continue;
+        // Variant A: data: [[{ review_rating, review_text, ... }]]
+        if (Array.isArray(item)) {
+          for (const nested of item) {
+            if (nested && typeof nested === 'object') out.push(nested as Record<string, unknown>);
+          }
+          continue;
+        }
+        if (typeof item !== 'object') continue;
+        const row = item as Record<string, unknown>;
+        // Variant B: data: [{ reviews_data: [...] }]
+        if (Array.isArray(row.reviews_data)) {
+          for (const nested of row.reviews_data) {
+            if (nested && typeof nested === 'object') out.push(nested as Record<string, unknown>);
+          }
+          continue;
+        }
+        // Variant C: data: [{ review_rating, review_text, ... }]
+        out.push(row);
+      }
+      return out;
+    };
+
+    const rawRows = collectRows(data.data);
+    if (rawRows.length === 0) {
       return { reviews: [], reason: 'outscraper_empty' };
     }
 
-    const reviews: GoogleReviewLite[] = raw
+    const reviews: GoogleReviewLite[] = rawRows
       .slice(0, 10)
       .map((r) => ({
-        author_name: String(r.author_title ?? 'Google потребител').trim(),
-        rating: Math.min(5, Math.max(1, Math.round(Number(r.review_rating ?? 5)))),
-        text: String(r.review_text ?? '').trim(),
+        author_name: String(
+          r.author_title ?? r.reviewer_name ?? r.author_name ?? 'Google потребител'
+        ).trim(),
+        rating: Math.min(
+          5,
+          Math.max(
+            1,
+            Math.round(Number(r.review_rating ?? r.rating ?? r.stars ?? 5))
+          )
+        ),
+        text: String(r.review_text ?? r.text ?? '').trim(),
       }))
-      .filter((r) => r.text);
+      .filter((r) => Number.isFinite(r.rating));
 
     return { reviews };
   } catch (err) {
