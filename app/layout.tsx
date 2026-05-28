@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Inter, Manrope, Merriweather, Montserrat, Playfair_Display, Source_Code_Pro } from 'next/font/google';
+import { isSalonPublicRequest } from '@/lib/salon-public-request';
 import './globals.css';
 
 const inter = Inter({
@@ -41,8 +43,17 @@ const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-client-manrope',
   display: 'swap',
-  weight: ['200', '300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
 });
+
+const marketingFontVariables = [
+  inter.variable,
+  merriweather.variable,
+  montserrat.variable,
+  playfair.variable,
+  sourceCodePro.variable,
+  manrope.variable,
+].join(' ');
 
 export const viewport: Viewport = {
   themeColor: '#ffffff',
@@ -58,11 +69,11 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const salonPublic = isSalonPublicRequest(headers());
+  const htmlClass = salonPublic ? manrope.variable : marketingFontVariables;
+
   return (
-    <html
-      lang="bg"
-      className={`${inter.variable} ${merriweather.variable} ${montserrat.variable} ${playfair.variable} ${sourceCodePro.variable} ${manrope.variable}`}
-    >
+    <html lang="bg" className={htmlClass}>
       <body>{children}</body>
     </html>
   );

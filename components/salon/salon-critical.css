@@ -1,0 +1,11 @@
+/* Inlined critical above-fold rules for salon public LCP (see salon-hero-lcp.tsx). */
+.salon-hero-lcp {
+  overflow: hidden;
+  border-radius: 1rem;
+}
+.salon-hero-lcp img {
+  aspect-ratio: 5 / 4;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+}

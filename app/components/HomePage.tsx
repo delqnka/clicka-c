@@ -1,4 +1,5 @@
 'use client';
+import '@/app/marketing.css';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { gsap } from 'gsap';

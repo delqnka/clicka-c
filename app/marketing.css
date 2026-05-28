@@ -1,0 +1,322 @@
+/* Marketing-only styles — loaded by HomePage, not salon public sites */
+/* ── Scroll animations (marketing page) ─────────────────── */
+[data-animate] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+[data-animate].visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* ── Marketing homepage theme (scoped — does not affect salon sites) ─ */
+.hp {
+  color-scheme: light;
+
+  --card: #ffffff;
+  --ring: #a1a1a1;
+  --input: #e5e5e5;
+  --muted: #f5f5f5;
+  --accent: #f5f5f5;
+  --border: #e5e5e5;
+  --radius: 0.625rem;
+  --chart-1: #91c5ff;
+  --chart-2: #3a81f6;
+  --chart-3: #2563ef;
+  --chart-4: #1a4eda;
+  --chart-5: #1f3fad;
+  --popover: #ffffff;
+  --primary: #171717;
+  --sidebar: #fafafa;
+  --spacing: 0.25rem;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --secondary: #f5f5f5;
+  --background: #ffffff;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --foreground: #0a0a0a;
+  --destructive: #e7000b;
+  --sidebar-ring: #a1a1a1;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-border: #e5e5e5;
+  --card-foreground: #0a0a0a;
+  --sidebar-primary: #171717;
+  --muted-foreground: #737373;
+  --accent-foreground: #171717;
+  --popover-foreground: #0a0a0a;
+  --primary-foreground: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --secondary-foreground: #171717;
+  --destructive-foreground: #ffffff;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-primary-foreground: #fafafa;
+  --shadow-blur: 8px;
+  --shadow-color: hsl(0 0% 0%);
+  --shadow-spread: -1px;
+  --shadow-opacity: 0.08;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 4px;
+  --hp-cta-bg: #171717;
+  --hp-cta-fg: #fafafa;
+  --hp-shadow: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur)
+    var(--shadow-spread)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+}
+
+.hp .clicka-hero h1,
+.hp .clicka-hero h2 {
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.hp .clicka-hero .hero-emphasis {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.hp .clicka-hero .hero-live-dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgb(34 197 94 / 0.45);
+  animation: hero-live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hero-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgb(34 197 94 / 0.45);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 6px rgb(34 197 94 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp .clicka-hero .hero-live-dot {
+    animation: none;
+  }
+}
+
+/* Dark tokens only when .dark is set explicitly — not from OS preference */
+.dark .hp,
+.hp.dark {
+  color-scheme: dark;
+
+  --card: #0a0a0a;
+  --ring: #525252;
+  --input: #262626;
+  --muted: #262626;
+  --accent: #262626;
+  --border: #262626;
+  --chart-1: #91c5ff;
+  --chart-2: #3a81f6;
+  --chart-3: #2563ef;
+  --chart-4: #1a4eda;
+  --chart-5: #1f3fad;
+  --popover: #0a0a0a;
+  --primary: #fafafa;
+  --sidebar: #0a0a0a;
+  --secondary: #262626;
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --destructive: #e7000b;
+  --sidebar-ring: #525252;
+  --sidebar-accent: #262626;
+  --sidebar-border: #262626;
+  --card-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --muted-foreground: #a1a1a1;
+  --accent-foreground: #fafafa;
+  --popover-foreground: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --sidebar-foreground: #fafafa;
+  --secondary-foreground: #fafafa;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-primary-foreground: #0a0a0a;
+  --hp-cta-bg: #0a0a0a;
+  --hp-cta-fg: #fafafa;
+}
+/* ── Sleek marketing home (scoped; salon/create stay on default body) ── */
+.sleek-marketing {
+  position: relative;
+  isolation: isolate;
+}
+
+.sleek-marketing::after {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.glass {
+  background: color-mix(in srgb, #ffffff 5%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ffffff 4%, transparent) inset;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.bento-tight {
+  background: color-mix(in srgb, #ffffff 4%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 8%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ffffff 3%, transparent) inset;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.panel-hover {
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.panel-hover:hover {
+  border-color: color-mix(in srgb, #00a3ff 35%, #ffffff 15%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #00a3ff 12%, transparent),
+    0 20px 50px -20px color-mix(in srgb, #000000 80%, #00a3ff 20%);
+}
+
+.bg-fade-hero {
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 10, 0.1) 0%,
+    rgba(10, 10, 10, 0.4) 45%,
+    #0a0a0a 100%
+  );
+}
+
+.bg-fade-bento {
+  background: linear-gradient(0deg, rgba(10, 10, 10, 0.95) 0%, rgba(10, 10, 10, 0) 50%);
+}
+
+.grid-overlay {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+  mask-image: linear-gradient(180deg, white 0%, transparent 80%);
+}
+
+/* Hero H1 — прожектори отляво/дясно към заглавието (accent + мек лъч) */
+.hero-h1-spotlights {
+  position: relative;
+  isolation: isolate;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.65rem;
+}
+
+.hero-h1-spotlights::before,
+.hero-h1-spotlights::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  width: min(110vw, 560px);
+  height: 140%;
+  top: -55%;
+  mix-blend-mode: screen;
+  opacity: 0.62;
+  filter: blur(38px);
+  background:
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      rgba(0, 163, 255, 0.14) 42%,
+      rgba(0, 163, 255, 0.06) 58%,
+      transparent 78%
+    ),
+    radial-gradient(
+      ellipse 42% 38% at 50% 65%,
+      rgba(0, 163, 255, 0.55) 0%,
+      rgba(0, 163, 255, 0.18) 45%,
+      transparent 72%
+    );
+}
+
+.hero-h1-spotlights::before {
+  left: -22%;
+  transform-origin: 20% 0%;
+  transform: rotate(-11deg) scale(1);
+  animation: heroSpotLeft 11s ease-in-out infinite alternate;
+}
+
+.hero-h1-spotlights::after {
+  right: -26%;
+  transform-origin: 80% 0%;
+  transform: rotate(11deg) scale(1.02);
+  background:
+    linear-gradient(
+      255deg,
+      transparent 0%,
+      rgba(0, 163, 255, 0.14) 42%,
+      rgba(0, 163, 255, 0.06) 58%,
+      transparent 78%
+    ),
+    radial-gradient(
+      ellipse 42% 38% at 50% 65%,
+      rgba(0, 163, 255, 0.55) 0%,
+      rgba(0, 163, 255, 0.18) 45%,
+      transparent 72%
+    );
+  animation: heroSpotRight 13s ease-in-out infinite alternate;
+  animation-delay: -4s;
+}
+
+.hero-h1-spotlights > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-h1-spotlights .hero-h1-title {
+  text-shadow:
+    0 0 28px rgba(0, 0, 0, 0.55),
+    0 2px 20px rgba(0, 0, 0, 0.45);
+}
+
+.hero-h1-spotlights .hero-h1-commission {
+  text-shadow:
+    0 0 24px rgba(0, 0, 0, 0.5),
+    0 2px 16px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes heroSpotLeft {
+  0% {
+    transform: rotate(-13deg) translate(-1%, 0) scale(1);
+    opacity: 0.48;
+  }
+  100% {
+    transform: rotate(-8deg) translate(4%, 3%) scale(1.05);
+    opacity: 0.68;
+  }
+}
+
+@keyframes heroSpotRight {
+  0% {
+    transform: rotate(13deg) translate(1%, 0) scale(1.02);
+    opacity: 0.5;
+  }
+  100% {
+    transform: rotate(8deg) translate(-3%, 4%) scale(1.07);
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-h1-spotlights::before,
+  .hero-h1-spotlights::after {
+    animation: none;
+    opacity: 0.55;
+  }
+}
