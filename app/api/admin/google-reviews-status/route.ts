@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
       count: probe.reviews.length,
       source: probe.source,
       reason: probe.reason ?? null,
+      providerStatus: probe.providerStatus ?? null,
       resolvedPlaceId: placeId,
     },
     {

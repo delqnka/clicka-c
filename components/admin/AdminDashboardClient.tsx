@@ -130,6 +130,7 @@ type GoogleReviewsStatus = {
   count: number;
   source: 'outscraper' | 'none' | null;
   reason: string | null;
+  providerStatus?: string | null;
 };
 type GoogleReviewsFetchState = {
   loading: boolean;
@@ -238,6 +239,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     count: 0,
     source: null,
     reason: null,
+    providerStatus: null,
   });
   const [reviewsFetch, setReviewsFetch] = useState<GoogleReviewsFetchState>({ loading: false, result: null });
   const [calendarCursor, setCalendarCursor] = useState(() => {
@@ -435,6 +437,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           count: 0,
           source: null,
           reason: 'missing_place_id',
+          providerStatus: null,
         });
         return;
       }
@@ -454,6 +457,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           count?: number;
           source?: 'outscraper' | 'none';
           reason?: string | null;
+          providerStatus?: string | null;
           error?: string;
         };
         if (!res.ok) throw new Error(data.error || 'probe_failed');
@@ -463,6 +467,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           count: Number(data.count ?? 0) || 0,
           source: data.source ?? 'none',
           reason: data.reason ?? null,
+          providerStatus: data.providerStatus ?? null,
         });
       } catch {
         setGoogleReviewsStatus({
@@ -471,6 +476,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           count: 0,
           source: 'none',
           reason: 'probe_failed',
+          providerStatus: null,
         });
       }
     },
@@ -493,14 +499,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         count?: number;
         message?: string;
         reason?: string;
+        providerStatus?: string | null;
       };
       if (data.success) {
         setReviewsFetch({ loading: false, result: { success: true, count: data.count } });
         void loadGoogleReviewsStatus({ cacheBust: true });
       } else {
+        const suffix = data.providerStatus ? ` (Outscraper status: ${data.providerStatus})` : '';
         setReviewsFetch({
           loading: false,
-          result: { success: false, message: data.message || 'Неуспешно извличане.' },
+          result: { success: false, message: `${data.message || 'Неуспешно извличане.'}${suffix}` },
         });
       }
     } catch {

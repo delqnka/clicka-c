@@ -7,6 +7,7 @@ export type GoogleReviewsProbe = {
   reviews: GoogleReviewLite[];
   source: 'outscraper' | 'none';
   reason?: string;
+  providerStatus?: string;
 };
 
 export function extractGooglePlaceIdFromMapsUrl(url: string | null | undefined): string | null {
@@ -61,10 +62,10 @@ async function fetchReviewsViaOutscraperQuery(
   });
 
   try {
-    const res = await fetch(
-      `https://api.app.outscraper.com/maps/reviews-v3?${params}`,
-      { headers: { 'X-API-KEY': key }, next: { revalidate: 900 } },
-    );
+    const res = await fetch(`https://api.app.outscraper.com/maps/reviews-v3?${params}`, {
+      headers: { 'X-API-KEY': key },
+      cache: 'no-store',
+    });
 
     if (!res.ok) {
       console.warn('[outscraper] HTTP', res.status, await res.text().catch(() => ''));
@@ -105,10 +106,10 @@ async function fetchReviewsViaOutscraperQuery(
 
     const rawRows = collectRows(data.data);
     if (rawRows.length === 0) {
-      if (String(data.status ?? '').toLowerCase() === 'pending') {
-        return { reviews: [], reason: 'outscraper_pending', status: String(data.status ?? '') };
+      if (String(data.status ?? '').trim().toLowerCase() === 'pending') {
+        return { reviews: [], reason: 'outscraper_pending', status: String(data.status ?? '').trim() };
       }
-      return { reviews: [], reason: 'outscraper_empty', status: String(data.status ?? '') };
+      return { reviews: [], reason: 'outscraper_empty', status: String(data.status ?? '').trim() };
     }
 
     const reviews: GoogleReviewLite[] = rawRows
@@ -128,7 +129,7 @@ async function fetchReviewsViaOutscraperQuery(
       }))
       .filter((r) => Number.isFinite(r.rating));
 
-    return { reviews, status: String(data.status ?? '') };
+    return { reviews, status: String(data.status ?? '').trim() };
   } catch (err) {
     console.warn('[outscraper] fetch error:', err);
     return { reviews: [], reason: 'outscraper_api_error' };
@@ -137,31 +138,33 @@ async function fetchReviewsViaOutscraperQuery(
 
 async function fetchReviewsViaOutscraper(
   placeId: string,
-): Promise<{ reviews: GoogleReviewLite[]; reason?: string }> {
+): Promise<{ reviews: GoogleReviewLite[]; reason?: string; status?: string }> {
   const id = placeId.trim();
-  if (!id) return { reviews: [], reason: 'missing_place_id' };
+  if (!id) return { reviews: [], reason: 'missing_place_id', status: '' };
 
   // Outscraper accepts different query styles depending on place data shape.
   const attempts = [`place_id:${id}`, id];
   let sawPending = false;
   let sawSuccessEmpty = false;
+  let lastStatus = '';
 
   for (const queryValue of attempts) {
     const result = await fetchReviewsViaOutscraperQuery(queryValue);
-    if (result.reviews.length > 0) return { reviews: result.reviews };
+    if (result.status) lastStatus = result.status;
+    if (result.reviews.length > 0) return { reviews: result.reviews, status: lastStatus };
 
-    const status = String(result.status ?? '').toLowerCase();
+    const status = String(result.status ?? '').trim().toLowerCase();
     if (status === 'success') sawSuccessEmpty = true;
     if (result.reason === 'outscraper_pending') sawPending = true;
 
     if (result.reason === 'missing_outscraper_key' || result.reason === 'outscraper_api_error') {
-      return { reviews: [], reason: result.reason };
+      return { reviews: [], reason: result.reason, status: lastStatus };
     }
   }
 
-  if (sawSuccessEmpty) return { reviews: [], reason: 'outscraper_empty' };
-  if (sawPending) return { reviews: [], reason: 'outscraper_pending' };
-  return { reviews: [], reason: 'outscraper_empty' };
+  if (sawSuccessEmpty) return { reviews: [], reason: 'outscraper_empty', status: lastStatus };
+  if (sawPending) return { reviews: [], reason: 'outscraper_pending', status: lastStatus };
+  return { reviews: [], reason: 'outscraper_empty', status: lastStatus };
 }
 
 export async function probeGoogleReviewsForPlace(
@@ -172,13 +175,14 @@ export async function probeGoogleReviewsForPlace(
 
   const result = await fetchReviewsViaOutscraper(id);
   if (result.reviews.length > 0) {
-    return { reviews: result.reviews, source: 'outscraper' };
+    return { reviews: result.reviews, source: 'outscraper', providerStatus: result.status };
   }
 
   return {
     reviews: [],
     source: 'none',
     reason: result.reason ?? 'outscraper_empty',
+    providerStatus: result.status,
   };
 }
 
