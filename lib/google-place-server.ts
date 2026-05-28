@@ -47,14 +47,14 @@ export async function resolveGooglePlaceId(options: {
   return null;
 }
 
-async function fetchReviewsViaOutscraper(
-  placeId: string,
-): Promise<{ reviews: GoogleReviewLite[]; reason?: string }> {
+async function fetchReviewsViaOutscraperQuery(
+  queryValue: string,
+): Promise<{ reviews: GoogleReviewLite[]; reason?: string; status?: string }> {
   const key = process.env.OUTSCRAPER_API_KEY?.trim();
   if (!key) return { reviews: [], reason: 'missing_outscraper_key' };
 
   const params = new URLSearchParams({
-    query: `place_id:${placeId}`,
+    query: queryValue,
     reviewsLimit: '10',
     language: 'bg',
     sort: 'newest',
@@ -106,9 +106,9 @@ async function fetchReviewsViaOutscraper(
     const rawRows = collectRows(data.data);
     if (rawRows.length === 0) {
       if (String(data.status ?? '').toLowerCase() === 'pending') {
-        return { reviews: [], reason: 'outscraper_pending' };
+        return { reviews: [], reason: 'outscraper_pending', status: String(data.status ?? '') };
       }
-      return { reviews: [], reason: 'outscraper_empty' };
+      return { reviews: [], reason: 'outscraper_empty', status: String(data.status ?? '') };
     }
 
     const reviews: GoogleReviewLite[] = rawRows
@@ -128,11 +128,40 @@ async function fetchReviewsViaOutscraper(
       }))
       .filter((r) => Number.isFinite(r.rating));
 
-    return { reviews };
+    return { reviews, status: String(data.status ?? '') };
   } catch (err) {
     console.warn('[outscraper] fetch error:', err);
     return { reviews: [], reason: 'outscraper_api_error' };
   }
+}
+
+async function fetchReviewsViaOutscraper(
+  placeId: string,
+): Promise<{ reviews: GoogleReviewLite[]; reason?: string }> {
+  const id = placeId.trim();
+  if (!id) return { reviews: [], reason: 'missing_place_id' };
+
+  // Outscraper accepts different query styles depending on place data shape.
+  const attempts = [`place_id:${id}`, id];
+  let sawPending = false;
+  let sawSuccessEmpty = false;
+
+  for (const queryValue of attempts) {
+    const result = await fetchReviewsViaOutscraperQuery(queryValue);
+    if (result.reviews.length > 0) return { reviews: result.reviews };
+
+    const status = String(result.status ?? '').toLowerCase();
+    if (status === 'success') sawSuccessEmpty = true;
+    if (result.reason === 'outscraper_pending') sawPending = true;
+
+    if (result.reason === 'missing_outscraper_key' || result.reason === 'outscraper_api_error') {
+      return { reviews: [], reason: result.reason };
+    }
+  }
+
+  if (sawSuccessEmpty) return { reviews: [], reason: 'outscraper_empty' };
+  if (sawPending) return { reviews: [], reason: 'outscraper_pending' };
+  return { reviews: [], reason: 'outscraper_empty' };
 }
 
 export async function probeGoogleReviewsForPlace(
