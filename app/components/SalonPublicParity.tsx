@@ -1073,7 +1073,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className={`client-site min-h-screen bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
+      className={`client-site min-h-screen overflow-x-hidden bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -1742,9 +1742,24 @@ export default function SalonPublicParity({
             boxShadow: '0 -14px 48px rgba(4,8,20,0.28)',
           }}
         >
-          <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col items-center gap-2.5 overflow-hidden px-3 py-2.5 sm:flex-row sm:justify-between sm:gap-4 sm:px-4 sm:py-3.5">
+          <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col items-center gap-2.5 px-3 py-3 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-4 sm:px-4 sm:py-3.5">
+            <div className="order-1 flex max-w-full flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-2.5">
+              <p className="max-w-full break-words text-center text-[11px] font-medium leading-relaxed text-white/80 sm:text-left sm:text-[11px]">
+                {name}
+              </p>
+              {footerSocial.length > 0 ? (
+                <div className="flex max-w-full items-center justify-center gap-2 sm:justify-start sm:gap-2.5" aria-label="Социални мрежи">
+                  {footerSocial.map((item) => (
+                    <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
+                      {item.node}
+                    </SalonFooterSocialLink>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
             <nav
-              className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-start"
+              className="order-2 flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-start"
               aria-label="Правни документи"
             >
               <a
@@ -1767,26 +1782,12 @@ export default function SalonPublicParity({
               </a>
             </nav>
 
-            {footerSocial.length > 0 ? (
-              <div className="flex w-full max-w-[200px] items-center justify-center gap-1.5 sm:w-auto sm:max-w-none sm:justify-end sm:gap-2.5" aria-label="Социални мрежи">
-                {footerSocial.map((item) => (
-                  <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
-                    {item.node}
-                  </SalonFooterSocialLink>
-                ))}
-              </div>
-            ) : (
-              <span className="hidden h-8 sm:block" aria-hidden />
-            )}
-
-            <p className="max-w-full text-center text-[9px] leading-relaxed text-white/45 sm:text-right sm:text-[10px]">
-              <span className="text-white/30">{name}</span>
-              <span className="mx-1.5 text-white/20">·</span>
+            <p className="order-3 w-full text-center text-[10px] leading-relaxed text-white/50 sm:text-center sm:text-[10px]">
               <a
                 href="https://clicka.bg"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/50 transition-colors hover:text-white/75"
+                className="text-white/55 transition-colors hover:text-white/80"
               >
                 Clicka.bg
               </a>

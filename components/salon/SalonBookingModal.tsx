@@ -162,6 +162,14 @@ export function SalonBookingModal({
     setStep(target);
   }
 
+  function requestClose() {
+    if (typeof window !== 'undefined') {
+      const shouldClose = window.confirm('Сигурни ли сте, че искате да затворите резервацията?');
+      if (!shouldClose) return;
+    }
+    onClose();
+  }
+
   if (!open) return null;
 
   return (
@@ -172,7 +180,7 @@ export function SalonBookingModal({
         role="dialog"
         aria-modal
         aria-label="Резервация"
-        className="absolute inset-x-2 bottom-2 z-10 mx-auto flex max-h-[calc(100dvh-0.75rem)] w-auto max-w-none flex-col overflow-hidden rounded-[1.4rem] border border-white/35 bg-[linear-gradient(160deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
+        className="absolute inset-x-2 bottom-2 z-10 mx-auto flex max-h-[calc(100dvh-0.75rem)] w-auto max-w-none flex-col overflow-hidden rounded-[1.4rem] border border-white/45 bg-[linear-gradient(155deg,rgba(255,255,255,0.9),rgba(255,255,255,0.78))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -181,12 +189,45 @@ export function SalonBookingModal({
         />
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-black/15 sm:hidden" aria-hidden />
 
-        <div className="relative z-[1] flex shrink-0 items-center justify-between gap-3 border-b border-white/45 bg-white/38 px-4 py-3.5 backdrop-blur-xl sm:px-5">
-          <h3 className="text-lg font-semibold tracking-tight text-[#161616]">Резервация</h3>
+        <div className="relative z-[1] flex shrink-0 items-center justify-between gap-2 px-4 pb-1.5 pt-3.5 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className="text-lg font-semibold tracking-tight text-[#161616]">Резервация</h3>
+            <div className="flex items-center gap-1">
+              {(
+                [
+                  { n: 1 as const, label: 'Услуги' },
+                  { n: 2 as const, label: 'Дата' },
+                  { n: 3 as const, label: 'Данни' },
+                ] as const
+              ).map(({ n, label }) => {
+                const active = step === n;
+                const complete = step > n;
+                const disabled =
+                  (n === 2 && !hasServices) || (n === 3 && (!hasServices || !selectedTime));
+                return (
+                  <button
+                    key={`header-step-${n}`}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => goToStep(n)}
+                    className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border px-2 text-[10px] font-semibold transition disabled:opacity-40 ${
+                      active || complete
+                        ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)] text-white'
+                        : 'border-white/65 bg-white/72 text-black/55'
+                    }`}
+                    title={label}
+                    aria-label={`Стъпка ${n}: ${label}`}
+                  >
+                    {complete && !active ? '✓' : n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <button
             type="button"
             className="shrink-0 rounded-full border border-white/60 bg-white/55 p-2 text-black/55 shadow-sm transition hover:bg-white/75"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Затвори"
           >
             <X className="h-5 w-5" />
@@ -194,37 +235,6 @@ export function SalonBookingModal({
         </div>
 
         <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5">
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {(
-              [
-                { n: 1 as const, label: 'Услуги' },
-                { n: 2 as const, label: 'Дата' },
-                { n: 3 as const, label: 'Данни' },
-              ] as const
-            ).map(({ n, label }) => {
-              const active = step === n;
-              const complete = step > n;
-              const disabled =
-                (n === 2 && !hasServices) || (n === 3 && (!hasServices || !selectedTime));
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => goToStep(n)}
-                  className={`inline-flex h-11 min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl border px-2 text-[10px] font-semibold leading-tight transition disabled:opacity-40 ${
-                    active || complete
-                      ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)] text-white'
-                      : 'border-white/60 bg-white/70 text-black/55'
-                  }`}
-                >
-                  <span className="text-[11px]">{complete && !active ? '✓' : n}</span>
-                  <span className="mt-0.5 max-w-[4.5rem] truncate font-medium opacity-90">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-
           {bookingSuccess ? (
             <p className="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 px-3.5 py-3 text-sm leading-relaxed text-[#0f5132]">
               {bookingSuccess}
@@ -236,9 +246,6 @@ export function SalonBookingModal({
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
                       1/3 Услуги
-                    </p>
-                    <p className="mt-1 text-sm text-black/55">
-                      Изберете една или повече услуги — докоснете всяка, за да я добавите.
                     </p>
                   </div>
 
@@ -265,7 +272,7 @@ export function SalonBookingModal({
                             key={cat.id ?? 'all'}
                             type="button"
                             onClick={() => setSelectedCategory(cat.id)}
-                            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
                               active
                                 ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/14 text-[color:var(--salon-primary)]'
                                 : 'border-white/65 bg-white/72 text-black/65'
@@ -580,13 +587,6 @@ export function SalonBookingModal({
             </form>
           )}
 
-          <button
-            type="button"
-            className="mt-4 w-full rounded-2xl border border-white/60 bg-white/45 py-2.5 text-sm font-medium text-[color:var(--salon-primary)] shadow-sm"
-            onClick={onClose}
-          >
-            Затвори
-          </button>
         </div>
       </div>
     </div>
