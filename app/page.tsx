@@ -4,7 +4,6 @@ import SalonPublicParity from '@/app/components/SalonPublicParity';
 import MarketingHomePage from '@/app/components/HomePage';
 import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
 import { extractHostname, isPlatformApexHost, getPrimaryPublicUrl } from '@/lib/domain-routing';
-import { r2PublicBase } from '@/lib/image-delivery';
 import { salonHeroLcpPreloadUrl } from '@/components/salon/salon-hero-lcp';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
@@ -93,11 +92,9 @@ export default async function HomePage() {
     const salonName = String(salonRecord.name ?? 'Салон');
     const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
     const lcpHref = lcpImage ? salonHeroLcpPreloadUrl(lcpImage) : null;
-    const r2Origin = r2PublicBase();
 
     return (
       <>
-        {r2Origin ? <link rel="preconnect" href={r2Origin} crossOrigin="anonymous" /> : null}
         {lcpHref ? (
           <link rel="preload" as="image" href={lcpHref} fetchPriority="high" />
         ) : null}

@@ -81,7 +81,8 @@ const SalonOfferBookingModal = dynamic(
   { ssr: false }
 );
 
-const APPLE_LINK_BLUE = '#0A84FF';
+/** WCAG AA on white for small link text (Lighthouse contrast). */
+const SALON_LINK_COLOR = '#155DFC';
 
 const SALON_TABS = [
   { id: 'offers' as const, label: 'Оферти' },
@@ -1192,7 +1193,7 @@ export default function SalonPublicParity({
             <div className="flex flex-wrap items-start justify-between gap-4 pb-5 lg:pb-0">
               <div className="min-w-0 flex-1">
                 <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{name}</h1>
-                {category ? <p className="text-sm text-black/45 lg:mt-2">{category}</p> : null}
+                {category ? <p className="text-sm text-black/60 lg:mt-2">{category}</p> : null}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
                   {headerGoogleRating != null && (
                     <button
@@ -1224,13 +1225,13 @@ export default function SalonPublicParity({
                     rel="noopener noreferrer"
                     onClick={requestGeolocation}
                     className="mt-2 inline-flex max-w-full items-center gap-1 text-sm font-medium underline-offset-2 hover:underline"
-                    style={{ color: APPLE_LINK_BLUE }}
+                    style={{ color: SALON_LINK_COLOR }}
                   >
                     <MapPin className="h-4 w-4 shrink-0" aria-hidden />
                     <span className="truncate">{[address, city].filter(Boolean).join(', ')}</span>
                   </a>
                 ) : null}
-                {addressDistanceLabel ? <p className="mt-1 text-xs text-black/45">{addressDistanceLabel}</p> : null}
+                {addressDistanceLabel ? <p className="mt-1 text-xs text-black/60">{addressDistanceLabel}</p> : null}
               </div>
             </div>
 
@@ -1280,7 +1281,7 @@ export default function SalonPublicParity({
                       className={`relative shrink-0 whitespace-nowrap border-b-2 px-0 py-3 text-[15px] font-medium ${
                         isActive
                           ? 'border-black text-[#1a1a1a]'
-                          : 'border-transparent text-black/50 hover:text-[#1a1a1a]'
+                          : 'border-transparent text-black/65 hover:text-[#1a1a1a]'
                       }`}
                     >
                       {tab.label}
@@ -1731,12 +1732,12 @@ export default function SalonPublicParity({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-3 inline-flex items-center gap-2 text-sm font-semibold underline"
-                  style={{ color: APPLE_LINK_BLUE }}
+                  style={{ color: SALON_LINK_COLOR }}
                 >
                   <MapPin className="h-4 w-4" aria-hidden />
                   Отвори в Google Maps
                 </a>
-                <p className="mt-2 text-sm" style={{ color: APPLE_LINK_BLUE }}>
+                <p className="mt-2 text-sm" style={{ color: SALON_LINK_COLOR }}>
                   {[address, city].filter(Boolean).join(', ')}
                 </p>
               </DeferredSection>
@@ -1780,8 +1781,8 @@ export default function SalonPublicParity({
                 {mapsHref || address || city ? (
                   <div>
                     <div className="flex gap-2">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: APPLE_LINK_BLUE }} aria-hidden />
-                      <span className="min-w-0" style={{ color: APPLE_LINK_BLUE }}>
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: SALON_LINK_COLOR }} aria-hidden />
+                      <span className="min-w-0" style={{ color: SALON_LINK_COLOR }}>
                         {[address, city].filter(Boolean).join(', ')}
                         {addressDistanceLabel ? (
                           <span className="mt-1 block text-xs text-black/45">{addressDistanceLabel}</span>
@@ -1797,7 +1798,7 @@ export default function SalonPublicParity({
                       rel="noopener noreferrer"
                       onClick={requestGeolocation}
                       className="mt-2 inline-block pl-6 text-sm font-medium underline-offset-2 hover:underline"
-                      style={{ color: APPLE_LINK_BLUE }}
+                      style={{ color: SALON_LINK_COLOR }}
                     >
                       Вижте указанията
                     </a>
@@ -2043,7 +2044,7 @@ export default function SalonPublicParity({
               <a
                 href={`${basePath}/cookies`}
                 className="underline underline-offset-2"
-                style={{ color: APPLE_LINK_BLUE }}
+                style={{ color: SALON_LINK_COLOR }}
               >
                 Научи повече
               </a>
