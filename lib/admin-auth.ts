@@ -139,6 +139,7 @@ export async function ensureAdminAuthSchema() {
       await sql`CREATE INDEX IF NOT EXISTS owner_sessions_owner_id_idx ON owner_sessions(owner_id)`;
       await sql`ALTER TABLE admin_login_tokens ADD COLUMN IF NOT EXISTS email_norm text`;
       await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS password_hash text`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS category text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_name text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_role text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_photo_url text`;

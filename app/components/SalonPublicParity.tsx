@@ -29,9 +29,16 @@ import {
 } from 'react';
 
 import { SalonBookingModal } from '@/components/salon/SalonBookingModal';
+import { SalonOfferBookingModal } from '@/components/salon/SalonOfferBookingModal';
+import {
+  offerHasSpotsLeft,
+  offerVisibleToClient,
+  normalizeOfferImages,
+  offerSpotsLeft,
+  type SalonOfferRow,
+} from '@/lib/salon-offers';
 import { getGradientColorsForUser, getInitialsDotted } from '@/lib/avatar-gradient';
 import { formatDistanceFromUserToSalon, getDistanceKm } from '@/lib/geo';
-import { offerEffectiveForClient } from '@/lib/offer-validity';
 import {
   DAY_LABELS_BG,
   DAY_NAMES_EN,
@@ -77,19 +84,7 @@ const SCROLL_SPY_TAB_ORDER: TabId[] = ['about', 'offers', 'services', 'portfolio
 const DESCRIPTION_PREVIEW_LEN = 120;
 const INITIAL_REVIEWS_VISIBLE = 3;
 
-export type SalonOfferRow = {
-  id: string;
-  title: string;
-  description?: string | null;
-  discount?: number | null;
-  images?: unknown;
-  is_active?: boolean;
-  valid_until?: string | null;
-  campaign_valid_from?: string | null;
-  campaign_valid_until?: string | null;
-  max_claims?: number | null;
-  total_claims?: number | null;
-};
+export type { SalonOfferRow };
 
 export type SalonReviewRow = {
   id: string;
@@ -189,8 +184,7 @@ function salonPublicFacebookUrl(stored: string | null | undefined): string | nul
 }
 
 function offerImagesList(images: unknown): string[] {
-  if (!Array.isArray(images)) return [];
-  return images.filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+  return normalizeOfferImages(images);
 }
 
 type ServiceRow = {
@@ -461,6 +455,8 @@ export default function SalonPublicParity({
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [offerBookingOpen, setOfferBookingOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<SalonOfferRow | null>(null);
   const [bookingServiceIdxs, setBookingServiceIdxs] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -529,10 +525,7 @@ export default function SalonPublicParity({
 
   const activeOffers = useMemo(() => {
     const now = Date.now();
-    return offersProp.filter((o) => {
-      if (o.max_claims != null && (Number(o.total_claims) || 0) >= o.max_claims) return false;
-      return offerEffectiveForClient(o, now);
-    });
+    return offersProp.filter((o) => offerVisibleToClient(o, now));
   }, [offersProp]);
 
   const headerPlatformRating =
@@ -784,8 +777,32 @@ export default function SalonPublicParity({
 
   function closeBookingModal() {
     setBookingOpen(false);
-    document.body.style.overflow = '';
+    if (!offerBookingOpen) document.body.style.overflow = '';
   }
+
+  function openOfferBooking(offer: SalonOfferRow) {
+    if (!offerHasSpotsLeft(offer)) return;
+    setSelectedOffer(offer);
+    setBookingError('');
+    setBookingSuccess('');
+    setSelectedDate('');
+    setSelectedTime('');
+    setClientName('');
+    setClientPhone('');
+    setClientEmail('');
+    setNotes('');
+    setSmsReminderConsent(false);
+    setOfferBookingOpen(true);
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeOfferBooking() {
+    setOfferBookingOpen(false);
+    setSelectedOffer(null);
+    if (!bookingOpen) document.body.style.overflow = '';
+  }
+
+  const offerDurationMin = Math.max(15, Number(selectedOffer?.duration_min ?? 60) || 60);
 
   const DAY_KEYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
   function pad(n: number) {
@@ -819,16 +836,15 @@ export default function SalonPublicParity({
     () => selectedBookingServices.reduce((sum, svc) => sum + (Number(svc.price) || 0), 0),
     [selectedBookingServices]
   );
-  const timeSlots: string[] | 'closed' | null = (() => {
-    if (bookingServiceIdxs.length === 0) return null;
-    if (!selectedDate) return null;
-    const d = new Date(selectedDate + 'T12:00:00');
+  function slotsForDate(date: string, durationMin: number): string[] | 'closed' | null {
+    if (!date) return null;
+    const d = new Date(date + 'T12:00:00');
     const dayKey = DAY_KEYS[d.getDay()];
     const h = wh[dayKey] as { open?: string; close?: string } | null | undefined;
     if (!h) return 'closed';
-    if (isDateBlockedAllDay(bookingBlocks, selectedDate)) return 'closed';
+    if (isDateBlockedAllDay(bookingBlocks, date)) return 'closed';
     if (!h.open || !h.close) return [];
-    const totalDuration = Math.max(5, bookingTotalDuration || 30);
+    const totalDuration = Math.max(5, durationMin || 30);
     const [oh, om] = h.open.split(':').map(Number);
     const [ch, cm] = h.close.split(':').map(Number);
     const start = oh * 60 + om;
@@ -836,12 +852,18 @@ export default function SalonPublicParity({
     const slots: string[] = [];
     for (let t = start; t <= latestStart; t += 30) {
       const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
-      if (!isBlockedForStartTime(bookingBlocks, selectedDate, slot, totalDuration)) {
+      if (!isBlockedForStartTime(bookingBlocks, date, slot, totalDuration)) {
         slots.push(slot);
       }
     }
     return slots;
-  })();
+  }
+
+  const timeSlots: string[] | 'closed' | null =
+    bookingServiceIdxs.length === 0 ? null : slotsForDate(selectedDate, bookingTotalDuration || 30);
+
+  const offerTimeSlots: string[] | 'closed' | null =
+    offerBookingOpen && selectedOffer ? slotsForDate(selectedDate, offerDurationMin) : null;
 
   const [minDate, setMinDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
@@ -910,6 +932,54 @@ export default function SalonPublicParity({
     }
   }
 
+  async function submitOfferBooking(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedOffer) return;
+    setBookingError('');
+    setBookingSuccess('');
+    if (!clientName.trim()) return setBookingError('Моля, въведете вашето име.');
+    if (!clientPhone.trim()) return setBookingError('Моля, въведете телефонен номер.');
+    if (!clientEmail.trim()) return setBookingError('Моля, въведете имейл.');
+    if (!selectedDate) return setBookingError('Моля, изберете дата.');
+    if (!selectedTime) return setBookingError('Моля, изберете час.');
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/bookings?slug=${encodeURIComponent(salonSlug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offerId: selectedOffer.id,
+          clientName: clientName.trim(),
+          clientPhone: clientPhone.trim(),
+          clientEmail: clientEmail.trim().toLowerCase(),
+          serviceName: selectedOffer.title,
+          servicePrice: 0,
+          serviceDuration: offerDurationMin,
+          date: selectedDate,
+          time: selectedTime,
+          notes: notes.trim() || undefined,
+          smsReminderConsent,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) {
+        throw new Error(json.error || 'Грешка при резервация на офертата.');
+      }
+      const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('bg-BG', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      });
+      setBookingSuccess(
+        json.message || `${selectedOffer.title} — ${dateLabel} в ${selectedTime} ч.`,
+      );
+    } catch (err: unknown) {
+      setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const [showAllPlatformReviews, setShowAllPlatformReviews] = useState(false);
   const [showAllGoogleReviews, setShowAllGoogleReviews] = useState(false);
   const [cookieConsent, setCookieConsent] = useState<boolean | null>(true);
@@ -938,7 +1008,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className={`min-h-screen bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen ? ' overflow-x-hidden' : ''}`}
+      className={`min-h-screen bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -1107,17 +1177,26 @@ export default function SalonPublicParity({
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Оферти на салона</h2>
               {activeOffers.length > 0 ? (
                 <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-                  {activeOffers.map((o) => (
+                  {activeOffers.map((o) => {
+                    const spots = offerSpotsLeft(o);
+                    const soldOut = spots === 0;
+                    return (
                     <button
                       key={o.id}
                       type="button"
-                      onClick={() => openBookingModal()}
-                      className="relative w-[min(92vw,340px)] shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-black text-left shadow-[0_14px_34px_rgba(0,0,0,0.12)]"
+                      disabled={soldOut}
+                      onClick={() => openOfferBooking(o)}
+                      className={`relative w-[min(92vw,340px)] shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-black text-left shadow-[0_14px_34px_rgba(0,0,0,0.12)] ${soldOut ? 'opacity-60' : ''}`}
                       style={{ minHeight: 200 }}
                     >
                       {o.discount != null && o.discount > 0 ? (
                         <span className="absolute left-3 top-3 z-10 rounded-full bg-black px-2 py-0.5 text-xs font-semibold text-white">
                           -{o.discount}%
+                        </span>
+                      ) : null}
+                      {spots != null ? (
+                        <span className="absolute right-3 top-3 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase text-black">
+                          {soldOut ? 'Изчерпана' : `Остават ${spots}`}
                         </span>
                       ) : null}
                       {offerImagesList(o.images)[0] ? (
@@ -1140,11 +1219,12 @@ export default function SalonPublicParity({
                         <p className="mt-1 line-clamp-2 text-lg font-semibold leading-tight">{o.title}</p>
                         {o.description ? <p className="mt-1 line-clamp-2 text-sm text-white/85">{o.description}</p> : null}
                         <span className="mt-3 inline-flex w-fit items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-black">
-                          Резервирай
+                          {soldOut ? 'Изчерпана' : 'Резервирай офертата'}
                         </span>
                       </div>
                     </button>
-                  ))}
+                  );
+                  })}
                 </div>
               ) : (
                 <p className="mt-3 rounded-xl border border-black/10 bg-white px-4 py-6 text-center text-sm text-black/55">
@@ -1904,6 +1984,41 @@ export default function SalonPublicParity({
         onNotesChange={setNotes}
         onSmsReminderConsentChange={setSmsReminderConsent}
         onSubmit={submitBooking}
+      />
+
+      <SalonOfferBookingModal
+        open={offerBookingOpen}
+        offer={selectedOffer}
+        primaryColor={primary}
+        salonName={name}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        durationMin={offerDurationMin}
+        clientName={clientName}
+        clientPhone={clientPhone}
+        clientEmail={clientEmail}
+        notes={notes}
+        smsReminderConsent={smsReminderConsent}
+        termsHref={`${basePath}/terms`}
+        privacyHref={`${basePath}/privacy`}
+        minDate={minDate}
+        maxDate={maxDate}
+        timeSlots={offerTimeSlots}
+        isSubmitting={isSubmitting}
+        bookingError={bookingError}
+        bookingSuccess={bookingSuccess}
+        onClose={closeOfferBooking}
+        onDateChange={(date) => {
+          setSelectedDate(date);
+          setSelectedTime('');
+        }}
+        onTimeChange={setSelectedTime}
+        onClientNameChange={setClientName}
+        onClientPhoneChange={setClientPhone}
+        onClientEmailChange={setClientEmail}
+        onNotesChange={setNotes}
+        onSmsReminderConsentChange={setSmsReminderConsent}
+        onSubmit={submitOfferBooking}
       />
 
       {cookieConsent === null ? (

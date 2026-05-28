@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
         credits: String(SMS_PACK_CREDITS),
       },
       customer_email: auth.session.ownerEmail || undefined,
-      success_url: `${adminUrl}?tab=notifications&smsPurchase=success`,
-      cancel_url: `${adminUrl}?tab=notifications&smsPurchase=cancelled`,
+      success_url: `${adminUrl}?tab=sms&smsPurchase=success`,
+      cancel_url: `${adminUrl}?tab=sms&smsPurchase=cancelled`,
     });
 
     if (!session.url) {

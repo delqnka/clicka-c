@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS salon_offers (
   campaign_valid_until timestamptz,
   max_claims integer,
   total_claims integer NOT NULL DEFAULT 0,
+  duration_min integer NOT NULL DEFAULT 60,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

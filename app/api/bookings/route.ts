@@ -2,6 +2,9 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
+import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
+import { offerHasSpotsLeft, offerVisibleToClient } from '@/lib/salon-offers';
+import type { SalonOfferRow } from '@/lib/salon-offers';
 import { sendBookingNotification, sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resend';
 import { sendBookingTelegram } from '@/lib/telegram';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
@@ -112,6 +115,7 @@ export async function POST(request: NextRequest) {
     time: string;
     notes?: string;
     smsReminderConsent?: boolean;
+    offerId?: string;
   };
 
   try {
@@ -131,10 +135,11 @@ export async function POST(request: NextRequest) {
     time,
     notes,
     smsReminderConsent,
+    offerId,
   } = body;
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
   const hasSmsReminderConsent = smsReminderConsent === true;
-
+  const normalizedOfferId = typeof offerId === 'string' ? offerId.trim() : '';
 
   if (!clientName || !clientPhone || !clientEmail || !serviceName || !date || !time) {
     return NextResponse.json(
@@ -149,13 +154,49 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Моля, въведете валиден имейл адрес.' }, { status: 400 });
   }
 
+  const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
   const bookingId = crypto.randomUUID();
-  const priceValue =
+  let resolvedServiceName = String(serviceName).trim();
+  let priceValue =
     servicePrice != null && Number.isFinite(Number(servicePrice)) ? Number(servicePrice) : null;
-  const durationValue =
+  let durationValue =
     serviceDuration != null && Number.isFinite(Number(serviceDuration))
       ? Math.round(Number(serviceDuration))
       : null;
+  let bookingOfferId: string | null = null;
+
+  if (normalizedOfferId) {
+    await ensureOffersSchema();
+    const offerRows = await sql`
+      SELECT id, title, description, discount, images, is_active, valid_until,
+             campaign_valid_from, campaign_valid_until, max_claims, total_claims, duration_min
+      FROM salon_offers
+      WHERE id = ${normalizedOfferId}::uuid AND salon_id = ${salonId}
+      LIMIT 1
+    `;
+    if (offerRows.length === 0) {
+      return NextResponse.json({ error: 'Офертата не е намерена.' }, { status: 404 });
+    }
+    const offer = offerRows[0] as SalonOfferRow;
+    if (!offerVisibleToClient(offer)) {
+      return NextResponse.json(
+        { error: 'Тази оферта вече не е налична за резервация.' },
+        { status: 400 },
+      );
+    }
+    if (!offerHasSpotsLeft(offer)) {
+      return NextResponse.json(
+        { error: 'Всички места по тази оферта са заети.' },
+        { status: 409 },
+      );
+    }
+    resolvedServiceName = `[Оферта] ${String(offer.title ?? '').trim()}`;
+    durationValue = Math.max(15, Number(offer.duration_min ?? 60) || 60);
+    if (offer.discount != null && Number.isFinite(Number(offer.discount))) {
+      priceValue = null;
+    }
+    bookingOfferId = normalizedOfferId;
+  }
 
   const bookingBlocks = normalizeBookingBlocks(
     resolved.salon.opening_hours && typeof resolved.salon.opening_hours === 'object'
@@ -175,6 +216,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (bookingOfferId) {
+    const claimed = await sql`
+      UPDATE salon_offers
+      SET total_claims = total_claims + 1
+      WHERE id = ${bookingOfferId}::uuid
+        AND salon_id = ${salonId}
+        AND is_active = true
+        AND (max_claims IS NULL OR total_claims < max_claims)
+      RETURNING id
+    `;
+    if (claimed.length === 0) {
+      return NextResponse.json(
+        { error: 'Всички места по тази оферта са заети.' },
+        { status: 409 },
+      );
+    }
+  }
+
   let bookings: { id: string }[];
   try {
     bookings = (await sql`
@@ -182,16 +241,18 @@ export async function POST(request: NextRequest) {
         id, salon_id, client_name, client_phone, client_email,
         service_name, service_price, service_duration,
         date, time, status, notes,
-        sms_reminder_consent, sms_reminder_consent_at
+        sms_reminder_consent, sms_reminder_consent_at,
+        offer_id
       )
       VALUES (
         ${bookingId},
-        ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')},
+        ${salonId},
         ${clientName}, ${clientPhone}, ${normalizedClientEmail},
-        ${serviceName}, ${priceValue}, ${durationValue},
+        ${resolvedServiceName}, ${priceValue}, ${durationValue},
         ${date}, ${time}, 'pending', ${normalizedNotes},
         ${hasSmsReminderConsent},
-        ${hasSmsReminderConsent ? new Date().toISOString() : null}
+        ${hasSmsReminderConsent ? new Date().toISOString() : null},
+        ${bookingOfferId}
       )
       RETURNING id
     `) as { id: string }[];
@@ -214,7 +275,7 @@ export async function POST(request: NextRequest) {
     clientName,
     clientPhone,
     clientEmail: normalizedClientEmail,
-    serviceName,
+    serviceName: resolvedServiceName,
     servicePrice,
     serviceDuration,
     date,
@@ -250,7 +311,6 @@ export async function POST(request: NextRequest) {
 
   await Promise.allSettled(notifPromises);
 
-  const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
   void scheduleBookingSmsReminders({
     salonId,
     bookingId: bookings[0].id,

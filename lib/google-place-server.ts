@@ -52,7 +52,10 @@ export async function resolveGooglePlaceId(options: {
   return null;
 }
 
-export async function probeGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewsProbe> {
+export async function probeGoogleReviewsForPlace(
+  placeId: string,
+  businessContext?: { name?: string; city?: string },
+): Promise<GoogleReviewsProbe> {
   const id = placeId.trim();
   if (!id) return { reviews: [], source: 'none', reason: 'missing_place_id' };
 
@@ -60,23 +63,36 @@ export async function probeGoogleReviewsForPlace(placeId: string): Promise<Googl
     return { reviews: [], source: 'none', reason: 'missing_openrouter_key' };
   }
 
-  const fromOpenRouter = await fetchGoogleReviewsViaOpenRouter(id);
-  if (fromOpenRouter.length > 0) return { reviews: fromOpenRouter, source: 'openrouter' };
-  return { reviews: [], source: 'none', reason: 'no_reviews_or_invalid_place_id' };
+  const result = await fetchGoogleReviewsViaOpenRouter(id, businessContext);
+  if (result.reviews.length > 0) {
+    return { reviews: result.reviews, source: 'openrouter' };
+  }
+
+  return {
+    reviews: [],
+    source: 'none',
+    reason: result.reason ?? 'openrouter_empty',
+  };
 }
 
-/**
- * OpenRouter only — изисква OPENROUTER_API_KEY и валиден place_id.
- */
-export async function fetchGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewLite[]> {
+/** OpenRouter (Perplexity Sonar) — изисква OPENROUTER_API_KEY и валиден place_id. */
+export async function fetchGoogleReviewsForPlace(
+  placeId: string,
+  businessContext?: { name?: string; city?: string },
+): Promise<GoogleReviewLite[]> {
   const id = placeId.trim();
   if (!id) return [];
 
-  return unstable_cache(
-    async () => (await probeGoogleReviewsForPlace(id)).reviews,
-    ['google-reviews', id],
-    { revalidate: 3600 },
+  const probe = await unstable_cache(
+    () => probeGoogleReviewsForPlace(id, businessContext),
+    ['google-reviews-or', id],
+    { revalidate: 900 },
   )();
+
+  if (probe.reviews.length > 0) return probe.reviews;
+
+  const fresh = await probeGoogleReviewsForPlace(id, businessContext);
+  return fresh.reviews;
 }
 
 export function buildStaticMapUrl(lat: number, lng: number): string | null {

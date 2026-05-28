@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db';
+import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import {
   buildStaticMapUrl,
   fetchGoogleReviewsForPlace,
@@ -92,9 +93,10 @@ export async function getPublicSalonPageData({
   let reviews: unknown[] = [];
 
   try {
+    await ensureOffersSchema();
     offers = await sql`
       SELECT id, title, description, discount, images, is_active, valid_until,
-             campaign_valid_from, campaign_valid_until, max_claims, total_claims
+             campaign_valid_from, campaign_valid_until, max_claims, total_claims, duration_min
       FROM salon_offers
       WHERE salon_id = ${salonId}
       ORDER BY created_at DESC
@@ -119,7 +121,12 @@ export async function getPublicSalonPageData({
     explicitPlaceId: typeof salon.google_place_id === 'string' ? salon.google_place_id : '',
     mapsUrl: typeof salon.google_maps_url === 'string' ? salon.google_maps_url : '',
   });
-  const googleReviews = placeId ? await fetchGoogleReviewsForPlace(placeId) : [];
+  const googleReviews = placeId
+    ? await fetchGoogleReviewsForPlace(placeId, {
+        name: typeof salon.name === 'string' ? salon.name : undefined,
+        city: typeof salon.city === 'string' ? salon.city : undefined,
+      })
+    : [];
 
   const lat = salon.latitude != null ? Number(salon.latitude) : NaN;
   const lng = salon.longitude != null ? Number(salon.longitude) : NaN;

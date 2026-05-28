@@ -8,6 +8,8 @@ type Props = {
   busy: boolean;
   analyzing: boolean;
   isMobile: boolean;
+  /** Shorter copy and tighter spacing for modals */
+  compact?: boolean;
   onUpload: (files: FileList | null, input?: HTMLInputElement | null) => void | Promise<void>;
   onRemove: (index: number) => void;
   onReanalyze: () => void;
@@ -65,6 +67,7 @@ export function PriceListServicesImport({
   busy,
   analyzing,
   isMobile,
+  compact = false,
   onUpload,
   onRemove,
   onReanalyze,
@@ -73,23 +76,25 @@ export function PriceListServicesImport({
     return (
       <div
         style={{
-          marginBottom: 16,
-          padding: isMobile ? '10px 0' : '10px 0',
+          marginBottom: compact ? 0 : 16,
+          padding: compact ? 0 : '10px 0',
           border: 'none',
           borderRadius: 0,
           background: 'transparent',
           display: 'flex',
-          alignItems: isMobile ? 'stretch' : 'center',
+          alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          flexDirection: isMobile ? 'column' : 'row',
+          flexDirection: 'row',
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#18181B' }}>Ценоразпис с AI</p>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
-            Снимай хартиения си ценоразпис — услугите се добавят автоматично.
-          </p>
+          {!compact ? (
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
+              Снимай хартиения си ценоразпис — услугите се добавят автоматично.
+            </p>
+          ) : null}
         </div>
         <AdminPriceListScanBtn busy={busy || analyzing} onUpload={onUpload} />
       </div>
@@ -97,7 +102,7 @@ export function PriceListServicesImport({
   }
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: compact ? 0 : 16 }}>
       <div
         style={{
           display: 'flex',

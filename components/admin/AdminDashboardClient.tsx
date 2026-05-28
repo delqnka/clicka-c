@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import {
   BriefcaseBusiness,
-  Bell,
+  MessageSquare,
+  Plug,
   CalendarClock,
   Clock3,
   FileText,
@@ -11,6 +12,7 @@ import {
   Image as ImageIcon,
   ImagePlus,
   Scissors,
+  Tag,
   UserRound,
   Users,
   Save,
@@ -29,13 +31,15 @@ import {
   X,
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
 import { GalleryReorderGrid } from '@/components/admin/gallery-reorder-grid';
 import { AddressAutocompleteField } from '@/components/admin/address-autocomplete-field';
 import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
 import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
 import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
+import { SalonOffersSection } from '@/components/admin/SalonOffersSection';
+import type { AdminSalonOffer } from '@/lib/salon-offers';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
@@ -76,11 +80,13 @@ const TABS = [
   { id: 'images',        label: 'Снимки',         Icon: ImageIcon },
   { id: 'specialist',    label: 'Специалист',     Icon: UserRound },
   { id: 'services',      label: 'Услуги',         Icon: Scissors },
+  { id: 'offers',        label: 'Оферти',         Icon: Tag },
   { id: 'hours',         label: 'Работно време',  Icon: Clock3 },
   { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
   { id: 'clients',       label: 'Клиенти',        Icon: Users },
   { id: 'domain',        label: 'Домейн',         Icon: Globe },
-  { id: 'notifications', label: 'Известия',       Icon: Bell },
+  { id: 'integrations', label: 'Интеграции',     Icon: Plug },
+  { id: 'sms',          label: 'SMS',            Icon: MessageSquare },
   { id: 'legal',         label: 'Правни',         Icon: FileText },
 ] as const;
 
@@ -92,7 +98,10 @@ const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
   images:     ['#FF9966', '#FF5E62'],
   specialist: ['#a955ff', '#ea51ff'],
   hours:      ['#56CCF2', '#2F80ED'],
+  offers:     ['#F97316', '#EF4444'],
   domain:     ['#80FF72', '#7EE8FA'],
+  integrations: ['#6366F1', '#8B5CF6'],
+  sms:        ['#22C55E', '#14B8A6'],
   legal:      ['#ffa9c6', '#f434e2'],
 };
 
@@ -119,7 +128,7 @@ type GoogleReviewsStatus = {
   loading: boolean;
   connected: boolean;
   count: number;
-  source: 'openrouter' | 'google_maps' | 'none' | null;
+  source: 'openrouter' | 'none' | null;
   reason: string | null;
 };
 
@@ -226,7 +235,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     source: null,
     reason: null,
   });
-  const [googleReviewsProbeTick, setGoogleReviewsProbeTick] = useState(0);
   const [calendarCursor, setCalendarCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -249,6 +257,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     price: 0,
     duration_min: 30,
   });
+  const [offers, setOffers] = useState<AdminSalonOffer[]>([]);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [smsDraftEnabled, setSmsDraftEnabled] = useState(initialSite.smsEnabled);
@@ -358,7 +367,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    const t = p.get('tab');
+    let t = p.get('tab');
+    if (t === 'notifications') t = p.get('smsPurchase') ? 'sms' : 'integrations';
     if (t && TABS.some(tab => tab.id === t)) setActiveTab(t as TabId);
   }, []);
 
@@ -382,55 +392,65 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     return () => window.clearTimeout(t);
   }, [activeTab, site.customDomain, site.domainStatus, busyKey]);
 
-  useEffect(() => {
-    if (!site.googlePlaceId.trim()) {
-      setGoogleReviewsStatus({
-        loading: false,
-        connected: false,
-        count: 0,
-        source: null,
-        reason: 'missing_place_id',
-      });
-      return;
-    }
-    if (activeTab !== 'notifications') return;
-    let cancelled = false;
-    const run = async () => {
+  const hasGoogleReviewsCandidate = Boolean(
+    site.googlePlaceId.trim() || site.googleMapsUrl.trim(),
+  );
+
+  const loadGoogleReviewsStatus = useCallback(
+    async (opts?: { cacheBust?: boolean }) => {
+      if (!hasGoogleReviewsCandidate) {
+        setGoogleReviewsStatus({
+          loading: false,
+          connected: false,
+          count: 0,
+          source: null,
+          reason: 'missing_place_id',
+        });
+        return;
+      }
+
       setGoogleReviewsStatus((prev) => ({ ...prev, loading: true }));
+      const params = new URLSearchParams({ slug });
+      if (site.googlePlaceId.trim()) params.set('placeId', site.googlePlaceId.trim());
+      if (site.googleMapsUrl.trim()) params.set('mapsUrl', site.googleMapsUrl.trim());
+      if (opts?.cacheBust) params.set('_', String(Date.now()));
+
       try {
-        const res = await fetch(`/api/admin/google-reviews-status?slug=${encodeURIComponent(slug)}`);
-        const data = await readJson(res) as {
+        const res = await fetch(`/api/admin/google-reviews-status?${params.toString()}`, {
+          cache: 'no-store',
+        });
+        const data = (await readJson(res)) as {
           connected?: boolean;
           count?: number;
-          source?: 'openrouter' | 'google_maps' | 'none';
+          source?: 'openrouter' | 'none';
           reason?: string | null;
+          error?: string;
         };
-        if (!cancelled) {
-          setGoogleReviewsStatus({
-            loading: false,
-            connected: data.connected === true,
-            count: Number(data.count ?? 0) || 0,
-            source: data.source ?? 'none',
-            reason: data.reason ?? null,
-          });
-        }
+        if (!res.ok) throw new Error(data.error || 'probe_failed');
+        setGoogleReviewsStatus({
+          loading: false,
+          connected: data.connected === true,
+          count: Number(data.count ?? 0) || 0,
+          source: data.source ?? 'none',
+          reason: data.reason ?? null,
+        });
       } catch {
-        if (!cancelled) {
-          setGoogleReviewsStatus({
-            loading: false,
-            connected: false,
-            count: 0,
-            source: 'none',
-            reason: 'probe_failed',
-          });
-        }
+        setGoogleReviewsStatus({
+          loading: false,
+          connected: false,
+          count: 0,
+          source: 'none',
+          reason: 'probe_failed',
+        });
       }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab, site.googlePlaceId, slug, googleReviewsProbeTick]);
+    },
+    [hasGoogleReviewsCandidate, site.googleMapsUrl, site.googlePlaceId, slug],
+  );
+
+  useEffect(() => {
+    if (activeTab !== 'integrations') return;
+    void loadGoogleReviewsStatus();
+  }, [activeTab, loadGoogleReviewsStatus]);
 
   useEffect(() => {
     setSmsDraftEnabled(site.smsEnabled);
@@ -440,15 +460,51 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'notifications') setActiveTab('notifications');
+    if (params.get('tab') === 'notifications') {
+      setActiveTab(params.get('smsPurchase') ? 'sms' : 'integrations');
+    }
     if (params.get('smsPurchase') === 'success') {
+      setActiveTab('sms');
       setNotice(`Добавени са ${SMS_PACK_CREDITS} SMS. Балансът е обновен.`);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
   useEffect(() => {
-    if (activeTab !== 'notifications') return;
+    if (!serviceModalOpen) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [serviceModalOpen]);
+
+  useEffect(() => {
+    if (activeTab !== 'offers') return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/admin/site-offers?slug=${encodeURIComponent(slug)}`);
+        const data = await readJson(res);
+        if (!res.ok) throw new Error((data as { error?: string }).error || 'Грешка');
+        if (cancelled) return;
+        const list = (data as { offers?: AdminSalonOffer[] }).offers;
+        setOffers(Array.isArray(list) ? list : []);
+      } catch (e) {
+        if (!cancelled) handleErr(e);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, slug]);
+
+  useEffect(() => {
+    if (activeTab !== 'sms') return;
     let cancelled = false;
     const run = async () => {
       setSmsPanelLoading(true);
@@ -991,10 +1047,51 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     flexShrink: 0,
     transition: 'transform 150ms ease, opacity 150ms ease',
   });
+  const svcInp: CSSProperties = { ...inp, background: '#fff', border: `1px solid ${T.border}` };
   const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: isMobile ? 14 : 12 };
 
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); setNavOpen(false); };
+  async function saveOffers() {
+    setError('');
+    setNotice('');
+    setBusyKey('offers');
+    try {
+      const res = await fetch(`/api/admin/site-offers?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offers }),
+      });
+      const data = (await guardResponse(res)) as { offers?: AdminSalonOffer[] };
+      if (Array.isArray(data.offers)) setOffers(data.offers);
+      setNotice('Офертите са запазени.');
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }
+
+  async function handleOfferImagesUpload(offerIndex: number, files: FileList | null) {
+    if (!files?.length) return;
+    setBusyKey(`upload-offer-${offerIndex}`);
+    setError('');
+    try {
+      const urls: string[] = [];
+      for (const f of Array.from(files)) {
+        urls.push(await uploadSingleFile(f));
+      }
+      setOffers((prev) =>
+        prev.map((o, i) => (i === offerIndex ? { ...o, images: [...o.images, ...urls] } : o)),
+      );
+      setNotice(urls.length === 1 ? 'Снимката е качена.' : `${urls.length} снимки са качени.`);
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }
+
   async function saveSmsSettings() {
     setError('');
     setNotice('');
@@ -1639,11 +1736,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         <div
                           key={`svc-${i}`}
                           style={{
-                            border: `1px solid ${T.border}`,
-                            borderRadius: isMobile ? 18 : T.radiusSm,
-                            padding: isMobile ? '16px 18px' : 14,
-                            background: '#fff',
-                            boxShadow: 'none',
+                            border: 'none',
+                            borderBottom: `1px solid ${T.border}`,
+                            borderRadius: 0,
+                            padding: isMobile ? '16px 0' : '14px 0',
+                            background: 'transparent',
                             position: 'relative',
                           }}
                         >
@@ -1688,7 +1785,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                                     services: p.services.map((s, j) => (j === i ? { ...s, name: e.target.value } : s)),
                                   }))
                                 }
-                                style={inp}
+                                style={svcInp}
                                 placeholder="Напр. Подстригване"
                               />
                             </Field>
@@ -1701,7 +1798,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                                     services: p.services.map((s, j) => (j === i ? { ...s, category: e.target.value } : s)),
                                   }))
                                 }
-                                style={inp}
+                                style={svcInp}
                                 placeholder="Напр. Коса"
                               />
                             </Field>
@@ -1714,7 +1811,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                                     services: p.services.map((s, j) => (j === i ? { ...s, description: e.target.value } : s)),
                                   }))
                                 }
-                                style={inp}
+                                style={svcInp}
                                 placeholder="Кратко описание на услугата"
                               />
                             </Field>
@@ -1728,10 +1825,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                                     services: p.services.map((s, j) => (j === i ? { ...s, price: Number(e.target.value) || 0 } : s)),
                                   }))
                                 }
-                                style={{ ...inp, width: isMobile ? '100%' : 80 }}
+                                style={{ ...svcInp, width: isMobile ? '100%' : 80 }}
                               />
                             </Field>
-                            <Field label="Мин">
+                            <Field label="Мін">
                               <input
                                 type="number"
                                 value={svc.duration_min}
@@ -1741,7 +1838,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                                     services: p.services.map((s, j) => (j === i ? { ...s, duration_min: Number(e.target.value) || 30 } : s)),
                                   }))
                                 }
-                                style={{ ...inp, width: isMobile ? '100%' : 70 }}
+                                style={{ ...svcInp, width: isMobile ? '100%' : 70 }}
                               />
                             </Field>
                           </div>
@@ -1754,37 +1851,106 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             </Section>
           )}
 
+          {activeTab === 'offers' && (
+            <Section
+              title="Оферти"
+              desc="Специални промоции на сайта — снимки, описание, лимит на резервации и отделен модал за записване."
+              compact={isMobile}
+            >
+              <SalonOffersSection
+                offers={offers}
+                isMobile={isMobile}
+                busyKey={busyKey}
+                inp={inp}
+                btn={btn}
+                onChange={setOffers}
+                onUploadImages={handleOfferImagesUpload}
+                onSave={saveOffers}
+              />
+            </Section>
+          )}
+
           {activeTab === 'services' && serviceModalOpen ? (
             <div
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.36)', zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+              role="presentation"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 70,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: isMobile ? 'flex-end' : 'center',
+                justifyContent: 'center',
+                padding: isMobile ? 0 : 16,
+              }}
               onClick={() => setServiceModalOpen(false)}
             >
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.36)' }} aria-hidden />
               <div
-                style={{ width: '100%', maxWidth: 520, borderRadius: 16, background: '#fff', border: `1px solid ${T.border}`, padding: 16 }}
+                role="dialog"
+                aria-modal
+                aria-labelledby="add-service-modal-title"
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxWidth: 520,
+                  maxHeight: isMobile ? 'min(92dvh, 100%)' : 'calc(100dvh - 32px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: isMobile ? '20px 20px 0 0' : 16,
+                  background: '#fff',
+                  border: `1px solid ${T.border}`,
+                  overflow: 'hidden',
+                  ...(isMobile ? { marginTop: 'auto' } : {}),
+                }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>Добави услуга</p>
-                <div style={{ marginTop: 12 }}>
-                  <PriceListServicesImport
-                    urls={priceListUrls}
-                    busy={busyKey === 'upload-pricelist'}
-                    analyzing={priceListAnalyzing}
-                    isMobile={isMobile}
-                    onUpload={handlePriceListUpload}
-                    onRemove={removePriceListAt}
-                    onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
-                  />
-                </div>
-                <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
-                  <Field label="Име"><input style={inp} value={newServiceDraft.name} onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))} /></Field>
-                  <Field label="Категория"><input style={inp} value={newServiceDraft.category} onChange={(e) => setNewServiceDraft((p) => ({ ...p, category: e.target.value }))} /></Field>
-                  <Field label="Описание"><input style={inp} value={newServiceDraft.description} onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))} /></Field>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <Field label="Цена (€)"><input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} /></Field>
-                    <Field label="Мин"><input type="number" style={inp} value={newServiceDraft.duration_min} onChange={(e) => setNewServiceDraft((p) => ({ ...p, duration_min: Number(e.target.value) || 30 }))} /></Field>
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    overscrollBehavior: 'contain',
+                    WebkitOverflowScrolling: 'touch',
+                    padding: 16,
+                  }}
+                >
+                  <p id="add-service-modal-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>
+                    Добави услуга
+                  </p>
+                  <div style={{ marginTop: 12 }}>
+                    <PriceListServicesImport
+                      compact
+                      urls={priceListUrls}
+                      busy={busyKey === 'upload-pricelist'}
+                      analyzing={priceListAnalyzing}
+                      isMobile={isMobile}
+                      onUpload={handlePriceListUpload}
+                      onRemove={removePriceListAt}
+                      onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
+                    />
+                  </div>
+                  <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                    <Field label="Име"><input style={inp} value={newServiceDraft.name} onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))} /></Field>
+                    <Field label="Категория"><input style={inp} value={newServiceDraft.category} onChange={(e) => setNewServiceDraft((p) => ({ ...p, category: e.target.value }))} /></Field>
+                    <Field label="Описание"><input style={inp} value={newServiceDraft.description} onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))} /></Field>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <Field label="Цена (€)"><input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} /></Field>
+                      <Field label="Мин"><input type="number" style={inp} value={newServiceDraft.duration_min} onChange={(e) => setNewServiceDraft((p) => ({ ...p, duration_min: Number(e.target.value) || 30 }))} /></Field>
+                    </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <div
+                  style={{
+                    flexShrink: 0,
+                    padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+                    borderTop: `1px solid ${T.border}`,
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: 8,
+                    background: '#fff',
+                  }}
+                >
                   <button type="button" style={btn('ghost')} onClick={() => setServiceModalOpen(false)}>Отказ</button>
                   <button
                     type="button"
@@ -2344,9 +2510,111 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             </Section>
           )}
 
-          {/* ── Известия ── */}
-          {activeTab === 'notifications' && (
-            <Section title="Известия" desc="Telegram, Google и SMS напомняния към клиенти.">
+          {/* ── Интеграции ── */}
+          {activeTab === 'integrations' && (
+            <Section title="Интеграции" desc="Telegram известия и Google отзиви на сайта.">
+              <div style={{ display: 'grid', gap: 10 }}>
+                {/* Telegram */}
+                <InfoCard
+                  title="Telegram"
+                  status={site.telegramChatId ? 'connected' : 'pending'}
+                >
+                  {site.telegramChatId ? (
+                    <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>Telegram е свързан. Ще получаваш известия при нова резервация.</p>
+                  ) : (
+                    <>
+                      <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+                        Отвори{' '}
+                        <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: T.text, fontWeight: 600 }}>@clicka_booking_bot</a>
+                        {' '}в Telegram и изпрати:
+                      </p>
+                      {site.onboardingCode ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
+                            setBusyKey('copied-tg');
+                            setTimeout(() => setBusyKey(k => k === 'copied-tg' ? '' : k), 2000);
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', border: 'none', cursor: 'pointer', transition: 'background 150ms' }}
+                        >
+                          <code style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
+                            /start {site.onboardingCode}
+                          </code>
+                          {busyKey === 'copied-tg'
+                            ? <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
+                            : <Copy size={15} style={{ color: T.muted, flexShrink: 0 }} />
+                          }
+                        </button>
+                      ) : (
+                        <p style={{ margin: '8px 0 0', fontSize: 12, color: T.subtle }}>Кодът се генерира при активиране на акаунта.</p>
+                      )}
+                    </>
+                  )}
+                </InfoCard>
+
+                <InfoCard
+                  title="Google Reviews"
+                  status={googleReviewsStatus.connected ? 'connected' : 'pending'}
+                >
+                  <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+                    {hasGoogleReviewsCandidate
+                      ? googleReviewsStatus.loading
+                        ? 'Проверяваме през OpenRouter (може да отнеме до половин минута)...'
+                        : googleReviewsStatus.connected
+                          ? `Ревютата са активни (${googleReviewsStatus.count}) чрез OpenRouter. Запази в „Сайт“, ако още не си.`
+                          : googleReviewsStatus.reason === 'missing_openrouter_key'
+                            ? 'Липсва OPENROUTER_API_KEY на сървъра — без него отзивите не се зареждат.'
+                            : googleReviewsStatus.reason === 'openrouter_api_error'
+                              ? 'OpenRouter върна грешка. Провери ключа и модела (OPENROUTER_REVIEWS_MODEL).'
+                              : googleReviewsStatus.reason === 'probe_failed'
+                                ? 'Неуспешна проверка. Опитай отново или провери дали си влязъл в админ панела.'
+                                : 'Не успяхме да заредим отзиви. Провери Place ID / Maps линка и натисни „Обнови статуса“.'
+                      : (
+                        <>
+                          Добави Google Place ID или Maps линк в раздел <strong>Сайт</strong> — виж{' '}
+                          <a
+                            href={GOOGLE_PLACE_ID_FINDER_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: T.accent, fontWeight: 600 }}
+                          >
+                            Place ID Finder
+                          </a>
+                          .
+                        </>
+                      )}
+                  </p>
+                  {hasGoogleReviewsCandidate ? (
+                    <button
+                      type="button"
+                      onClick={() => void loadGoogleReviewsStatus({ cacheBust: true })}
+                      disabled={googleReviewsStatus.loading}
+                      style={{
+                        ...btn('sm-ghost'),
+                        marginTop: 8,
+                        opacity: googleReviewsStatus.loading ? 0.65 : 1,
+                        cursor: googleReviewsStatus.loading ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {googleReviewsStatus.loading ? (
+                        <>
+                          <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: -2, animation: 'spin 1s linear infinite' }} />
+                          Обновяваме…
+                        </>
+                      ) : (
+                        'Обнови статуса'
+                      )}
+                    </button>
+                  ) : null}
+                </InfoCard>
+              </div>
+            </Section>
+          )}
+
+          {/* ── SMS ── */}
+          {activeTab === 'sms' && (
+            <Section title="SMS" desc="Напомняния към клиенти преди резервация и покупка на пакети.">
               <div style={{ display: 'grid', gap: 10 }}>
                 <InfoCard
                   title="SMS напомняния"
@@ -2464,83 +2732,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       </div>
                     ) : null}
                   </div>
-                </InfoCard>
-
-                {/* Telegram */}
-                <InfoCard
-                  title="Telegram"
-                  status={site.telegramChatId ? 'connected' : 'pending'}
-                >
-                  {site.telegramChatId ? (
-                    <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>Telegram е свързан. Ще получаваш известия при нова резервация.</p>
-                  ) : (
-                    <>
-                      <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
-                        Отвори{' '}
-                        <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: T.text, fontWeight: 600 }}>@clicka_booking_bot</a>
-                        {' '}в Telegram и изпрати:
-                      </p>
-                      {site.onboardingCode ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
-                            setBusyKey('copied-tg');
-                            setTimeout(() => setBusyKey(k => k === 'copied-tg' ? '' : k), 2000);
-                          }}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', border: 'none', cursor: 'pointer', transition: 'background 150ms' }}
-                        >
-                          <code style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
-                            /start {site.onboardingCode}
-                          </code>
-                          {busyKey === 'copied-tg'
-                            ? <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
-                            : <Copy size={15} style={{ color: T.muted, flexShrink: 0 }} />
-                          }
-                        </button>
-                      ) : (
-                        <p style={{ margin: '8px 0 0', fontSize: 12, color: T.subtle }}>Кодът се генерира при активиране на акаунта.</p>
-                      )}
-                    </>
-                  )}
-                </InfoCard>
-
-                {/* Google Reviews */}
-                <InfoCard
-                  title="Google Reviews"
-                  status={googleReviewsStatus.connected ? 'connected' : 'pending'}
-                >
-                  <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
-                    {site.googlePlaceId
-                      ? googleReviewsStatus.loading
-                        ? 'Проверяваме реално дали се зареждат ревюта от Google...'
-                        : googleReviewsStatus.connected
-                          ? `Ревютата са активни (${googleReviewsStatus.count}). Източник: ${googleReviewsStatus.source === 'google_maps' ? 'Google Maps API' : 'OpenRouter'}.`
-                          : 'Place ID е зададен, но не успяхме да заредим ревюта. Провери дали ID е на правилния профил и дали API ключовете са налични.'
-                      : (
-                        <>
-                          Добави Google Place ID в раздел <strong>Сайт</strong> — виж{' '}
-                          <a
-                            href={GOOGLE_PLACE_ID_FINDER_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: T.accent, fontWeight: 600 }}
-                          >
-                            Place ID Finder
-                          </a>
-                          .
-                        </>
-                      )}
-                  </p>
-                  {site.googlePlaceId ? (
-                    <button
-                      type="button"
-                      onClick={() => setGoogleReviewsProbeTick((v) => v + 1)}
-                      style={{ ...btn('sm-ghost'), marginTop: 8 }}
-                    >
-                      Обнови статуса
-                    </button>
-                  ) : null}
                 </InfoCard>
               </div>
             </Section>
