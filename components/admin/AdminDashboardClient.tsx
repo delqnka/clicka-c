@@ -252,6 +252,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [googleBizQuery, setGoogleBizQuery] = useState('');
   const [googleBizLoading, setGoogleBizLoading] = useState(false);
   const [googleBizResults, setGoogleBizResults] = useState<GoogleBusinessCandidate[]>([]);
+  const [googleBizMessage, setGoogleBizMessage] = useState('');
   const [calendarCursor, setCalendarCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -542,9 +543,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     const q = googleBizQuery.trim();
     if (!q) {
       setGoogleBizResults([]);
+      setGoogleBizMessage('Въведи име на бизнес, за да търсим.');
       return;
     }
     setGoogleBizLoading(true);
+    setGoogleBizMessage('');
     try {
       const res = await fetch(
         `/api/admin/google-business-search?slug=${encodeURIComponent(slug)}&q=${encodeURIComponent(q)}`,
@@ -555,10 +558,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         reason?: string;
       };
       if (!res.ok) throw new Error(data.reason || 'search_failed');
-      setGoogleBizResults(Array.isArray(data.results) ? data.results : []);
+      const results = Array.isArray(data.results) ? data.results : [];
+      setGoogleBizResults(results);
+      if (results.length === 0) {
+        if (data.reason === 'missing_outscraper_key') {
+          setGoogleBizMessage('Липсва OUTSCRAPER_API_KEY на сървъра.');
+        } else if (data.reason === 'outscraper_api_error') {
+          setGoogleBizMessage('Outscraper върна грешка. Опитай отново след малко.');
+        } else {
+          setGoogleBizMessage('Няма намерени бизнес профили. Пробвай с град или по-точно име.');
+        }
+      }
     } catch {
       setGoogleBizResults([]);
-      setError('Неуспешно търсене в Google. Провери OUTSCRAPER_API_KEY.');
+      setGoogleBizMessage('Неуспешно търсене в Google. Провери OUTSCRAPER_API_KEY.');
     } finally {
       setGoogleBizLoading(false);
     }
@@ -2885,6 +2898,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                           </button>
                         ))}
                       </div>
+                    ) : null}
+                    {!googleBizLoading && googleBizMessage ? (
+                      <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>{googleBizMessage}</p>
                     ) : null}
                   </div>
                 </InfoCard>

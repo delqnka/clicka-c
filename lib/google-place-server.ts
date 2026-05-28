@@ -258,7 +258,29 @@ export async function searchGoogleBusinessesByName(
   try {
     const data = await outscraperGet(`https://api.app.outscraper.com/maps/search-v3?${params}`, key);
     const raw = Array.isArray(data.data) ? data.data : [];
-    const mapped = raw
+    const rows: Record<string, unknown>[] = [];
+    for (const item of raw) {
+      if (!item) continue;
+      if (Array.isArray(item)) {
+        for (const nested of item) {
+          if (nested && typeof nested === 'object') rows.push(nested as Record<string, unknown>);
+        }
+        continue;
+      }
+      if (typeof item !== 'object') continue;
+      const row = item as Record<string, unknown>;
+      const nestedCandidates = [row.results, row.businesses, row.places];
+      const nestedArray = nestedCandidates.find((x) => Array.isArray(x));
+      if (Array.isArray(nestedArray)) {
+        for (const nested of nestedArray) {
+          if (nested && typeof nested === 'object') rows.push(nested as Record<string, unknown>);
+        }
+        continue;
+      }
+      rows.push(row);
+    }
+
+    const mapped = rows
       .map((item) => {
         const row = item && typeof item === 'object' ? (item as Record<string, unknown>) : null;
         if (!row) return null;
@@ -278,7 +300,9 @@ export async function searchGoogleBusinessesByName(
     for (const item of mapped) {
       if (!unique.has(item.placeId)) unique.set(item.placeId, item);
     }
-    return { results: [...unique.values()] };
+    const results = [...unique.values()];
+    if (results.length === 0) return { results: [], reason: 'outscraper_empty' };
+    return { results };
   } catch {
     return { results: [], reason: 'outscraper_api_error' };
   }
