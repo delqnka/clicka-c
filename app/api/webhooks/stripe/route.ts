@@ -46,6 +46,8 @@ async function sendDomainPurchaseNotification(requestId: string) {
       r.company_id,
       r.notes,
       r.total_fee_cents,
+      r.setup_fee_cents,
+      r.domain_fee_cents,
       r.currency,
       r.status,
       s.slug,
@@ -60,6 +62,12 @@ async function sendDomainPurchaseNotification(requestId: string) {
 
   const row = rows[0] as Record<string, unknown>;
   const total = Number(row.total_fee_cents ?? 0) / 100;
+  const setupFee = Number(row.setup_fee_cents ?? 0) / 100;
+  const domainFee = Number(row.domain_fee_cents ?? 0) / 100;
+  const registrantEmail = String(row.registrant_email ?? '').trim();
+  const fullDomain = String(row.full_domain ?? '').trim();
+  const salonName = String(row.name ?? '').trim() || 'Твоят салон';
+  const statusLabel = formatDomainPurchaseStatus(String(row.status ?? 'paid') as DomainPurchaseStatus);
 
   try {
     await resend.emails.send({
@@ -81,6 +89,32 @@ async function sendDomainPurchaseNotification(requestId: string) {
           <p><strong>Фирма:</strong> ${String(row.company_name ?? '') || 'Няма'}</p>
           <p><strong>ЕИК / VAT:</strong> ${String(row.company_id ?? '') || 'Няма'}</p>
           <p><strong>Бележки:</strong> ${String(row.notes ?? '') || 'Няма'}</p>
+        </div>
+      `,
+    });
+  } catch {}
+
+  if (!registrantEmail) return;
+
+  try {
+    await resend.emails.send({
+      from: 'Clicka.bg <noreply@clicka.bg>',
+      to: registrantEmail,
+      subject: `Домейн заявка за ${fullDomain} — плащането е успешно`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+          <h2>Потвърждение за домейн заявка</h2>
+          <p>Благодарим! Получихме успешно плащането за домейн заявката на <strong>${salonName}</strong>.</p>
+          <p><strong>Домейн:</strong> ${fullDomain}</p>
+          <p><strong>Статус:</strong> ${statusLabel}</p>
+          <p><strong>Разбивка:</strong></p>
+          <ul>
+            <li>Домейн (1 година): ${domainFee.toFixed(2)} EUR</li>
+            <li>Техническа администрация и конфигуриране: ${setupFee.toFixed(2)} EUR</li>
+            <li><strong>Общо:</strong> ${total.toFixed(2)} EUR</li>
+          </ul>
+          <p>Обичайният срок за свързване е 24-72 часа (в зависимост от DNS разпространението).</p>
+          <p style="font-size: 13px; color: #666;">Ще получиш ново уведомление, когато домейнът е активен.</p>
         </div>
       `,
     });

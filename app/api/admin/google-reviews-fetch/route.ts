@@ -46,13 +46,15 @@ export async function POST(request: NextRequest) {
 
   await ensureGoogleReviewsSchema();
   const cacheRows = await sql`
-    SELECT google_reviews_cache, google_reviews_fetched_at
+    SELECT google_reviews_cache, google_reviews_fetched_at, google_reviews_rating, google_reviews_count
     FROM salons
     WHERE slug = ${auth.salon.slug}
     LIMIT 1
   `;
   const cachedRaw = cacheRows[0]?.google_reviews_cache;
   const cachedFetchedAtRaw = cacheRows[0]?.google_reviews_fetched_at;
+  const cachedOverallRating = Number(cacheRows[0]?.google_reviews_rating);
+  const cachedTotalReviews = Number(cacheRows[0]?.google_reviews_count);
   const cachedReviews = Array.isArray(cachedRaw)
     ? cachedRaw.filter((r: unknown) => {
       if (!r || typeof r !== 'object') return false;
@@ -65,12 +67,16 @@ export async function POST(request: NextRequest) {
     cachedFetchedAt instanceof Date
     && Number.isFinite(cachedFetchedAt.getTime())
     && Date.now() - cachedFetchedAt.getTime() < GOOGLE_REVIEWS_CACHE_TTL_MS;
-  if (!forceRefresh && cachedReviews.length > 0 && cacheIsFresh) {
+  const hasCachedAggregate =
+    Number.isFinite(cachedOverallRating) || (Number.isFinite(cachedTotalReviews) && cachedTotalReviews > 0);
+  if (!forceRefresh && cacheIsFresh && (cachedReviews.length > 0 || hasCachedAggregate)) {
     return NextResponse.json({
       success: true,
       count: cachedReviews.length,
       reviews: cachedReviews,
       source: 'cache',
+      overallRating: Number.isFinite(cachedOverallRating) ? cachedOverallRating : null,
+      totalReviews: Number.isFinite(cachedTotalReviews) ? cachedTotalReviews : null,
       providerStatus: null,
       providerHint: 'cached_30_days',
     });
@@ -78,11 +84,17 @@ export async function POST(request: NextRequest) {
 
   const probe = await probeGoogleReviewsForPlace(placeId);
 
-  if (probe.reviews.length > 0) {
+  if (
+    probe.reviews.length > 0 ||
+    Number.isFinite(Number(probe.overallRating)) ||
+    (Number.isFinite(Number(probe.totalReviews)) && Number(probe.totalReviews) > 0)
+  ) {
     await sql`
       UPDATE salons
       SET
         google_reviews_cache = ${JSON.stringify(probe.reviews)}::jsonb,
+        google_reviews_rating = ${Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null},
+        google_reviews_count = ${Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null},
         google_reviews_fetched_at = now(),
         updated_at = now()
       WHERE slug = ${auth.salon.slug}
@@ -93,6 +105,8 @@ export async function POST(request: NextRequest) {
       count: probe.reviews.length,
       reviews: probe.reviews,
       source: probe.source,
+      overallRating: Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null,
+      totalReviews: Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null,
       providerStatus: probe.providerStatus ?? null,
       providerHint: probe.providerHint ?? null,
     });

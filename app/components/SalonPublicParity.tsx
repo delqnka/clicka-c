@@ -532,11 +532,17 @@ export default function SalonPublicParity({
   const headerPlatformRating =
     reviewCountAgg > 0 && ratingAgg > 0 ? { rating: ratingAgg, count: reviewCountAgg } : null;
   const headerGoogleRating = useMemo(() => {
-    if (!googlePlaceId || googleReviews.length === 0) return null;
+    if (!googlePlaceId) return null;
+    const dbRatingRaw = Number(rawSalon.google_reviews_rating);
+    const dbCountRaw = Number(rawSalon.google_reviews_count);
+    const dbRating = Number.isFinite(dbRatingRaw) ? Math.round(dbRatingRaw * 10) / 10 : null;
+    const dbCount = Number.isFinite(dbCountRaw) ? Math.max(0, Math.floor(dbCountRaw)) : null;
+    if (dbRating != null && dbCount != null && dbCount > 0) return { rating: dbRating, count: dbCount };
+    if (googleReviews.length === 0) return null;
     const sum = googleReviews.reduce((s, r) => s + (Number(r.rating) || 0), 0);
     const rating = Math.round((sum / googleReviews.length) * 10) / 10;
     return { rating, count: googleReviews.length };
-  }, [googlePlaceId, googleReviews]);
+  }, [googlePlaceId, googleReviews, rawSalon.google_reviews_rating, rawSalon.google_reviews_count]);
 
   const addressDistanceLabel = useMemo(() => {
     if (!userLocation || lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
@@ -760,11 +766,15 @@ export default function SalonPublicParity({
     return () => window.removeEventListener('keydown', onKey);
   }, [galleryOpen]);
 
-  function openBookingModal(serviceIdx?: number) {
+  function openBookingModal(serviceId?: string) {
     setBookingError('');
     setBookingSuccess('');
-    if (serviceIdx !== undefined && serviceIdx >= 0) setBookingServiceIdxs([serviceIdx]);
-    else setBookingServiceIdxs([]);
+    if (serviceId) {
+      const idx = bookingModalServices.findIndex((service) => service.id === serviceId);
+      setBookingServiceIdxs(idx >= 0 ? [idx] : []);
+    } else {
+      setBookingServiceIdxs([]);
+    }
     setSelectedDate('');
     setSelectedTime('');
     setClientName('');
@@ -822,12 +832,33 @@ export default function SalonPublicParity({
   }
 
   const wh = openingHoursMerged ?? {};
+  const bookingModalServices = useMemo(() => {
+    const out: ServiceRow[] = [];
+    for (const service of servicesFromDb) {
+      const variants = Array.isArray(service.variants) ? service.variants : [];
+      if (variants.length === 0) {
+        out.push(service);
+        continue;
+      }
+      for (const variant of variants) {
+        out.push({
+          ...service,
+          id: `${service.id}::${variant.label}`,
+          name: `${service.name} – ${variant.label}`,
+          price: Number(variant.price ?? service.price ?? 0) || 0,
+          duration: Math.max(5, Number(variant.duration ?? service.duration ?? 30) || 30),
+          variants: undefined,
+        });
+      }
+    }
+    return out;
+  }, [servicesFromDb]);
   const selectedBookingServices = useMemo(
     () =>
       bookingServiceIdxs
-        .map((idx) => servicesFromDb[idx])
+        .map((idx) => bookingModalServices[idx])
         .filter((svc): svc is ServiceRow => Boolean(svc)),
-    [bookingServiceIdxs, servicesFromDb]
+    [bookingServiceIdxs, bookingModalServices]
   );
   const bookingTotalDuration = useMemo(
     () => selectedBookingServices.reduce((sum, svc) => sum + (Number(svc.duration) || 0), 0),
@@ -881,7 +912,6 @@ export default function SalonPublicParity({
 
   useEffect(() => {
     if (!selectedDate) return;
-    if (occupiedSlotsByDate[selectedDate]) return;
     let cancelled = false;
     (async () => {
       try {
@@ -909,7 +939,7 @@ export default function SalonPublicParity({
     return () => {
       cancelled = true;
     };
-  }, [occupiedSlotsByDate, salonSlug, selectedDate]);
+  }, [salonSlug, selectedDate]);
 
   useEffect(() => {
     const toLocalISODate = (date: Date) => {
@@ -921,6 +951,20 @@ export default function SalonPublicParity({
     setMaxDate(
       toLocalISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60))
     );
+  }, []);
+
+  const markDateSlotOccupied = useCallback((date: string, time: string, duration: number) => {
+    if (!date || !time) return;
+    const normalizedDuration = Math.max(5, Number(duration) || 30);
+    setOccupiedSlotsByDate((prev) => {
+      const day = prev[date] ?? [];
+      const alreadyExists = day.some((s) => s.time === time);
+      if (alreadyExists) return prev;
+      return {
+        ...prev,
+        [date]: [...day, { time, duration: normalizedDuration }],
+      };
+    });
   }, []);
 
   async function submitBooking(e: React.FormEvent) {
@@ -967,6 +1011,7 @@ export default function SalonPublicParity({
         day: 'numeric',
         month: 'long',
       });
+      markDateSlotOccupied(selectedDate, selectedTime, combinedDuration);
       setBookingSuccess(`${combinedServiceName} — ${dateLabel} в ${selectedTime} ч.`);
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
@@ -1013,6 +1058,7 @@ export default function SalonPublicParity({
         day: 'numeric',
         month: 'long',
       });
+      markDateSlotOccupied(selectedDate, selectedTime, offerDurationMin);
       setBookingSuccess(
         json.message || `${selectedOffer.title} — ${dateLabel} в ${selectedTime} ч.`,
       );
@@ -1306,7 +1352,6 @@ export default function SalonPublicParity({
               ) : null}
               <ul className="mt-4 space-y-3">
                 {displayServices.map((service, idxInPage) => {
-                  const globalIdx = servicesFromDb.findIndex((x) => x.id === service.id);
                   const variants = service.variants && service.variants.length > 0 ? service.variants : null;
                   const selectedVariantLabel = variants
                     ? selectedVariantByServiceId[service.id] ?? variants[0].label
@@ -1377,7 +1422,7 @@ export default function SalonPublicParity({
                         <div className="flex shrink-0 self-center">
                           <button
                             type="button"
-                            onClick={() => openBookingModal(globalIdx >= 0 ? globalIdx : servicesFromDb.indexOf(service))}
+                            onClick={() => openBookingModal(effective.id)}
                             className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-black px-4 py-2 text-sm font-medium text-white sm:px-5"
                           >
                             Резервирай
@@ -1987,7 +2032,7 @@ export default function SalonPublicParity({
       <SalonBookingModal
         open={bookingOpen}
         primaryColor={primary}
-        services={servicesFromDb}
+        services={bookingModalServices}
         selectedServiceIdxs={bookingServiceIdxs}
         selectedDate={selectedDate}
         selectedTime={selectedTime}

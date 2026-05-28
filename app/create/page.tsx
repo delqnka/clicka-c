@@ -249,6 +249,17 @@ function CreatePageContent() {
           </div>
         )}
 
+        <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
+          <p className="text-[13px] font-semibold text-[var(--foreground)]">
+            Домейн (по желание)
+          </p>
+          <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+            Техническа администрация и конфигуриране: <strong>25 EUR</strong> (еднократно). Цената на домейна е отделно за 1 година:
+            {' '}
+            <strong>.com 12 EUR</strong>, <strong>.bg 30 EUR</strong>, <strong>.org 8 EUR</strong>, <strong>.info 8 EUR</strong>.
+          </p>
+        </div>
+
         {/* Pay button */}
         <div className="mt-6">
           <ButtonColorful

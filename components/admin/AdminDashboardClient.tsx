@@ -275,6 +275,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     description: '',
     price: 0,
     duration_min: 30,
+    variants: [] as { label: string; price: number; duration_min: number }[],
   });
   const [offers, setOffers] = useState<AdminSalonOffer[]>([]);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
@@ -1278,20 +1279,37 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   }
 
   function addManualService() {
+    const normalizedVariants = newServiceDraft.variants
+      .map((variant) => ({
+        label: String(variant.label ?? '').trim(),
+        price: Math.max(0, Number(variant.price) || 0),
+        duration: Math.max(5, Number(variant.duration_min) || 30),
+      }))
+      .filter((variant) => variant.label.length > 0);
+    const nextPrice =
+      normalizedVariants.length > 0
+        ? normalizedVariants[0]!.price
+        : Math.max(0, Number(newServiceDraft.price) || 0);
+    const nextDuration =
+      normalizedVariants.length > 0
+        ? normalizedVariants[0]!.duration
+        : Math.max(5, Number(newServiceDraft.duration_min) || 30);
     setSite((p) => ({
       ...p,
       services: [
         ...p.services,
         {
+          id: `svc-${Date.now().toString(36)}`,
           name: newServiceDraft.name.trim(),
           category: newServiceDraft.category.trim(),
           description: newServiceDraft.description.trim(),
-          price: Math.max(0, Number(newServiceDraft.price) || 0),
-          duration_min: Math.max(5, Number(newServiceDraft.duration_min) || 30),
+          price: nextPrice,
+          duration_min: nextDuration,
+          ...(normalizedVariants.length > 0 ? { variants: normalizedVariants } : {}),
         },
       ],
     }));
-    setNewServiceDraft({ name: '', category: '', description: '', price: 0, duration_min: 30 });
+    setNewServiceDraft({ name: '', category: '', description: '', price: 0, duration_min: 30, variants: [] });
     setServiceModalOpen(false);
   }
 
@@ -2046,6 +2064,172 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                                 style={{ ...svcInp, width: isMobile ? '100%' : 70 }}
                               />
                             </Field>
+                            <div style={{ gridColumn: '1 / -1', marginTop: 2 }}>
+                              <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>
+                                Варианти (по избор)
+                              </p>
+                              <div style={{ display: 'grid', gap: 6 }}>
+                                {(Array.isArray((svc as { variants?: unknown[] }).variants)
+                                  ? ((svc as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? [])
+                                  : []
+                                ).map((variant, variantIndex) => (
+                                  <div
+                                    key={`variant-${i}-${variantIndex}`}
+                                    style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 90px 90px auto' : '1fr 110px 110px auto', gap: 6, alignItems: 'center' }}
+                                  >
+                                    <input
+                                      value={String(variant.label ?? '')}
+                                      onChange={(e) =>
+                                        setSite((p) => ({
+                                          ...p,
+                                          services: p.services.map((serviceRow, rowIdx) => {
+                                            if (rowIdx !== i) return serviceRow;
+                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
+                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
+                                                  label: String(v.label ?? ''),
+                                                  price: Math.max(0, Number(v.price) || 0),
+                                                  duration:
+                                                    v.duration != null && Number.isFinite(Number(v.duration))
+                                                      ? Math.max(5, Number(v.duration))
+                                                      : undefined,
+                                                }))
+                                              : [];
+                                            prevVariants[variantIndex] = {
+                                              ...prevVariants[variantIndex],
+                                              label: e.target.value,
+                                            };
+                                            return { ...serviceRow, variants: prevVariants };
+                                          }),
+                                        }))
+                                      }
+                                      style={svcInp}
+                                      placeholder="Име на вариант"
+                                    />
+                                    <input
+                                      type="number"
+                                      value={Number(variant.price ?? 0)}
+                                      onChange={(e) =>
+                                        setSite((p) => ({
+                                          ...p,
+                                          services: p.services.map((serviceRow, rowIdx) => {
+                                            if (rowIdx !== i) return serviceRow;
+                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
+                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
+                                                  label: String(v.label ?? ''),
+                                                  price: Math.max(0, Number(v.price) || 0),
+                                                  duration:
+                                                    v.duration != null && Number.isFinite(Number(v.duration))
+                                                      ? Math.max(5, Number(v.duration))
+                                                      : undefined,
+                                                }))
+                                              : [];
+                                            prevVariants[variantIndex] = {
+                                              ...prevVariants[variantIndex],
+                                              price: Math.max(0, Number(e.target.value) || 0),
+                                            };
+                                            return { ...serviceRow, variants: prevVariants };
+                                          }),
+                                        }))
+                                      }
+                                      style={svcInp}
+                                      placeholder="€"
+                                    />
+                                    <input
+                                      type="number"
+                                      value={Number(variant.duration ?? svc.duration_min ?? 30)}
+                                      onChange={(e) =>
+                                        setSite((p) => ({
+                                          ...p,
+                                          services: p.services.map((serviceRow, rowIdx) => {
+                                            if (rowIdx !== i) return serviceRow;
+                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
+                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
+                                                  label: String(v.label ?? ''),
+                                                  price: Math.max(0, Number(v.price) || 0),
+                                                  duration:
+                                                    v.duration != null && Number.isFinite(Number(v.duration))
+                                                      ? Math.max(5, Number(v.duration))
+                                                      : undefined,
+                                                }))
+                                              : [];
+                                            prevVariants[variantIndex] = {
+                                              ...prevVariants[variantIndex],
+                                              duration: Math.max(5, Number(e.target.value) || 30),
+                                            };
+                                            return { ...serviceRow, variants: prevVariants };
+                                          }),
+                                        }))
+                                      }
+                                      style={svcInp}
+                                      placeholder="мин"
+                                    />
+                                    <button
+                                      type="button"
+                                      style={{ ...btn('ghost'), padding: '6px 8px' }}
+                                      onClick={() =>
+                                        setSite((p) => ({
+                                          ...p,
+                                          services: p.services.map((serviceRow, rowIdx) => {
+                                            if (rowIdx !== i) return serviceRow;
+                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
+                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
+                                                  label: String(v.label ?? ''),
+                                                  price: Math.max(0, Number(v.price) || 0),
+                                                  duration:
+                                                    v.duration != null && Number.isFinite(Number(v.duration))
+                                                      ? Math.max(5, Number(v.duration))
+                                                      : undefined,
+                                                }))
+                                              : [];
+                                            const nextVariants = prevVariants.filter((_, idx) => idx !== variantIndex);
+                                            return { ...serviceRow, variants: nextVariants };
+                                          }),
+                                        }))
+                                      }
+                                      aria-label="Премахни вариант"
+                                    >
+                                      <X size={13} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                style={{ ...btn('ghost'), marginTop: 8 }}
+                                onClick={() =>
+                                  setSite((p) => ({
+                                    ...p,
+                                    services: p.services.map((serviceRow, rowIdx) => {
+                                      if (rowIdx !== i) return serviceRow;
+                                      const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
+                                        ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
+                                            label: String(v.label ?? ''),
+                                            price: Math.max(0, Number(v.price) || 0),
+                                            duration:
+                                              v.duration != null && Number.isFinite(Number(v.duration))
+                                                ? Math.max(5, Number(v.duration))
+                                                : undefined,
+                                          }))
+                                        : [];
+                                      return {
+                                        ...serviceRow,
+                                        variants: [
+                                          ...prevVariants,
+                                          {
+                                            label: '',
+                                            price: Math.max(0, Number(serviceRow.price) || 0),
+                                            duration: Math.max(5, Number(serviceRow.duration_min) || 30),
+                                          },
+                                        ],
+                                      };
+                                    }),
+                                  }))
+                                }
+                              >
+                                <Plus size={13} />
+                                Добави вариант
+                              </button>
+                            </div>
                           </div>
                       </div>
                     </div>
@@ -2147,6 +2331,92 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <Field label="Цена (€)"><input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} /></Field>
                       <Field label="Мин"><input type="number" style={inp} value={newServiceDraft.duration_min} onChange={(e) => setNewServiceDraft((p) => ({ ...p, duration_min: Number(e.target.value) || 30 }))} /></Field>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>
+                        Варианти (по избор)
+                      </p>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        {newServiceDraft.variants.map((variant, idx) => (
+                          <div
+                            key={`new-service-variant-${idx}`}
+                            style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px auto', gap: 6, alignItems: 'center' }}
+                          >
+                            <input
+                              style={inp}
+                              value={variant.label}
+                              onChange={(e) =>
+                                setNewServiceDraft((prev) => ({
+                                  ...prev,
+                                  variants: prev.variants.map((v, i) => (i === idx ? { ...v, label: e.target.value } : v)),
+                                }))
+                              }
+                              placeholder="Име на вариант"
+                            />
+                            <input
+                              type="number"
+                              style={inp}
+                              value={variant.price}
+                              onChange={(e) =>
+                                setNewServiceDraft((prev) => ({
+                                  ...prev,
+                                  variants: prev.variants.map((v, i) =>
+                                    i === idx ? { ...v, price: Math.max(0, Number(e.target.value) || 0) } : v
+                                  ),
+                                }))
+                              }
+                              placeholder="€"
+                            />
+                            <input
+                              type="number"
+                              style={inp}
+                              value={variant.duration_min}
+                              onChange={(e) =>
+                                setNewServiceDraft((prev) => ({
+                                  ...prev,
+                                  variants: prev.variants.map((v, i) =>
+                                    i === idx ? { ...v, duration_min: Math.max(5, Number(e.target.value) || 30) } : v
+                                  ),
+                                }))
+                              }
+                              placeholder="мин"
+                            />
+                            <button
+                              type="button"
+                              style={{ ...btn('ghost'), padding: '6px 8px' }}
+                              onClick={() =>
+                                setNewServiceDraft((prev) => ({
+                                  ...prev,
+                                  variants: prev.variants.filter((_, i) => i !== idx),
+                                }))
+                              }
+                              aria-label="Премахни вариант"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        style={{ ...btn('ghost'), marginTop: 8 }}
+                        onClick={() =>
+                          setNewServiceDraft((prev) => ({
+                            ...prev,
+                            variants: [
+                              ...prev.variants,
+                              {
+                                label: '',
+                                price: Math.max(0, Number(prev.price) || 0),
+                                duration_min: Math.max(5, Number(prev.duration_min) || 30),
+                              },
+                            ],
+                          }))
+                        }
+                      >
+                        <Plus size={13} />
+                        Добави вариант
+                      </button>
                     </div>
                   </div>
                 </div>

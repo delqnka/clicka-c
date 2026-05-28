@@ -91,10 +91,13 @@ export async function sendGoogleReviewInvitation(
   clientEmail: string,
   clientName: string,
   salonName: string,
-  googlePlaceId: string
+  googlePlaceId: string,
+  salonSlug?: string
 ): Promise<void> {
+  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://clicka.bg').replace(/\/+$/, '');
   const mapsPlaceUrl = `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(googlePlaceId)}`;
   const directReviewUrl = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(googlePlaceId)}`;
+  const reviewHubUrl = `${appBaseUrl}/review/google?placeid=${encodeURIComponent(googlePlaceId)}&salon=${encodeURIComponent(salonName)}${salonSlug ? `&slug=${encodeURIComponent(salonSlug)}` : ''}`;
 
   await resend.emails.send({
     from: senderFromSalonName(salonName),
@@ -109,7 +112,7 @@ export async function sendGoogleReviewInvitation(
           Ако сте доволни от услугата, ще ни помогнете много с кратък отзив в Google.
         </p>
         <p style="margin: 24px 0;">
-          <a href="${directReviewUrl}"
+          <a href="${reviewHubUrl}"
              style="display: inline-block; background: #000; color: #fff; padding: 14px 24px;
                     border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 15px;">
             Остави отзив в Google
@@ -121,7 +124,7 @@ export async function sendGoogleReviewInvitation(
         <p style="font-size: 13px; line-height: 1.7; color: #666;">
           Ако бутонът не работи в приложението за поща, отворете този линк в Chrome/Safari:
           <br />
-          <a href="${directReviewUrl}" style="color: #000;">${directReviewUrl}</a>
+          <a href="${reviewHubUrl}" style="color: #000;">${reviewHubUrl}</a>
         </p>
         <p style="font-size: 13px; line-height: 1.7; color: #666;">
           Алтернативно отворете директно Google Maps профила:

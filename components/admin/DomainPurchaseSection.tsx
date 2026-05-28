@@ -357,7 +357,7 @@ export default function DomainPurchaseSection({
             Регистрираме домейна на твоето име и го свързваме вместо теб
           </h3>
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'rgba(0,0,0,0.78)' }}>
-            Цената включва домейна за първата година и таксата за ръчно свързване към сайта.
+            Плащаш отделно домейна за 1 година според разширението и фиксирана такса за техническа администрация и конфигуриране.
           </p>
         </div>
 
@@ -444,7 +444,7 @@ export default function DomainPurchaseSection({
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 15, fontWeight: 500 }}>Свързване</span>
+                <span style={{ fontSize: 15, fontWeight: 500 }}>Техническа администрация и конфигуриране</span>
                 <span style={{ fontSize: 15, fontWeight: 500 }}>
                   {formatDualPrice(DOMAIN_SETUP_FEE_CENTS, DOMAIN_SETUP_FEE_BGN_CENTS)}
                 </span>
@@ -607,6 +607,9 @@ export default function DomainPurchaseSection({
           >
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'rgba(0,0,0,0.78)' }}>
               Поддържани домейни: {DOMAIN_TLD_OPTIONS.map(item => item.label).join(', ')}.
+            </p>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.65)' }}>
+              Таксата покрива DNS настройка, SSL сертификат, свързване към сайта и проверка. Обичаен срок за активиране: 24-72 часа.
             </p>
             <button type="button" onClick={submitRequest} style={primaryButtonStyle} disabled={busy}>
               {busy ? 'Подготвяме…' : `Заяви и плати ${formatDualPrice(totalCents, totalBgnCents)}`}

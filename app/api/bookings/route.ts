@@ -303,6 +303,13 @@ export async function POST(request: NextRequest) {
       RETURNING id
     `) as { id: string }[];
   } catch (err) {
+    const dbErr = err as { code?: string } | null;
+    if (dbErr?.code === '23505') {
+      return NextResponse.json(
+        { error: 'Този час току-що беше зает. Моля изберете друг свободен час.' },
+        { status: 409 },
+      );
+    }
     console.error('[bookings POST]', err);
     return NextResponse.json(
       { error: 'Резервацията не можа да бъде записана. Моля опитайте отново.' },
@@ -463,7 +470,8 @@ export async function PATCH(request: NextRequest) {
           clientEmail,
           String(booking.client_name ?? ''),
           resolved.salon.name,
-          googlePlaceId
+          googlePlaceId,
+          resolved.salon.slug
         );
         reviewInvite.sent = true;
       } catch (err) {

@@ -6,6 +6,8 @@ export type GoogleReviewLite = { author_name: string; rating: number; text: stri
 export type GoogleReviewsProbe = {
   reviews: GoogleReviewLite[];
   source: 'outscraper' | 'none';
+  overallRating?: number;
+  totalReviews?: number;
   reason?: string;
   providerStatus?: string;
   providerHint?: string;
@@ -113,7 +115,14 @@ async function outscraperGet(url: string, apiKey: string): Promise<OutscraperPay
 
 async function fetchReviewsViaOutscraperQuery(
   queryValue: string,
-): Promise<{ reviews: GoogleReviewLite[]; reason?: string; status?: string; hint?: string }> {
+): Promise<{
+  reviews: GoogleReviewLite[];
+  overallRating?: number;
+  totalReviews?: number;
+  reason?: string;
+  status?: string;
+  hint?: string;
+}> {
   const key = process.env.OUTSCRAPER_API_KEY?.trim();
   if (!key) return { reviews: [], reason: 'missing_outscraper_key' };
 
@@ -136,6 +145,10 @@ async function fetchReviewsViaOutscraperQuery(
       const placeId = String(item.place_id ?? '').trim();
       const businessStatus = String(item.business_status ?? '').trim();
       const reviewsCount = Array.isArray(item.reviews_data) ? item.reviews_data.length : null;
+      const ratingRaw = Number(item.rating ?? item.stars ?? item.average_rating);
+      const rating = Number.isFinite(ratingRaw) ? Math.max(1, Math.min(5, ratingRaw)) : undefined;
+      const totalReviewsRaw = Number(item.reviews ?? item.reviews_count ?? item.total_reviews);
+      const totalReviews = Number.isFinite(totalReviewsRaw) ? Math.max(0, Math.floor(totalReviewsRaw)) : undefined;
       const parts = [
         name ? `обект: ${name}` : '',
         placeId ? `place_id: ${placeId}` : '',
@@ -143,8 +156,20 @@ async function fetchReviewsViaOutscraperQuery(
         reviewsCount != null ? `reviews_data: ${reviewsCount}` : '',
       ].filter(Boolean);
       if (parts.length > 0) hint = parts.join(' | ');
+      if (firstReviews.length > 0) {
+        return { reviews: firstReviews, status: firstStatus, hint, overallRating: rating, totalReviews };
+      }
+      if (firstStatusLower !== 'pending') {
+        return {
+          reviews: [],
+          reason: 'outscraper_empty',
+          status: firstStatus,
+          hint,
+          overallRating: rating,
+          totalReviews,
+        };
+      }
     }
-
     if (firstReviews.length > 0) return { reviews: firstReviews, status: firstStatus, hint };
     if (firstStatusLower !== 'pending') return { reviews: [], reason: 'outscraper_empty', status: firstStatus, hint };
 
@@ -170,7 +195,14 @@ async function fetchReviewsViaOutscraperQuery(
 
 async function fetchReviewsViaOutscraper(
   placeId: string,
-): Promise<{ reviews: GoogleReviewLite[]; reason?: string; status?: string; hint?: string }> {
+): Promise<{
+  reviews: GoogleReviewLite[];
+  overallRating?: number;
+  totalReviews?: number;
+  reason?: string;
+  status?: string;
+  hint?: string;
+}> {
   const id = placeId.trim();
   if (!id) return { reviews: [], reason: 'missing_place_id', status: '', hint: '' };
 
@@ -179,25 +211,69 @@ async function fetchReviewsViaOutscraper(
   let sawSuccessEmpty = false;
   let lastStatus = '';
   let lastHint = '';
+  let overallRating: number | undefined;
+  let totalReviews: number | undefined;
 
   for (const queryValue of attempts) {
     const result = await fetchReviewsViaOutscraperQuery(queryValue);
     if (result.status) lastStatus = result.status;
     if (result.hint) lastHint = result.hint;
-    if (result.reviews.length > 0) return { reviews: result.reviews, status: lastStatus, hint: lastHint };
+    if (typeof result.overallRating === 'number') overallRating = result.overallRating;
+    if (typeof result.totalReviews === 'number') totalReviews = result.totalReviews;
+    if (result.reviews.length > 0) {
+      return {
+        reviews: result.reviews,
+        status: lastStatus,
+        hint: lastHint,
+        overallRating,
+        totalReviews,
+      };
+    }
 
     const status = String(result.status ?? '').trim().toLowerCase();
     if (status === 'success') sawSuccessEmpty = true;
     if (result.reason === 'outscraper_pending') sawPending = true;
 
     if (result.reason === 'missing_outscraper_key' || result.reason === 'outscraper_api_error') {
-      return { reviews: [], reason: result.reason, status: lastStatus, hint: lastHint };
+      return {
+        reviews: [],
+        reason: result.reason,
+        status: lastStatus,
+        hint: lastHint,
+        overallRating,
+        totalReviews,
+      };
     }
   }
 
-  if (sawSuccessEmpty) return { reviews: [], reason: 'outscraper_empty', status: lastStatus || 'Success', hint: lastHint };
-  if (sawPending) return { reviews: [], reason: 'outscraper_pending', status: lastStatus || 'Pending', hint: lastHint };
-  return { reviews: [], reason: 'outscraper_empty', status: lastStatus || 'Success', hint: lastHint };
+  if (sawSuccessEmpty) {
+    return {
+      reviews: [],
+      reason: 'outscraper_empty',
+      status: lastStatus || 'Success',
+      hint: lastHint,
+      overallRating,
+      totalReviews,
+    };
+  }
+  if (sawPending) {
+    return {
+      reviews: [],
+      reason: 'outscraper_pending',
+      status: lastStatus || 'Pending',
+      hint: lastHint,
+      overallRating,
+      totalReviews,
+    };
+  }
+  return {
+    reviews: [],
+    reason: 'outscraper_empty',
+    status: lastStatus || 'Success',
+    hint: lastHint,
+    overallRating,
+    totalReviews,
+  };
 }
 
 export async function probeGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewsProbe> {
@@ -206,7 +282,14 @@ export async function probeGoogleReviewsForPlace(placeId: string): Promise<Googl
 
   const result = await fetchReviewsViaOutscraper(id);
   if (result.reviews.length > 0) {
-    return { reviews: result.reviews, source: 'outscraper', providerStatus: result.status, providerHint: result.hint };
+    return {
+      reviews: result.reviews,
+      source: 'outscraper',
+      providerStatus: result.status,
+      providerHint: result.hint,
+      overallRating: result.overallRating,
+      totalReviews: result.totalReviews,
+    };
   }
   return {
     reviews: [],
@@ -214,6 +297,8 @@ export async function probeGoogleReviewsForPlace(placeId: string): Promise<Googl
     reason: result.reason ?? 'outscraper_empty',
     providerStatus: result.status,
     providerHint: result.hint,
+    overallRating: result.overallRating,
+    totalReviews: result.totalReviews,
   };
 }
 

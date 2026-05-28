@@ -52,6 +52,11 @@ export async function ensureBookingsSchema() {
       await sql`
         CREATE INDEX IF NOT EXISTS bookings_salon_id_idx ON bookings(salon_id)
       `;
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS bookings_active_slot_unique_idx
+        ON bookings(salon_id, date, time)
+        WHERE status IN ('pending', 'confirmed')
+      `;
     })().catch((err) => {
       ensurePromise = null;
       throw err;

@@ -133,6 +133,8 @@ export async function PATCH(request: NextRequest) {
           UPDATE salons
           SET
             google_reviews_cache = ${JSON.stringify(probe.reviews)}::jsonb,
+            google_reviews_rating = ${Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null},
+            google_reviews_count = ${Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null},
             google_reviews_fetched_at = now()
           WHERE slug = ${auth.salon.slug}
         `;

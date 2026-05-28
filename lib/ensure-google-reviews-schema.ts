@@ -13,6 +13,14 @@ export async function ensureGoogleReviewsSchema() {
         ALTER TABLE salons
         ADD COLUMN IF NOT EXISTS google_reviews_fetched_at timestamptz
       `;
+      await sql`
+        ALTER TABLE salons
+        ADD COLUMN IF NOT EXISTS google_reviews_rating numeric(3,2)
+      `;
+      await sql`
+        ALTER TABLE salons
+        ADD COLUMN IF NOT EXISTS google_reviews_count integer
+      `;
     })().catch((err) => {
       ensurePromise = null;
       throw err;
