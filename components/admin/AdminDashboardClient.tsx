@@ -498,11 +498,18 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     void loadGoogleReviewsStatus();
   }, [activeTab, loadGoogleReviewsStatus]);
 
-  const fetchGoogleReviews = useCallback(async () => {
+  const fetchGoogleReviews = useCallback(async (overrides?: { placeId?: string; mapsUrl?: string }) => {
+    const placeId = String(overrides?.placeId ?? site.googlePlaceId).trim();
+    const mapsUrl = String(overrides?.mapsUrl ?? site.googleMapsUrl).trim();
     setReviewsFetch({ loading: true, result: null });
     try {
       const res = await fetch(`/api/admin/google-reviews-fetch?slug=${encodeURIComponent(slug)}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          placeId,
+          mapsUrl,
+        }),
       });
       const data = (await readJson(res)) as {
         success?: boolean;
@@ -529,7 +536,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         result: { success: false, message: 'Грешка при заявката. Опитай отново.' },
       });
     }
-  }, [slug, loadGoogleReviewsStatus]);
+  }, [slug, loadGoogleReviewsStatus, site.googleMapsUrl, site.googlePlaceId]);
 
   const searchGoogleBusinesses = useCallback(async () => {
     const q = googleBizQuery.trim();
@@ -2849,12 +2856,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                             key={biz.placeId}
                             type="button"
                             onClick={() => {
+                              const selectedPlaceId = biz.placeId;
+                              const selectedMapsUrl = biz.mapsUrl || site.googleMapsUrl;
                               setSite((p) => ({
                                 ...p,
-                                googlePlaceId: biz.placeId,
+                                googlePlaceId: selectedPlaceId,
                                 googleMapsUrl: biz.mapsUrl || p.googleMapsUrl,
                               }));
-                              setNotice('Избран е Google бизнес профил. Запази сайта и после извлечи ревютата.');
+                              setNotice('Избран е Google бизнес профил. Извличаме ревютата...');
+                              void fetchGoogleReviews({ placeId: selectedPlaceId, mapsUrl: selectedMapsUrl });
                             }}
                             style={{
                               border: `1px solid ${T.border}`,

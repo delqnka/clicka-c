@@ -12,14 +12,25 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
+  let requestPlaceId: string | null = null;
+  let requestMapsUrl: string | null = null;
+  try {
+    const body = (await request.json()) as { placeId?: string; mapsUrl?: string };
+    requestPlaceId = String(body?.placeId ?? '').trim() || null;
+    requestMapsUrl = String(body?.mapsUrl ?? '').trim() || null;
+  } catch {
+    requestPlaceId = null;
+    requestMapsUrl = null;
+  }
+
   const site = await loadAdminSiteDataBySlug(auth.salon.slug);
   if (!site) {
     return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
   }
 
   const placeId = await resolveGooglePlaceId({
-    explicitPlaceId: site.googlePlaceId,
-    mapsUrl: site.googleMapsUrl,
+    explicitPlaceId: requestPlaceId || site.googlePlaceId,
+    mapsUrl: requestMapsUrl || site.googleMapsUrl,
   });
 
   if (!placeId) {
