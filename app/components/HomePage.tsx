@@ -81,11 +81,21 @@ const SECTION_LINKS = [
 
 const CSS = `
   .hp {
-    font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+    font-family: var(--font-client-manrope, 'Manrope', var(--font-body, 'Inter', system-ui, sans-serif));
+    font-weight: 400;
     background: var(--background);
     color: var(--foreground);
     overflow-x: hidden;
     color-scheme: light;
+  }
+
+  /* Typography tiers for marketing page */
+  .hp [style*='var(--muted-foreground)'] {
+    font-weight: 300 !important; /* Manrope Light */
+  }
+  .hp footer p,
+  .hp .hp-section-link {
+    font-weight: 200 !important; /* Manrope Thin */
   }
 
   [data-reveal] {
@@ -127,7 +137,7 @@ const CSS = `
     display: inline-block;
     padding: 0;
     font-size: 13px;
-    font-weight: 400;
+    font-weight: 200;
     color: var(--muted-foreground);
     background: none;
     border: none;
@@ -193,7 +203,7 @@ const CSS = `
   }
   .hp-check {
     display:flex; align-items:center; gap:10px;
-    font-size:14px; font-weight:400;
+    font-size:14px; font-weight:300;
     color:var(--secondary-foreground);
     line-height:1.5; padding:4px 0;
   }

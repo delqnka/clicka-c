@@ -1342,14 +1342,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         minHeight: '100dvh',
         background: T.bg,
         color: T.text,
-        fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif)',
         WebkitFontSmoothing: 'antialiased',
         position: 'relative',
         touchAction: 'manipulation',
       }}
     >
       {/* Background grid + gradient */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: 'linear-gradient(to right, #f0f0f0 1px, transparent 1px), linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)', backgroundSize: '6rem 4rem' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle 800px at 100% 200px, #d5c5ff, transparent)' }} />
       </div>
 

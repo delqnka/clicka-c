@@ -3,6 +3,21 @@
 .admin-mobile-root {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  font-family: var(--font-client-manrope, 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif);
+  font-weight: 400; /* Manrope Regular */
+}
+
+/* Admin secondary text defaults to Light */
+.admin-mobile-root p,
+.admin-mobile-root label,
+.admin-mobile-root li {
+  font-weight: 300; /* Manrope Light */
+}
+
+/* Meta / helper copy defaults to Thin */
+.admin-mobile-root small,
+.admin-mobile-root code {
+  font-weight: 200; /* Manrope Thin */
 }
 
 @media (max-width: 767px) {
