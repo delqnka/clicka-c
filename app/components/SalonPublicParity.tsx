@@ -81,8 +81,8 @@ const SalonOfferBookingModal = dynamic(
   { ssr: false }
 );
 
-/** WCAG AA 4.5:1+ on white for 14px link text. */
-const SALON_LINK_COLOR = '#0F3D99';
+/** Salon link blue (maps, address, cookies). */
+const SALON_LINK_COLOR = '#155DFC';
 
 const SALON_TABS = [
   { id: 'offers' as const, label: 'Оферти' },
@@ -1314,7 +1314,7 @@ export default function SalonPublicParity({
                       style={{ minHeight: 200 }}
                     >
                       {o.discount != null && o.discount > 0 ? (
-                        <span className="absolute right-3 top-3 z-10 rounded-full bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white shadow-[0_4px_12px_rgba(0,0,0,0.35)]">
+                        <span className="absolute right-3 top-3 z-10 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-[0_4px_12px_rgba(16,185,129,0.45)]">
                           −{o.discount}%
                         </span>
                       ) : null}

@@ -118,7 +118,7 @@ const TABS = [
   { id: 'legal',         label: 'Правни',         Icon: FileText },
 ] as const;
 
-const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings', 'clients']);
+const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings']);
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
 
@@ -129,6 +129,7 @@ const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
   images:     ['#FF9966', '#FF5E62'],
   specialist: ['#a955ff', '#ea51ff'],
   hours:      ['#56CCF2', '#2F80ED'],
+  clients:    ['#2DD4BF', '#0D9488'],
   offers:     ['#F97316', '#EF4444'],
   domain:     ['#80FF72', '#7EE8FA'],
   integrations: ['#6366F1', '#8B5CF6'],
@@ -1232,21 +1233,30 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     setPriceListAnalyzing(true);
     setError('');
     try {
-      const extracted = await analyzePriceListImages(urls);
+      const categoryHints = existingServiceCategories;
+      const extracted = await analyzePriceListImages(urls, {
+        categoryHints,
+        salonCategory: String(site.category ?? '').trim(),
+      });
       if (!extracted.length) {
         setError('Не открихме услуги на снимката. Опитай с по-ясна снимка.');
         return;
       }
+      const withCategory = extracted.filter((s) => String(s.category ?? '').trim()).length;
       let added = 0;
       setSite(p => {
         const merged = mergeServiceLists(p.services, extracted);
         added = merged.length - p.services.length;
         return { ...p, services: merged };
       });
+      const categoryNote =
+        withCategory > 0
+          ? ` Категории са разпределени за ${withCategory} от ${extracted.length} услуги.`
+          : '';
       setNotice(
         added > 0
-          ? `Добавени ${added} услуги от ценоразписа. Натисни „Запази".`
-          : 'Услугите от ценоразписа вече са в списъка. Натисни „Запази", ако си правил промени.',
+          ? `Добавени ${added} услуги от ценоразписа.${categoryNote} Натисни „Запази".`
+          : `Услугите от ценоразписа вече са в списъка.${categoryNote} Натисни „Запази", ако си правил промени.`,
       );
     } catch (e) {
       handleErr(e);
@@ -2231,10 +2241,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               return (
                 <button key={id} type="button" onClick={() => switchTab(id)}
                   style={{
-                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                    padding: '9px 4px 4px', border: 'none', background: 'transparent',
+                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                    padding: '10px 4px 6px', border: 'none', background: 'transparent',
                     color: '#000',
-                    cursor: 'pointer', minHeight: 48,
+                    cursor: 'pointer', minHeight: 56,
                     WebkitTapHighlightColor: 'transparent',
                     position: 'relative',
                   }}>
@@ -2244,8 +2254,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: active ? 30 : 24,
-                      height: active ? 30 : 24,
+                      width: active ? 36 : 30,
+                      height: active ? 36 : 30,
                       borderRadius: 999,
                       background: active ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' : 'transparent',
                       color: active ? '#fff' : '#000',
@@ -2253,9 +2263,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       transition: 'all 180ms ease',
                     }}
                   >
-                    <Icon size={active ? 18 : 16} strokeWidth={active ? 2.2 : 1.6} />
+                    <Icon size={active ? 22 : 20} strokeWidth={active ? 2.25 : 1.85} />
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: '-0.01em', color: '#000' }}>{label.split(' ')[0]}</span>
+                  <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, letterSpacing: '-0.01em', color: '#000' }}>{label.split(' ')[0]}</span>
                   {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 3, borderRadius: 3, background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }} />}
                 </button>
               );

@@ -5,14 +5,27 @@ const VISION_MODEL = 'google/gemini-2.0-flash-001';
 
 const SYSTEM_PROMPT = `Ти си асистент, който извлича информация за услуги и цени от снимки на ценоразписи на салони за красота.
 Върни САМО валиден JSON масив без никакъв допълнителен текст, обяснения или markdown.
-Форматът трябва да е точно: [{ "name": string, "price": number, "duration_min": number }]
+Форматът трябва да е точно: [{ "name": string, "price": number, "duration_min": number, "category": string }]
+За всяка услуга задължително попълни "category":
+- Ако на ценоразписа има заглавия/секции (напр. "Маникюр", "Коса", "Боядисване", "Педикюр"), използвай името на секцията за всички услуги под нея, докато не се появи нова секция.
+- Ако няма видими секции, предложи кратка българска категория (1–3 думи) по смисъла на услугата. Подобни услуги — еднаква категория.
+- Не оставяй празни category.
 Ако продължителността не е посочена, прецени я спрямо вида услуга (напр. подстригване 30 мин, боядисване 90 мин, маникюр 45 мин).
 Цените да са числа в евро (EUR), без символ за валута. Ако на ценоразписа са в лева (лв./BGN), преобразувай в евро (раздели на 1.95583) и закръгли до цяло число, освен ако е посочена дробна част.
 Ако има диапазон, вземи средната стойност.`;
 
-const USER_PROMPT = `Анализирай тази снимка на ценоразпис и извлечи всички услуги с техните цени и приблизителна продължителност в минути.
-Върни САМО JSON масив по следния формат: [{ "name": "Услуга", "price": 25, "duration_min": 30 }] — price винаги в EUR.
+function buildUserPrompt(hints: string[], salonCategory: string) {
+  const hintBlock =
+    hints.length > 0
+      ? `\nПредпочитани категории (използвай същите имена, когато подхождат): ${hints.join(', ')}.`
+      : '';
+  const salonBlock = salonCategory
+    ? `\nТип на салона: ${salonCategory} — ползвай го само ако няма по-точна секция на ценоразписа.`
+    : '';
+  return `Анализирай тази снимка на ценоразпис и извлечи всички услуги с цени, продължителност и категория.
+Върни САМО JSON масив: [{ "name": "Услуга", "price": 25, "duration_min": 30, "category": "Маникюр" }] — price винаги в EUR.${hintBlock}${salonBlock}
 Без обяснения, без markdown, само JSON.`;
+}
 
 function originFromRequest(request: NextRequest) {
   const host = request.headers.get('host') ?? '';
@@ -28,7 +41,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { imageBase64?: string; imageUrl?: string };
+  let body: {
+    imageBase64?: string;
+    imageUrl?: string;
+    categoryHints?: string[];
+    salonCategory?: string;
+  };
 
   try {
     body = await request.json();
@@ -37,6 +55,11 @@ export async function POST(request: NextRequest) {
   }
 
   const { imageBase64, imageUrl } = body;
+  const categoryHints = Array.isArray(body.categoryHints)
+    ? body.categoryHints.map((h) => String(h).trim()).filter(Boolean).slice(0, 24)
+    : [];
+  const salonCategory = String(body.salonCategory ?? '').trim();
+  const userPrompt = buildUserPrompt(categoryHints, salonCategory);
 
   if (!imageBase64 && !imageUrl) {
     return NextResponse.json(
@@ -95,7 +118,7 @@ export async function POST(request: NextRequest) {
       { role: 'system', content: SYSTEM_PROMPT },
       {
         role: 'user',
-        content: [{ type: 'text', text: USER_PROMPT }, imageContent],
+        content: [{ type: 'text', text: userPrompt }, imageContent],
       },
     ],
     temperature: 0.1,
@@ -136,7 +159,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let services: { name: string; price: number; duration_min: number }[];
+  let services: { name: string; price: number; duration_min: number; category?: string }[];
   try {
     services = JSON.parse(jsonMatch[0]);
   } catch {
