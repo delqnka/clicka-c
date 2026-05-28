@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       reviews: probe.reviews,
       source: probe.source,
       providerStatus: probe.providerStatus ?? null,
+      providerHint: probe.providerHint ?? null,
     });
   }
 
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
     reason: probe.reason ?? 'unknown',
     message: reasonMessages[probe.reason ?? ''] ?? 'Не успяхме да извлечем ревюта. Опитай отново.',
     providerStatus: probe.providerStatus ?? null,
+    providerHint: probe.providerHint ?? null,
     reviews: [],
   });
 }

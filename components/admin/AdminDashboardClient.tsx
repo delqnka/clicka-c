@@ -136,6 +136,13 @@ type GoogleReviewsFetchState = {
   loading: boolean;
   result: null | { success: boolean; count?: number; message?: string };
 };
+type GoogleBusinessCandidate = {
+  placeId: string;
+  name: string;
+  address: string;
+  mapsUrl: string;
+  businessStatus: string;
+};
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -242,6 +249,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     providerStatus: null,
   });
   const [reviewsFetch, setReviewsFetch] = useState<GoogleReviewsFetchState>({ loading: false, result: null });
+  const [googleBizQuery, setGoogleBizQuery] = useState('');
+  const [googleBizLoading, setGoogleBizLoading] = useState(false);
+  const [googleBizResults, setGoogleBizResults] = useState<GoogleBusinessCandidate[]>([]);
   const [calendarCursor, setCalendarCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -500,15 +510,17 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         message?: string;
         reason?: string;
         providerStatus?: string | null;
+        providerHint?: string | null;
       };
       if (data.success) {
         setReviewsFetch({ loading: false, result: { success: true, count: data.count } });
         void loadGoogleReviewsStatus({ cacheBust: true });
       } else {
         const suffix = data.providerStatus ? ` (Outscraper status: ${data.providerStatus})` : '';
+        const hint = data.providerHint ? ` [${data.providerHint}]` : '';
         setReviewsFetch({
           loading: false,
-          result: { success: false, message: `${data.message || 'Неуспешно извличане.'}${suffix}` },
+          result: { success: false, message: `${data.message || 'Неуспешно извличане.'}${suffix}${hint}` },
         });
       }
     } catch {
@@ -518,6 +530,32 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       });
     }
   }, [slug, loadGoogleReviewsStatus]);
+
+  const searchGoogleBusinesses = useCallback(async () => {
+    const q = googleBizQuery.trim();
+    if (!q) {
+      setGoogleBizResults([]);
+      return;
+    }
+    setGoogleBizLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/google-business-search?slug=${encodeURIComponent(slug)}&q=${encodeURIComponent(q)}`,
+        { cache: 'no-store' },
+      );
+      const data = (await readJson(res)) as {
+        results?: GoogleBusinessCandidate[];
+        reason?: string;
+      };
+      if (!res.ok) throw new Error(data.reason || 'search_failed');
+      setGoogleBizResults(Array.isArray(data.results) ? data.results : []);
+    } catch {
+      setGoogleBizResults([]);
+      setError('Неуспешно търсене в Google. Провери OUTSCRAPER_API_KEY.');
+    } finally {
+      setGoogleBizLoading(false);
+    }
+  }, [googleBizQuery, slug]);
 
   useEffect(() => {
     setSmsDraftEnabled(site.smsEnabled);
@@ -2784,6 +2822,61 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       </button>
                     </div>
                   ) : null}
+                  <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>
+                      Търси бизнес в Google и избери правилния профил:
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        value={googleBizQuery}
+                        onChange={(e) => setGoogleBizQuery(e.target.value)}
+                        placeholder="Напр. Salon Urban Varna"
+                        style={{ ...inp, fontSize: 13 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void searchGoogleBusinesses()}
+                        style={btn('sm-ghost')}
+                        disabled={googleBizLoading}
+                      >
+                        {googleBizLoading ? 'Търсим…' : 'Търси'}
+                      </button>
+                    </div>
+                    {googleBizResults.length > 0 ? (
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        {googleBizResults.map((biz) => (
+                          <button
+                            key={biz.placeId}
+                            type="button"
+                            onClick={() => {
+                              setSite((p) => ({
+                                ...p,
+                                googlePlaceId: biz.placeId,
+                                googleMapsUrl: biz.mapsUrl || p.googleMapsUrl,
+                              }));
+                              setNotice('Избран е Google бизнес профил. Запази сайта и после извлечи ревютата.');
+                            }}
+                            style={{
+                              border: `1px solid ${T.border}`,
+                              borderRadius: 10,
+                              background: '#fff',
+                              padding: '8px 10px',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{biz.name}</div>
+                            <div style={{ fontSize: 12, color: T.muted }}>{biz.address || 'Без адрес'}</div>
+                            {biz.businessStatus ? (
+                              <div style={{ fontSize: 11, color: T.subtle, marginTop: 3 }}>
+                                Статус: {biz.businessStatus}
+                              </div>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </InfoCard>
               </div>
             </Section>
