@@ -46,7 +46,7 @@ export function PublicVisitorFaq({
   }
 
   return (
-    <div className="mt-8 space-y-8 border-t border-black/10 pt-8">
+    <section className="cv-defer space-y-8 pt-8">
       {amenityLines.length > 0 ? (
         <div>
           <h3 className="text-base font-semibold text-[#1a1a1a]">Удобства и достъп</h3>
@@ -112,6 +112,6 @@ export function PublicVisitorFaq({
           </div>
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }

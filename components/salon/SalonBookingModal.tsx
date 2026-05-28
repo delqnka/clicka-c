@@ -47,7 +47,7 @@ type SalonBookingModalProps = {
 };
 
 const fieldClass =
-  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-white/60 bg-white/72 px-3.5 py-3 text-base text-[#111] shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_26px_rgba(0,0,0,0.05)] outline-none backdrop-blur-md transition focus:border-white/80 focus:ring-2 focus:ring-white/55';
+  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-white/60 bg-white/72 px-3.5 py-3 text-[16px] leading-tight text-[#111] shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_26px_rgba(0,0,0,0.05)] outline-none backdrop-blur-md transition focus:border-white/80 focus:ring-2 focus:ring-white/55';
 
 function addMinutesToTime(time: string, minutesToAdd: number): string {
   const [h, m] = time.split(':').map(Number);
@@ -180,7 +180,7 @@ export function SalonBookingModal({
         role="dialog"
         aria-modal
         aria-label="Резервация"
-        className="absolute inset-x-2 bottom-2 z-10 mx-auto flex max-h-[calc(100dvh-0.75rem)] w-auto max-w-none flex-col overflow-hidden rounded-[1.4rem] border border-white/45 bg-[linear-gradient(155deg,rgba(255,255,255,0.9),rgba(255,255,255,0.78))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
+        className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-h-[94dvh] w-full max-w-none flex-col overflow-hidden rounded-t-[1.35rem] border border-white/45 bg-[linear-gradient(155deg,rgba(255,255,255,0.9),rgba(255,255,255,0.78))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -300,7 +300,7 @@ export function SalonBookingModal({
                       >
                         <span className="min-w-0">
                           <span className="block truncate text-[15px] font-semibold text-[#131313]">{s.name}</span>
-                          <span className="mt-0.5 block text-sm text-black/55">
+                          <span className="mt-0.5 block text-sm tabular-nums text-black/55">
                             {s.duration} мин · {s.price ?? 0} EUR
                           </span>
                         </span>
@@ -351,7 +351,7 @@ export function SalonBookingModal({
                   </div>
 
                   {hasServices ? (
-                    <p className="text-sm text-black/55 truncate">
+                    <p className="text-sm text-black/55">
                       {selectedServices.map((s) => s.name).join(' + ')}
                     </p>
                   ) : null}
@@ -374,10 +374,10 @@ export function SalonBookingModal({
                                 : 'border-white/60 bg-white/75 text-black/70'
                             }`}
                           >
-                            <span className="text-[10px] font-medium uppercase leading-none opacity-80">
+                            <span className="text-[10px] font-medium uppercase leading-none opacity-80 tabular-nums">
                               {d.weekday}
                             </span>
-                            <span className="mt-1 text-[12px] font-bold leading-tight">{d.day}</span>
+                            <span className="mt-1 text-[12px] font-bold leading-tight tabular-nums">{d.day}</span>
                           </button>
                         );
                       })}
@@ -403,7 +403,7 @@ export function SalonBookingModal({
                               key={t}
                               type="button"
                               onClick={() => onTimeChange(t)}
-                              className={`min-w-0 touch-manipulation rounded-xl border px-1 py-2.5 text-center text-sm font-medium shadow-sm backdrop-blur-md transition ${
+                              className={`min-w-0 touch-manipulation rounded-xl border px-2 py-2.5 text-center text-sm font-medium tabular-nums shadow-sm backdrop-blur-md transition ${
                                 active
                                   ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/16 text-[color:var(--salon-primary)]'
                                   : 'border-white/60 bg-white/65 text-[#1a1a1a] active:bg-white/85'
@@ -522,11 +522,11 @@ export function SalonBookingModal({
 
               {hasServices ? (
                 <div className="rounded-2xl border border-white/65 bg-white/60 px-3.5 py-3">
-                  <p className="text-sm font-semibold text-[#171717]">
+                  <p className="text-sm font-semibold tabular-nums text-[#171717]">
                     Общо: {Math.max(0, totalDuration)} мин · {totalPrice.toFixed(2)} EUR
                   </p>
                   {selectedTime ? (
-                    <p className="mt-1 text-sm text-black/60">
+                    <p className="mt-1 text-sm tabular-nums text-black/60">
                       Старт {selectedTime} · Готови около {endTime}
                     </p>
                   ) : null}

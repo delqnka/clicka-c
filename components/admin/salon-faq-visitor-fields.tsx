@@ -228,7 +228,7 @@ export function SalonFaqVisitorFields({
           style={{ ...inputStyle, minHeight: 100, resize: 'vertical', lineHeight: 1.6 }}
         />
         <p style={{ margin: '6px 0 0', fontSize: 12, color: T.muted }}>
-          Показва се на сайта само ако е попълнено.
+          Показва се на сайта под „Работно време“, само ако е попълнено.
         </p>
       </Field>
     </div>

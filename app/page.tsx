@@ -84,13 +84,10 @@ export default async function HomePage() {
     const jsonLd = buildSalonJsonLd(pageData.salon as Record<string, unknown>, pageData.salonSlug);
     const salonRecord = pageData.salon as Record<string, unknown>;
     const coverRaw = String(salonRecord.cover_image_url ?? '').trim();
-    const portfolioRaw = Array.isArray(salonRecord.portfolio_images)
-      ? salonRecord.portfolio_images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
-      : [];
     const galleryRaw = Array.isArray(salonRecord.gallery_images)
       ? salonRecord.gallery_images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
       : [];
-    const lcpImage = [coverRaw, ...portfolioRaw, ...galleryRaw].find(u => u && !u.startsWith('data:'));
+    const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
     const lcpHref = lcpImage
       ? (lcpImage.includes('?') ? `${lcpImage}&w=768` : `${lcpImage}?w=768`)
       : null;

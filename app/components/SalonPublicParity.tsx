@@ -28,9 +28,10 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import dynamic from 'next/dynamic';
+import { DeferredSection } from '@/components/salon/deferred-section';
+import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
 
-import { SalonBookingModal } from '@/components/salon/SalonBookingModal';
-import { SalonOfferBookingModal } from '@/components/salon/SalonOfferBookingModal';
 import {
   offerHasSpotsLeft,
   offerVisibleToClient,
@@ -64,8 +65,21 @@ import {
   normalizeSalonVisitorInfo,
   normalizeVisitorAdditionalInfo,
 } from '@/lib/salon-visitor-info';
-import { PublicVisitorFaq } from '@/components/salon/public-visitor-faq';
 import { parseSalonServices } from '@/lib/salon-services';
+
+const PublicVisitorFaq = dynamic(
+  () => import('@/components/salon/public-visitor-faq').then((m) => m.PublicVisitorFaq),
+  { ssr: true }
+);
+
+const SalonBookingModal = dynamic(
+  () => import('@/components/salon/SalonBookingModal').then((m) => m.SalonBookingModal),
+  { ssr: false }
+);
+const SalonOfferBookingModal = dynamic(
+  () => import('@/components/salon/SalonOfferBookingModal').then((m) => m.SalonOfferBookingModal),
+  { ssr: false }
+);
 
 const APPLE_LINK_BLUE = '#0A84FF';
 
@@ -122,16 +136,13 @@ function wireMediaUri(raw: string | null | undefined): string {
 }
 
 function optimizedSrc(src: string, w: number): string {
-  if (!src || src.startsWith('data:') || src.startsWith('http')) return src;
-  const sep = src.includes('?') ? '&' : '?';
-  return `${src}${sep}w=${w}`;
+  return publicImageUrl(src, { width: w, format: 'webp' });
 }
 
 const HERO_SRCSET_WIDTHS = [480, 640, 768, 1024, 1280] as const;
 
 function heroSrcSet(src: string): string {
-  if (!src || src.startsWith('data:') || src.startsWith('http')) return '';
-  return HERO_SRCSET_WIDTHS.map(w => `${optimizedSrc(src, w)} ${w}w`).join(', ');
+  return publicImageSrcSet(src, HERO_SRCSET_WIDTHS, 'webp');
 }
 
 function salonPublicInstagramUrl(handle: string | null | undefined): string | null {
@@ -363,7 +374,6 @@ export default function SalonPublicParity({
   const city = String(rawSalon.city ?? '').trim();
   const address = String(rawSalon.address ?? '').trim();
   const cover = String(rawSalon.cover_image_url ?? '').trim();
-  const portfolioDb = rawSalon.portfolio_images;
   const galleryDb = rawSalon.gallery_images;
   const instagram = rawSalon.instagram_username as string | null | undefined;
   const facebook = rawSalon.facebook_username as string | null | undefined;
@@ -451,6 +461,7 @@ export default function SalonPublicParity({
   const [servicesExpanded, setServicesExpanded] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [galleryModal, setGalleryModal] = useState<{ uris: string[]; index: number } | null>(null);
+  const [shareHint, setShareHint] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -471,38 +482,33 @@ export default function SalonPublicParity({
 
   const isValidImageUri = useCallback((uri: string | null | undefined) => uri != null && String(uri).trim().length > 0, []);
 
-  const portfolioArr = useMemo(() => {
-    if (Array.isArray(portfolioDb))
-      return portfolioDb.filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
-    return [] as string[];
-  }, [portfolioDb]);
-
-  const galleryList = useMemo(() => {
-    const g = Array.isArray(galleryDb)
-      ? galleryDb.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-      : [];
-    const list = [cover, ...portfolioArr, ...g].filter(isValidImageUri) as string[];
+  /** Снимки, качени от админа в „Снимки на салона“ — единствен източник за публичната галерия. */
+  const salonGalleryPhotos = useMemo(() => {
+    if (!Array.isArray(galleryDb)) return [] as string[];
     const seen = new Set<string>();
-    return list.filter((u) => {
-      if (seen.has(u)) return false;
-      seen.add(u);
-      return true;
-    });
-  }, [cover, portfolioArr, galleryDb, isValidImageUri]);
+    return galleryDb
+      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      .map((u) => wireMediaUri(u.trim()))
+      .filter((u) => {
+        if (seen.has(u)) return false;
+        seen.add(u);
+        return true;
+      });
+  }, [galleryDb]);
 
-  const allGalleryWired = useMemo(() => galleryList.map((u) => wireMediaUri(u)), [galleryList]);
-  const headerImage = galleryList[0] ?? null;
-  const portfolioDisplay = useMemo(() => {
-    const galleryOnly = Array.isArray(galleryDb)
-      ? galleryDb.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-      : [];
-    const pf = portfolioArr.filter(isValidImageUri).map(wireMediaUri);
-    const gf = galleryOnly.filter(isValidImageUri).map(wireMediaUri);
-    const source = pf.length > 0 ? pf : gf;
-    if (!headerImage) return source;
-    const headerWired = wireMediaUri(headerImage);
-    return source.filter(u => u !== headerWired);
-  }, [portfolioArr, galleryDb, headerImage, isValidImageUri]);
+  const hasSalonGallery = salonGalleryPhotos.length > 0;
+
+  const heroUris = useMemo(() => {
+    const uris: string[] = [];
+    const coverWired = cover && isValidImageUri(cover) ? wireMediaUri(cover) : '';
+    if (coverWired) uris.push(coverWired);
+    for (const u of salonGalleryPhotos) {
+      if (!uris.includes(u)) uris.push(u);
+    }
+    return uris;
+  }, [cover, salonGalleryPhotos, isValidImageUri]);
+
+  const portfolioDisplay = salonGalleryPhotos;
 
   const servicesWithImages = useMemo(
     () =>
@@ -552,8 +558,16 @@ export default function SalonPublicParity({
 
   const publicTeamSectionLabel = 'Вашият специалист';
   const salonTabsWithTeamLabel = useMemo(
-    () => SALON_TABS.map((t) => (t.id === 'team' ? { ...t, label: publicTeamSectionLabel } : t)),
-    [publicTeamSectionLabel]
+    () =>
+      SALON_TABS.filter((t) => t.id !== 'portfolio' || hasSalonGallery).map((t) =>
+        t.id === 'team' ? { ...t, label: publicTeamSectionLabel } : t
+      ),
+    [publicTeamSectionLabel, hasSalonGallery]
+  );
+
+  const scrollSpyTabOrder = useMemo(
+    () => SCROLL_SPY_TAB_ORDER.filter((id) => id !== 'portfolio' || hasSalonGallery),
+    [hasSalonGallery]
   );
 
   const teamJson = rawSalon.team as { name?: string; role?: string; photo_url?: string }[] | undefined;
@@ -655,8 +669,8 @@ export default function SalonPublicParity({
       if (Date.now() < scrollSpySuppressUntilRef.current) return;
       const line = activationLine();
       let next: TabId = 'offers';
-      for (let i = SCROLL_SPY_TAB_ORDER.length - 1; i >= 0; i--) {
-        const id = SCROLL_SPY_TAB_ORDER[i];
+      for (let i = scrollSpyTabOrder.length - 1; i >= 0; i--) {
+        const id = scrollSpyTabOrder[i];
         const el = sectionRefs.current[id];
         if (!el) continue;
         const top = el.getBoundingClientRect().top;
@@ -683,7 +697,7 @@ export default function SalonPublicParity({
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
     };
-  }, [salonId, showStickySectionTabs]);
+  }, [salonId, showStickySectionTabs, scrollSpyTabOrder]);
 
   const scrollToSection = useCallback((tabId: TabId) => {
     setActiveTab(tabId);
@@ -711,12 +725,47 @@ export default function SalonPublicParity({
     };
   }, []);
 
-  const handleShare = useCallback(() => {
-    const url = typeof window !== 'undefined' ? window.location.href : '';
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      void navigator.share({ title: name, text: `${name} – ${url}`, url }).catch(() => {});
-    } else if (typeof navigator !== 'undefined' && navigator.clipboard && url) {
-      void navigator.clipboard.writeText(url);
+  const handleShare = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const url = window.location.href;
+    const showHint = (msg: string) => {
+      setShareHint(msg);
+      window.setTimeout(() => setShareHint(null), 2200);
+    };
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: name, text: name, url });
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        showHint('Линкът е копиран');
+        return;
+      }
+    } catch {
+      /* fallback below */
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = url;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      showHint('Линкът е копиран');
+    } catch {
+      showHint('Копирай линка от адресната лента');
+    } finally {
+      document.body.removeChild(textarea);
     }
   }, [name]);
 
@@ -1077,15 +1126,36 @@ export default function SalonPublicParity({
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
-        <button
-          type="button"
-          onClick={handleShare}
-          className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#1a1a1a] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-sm"
-          aria-label="Сподели"
-        >
-          <Share2 className="h-5 w-5" aria-hidden />
-        </button>
-        <SalonGalleryMosaic uris={allGalleryWired} onOpenGallery={(i) => setGalleryModal({ uris: allGalleryWired, index: i })} ringClass={ringClass} salonName={name} />
+        <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
+          {shareHint ? (
+            <span
+              role="status"
+              className="rounded-full bg-[#18181B] px-3 py-1.5 text-xs font-medium text-white shadow-lg"
+            >
+              {shareHint}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#1a1a1a] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-sm active:scale-95"
+            aria-label="Сподели"
+          >
+            <Share2 className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+        {heroUris.length > 0 ? (
+          <SalonGalleryMosaic
+            uris={heroUris}
+            onOpenGallery={(i) => setGalleryModal({ uris: heroUris, index: i })}
+            ringClass={ringClass}
+            salonName={name}
+          />
+        ) : (
+          <div className="flex h-44 items-center justify-center rounded-2xl border border-black/10 bg-[#fafafa] text-sm text-black/45 md:h-56">
+            Няма снимки
+          </div>
+        )}
       </div>
 
       {!disableStickySectionTabs && showStickySectionTabs ? (
@@ -1192,12 +1262,6 @@ export default function SalonPublicParity({
                   {descriptionExpanded ? 'Свий' : 'Прочети още'}
                 </button>
               ) : null}
-
-              <PublicVisitorFaq
-                faqItems={faqItems}
-                visitorInfo={visitorInfo}
-                visitorAdditionalInfo={visitorAdditionalInfo}
-              />
             </section>
 
             <div className="-mx-4 mt-6 border-b border-black/10 bg-white px-4 py-1 lg:static lg:z-0 lg:mx-0 lg:border-b lg:border-t lg:border-black/10 lg:bg-transparent lg:px-0 lg:py-2">
@@ -1222,11 +1286,12 @@ export default function SalonPublicParity({
               </div>
             </div>
 
-            <section
-              ref={(el) => {
+            <DeferredSection
+              className="cv-defer scroll-mt-36 pt-6"
+              minHeight={240}
+              sectionRef={(el) => {
                 sectionRefs.current.offers = el;
               }}
-              className="cv-defer scroll-mt-36 pt-6"
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Оферти на салона</h2>
               {activeOffers.length > 0 ? (
@@ -1244,12 +1309,12 @@ export default function SalonPublicParity({
                       style={{ minHeight: 200 }}
                     >
                       {o.discount != null && o.discount > 0 ? (
-                        <span className="absolute left-3 top-3 z-10 rounded-full bg-black px-2 py-0.5 text-xs font-semibold text-white">
-                          -{o.discount}%
+                        <span className="absolute right-3 top-3 z-10 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-[0_4px_12px_rgba(16,185,129,0.45)]">
+                          −{o.discount}%
                         </span>
                       ) : null}
                       {spots != null ? (
-                        <span className="absolute right-3 top-3 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase text-black">
+                        <span className="absolute left-3 top-3 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase text-black">
                           {soldOut ? 'Изчерпана' : `Остават ${spots}`}
                         </span>
                       ) : null}
@@ -1285,13 +1350,14 @@ export default function SalonPublicParity({
                   Няма активни оферти в момента
                 </p>
               )}
-            </section>
+            </DeferredSection>
 
-            <section
-              ref={(el) => {
+            <DeferredSection
+              className="cv-defer scroll-mt-36 pt-10"
+              minHeight={280}
+              sectionRef={(el) => {
                 sectionRefs.current.services = el;
               }}
-              className="cv-defer scroll-mt-36 pt-10"
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Услуги</h2>
               {serviceCategories.length > 1 ? (
@@ -1409,14 +1475,15 @@ export default function SalonPublicParity({
                   </button>
                 </div>
               ) : null}
-            </section>
+            </DeferredSection>
 
-            {portfolioDisplay.length > 0 ? (
-              <section
-                ref={(el) => {
+            {hasSalonGallery ? (
+              <DeferredSection
+                className="cv-defer scroll-mt-36 pt-10"
+                minHeight={280}
+                sectionRef={(el) => {
                   sectionRefs.current.portfolio = el;
                 }}
-                className="cv-defer scroll-mt-36 pt-10"
               >
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Портфолио</h2>
                 <div className="mt-3 grid gap-2">
@@ -1467,14 +1534,15 @@ export default function SalonPublicParity({
                     </div>
                   ) : null}
                 </div>
-              </section>
+              </DeferredSection>
             ) : null}
 
-            <section
-              ref={(el) => {
+            <DeferredSection
+              className="cv-defer scroll-mt-36 pt-10"
+              minHeight={120}
+              sectionRef={(el) => {
                 sectionRefs.current.team = el;
               }}
-              className="cv-defer scroll-mt-36 pt-10"
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">{publicTeamSectionLabel}</h2>
               {publicTeamMembers.length > 0 ? (
@@ -1502,13 +1570,14 @@ export default function SalonPublicParity({
               ) : (
                 <p className="mt-3 text-sm text-black/55">Няма добавени специалисти.</p>
               )}
-            </section>
+            </DeferredSection>
 
-            <section
-              ref={(el) => {
+            <DeferredSection
+              className="cv-defer scroll-mt-36 pt-10"
+              minHeight={200}
+              sectionRef={(el) => {
                 sectionRefs.current.reviews = el;
               }}
-              className="cv-defer scroll-mt-36 pt-10"
             >
               <div className="mt-2 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1560,7 +1629,7 @@ export default function SalonPublicParity({
                   <p className="py-5 text-center text-sm font-normal text-black/45">Все още няма Google ревюта</p>
                 )}
               </div>
-            </section>
+            </DeferredSection>
 
             <section className="cv-defer pt-10">
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Работно време</h2>
@@ -1584,6 +1653,12 @@ export default function SalonPublicParity({
                 })}
               </ul>
             </section>
+
+            <PublicVisitorFaq
+              faqItems={faqItems}
+              visitorInfo={visitorInfo}
+              visitorAdditionalInfo={visitorAdditionalInfo}
+            />
 
             {showVenueBlock ? (
               <div className="pt-8">
@@ -1629,7 +1704,7 @@ export default function SalonPublicParity({
             ) : null}
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
-              <section className="cv-defer pt-10">
+              <DeferredSection className="cv-defer pt-10" minHeight={220}>
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
                 <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
                   <iframe
@@ -1660,7 +1735,7 @@ export default function SalonPublicParity({
                 <p className="mt-2 text-sm" style={{ color: APPLE_LINK_BLUE }}>
                   {[address, city].filter(Boolean).join(', ')}
                 </p>
-              </section>
+              </DeferredSection>
             ) : null}
 
           </div>
@@ -1838,9 +1913,13 @@ export default function SalonPublicParity({
             >
               <img
                 key={`${galleryModal.index}-${galleryModal.uris[galleryModal.index]}`}
-                src={galleryModal.uris[galleryModal.index]}
+                src={optimizedSrc(galleryModal.uris[galleryModal.index], 1280)}
+                srcSet={heroSrcSet(galleryModal.uris[galleryModal.index])}
+                sizes="100vw"
                 alt={name}
                 className="max-h-[min(80vh,85dvh)] max-w-full touch-manipulation object-contain select-none"
+                loading="eager"
+                decoding="async"
                 draggable={false}
               />
               <button

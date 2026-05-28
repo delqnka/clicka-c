@@ -1,16 +1,64 @@
 'use client';
 
-import { Plus, Trash2, Upload, X } from 'lucide-react';
+import { ImagePlus, Plus, Trash2, X } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer, offerSpotsLeft } from '@/lib/salon-offers';
+
+const GRADIENT_PRIMARY: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  borderRadius: 10,
+  border: 'none',
+  color: '#fff',
+  background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+  boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
+  padding: '9px 16px',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+};
+
+const SAVE_GREEN: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 10,
+  border: 'none',
+  color: '#fff',
+  background: '#16A34A',
+  padding: '7px 14px',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+};
+
+function dateInputValue(iso: string | null): string {
+  if (!iso) return '';
+  const slice = iso.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(slice) ? slice : '';
+}
+
+function campaignFromDateInput(dateStr: string): string | null {
+  const v = dateStr.trim();
+  if (!v) return null;
+  return new Date(`${v}T00:00:00`).toISOString();
+}
+
+function campaignUntilDateInput(dateStr: string): string | null {
+  const v = dateStr.trim();
+  if (!v) return null;
+  return new Date(`${v}T23:59:59.999`).toISOString();
+}
 
 type Props = {
   offers: AdminSalonOffer[];
   isMobile: boolean;
   busyKey: string;
   inp: CSSProperties;
-  btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   onChange: (offers: AdminSalonOffer[]) => void;
   onUploadImages: (offerIndex: number, files: FileList | null) => void | Promise<void>;
   onSave: () => void | Promise<void>;
@@ -21,7 +69,6 @@ export function SalonOffersSection({
   isMobile,
   busyKey,
   inp,
-  btn,
   onChange,
   onUploadImages,
   onSave,
@@ -40,14 +87,34 @@ export function SalonOffersSection({
 
   return (
     <div style={{ display: 'grid', gap: isMobile ? 14 : 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <button type="button" style={GRADIENT_PRIMARY} onClick={addOffer}>
+          <Plus size={15} strokeWidth={2.25} />
+          Добави оферта
+        </button>
+        <button
+          type="button"
+          style={{
+            ...SAVE_GREEN,
+            opacity: busyKey === 'offers' ? 0.65 : 1,
+            cursor: busyKey === 'offers' ? 'wait' : 'pointer',
+          }}
+          disabled={busyKey === 'offers'}
+          onClick={() => void onSave()}
+        >
+          {busyKey === 'offers' ? 'Запазваме…' : 'Запази'}
+        </button>
+      </div>
+
       {offers.length === 0 ? (
         <p style={{ margin: 0, fontSize: 14, color: '#71717A' }}>
-          Няма оферти. Добави първата — ще се покаже на сайта с отделен модал за резервация.
+          Няма оферти. Натисни „Добави оферта“ — ще се показват на сайта с отделен модал за резервация.
         </p>
       ) : null}
 
       {offers.map((offer, i) => {
         const spots = offerSpotsLeft(offer);
+        const uploadBusy = busyKey === `upload-offer-${i}`;
         return (
           <div
             key={offer.id || `new-${i}`}
@@ -100,10 +167,59 @@ export function SalonOffersSection({
                   placeholder="Какво включва офертата"
                 />
               </label>
+
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+                  gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr auto',
+                  gap: 10,
+                  alignItems: 'end',
+                }}
+              >
+                <label style={{ display: 'grid', gap: 5 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Валидна от</span>
+                  <input
+                    type="date"
+                    style={inp}
+                    value={dateInputValue(offer.campaignValidFrom)}
+                    onChange={(e) =>
+                      updateOffer(i, { campaignValidFrom: campaignFromDateInput(e.target.value) })
+                    }
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: 5 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Валидна до</span>
+                  <input
+                    type="date"
+                    style={inp}
+                    value={dateInputValue(offer.campaignValidUntil)}
+                    onChange={(e) =>
+                      updateOffer(i, { campaignValidUntil: campaignUntilDateInput(e.target.value) })
+                    }
+                  />
+                </label>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 13,
+                    minHeight: isMobile ? undefined : 42,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={offer.isActive}
+                    onChange={(e) => updateOffer(i, { isActive: e.target.checked })}
+                  />
+                  Активна
+                </label>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
                   gap: 10,
                 }}
               >
@@ -147,22 +263,6 @@ export function SalonOffersSection({
                     }
                   />
                 </label>
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    fontSize: 13,
-                    marginTop: isMobile ? 0 : 22,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={offer.isActive}
-                    onChange={(e) => updateOffer(i, { isActive: e.target.checked })}
-                  />
-                  Активна
-                </label>
               </div>
 
               {offer.maxClaims != null ? (
@@ -182,7 +282,7 @@ export function SalonOffersSection({
                         position: 'relative',
                         width: 72,
                         height: 72,
-                        borderRadius: 10,
+                        borderRadius: 12,
                         overflow: 'hidden',
                         border: '1px solid #E5E3DE',
                       }}
@@ -217,29 +317,26 @@ export function SalonOffersSection({
                     </div>
                   ))}
                   <label
+                    aria-label="Качи снимки към офертата"
                     style={{
                       width: 72,
                       height: 72,
-                      borderRadius: 10,
-                      border: '1px dashed #D4D4D8',
+                      borderRadius: 12,
                       display: 'flex',
-                      flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 4,
-                      cursor: busyKey === `upload-offer-${i}` ? 'wait' : 'pointer',
-                      fontSize: 11,
-                      color: '#71717A',
+                      cursor: uploadBusy ? 'wait' : 'pointer',
+                      background: 'linear-gradient(145deg, #FDF4FF 0%, #F5F3FF 100%)',
+                      opacity: uploadBusy ? 0.6 : 1,
                     }}
                   >
-                    <Upload size={16} />
-                    Качи
+                    <ImagePlus size={24} strokeWidth={1.75} color="#7C3AED" />
                     <input
                       type="file"
                       accept="image/*"
                       multiple
                       style={{ display: 'none' }}
-                      disabled={busyKey === `upload-offer-${i}`}
+                      disabled={uploadBusy}
                       onChange={(e) => void onUploadImages(i, e.target.files)}
                     />
                   </label>
@@ -249,21 +346,6 @@ export function SalonOffersSection({
           </div>
         );
       })}
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" style={btn('ghost')} onClick={addOffer}>
-          <Plus size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
-          Добави оферта
-        </button>
-        <button
-          type="button"
-          style={btn('primary')}
-          disabled={busyKey === 'offers'}
-          onClick={() => void onSave()}
-        >
-          {busyKey === 'offers' ? 'Запазваме…' : 'Запази офертите'}
-        </button>
-      </div>
     </div>
   );
 }

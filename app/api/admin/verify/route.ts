@@ -10,6 +10,8 @@ import {
 } from '@/lib/admin-auth';
 import { getHostAwareSalonPath } from '@/lib/domain-routing';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   await ensureAdminAuthSchema();
 

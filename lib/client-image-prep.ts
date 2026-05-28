@@ -36,12 +36,22 @@ export async function prepareImageForUpload(
     ctx.drawImage(bitmap, 0, 0, w, h);
     bitmap.close();
 
-    const blob = await new Promise<Blob | null>(resolve => {
+    const base = file.name.replace(/\.[^.]+$/, '') || 'image';
+    const tryWebp = typeof canvas.toBlob === 'function';
+    if (tryWebp) {
+      const webpBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/webp', Math.min(0.92, quality + 0.05));
+      });
+      if (webpBlob && webpBlob.size > 0) {
+        return new File([webpBlob], `${base}.webp`, { type: 'image/webp', lastModified: Date.now() });
+      }
+    }
+
+    const blob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob(resolve, 'image/jpeg', quality);
     });
     if (!blob) return file;
 
-    const base = file.name.replace(/\.[^.]+$/, '') || 'image';
     return new File([blob], `${base}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
   } catch {
     return file;

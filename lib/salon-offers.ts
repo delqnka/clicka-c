@@ -92,7 +92,17 @@ export function mapAdminOfferToDb(offer: AdminSalonOffer, salonId: string) {
   };
 }
 
+function defaultCampaignRange(): { from: string; until: string } {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  end.setHours(23, 59, 59, 999);
+  return { from: start.toISOString(), until: end.toISOString() };
+}
+
 export function newEmptyOffer(): AdminSalonOffer {
+  const { from, until } = defaultCampaignRange();
   return {
     id: '',
     title: '',
@@ -101,8 +111,8 @@ export function newEmptyOffer(): AdminSalonOffer {
     images: [],
     isActive: true,
     validUntil: null,
-    campaignValidFrom: null,
-    campaignValidUntil: null,
+    campaignValidFrom: from,
+    campaignValidUntil: until,
     maxClaims: null,
     totalClaims: 0,
     durationMin: 60,

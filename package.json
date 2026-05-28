@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "perf": "node scripts/perf-report.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",

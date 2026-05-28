@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   BriefcaseBusiness,
   MessageSquare,
@@ -31,14 +32,17 @@ import {
   X,
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
-import { GalleryReorderGrid } from '@/components/admin/gallery-reorder-grid';
-import { AddressAutocompleteField } from '@/components/admin/address-autocomplete-field';
-import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
-import DomainPurchaseSection from '@/components/admin/DomainPurchaseSection';
-import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
-import { SalonOffersSection } from '@/components/admin/SalonOffersSection';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  LazyHoursTabPanel,
+  LazyImagesTabPanel,
+  LazyIntegrationsTabPanel,
+  LazyLegalTabPanel,
+  LazySiteTabPanel,
+  LazySmsTabPanel,
+  LazySpecialistTabPanel,
+} from '@/components/admin/lazy-admin-tabs';
+import { AdminPriceListScanBtn, PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
@@ -53,7 +57,6 @@ import {
   isSalonCustomDomainLive,
   type LegalDocumentPath,
 } from '@/lib/domain-routing';
-import { LegalCustomDocumentsEditor } from '@/components/admin/legal-custom-documents-editor';
 import { defaultLegalInfoStored, type LegalInfoStored } from '@/lib/legal-custom-documents';
 import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
 import { formatSalonPrice } from '@/lib/salon-currency';
@@ -63,6 +66,31 @@ import {
   smsCreditsPerBooking,
   type SmsReminderMode,
 } from '@/lib/sms-shared';
+
+const DomainPurchaseSection = dynamic(
+  () => import('@/components/admin/DomainPurchaseSection'),
+  { ssr: false }
+);
+const SalonOffersSection = dynamic(
+  () => import('@/components/admin/SalonOffersSection').then((m) => m.SalonOffersSection),
+  { ssr: false }
+);
+const BookingsPanel = dynamic(
+  () => import('@/components/admin/dashboard-panels').then((m) => m.BookingsPanel),
+  { ssr: false }
+);
+const ClientsPanel = dynamic(
+  () => import('@/components/admin/dashboard-panels').then((m) => m.ClientsPanel),
+  { ssr: false }
+);
+const ServiceCreateModal = dynamic(
+  () => import('@/components/admin/service-create-modal').then((m) => m.ServiceCreateModal),
+  { ssr: false }
+);
+const ServicesEditorPanel = dynamic(
+  () => import('@/components/admin/services-editor-panel').then((m) => m.ServicesEditorPanel),
+  { ssr: false }
+);
 
 /* ─── Constants ───────────────────────────────────────── */
 const DAYS = [
@@ -313,6 +341,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     done: number;
     total: number;
   } | null>(null);
+  const deferredServices = useDeferredValue(site.services);
+  const deferredBookings = useDeferredValue(bookings);
+  const deferredStatusFilter = useDeferredValue(statusFilter);
+  const deferredSelectedCalendarDate = useDeferredValue(selectedCalendarDate);
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
@@ -334,44 +366,59 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const signInPath    = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
   const domainMeta    = getDomainMeta(site);
 
-  const filteredBookings = useMemo(() =>
-    statusFilter === 'all' ? bookings : bookings.filter(b => b.status === statusFilter),
-    [bookings, statusFilter]
+  const servicesUiActive = activeTab === 'services' || serviceModalOpen;
+  const bookingsUiActive = activeTab === 'bookings';
+  const clientsUiActive = activeTab === 'clients';
+  const filteredBookings = useMemo(
+    () =>
+      deferredStatusFilter === 'all'
+        ? deferredBookings
+        : deferredBookings.filter((b) => b.status === deferredStatusFilter),
+    [deferredBookings, deferredStatusFilter]
   );
   const adminServiceCategories = useMemo(() => {
+    if (!servicesUiActive) return [{ id: null as string | null, label: 'Всички' }];
     const set = new Set<string>();
-    for (const svc of site.services) {
+    for (const svc of deferredServices) {
       const cat = String((svc as { category?: string }).category ?? '').trim();
       if (cat) set.add(cat);
     }
     const categories = [...set].sort((a, b) => a.localeCompare(b, 'bg'));
     return [{ id: null as string | null, label: 'Всички' }, ...categories.map((c) => ({ id: c, label: c }))];
-  }, [site.services]);
+  }, [deferredServices, servicesUiActive]);
   const filteredAdminServices = useMemo(() => {
-    const indexed = site.services.map((svc, i) => ({ svc, i }));
+    if (!servicesUiActive) return [] as Array<{ svc: (typeof deferredServices)[number]; i: number }>;
+    const indexed = deferredServices.map((svc, i) => ({ svc, i }));
     if (!selectedAdminServiceCategory) return indexed;
     return indexed.filter(
       ({ svc }) => String((svc as { category?: string }).category ?? '').trim() === selectedAdminServiceCategory
     );
-  }, [site.services, selectedAdminServiceCategory]);
+  }, [deferredServices, selectedAdminServiceCategory, servicesUiActive]);
   const existingServiceCategories = useMemo(() => {
+    if (!servicesUiActive) return [] as string[];
     const set = new Set<string>();
-    for (const svc of site.services) {
+    for (const svc of deferredServices) {
       const category = String((svc as { category?: string }).category ?? '').trim();
       if (category) set.add(category);
     }
     const primarySalonCategory = String(site.category ?? '').trim();
     if (primarySalonCategory) set.add(primarySalonCategory);
     return [...set].sort((a, b) => a.localeCompare(b, 'bg'));
-  }, [site.services, site.category]);
+  }, [deferredServices, site.category, servicesUiActive]);
   const visibleBookings = useMemo(
     () =>
-      selectedCalendarDate
-        ? filteredBookings.filter(b => String(b.date) === selectedCalendarDate)
+      !bookingsUiActive
+        ? ([] as BookingRecord[])
+        :
+      deferredSelectedCalendarDate
+        ? filteredBookings.filter((b) => String(b.date) === deferredSelectedCalendarDate)
         : filteredBookings,
-    [filteredBookings, selectedCalendarDate]
+    [filteredBookings, deferredSelectedCalendarDate, bookingsUiActive]
   );
   const groupedVisibleBookings = useMemo(() => {
+    if (!bookingsUiActive) {
+      return { upcoming: [], past: [], completed: [], cancelled: [] } as Record<BookingGroupKey, BookingRecord[]>;
+    }
     const groups: Record<BookingGroupKey, BookingRecord[]> = {
       upcoming: [],
       past: [],
@@ -395,8 +442,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       }
     }
     return groups;
-  }, [visibleBookings]);
+  }, [visibleBookings, bookingsUiActive]);
   const bookingsCountByDate = useMemo(() => {
+    if (!bookingsUiActive) return new Map<string, number>();
     const map = new Map<string, number>();
     for (const b of filteredBookings) {
       const key = String(b.date ?? '').trim();
@@ -404,7 +452,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return map;
-  }, [filteredBookings]);
+  }, [filteredBookings, bookingsUiActive]);
   const calendarMonthLabel = useMemo(
     () => calendarCursor.toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' }),
     [calendarCursor]
@@ -418,8 +466,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     return { year, month, daysInMonth, mondayFirstOffset };
   }, [calendarCursor]);
   const clients = useMemo<ClientSummary[]>(() => {
+    if (!clientsUiActive) return [];
     const map = new Map<string, ClientSummary>();
-    for (const b of bookings) {
+    for (const b of deferredBookings) {
       if (String(b.status ?? '').trim().toLowerCase() === 'cancelled') continue;
       const phone = String(b.client_phone ?? '').trim();
       const email = String(b.client_email ?? '').trim().toLowerCase();
@@ -448,7 +497,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       }
     }
     return [...map.values()].sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
-  }, [bookings]);
+  }, [deferredBookings, clientsUiActive]);
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -477,6 +526,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     window.addEventListener('appinstalled', onInstalled);
     return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled); };
   }, []);
+
+  useEffect(() => {
+    if (!isMobile || !navOpen || typeof document === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isMobile, navOpen]);
 
   useEffect(() => {
     if (activeTab !== 'domain' || !site.customDomain || !isPendingDomainStatus(site.domainStatus)) return;
@@ -1523,31 +1581,87 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
       {/* ── Mobile bottom sheet nav ───────────────────── */}
       {isMobile && navOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 55 }} onClick={() => setNavOpen(false)}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.32)', animation: 'fadeIn 200ms ease' }} />
-          <div
+        <>
+          <button
+            type="button"
+            aria-label="Затвори менюто (фон)"
+            onClick={() => setNavOpen(false)}
             style={{
-              position: 'absolute', left: 0, right: 0, bottom: 0,
+              position: 'fixed',
+              inset: 0,
+              zIndex: 55,
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              background: 'rgba(0,0,0,0.32)',
+              cursor: 'pointer',
+              animation: 'fadeIn 200ms ease',
+            }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Още секции"
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 56,
               background: '#fff',
               borderRadius: '20px 20px 0 0',
-              padding: '0 0 max(20px, env(safe-area-inset-bottom, 20px))',
+              paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
               animation: 'slideUp 280ms cubic-bezier(0.32, 0.72, 0, 1)',
-              maxHeight: '70dvh', overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
+              maxHeight: 'min(92dvh, calc(100dvh - 12px))',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 -12px 40px rgba(0,0,0,0.12)',
+              pointerEvents: 'auto',
             }}
-            onClick={e => e.stopPropagation()}
           >
-            {/* Handle */}
-            <div
-              style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'pointer' }}
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setNavOpen(false); }}
-              role="button"
+            <button
+              type="button"
               aria-label="Затвори менюто"
+              className="admin-sheet-handle"
+              onClick={() => setNavOpen(false)}
+              style={{
+                display: 'flex',
+                width: '100%',
+                minHeight: 48,
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '14px 16px 10px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+              }}
             >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D4D4D8' }} />
-            </div>
+              <span
+                aria-hidden
+                style={{ width: 44, height: 5, borderRadius: 3, background: '#A1A1AA', pointerEvents: 'none' }}
+              />
+            </button>
 
-            <div style={{ padding: '4px 16px 8px' }}>
+            <p style={{ margin: '0 16px 10px', fontSize: 13, fontWeight: 600, color: T.muted, letterSpacing: '0.02em' }}>
+              Още секции
+            </p>
+
+            <div
+              style={{
+                padding: '0 12px 8px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 8,
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                flex: '1 1 auto',
+                minHeight: 0,
+                alignContent: 'start',
+              }}
+            >
               {NAVBAR_TABS.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
                 return (
@@ -1556,42 +1670,114 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     type="button"
                     onClick={() => switchTab(id)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 14,
-                      padding: '14px 12px', borderRadius: 14, border: 'none',
-                      background: active ? '#F4F4F5' : 'transparent',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '12px 8px',
+                      borderRadius: 14,
+                      border: `1px solid ${active ? '#D4D4D8' : '#E4E4E7'}`,
+                      background: '#fff',
                       color: T.text,
-                      cursor: 'pointer', width: '100%', textAlign: 'left',
-                      minHeight: 52,
+                      cursor: 'pointer',
+                      minHeight: 88,
                       WebkitTapHighlightColor: 'transparent',
                     }}
                   >
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 12,
-                      background: active ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' : '#F4F4F5',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      transition: 'background 200ms ease',
-                    }}>
-                      <Icon size={20} strokeWidth={1.8} style={{ color: active ? '#fff' : '#000' }} />
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 11,
+                        background: active
+                          ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)'
+                          : '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: active ? '0 6px 16px rgba(124,58,237,0.28)' : 'none',
+                      }}
+                    >
+                      <Icon size={18} strokeWidth={1.9} style={{ color: active ? '#fff' : '#000' }} />
                     </div>
-                    <span style={{ fontSize: 16, fontWeight: active ? 600 : 400, letterSpacing: '-0.01em' }}>{label}</span>
-                    {active && <ChevronRight size={16} style={{ marginLeft: 'auto', color: T.subtle }} />}
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: active ? 600 : 500,
+                        letterSpacing: '-0.02em',
+                        textAlign: 'center',
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {label}
+                    </span>
                   </button>
                 );
               })}
             </div>
 
-            <div style={{ margin: '0 16px', paddingTop: 12, borderTop: `1px solid #F4F4F5` }}>
-              <a href={sitePublicUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 12px', borderRadius: 12, textDecoration: 'none', color: T.muted, fontSize: 15 }}>
-                <ExternalLink size={18} /> Виж сайта
+            <div
+              style={{
+                margin: '0 12px',
+                paddingTop: 10,
+                borderTop: `1px solid ${T.border}`,
+                flexShrink: 0,
+                display: 'flex',
+                gap: 8,
+              }}
+            >
+              <a
+                href={sitePublicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setNavOpen(false)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '12px 10px',
+                  borderRadius: 12,
+                  textDecoration: 'none',
+                  color: T.text,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  background: '#F4F4F5',
+                }}
+              >
+                <ExternalLink size={16} /> Виж сайта
               </a>
-              {showInstallButton && (
-                <button type="button" onClick={() => void installAsApp()} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 12px', borderRadius: 12, border: 'none', background: 'none', color: T.muted, fontSize: 15, cursor: 'pointer', width: '100%' }}>
-                  <Plus size={18} /> Добави на екрана
+              {showInstallButton ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNavOpen(false);
+                    void installAsApp();
+                  }}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '12px 10px',
+                    borderRadius: 12,
+                    border: 'none',
+                    background: '#F4F4F5',
+                    color: T.text,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Plus size={16} /> На екрана
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* ── Body layout ───────────────────────────────── */}
@@ -1616,8 +1802,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '7px 10px', borderRadius: T.radiusSm,
-                    border: 'none', width: '100%', textAlign: 'left',
-                    background: active ? '#F4F4F5' : 'transparent',
+                    border: active ? '1px solid #E4E4E7' : '1px solid transparent',
+                    width: '100%', textAlign: 'left',
+                    background: '#fff',
                     color: active ? T.text : T.muted,
                     fontSize: 12, fontWeight: active ? 600 : 400,
                     cursor: 'pointer',
@@ -1656,210 +1843,40 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
           {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
 
-          {/* ── Сайт ── */}
-          {activeTab === 'site' && (
-            <Section
-              title="Сайт"
-              desc="Основна информация, показвана в публичната страница."
-              action={<button type="button" onClick={saveSiteSettings} style={btn('primary')} disabled={busyKey === 'site'}>{busyKey === 'site' ? 'Запазваме…' : 'Запази'}</button>}
-            >
-              <div style={grid2}>
-                <Field label="Име на салона"><input value={site.name} onChange={e => setSite(p => ({ ...p, name: e.target.value }))} style={inp} /></Field>
-                <Field label="Категория"><input value={site.category} onChange={e => setSite(p => ({ ...p, category: e.target.value }))} style={inp} /></Field>
-                <Field label="Телефон"><input value={site.phone} onChange={e => setSite(p => ({ ...p, phone: e.target.value }))} style={inp} /></Field>
-                <Field label="Имейл"><input value={site.email} readOnly style={{ ...inp, color: T.muted, cursor: 'default' }} /></Field>
-                <Field label="Град"><input value={site.city} onChange={e => setSite(p => ({ ...p, city: e.target.value }))} style={inp} /></Field>
-                <AddressAutocompleteField
-                  label="Адрес"
-                  value={site.address}
-                  inputStyle={inp}
-                  onChange={address => setSite(p => ({ ...p, address }))}
-                  onSelect={({ address, city, lat, lng, googleMapsUrl }) =>
-                    setSite(p => ({
-                      ...p,
-                      address,
-                      city: city || p.city,
-                      latitude: lat,
-                      longitude: lng,
-                      googleMapsUrl,
-                    }))
-                  }
-                />
-                <Field label="Instagram"><input value={site.instagram} onChange={e => setSite(p => ({ ...p, instagram: e.target.value }))} style={inp} /></Field>
-                <Field label="Facebook"><input value={site.facebook} onChange={e => setSite(p => ({ ...p, facebook: e.target.value }))} style={inp} /></Field>
-                <Field label="TikTok"><input value={site.tiktok} onChange={e => setSite(p => ({ ...p, tiktok: e.target.value }))} style={inp} /></Field>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <Field label="За салона">
-                  <textarea value={site.about} onChange={e => setSite(p => ({ ...p, about: e.target.value }))} style={{ ...inp, minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} />
-                </Field>
-              </div>
-              <SalonFaqVisitorFields
-                faqItems={site.faqItems}
-                visitorInfo={site.visitorInfo}
-                visitorAdditionalInfo={site.visitorAdditionalInfo}
-                inputStyle={inp}
-                onChangeFaq={faqItems => setSite(p => ({ ...p, faqItems }))}
-                onChangeVisitorInfo={visitorInfo => setSite(p => ({ ...p, visitorInfo }))}
-                onChangeAdditionalInfo={visitorAdditionalInfo =>
-                  setSite(p => ({ ...p, visitorAdditionalInfo }))
-                }
-              />
-            </Section>
-          )}
+          {activeTab === 'site' ? (
+            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} />
+          ) : null}
 
-          {/* ── Снимки ── */}
-          {activeTab === 'images' && (
-            <Section
-              title="Снимки"
-              compact={isMobile}
-              action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <AdminGalleryAddBtn
-                    busy={busyKey === 'upload-gallery'}
-                    onUpload={handleGalleryUpload}
-                  />
-                  <AdminSaveBtn
-                    label="Запази снимките"
-                    busy={busyKey === 'images' || busyKey === 'images-auto'}
-                    mobile={isMobile}
-                    onClick={() => void saveImages()}
-                  />
-                </div>
-              }
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
-                  gap: isMobile ? 20 : 12,
-                }}
-              >
-                <datalist id="service-category-options">
-                  {existingServiceCategories.map((category) => (
-                    <option key={category} value={category} />
-                  ))}
-                </datalist>
-                <ImageAssetField
-                  label="Cover"
-                  uploadLabel="Качи cover"
-                  busy={busyKey === 'upload-cover'}
-                  mobile={isMobile}
-                  imageUrl={site.coverImageUrl}
-                  onUpload={files => void handleCoverUpload(files?.[0] ?? null)}
-                />
+          {activeTab === 'images' ? (
+            <LazyImagesTabPanel
+              site={site}
+              setSite={setSite}
+              setNotice={setNotice}
+              isMobile={isMobile}
+              inp={inp}
+              btn={btn}
+              busyKey={busyKey}
+              galleryPending={galleryPending}
+              galleryUploadProgress={galleryUploadProgress}
+              existingServiceCategories={existingServiceCategories}
+              saveImages={saveImages}
+              handleCoverUpload={handleCoverUpload}
+              handleLogoUpload={handleLogoUpload}
+              handleGalleryUpload={handleGalleryUpload}
+            />
+          ) : null}
 
-                <ImageAssetField
-                  label="Лого"
-                  uploadLabel="Качи лого"
-                  busy={busyKey === 'upload-logo'}
-                  mobile={isMobile}
-                  imageUrl={site.logoImageUrl}
-                  roundPreview
-                  onUpload={files => void handleLogoUpload(files?.[0] ?? null)}
-                />
-              </div>
-
-              <div style={{ marginTop: isMobile ? 24 : 20 }}>
-                <Field
-                  label={
-                    site.galleryImages.length > 0
-                      ? isMobile
-                        ? `Галерия · ${site.galleryImages.length}`
-                        : `Галерия (${site.galleryImages.length} снимки)`
-                      : 'Галерия'
-                  }
-                >
-                  {galleryUploadProgress ? (
-                    <p style={{ margin: '0 0 10px', fontSize: 13, color: T.muted, lineHeight: 1.45 }}>
-                      Качваме {galleryUploadProgress.done}/{galleryUploadProgress.total}…
-                    </p>
-                  ) : null}
-                  <GalleryDropZone busy={busyKey === 'upload-gallery'} mobile={isMobile} onUpload={handleGalleryUpload}>
-                    {site.galleryImages.length > 0 ? (
-                      <GalleryReorderGrid
-                        images={site.galleryImages}
-                        coverImageUrl={site.coverImageUrl}
-                        isMobile={isMobile}
-                        pendingUrls={galleryPending}
-                        btnSmGhost={btn('sm-ghost')}
-                        onReorder={next => {
-                          setSite(p => ({ ...p, galleryImages: next }));
-                          setNotice('Редът е променен. Натисни дискетата, за да запазиш.');
-                        }}
-                        onSetCover={url => setSite(p => ({ ...p, coverImageUrl: url }))}
-                        onRemove={i =>
-                          setSite(p => {
-                            const removed = p.galleryImages[i];
-                            const galleryImages = p.galleryImages.filter((_, j) => j !== i);
-                            return {
-                              ...p,
-                              galleryImages,
-                              coverImageUrl:
-                                p.coverImageUrl === removed
-                                  ? (galleryImages[0] ?? '')
-                                  : p.coverImageUrl,
-                            };
-                          })
-                        }
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          padding: isMobile ? '40px 20px' : '28px 16px',
-                          textAlign: 'center',
-                          border: isMobile ? 'none' : `1.5px dashed ${T.border}`,
-                          borderRadius: isMobile ? 20 : 14,
-                          background: isMobile ? '#FAFAFA' : 'transparent',
-                          color: T.muted,
-                          fontSize: isMobile ? 14 : 13,
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {isMobile
-                          ? 'Натисни + за да добавиш снимки'
-                          : 'Няма снимки в галерията. Натисни зеления + или плъзни файлове тук.'
-                        }
-                      </div>
-                    )}
-                  </GalleryDropZone>
-                </Field>
-              </div>
-            </Section>
-          )}
-
-          {/* ── Специалист ── */}
-          {activeTab === 'specialist' && (
-            <Section
-              title="Специалист"
-              desc='Захранва секцията „Вашият специалист" в сайта.'
-              action={<button type="button" onClick={saveSpecialist} style={btn('primary')} disabled={busyKey === 'specialist'}>{busyKey === 'specialist' ? 'Запазваме…' : 'Запази профила'}</button>}
-            >
-              <div style={grid2}>
-                <Field label="Име"><input value={site.ownerName} onChange={e => setSite(p => ({ ...p, ownerName: e.target.value }))} style={inp} /></Field>
-                <Field label="Роля"><input value={site.ownerPublicRole} onChange={e => setSite(p => ({ ...p, ownerPublicRole: e.target.value }))} style={inp} /></Field>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <Field label="Био">
-                  <textarea
-                    value={site.ownerPublicBio}
-                    onChange={e => setSite(p => ({ ...p, ownerPublicBio: e.target.value }))}
-                    style={{ ...inp, minHeight: 96, resize: 'vertical' }}
-                    placeholder="Кратко представяне на специалиста..."
-                  />
-                </Field>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <Field label="Снимка на специалиста">
-                  <IconUploadBtn label="Качи снимка" busy={busyKey === 'upload-owner'}>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => void handleOwnerPhotoUpload(e.target.files?.[0] ?? null)} />
-                  </IconUploadBtn>
-                  <input value={site.ownerPublicPhotoUrl} onChange={e => setSite(p => ({ ...p, ownerPublicPhotoUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
-                  {site.ownerPublicPhotoUrl && <PreviewImg src={site.ownerPublicPhotoUrl} alt="Специалист" round />}
-                </Field>
-              </div>
-            </Section>
-          )}
+          {activeTab === 'specialist' ? (
+            <LazySpecialistTabPanel
+              site={site}
+              setSite={setSite}
+              inp={inp}
+              btn={btn}
+              busyKey={busyKey}
+              saveSpecialist={saveSpecialist}
+              onOwnerPhotoUpload={(file) => void handleOwnerPhotoUpload(file)}
+            />
+          ) : null}
 
           {/* ── Услуги ── */}
           {activeTab === 'services' && (
@@ -1869,6 +1886,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <AdminPriceListScanBtn
+                    busy={busyKey === 'upload-pricelist' || priceListAnalyzing}
+                    onUpload={handlePriceListUpload}
+                  />
                   <button
                     type="button"
                     style={{
@@ -1892,340 +1913,30 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 </div>
               }
             >
-              {site.services.length === 0 && !priceListAnalyzing ? (
-                <EmptyState
-                  title="Няма услуги"
-                  desc="Добави първата си услуга от бутона горе."
+              <div style={{ marginBottom: 12 }}>
+                <PriceListServicesImport
+                  urls={priceListUrls}
+                  busy={busyKey === 'upload-pricelist'}
+                  analyzing={priceListAnalyzing}
+                  isMobile={isMobile}
+                  onUpload={handlePriceListUpload}
+                  onRemove={removePriceListAt}
+                  onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
                 />
-              ) : (
-                <div style={{ display: 'grid', gap: isMobile ? 12 : 10 }}>
-                  {adminServiceCategories.length > 1 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {adminServiceCategories.map((cat) => {
-                        const active = selectedAdminServiceCategory === cat.id;
-                        return (
-                          <button
-                            key={cat.id ?? 'all'}
-                            type="button"
-                            onClick={() => setSelectedAdminServiceCategory(cat.id)}
-                            style={{
-                              borderRadius: 999,
-                              border: active ? `1px solid ${T.accent}` : `1px solid ${T.border}`,
-                              background: active ? '#F5F3FF' : '#fff',
-                              color: active ? T.accent : T.text,
-                              padding: '6px 12px',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {cat.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  {filteredAdminServices.map(({ svc, i }) => (
-                    <div
-                      key={`svc-${i}`}
-                      style={{
-                        border: `1px solid ${T.border}`,
-                        borderRadius: isMobile ? 16 : 14,
-                        padding: isMobile ? '16px 14px' : '14px 14px',
-                        background: '#fff',
-                        position: 'relative',
-                        boxShadow: '0 2px 8px rgba(24,24,27,0.04)',
-                      }}
-                    >
-                      <p
-                        style={{
-                          margin: '0 0 10px',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: T.muted,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.06em',
-                        }}
-                      >
-                        {String((svc as { category?: string }).category ?? '').trim() || 'Без категория'}
-                      </p>
-                      <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 10 }}>
-                          <button
-                            type="button"
-                            aria-label="Премахни услуга"
-                            onClick={() =>
-                              setSite((p) => ({ ...p, services: p.services.filter((_, j) => j !== i) }))
-                            }
-                            style={{
-                              position: 'absolute',
-                              top: 10,
-                              right: 10,
-                              width: 26,
-                              height: 26,
-                              borderRadius: 999,
-                              border: `1px solid ${T.border}`,
-                              background: '#fff',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#111',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <X size={14} />
-                          </button>
-                          <div
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr auto auto auto',
-                              gap: isMobile ? 10 : 10,
-                              alignItems: 'end',
-                            }}
-                          >
-                            <Field label="Услуга" style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-                              <input
-                                value={svc.name}
-                                onChange={e =>
-                                  setSite(p => ({
-                                    ...p,
-                                    services: p.services.map((s, j) => (j === i ? { ...s, name: e.target.value } : s)),
-                                  }))
-                                }
-                                style={svcInp}
-                                placeholder="Напр. Подстригване"
-                              />
-                            </Field>
-                            <Field label="Категория" style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-                              <input
-                                value={(svc as { category?: string }).category ?? ''}
-                                list="service-category-options"
-                                onChange={e =>
-                                  setSite(p => ({
-                                    ...p,
-                                    services: p.services.map((s, j) => (j === i ? { ...s, category: e.target.value } : s)),
-                                  }))
-                                }
-                                style={svcInp}
-                                placeholder="Напр. Коса"
-                              />
-                            </Field>
-                            <Field label="Описание" style={isMobile ? { gridColumn: '1 / -1' } : { gridColumn: '1 / -1' }}>
-                              <input
-                                value={(svc as { description?: string }).description ?? ''}
-                                onChange={e =>
-                                  setSite(p => ({
-                                    ...p,
-                                    services: p.services.map((s, j) => (j === i ? { ...s, description: e.target.value } : s)),
-                                  }))
-                                }
-                                style={svcInp}
-                                placeholder="Кратко описание на услугата"
-                              />
-                            </Field>
-                            <Field label="Цена (€)">
-                              <input
-                                type="number"
-                                value={svc.price}
-                                onChange={e =>
-                                  setSite(p => ({
-                                    ...p,
-                                    services: p.services.map((s, j) => (j === i ? { ...s, price: Number(e.target.value) || 0 } : s)),
-                                  }))
-                                }
-                                style={{ ...svcInp, width: isMobile ? '100%' : 80 }}
-                              />
-                            </Field>
-                            <Field label="Мін">
-                              <input
-                                type="number"
-                                value={svc.duration_min}
-                                onChange={e =>
-                                  setSite(p => ({
-                                    ...p,
-                                    services: p.services.map((s, j) => (j === i ? { ...s, duration_min: Number(e.target.value) || 30 } : s)),
-                                  }))
-                                }
-                                style={{ ...svcInp, width: isMobile ? '100%' : 70 }}
-                              />
-                            </Field>
-                            <div style={{ gridColumn: '1 / -1', marginTop: 2 }}>
-                              <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>
-                                Варианти (по избор)
-                              </p>
-                              <div style={{ display: 'grid', gap: 6 }}>
-                                {(Array.isArray((svc as { variants?: unknown[] }).variants)
-                                  ? ((svc as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? [])
-                                  : []
-                                ).map((variant, variantIndex) => (
-                                  <div
-                                    key={`variant-${i}-${variantIndex}`}
-                                    style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 90px 90px auto' : '1fr 110px 110px auto', gap: 6, alignItems: 'center' }}
-                                  >
-                                    <input
-                                      value={String(variant.label ?? '')}
-                                      onChange={(e) =>
-                                        setSite((p) => ({
-                                          ...p,
-                                          services: p.services.map((serviceRow, rowIdx) => {
-                                            if (rowIdx !== i) return serviceRow;
-                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
-                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
-                                                  label: String(v.label ?? ''),
-                                                  price: Math.max(0, Number(v.price) || 0),
-                                                  duration:
-                                                    v.duration != null && Number.isFinite(Number(v.duration))
-                                                      ? Math.max(5, Number(v.duration))
-                                                      : undefined,
-                                                }))
-                                              : [];
-                                            prevVariants[variantIndex] = {
-                                              ...prevVariants[variantIndex],
-                                              label: e.target.value,
-                                            };
-                                            return { ...serviceRow, variants: prevVariants };
-                                          }),
-                                        }))
-                                      }
-                                      style={svcInp}
-                                      placeholder="Име на вариант"
-                                    />
-                                    <input
-                                      type="number"
-                                      value={Number(variant.price ?? 0)}
-                                      onChange={(e) =>
-                                        setSite((p) => ({
-                                          ...p,
-                                          services: p.services.map((serviceRow, rowIdx) => {
-                                            if (rowIdx !== i) return serviceRow;
-                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
-                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
-                                                  label: String(v.label ?? ''),
-                                                  price: Math.max(0, Number(v.price) || 0),
-                                                  duration:
-                                                    v.duration != null && Number.isFinite(Number(v.duration))
-                                                      ? Math.max(5, Number(v.duration))
-                                                      : undefined,
-                                                }))
-                                              : [];
-                                            prevVariants[variantIndex] = {
-                                              ...prevVariants[variantIndex],
-                                              price: Math.max(0, Number(e.target.value) || 0),
-                                            };
-                                            return { ...serviceRow, variants: prevVariants };
-                                          }),
-                                        }))
-                                      }
-                                      style={svcInp}
-                                      placeholder="€"
-                                    />
-                                    <input
-                                      type="number"
-                                      value={Number(variant.duration ?? svc.duration_min ?? 30)}
-                                      onChange={(e) =>
-                                        setSite((p) => ({
-                                          ...p,
-                                          services: p.services.map((serviceRow, rowIdx) => {
-                                            if (rowIdx !== i) return serviceRow;
-                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
-                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
-                                                  label: String(v.label ?? ''),
-                                                  price: Math.max(0, Number(v.price) || 0),
-                                                  duration:
-                                                    v.duration != null && Number.isFinite(Number(v.duration))
-                                                      ? Math.max(5, Number(v.duration))
-                                                      : undefined,
-                                                }))
-                                              : [];
-                                            prevVariants[variantIndex] = {
-                                              ...prevVariants[variantIndex],
-                                              duration: Math.max(5, Number(e.target.value) || 30),
-                                            };
-                                            return { ...serviceRow, variants: prevVariants };
-                                          }),
-                                        }))
-                                      }
-                                      style={svcInp}
-                                      placeholder="мин"
-                                    />
-                                    <button
-                                      type="button"
-                                      style={{ ...btn('ghost'), padding: '6px 8px' }}
-                                      onClick={() =>
-                                        setSite((p) => ({
-                                          ...p,
-                                          services: p.services.map((serviceRow, rowIdx) => {
-                                            if (rowIdx !== i) return serviceRow;
-                                            const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
-                                              ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
-                                                  label: String(v.label ?? ''),
-                                                  price: Math.max(0, Number(v.price) || 0),
-                                                  duration:
-                                                    v.duration != null && Number.isFinite(Number(v.duration))
-                                                      ? Math.max(5, Number(v.duration))
-                                                      : undefined,
-                                                }))
-                                              : [];
-                                            const nextVariants = prevVariants.filter((_, idx) => idx !== variantIndex);
-                                            return { ...serviceRow, variants: nextVariants };
-                                          }),
-                                        }))
-                                      }
-                                      aria-label="Премахни вариант"
-                                    >
-                                      <X size={13} />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                              <button
-                                type="button"
-                                style={{ ...btn('ghost'), marginTop: 8 }}
-                                onClick={() =>
-                                  setSite((p) => ({
-                                    ...p,
-                                    services: p.services.map((serviceRow, rowIdx) => {
-                                      if (rowIdx !== i) return serviceRow;
-                                      const prevVariants: { label: string; price: number; duration?: number }[] = Array.isArray((serviceRow as { variants?: unknown[] }).variants)
-                                        ? ((serviceRow as { variants?: { label?: string; price?: number; duration?: number }[] }).variants ?? []).map((v) => ({
-                                            label: String(v.label ?? ''),
-                                            price: Math.max(0, Number(v.price) || 0),
-                                            duration:
-                                              v.duration != null && Number.isFinite(Number(v.duration))
-                                                ? Math.max(5, Number(v.duration))
-                                                : undefined,
-                                          }))
-                                        : [];
-                                      return {
-                                        ...serviceRow,
-                                        variants: [
-                                          ...prevVariants,
-                                          {
-                                            label: '',
-                                            price: Math.max(0, Number(serviceRow.price) || 0),
-                                            duration: Math.max(5, Number(serviceRow.duration_min) || 30),
-                                          },
-                                        ],
-                                      };
-                                    }),
-                                  }))
-                                }
-                              >
-                                <Plus size={13} />
-                                Добави вариант
-                              </button>
-                            </div>
-                          </div>
-                      </div>
-                    </div>
-                  ))}
-                  {filteredAdminServices.length === 0 ? (
-                    <EmptyState
-                      title="Няма услуги в категорията"
-                      desc="Избери друга категория или добави нова услуга в тази категория."
-                    />
-                  ) : null}
-                </div>
-              )}
+              </div>
+
+              <ServicesEditorPanel
+                isMobile={isMobile}
+                showGlobalEmpty={site.services.length === 0 && !priceListAnalyzing}
+                adminServiceCategories={adminServiceCategories}
+                selectedAdminServiceCategory={selectedAdminServiceCategory}
+                setSelectedAdminServiceCategory={setSelectedAdminServiceCategory}
+                filteredAdminServices={filteredAdminServices}
+                setSite={setSite}
+                T={T}
+                svcInp={svcInp}
+                btn={btn}
+              />
             </Section>
           )}
 
@@ -2240,7 +1951,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 isMobile={isMobile}
                 busyKey={busyKey}
                 inp={inp}
-                btn={btn}
                 onChange={setOffers}
                 onUploadImages={handleOfferImagesUpload}
                 onSave={saveOffers}
@@ -2248,378 +1958,26 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             </Section>
           )}
 
-          {activeTab === 'services' && serviceModalOpen ? (
-            <div
-              role="presentation"
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 70,
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: isMobile ? 'flex-end' : 'center',
-                justifyContent: 'center',
-                padding: isMobile ? 0 : 16,
+          {activeTab === 'services' ? (
+            <ServiceCreateModal
+              open={serviceModalOpen}
+              isMobile={isMobile}
+              T={T}
+              inp={inp}
+              btn={btn}
+              newServiceDraft={newServiceDraft}
+              setNewServiceDraft={setNewServiceDraft}
+              onCancel={() => setServiceModalOpen(false)}
+              onAdd={() => {
+                if (!newServiceDraft.name.trim()) return;
+                addManualService();
               }}
-              onClick={() => setServiceModalOpen(false)}
-            >
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.36)' }} aria-hidden />
-              <div
-                role="dialog"
-                aria-modal
-                aria-labelledby="add-service-modal-title"
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  maxWidth: 520,
-                  maxHeight: isMobile ? 'min(92dvh, 100%)' : 'calc(100dvh - 32px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: isMobile ? '20px 20px 0 0' : 16,
-                  background: '#fff',
-                  border: `1px solid ${T.border}`,
-                  overflow: 'hidden',
-                  ...(isMobile ? { marginTop: 'auto' } : {}),
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div
-                  style={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    overscrollBehavior: 'contain',
-                    WebkitOverflowScrolling: 'touch',
-                    padding: 16,
-                  }}
-                >
-                  <p id="add-service-modal-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>
-                    Добави услуга
-                  </p>
-                  <div style={{ marginTop: 12 }}>
-                    <PriceListServicesImport
-                      compact
-                      urls={priceListUrls}
-                      busy={busyKey === 'upload-pricelist'}
-                      analyzing={priceListAnalyzing}
-                      isMobile={isMobile}
-                      onUpload={handlePriceListUpload}
-                      onRemove={removePriceListAt}
-                      onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
-                    />
-                  </div>
-                  <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
-                    <Field label="Име"><input style={inp} value={newServiceDraft.name} onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))} /></Field>
-                    <Field label="Категория">
-                      <input
-                        style={inp}
-                        value={newServiceDraft.category}
-                        list="service-category-options"
-                        onChange={(e) => setNewServiceDraft((p) => ({ ...p, category: e.target.value }))}
-                      />
-                    </Field>
-                    <Field label="Описание"><input style={inp} value={newServiceDraft.description} onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))} /></Field>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      <Field label="Цена (€)"><input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} /></Field>
-                      <Field label="Мин"><input type="number" style={inp} value={newServiceDraft.duration_min} onChange={(e) => setNewServiceDraft((p) => ({ ...p, duration_min: Number(e.target.value) || 30 }))} /></Field>
-                    </div>
-                    <div>
-                      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>
-                        Варианти (по избор)
-                      </p>
-                      <div style={{ display: 'grid', gap: 6 }}>
-                        {newServiceDraft.variants.map((variant, idx) => (
-                          <div
-                            key={`new-service-variant-${idx}`}
-                            style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px auto', gap: 6, alignItems: 'center' }}
-                          >
-                            <input
-                              style={inp}
-                              value={variant.label}
-                              onChange={(e) =>
-                                setNewServiceDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((v, i) => (i === idx ? { ...v, label: e.target.value } : v)),
-                                }))
-                              }
-                              placeholder="Име на вариант"
-                            />
-                            <input
-                              type="number"
-                              style={inp}
-                              value={variant.price}
-                              onChange={(e) =>
-                                setNewServiceDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((v, i) =>
-                                    i === idx ? { ...v, price: Math.max(0, Number(e.target.value) || 0) } : v
-                                  ),
-                                }))
-                              }
-                              placeholder="€"
-                            />
-                            <input
-                              type="number"
-                              style={inp}
-                              value={variant.duration_min}
-                              onChange={(e) =>
-                                setNewServiceDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((v, i) =>
-                                    i === idx ? { ...v, duration_min: Math.max(5, Number(e.target.value) || 30) } : v
-                                  ),
-                                }))
-                              }
-                              placeholder="мин"
-                            />
-                            <button
-                              type="button"
-                              style={{ ...btn('ghost'), padding: '6px 8px' }}
-                              onClick={() =>
-                                setNewServiceDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.filter((_, i) => i !== idx),
-                                }))
-                              }
-                              aria-label="Премахни вариант"
-                            >
-                              <X size={13} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        style={{ ...btn('ghost'), marginTop: 8 }}
-                        onClick={() =>
-                          setNewServiceDraft((prev) => ({
-                            ...prev,
-                            variants: [
-                              ...prev.variants,
-                              {
-                                label: '',
-                                price: Math.max(0, Number(prev.price) || 0),
-                                duration_min: Math.max(5, Number(prev.duration_min) || 30),
-                              },
-                            ],
-                          }))
-                        }
-                      >
-                        <Plus size={13} />
-                        Добави вариант
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    flexShrink: 0,
-                    padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
-                    borderTop: `1px solid ${T.border}`,
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: 8,
-                    background: '#fff',
-                  }}
-                >
-                  <button type="button" style={btn('ghost')} onClick={() => setServiceModalOpen(false)}>Отказ</button>
-                  <button
-                    type="button"
-                    style={{ ...btn('primary'), border: 'none', background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }}
-                    onClick={() => {
-                      if (!newServiceDraft.name.trim()) return;
-                      addManualService();
-                    }}
-                  >
-                    Добави
-                  </button>
-                </div>
-              </div>
-            </div>
+            />
           ) : null}
 
-          {/* ── Работно време ── */}
-          {activeTab === 'hours' && (
-            <Section
-              title="Работно време"
-              desc="Настрой часовете и блокирай конкретни дни/часове."
-              action={<button type="button" onClick={saveHours} style={btn('primary')} disabled={busyKey === 'hours'}>{busyKey === 'hours' ? 'Запазваме…' : 'Запази'}</button>}
-            >
-              <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
-                {DAYS.map(day => {
-                  const d = site.workingHours[day.key];
-                  return (
-                    <div key={day.key} style={{
-                      display: 'grid',
-                      gridTemplateColumns: isMobile ? '1fr' : '130px 1fr auto auto',
-                      gap: isMobile ? 12 : 10,
-                      alignItems: 'center',
-                      padding: isMobile ? '16px 18px' : '12px 14px',
-                      border: isMobile ? 'none' : `1px solid ${T.border}`,
-                      borderRadius: isMobile ? 18 : T.radiusSm,
-                      background: T.surface,
-                      boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                      opacity: d.closed ? 0.5 : 1,
-                      transition: 'opacity 200ms ease',
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: isMobile ? 16 : 14, fontWeight: isMobile ? 600 : 500, letterSpacing: '-0.01em' }}>{day.label}</span>
-                        {isMobile && (
-                          <button
-                            type="button"
-                            onClick={() => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], closed: !d.closed } } }))}
-                            style={{
-                              width: 48, height: 28, borderRadius: 14, border: 'none',
-                              background: d.closed ? '#E5E7EB' : T.accent,
-                              position: 'relative', cursor: 'pointer',
-                              transition: 'background 200ms ease',
-                            }}
-                          >
-                            <div style={{
-                              width: 22, height: 22, borderRadius: 11,
-                              background: '#fff',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                              position: 'absolute', top: 3,
-                              left: d.closed ? 3 : 23,
-                              transition: 'left 200ms ease',
-                            }} />
-                          </button>
-                        )}
-                      </div>
-                      {!d.closed && (
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <input type="time" value={d.open} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], open: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
-                          <span style={{ color: T.muted, fontSize: 13 }}>–</span>
-                          <input type="time" value={d.close} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], close: e.target.value } } }))} style={{ ...inp, width: 'auto', flex: 1 }} />
-                        </div>
-                      )}
-                      {d.closed && isMobile && (
-                        <span style={{ fontSize: 14, color: T.subtle }}>Почивен ден</span>
-                      )}
-                      {!isMobile && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.muted, whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={d.closed} onChange={e => setSite(p => ({ ...p, workingHours: { ...p.workingHours, [day.key]: { ...p.workingHours[day.key], closed: e.target.checked } } }))} />
-                          Почивен
-                        </label>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={{ marginTop: 14 }}>
-                <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: T.text }}>
-                  Изключения (блокирани дни и часове)
-                </p>
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {site.bookingBlocks.map((block, i) => (
-                    <div
-                      key={`${block.date}-${block.start ?? 'allday'}-${i}`}
-                      style={{
-                        border: isMobile ? 'none' : `1px solid ${T.border}`,
-                        borderRadius: isMobile ? 16 : T.radiusSm,
-                        padding: isMobile ? '14px 14px' : '10px 12px',
-                        background: T.surface,
-                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                      }}
-                    >
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '160px 110px 110px auto', gap: 8 }}>
-                        <input
-                          type="date"
-                          value={block.date}
-                          onChange={(e) =>
-                            setSite((p) => ({
-                              ...p,
-                              bookingBlocks: p.bookingBlocks.map((b, j) =>
-                                j === i ? { ...b, date: e.target.value } : b
-                              ),
-                            }))
-                          }
-                          style={inp}
-                        />
-                        <input
-                          type="time"
-                          value={block.start ?? ''}
-                          onChange={(e) =>
-                            setSite((p) => ({
-                              ...p,
-                              bookingBlocks: p.bookingBlocks.map((b, j) =>
-                                j === i ? { ...b, allDay: false, start: e.target.value || '00:00' } : b
-                              ),
-                            }))
-                          }
-                          disabled={block.allDay}
-                          style={inp}
-                        />
-                        <input
-                          type="time"
-                          value={block.end ?? ''}
-                          onChange={(e) =>
-                            setSite((p) => ({
-                              ...p,
-                              bookingBlocks: p.bookingBlocks.map((b, j) =>
-                                j === i ? { ...b, allDay: false, end: e.target.value || '23:59' } : b
-                              ),
-                            }))
-                          }
-                          disabled={block.allDay}
-                          style={inp}
-                        />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, gridColumn: isMobile ? '1 / -1' : undefined }}>
-                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.muted }}>
-                            <input
-                              type="checkbox"
-                              checked={block.allDay}
-                              onChange={(e) =>
-                                setSite((p) => ({
-                                  ...p,
-                                  bookingBlocks: p.bookingBlocks.map((b, j) =>
-                                    j === i
-                                      ? e.target.checked
-                                        ? { ...b, allDay: true, start: undefined, end: undefined }
-                                        : { ...b, allDay: false, start: b.start || '09:00', end: b.end || '10:00' }
-                                      : b
-                                  ),
-                                }))
-                              }
-                            />
-                            Цял ден
-                          </label>
-                          <button
-                            type="button"
-                            style={{ ...btn('ghost'), color: '#EF4444', padding: '6px 10px' }}
-                            onClick={() =>
-                              setSite((p) => ({
-                                ...p,
-                                bookingBlocks: p.bookingBlocks.filter((_, j) => j !== i),
-                              }))
-                            }
-                          >
-                            Премахни
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    style={{ ...btn('ghost'), justifyContent: 'center' }}
-                    onClick={() => {
-                      const today = new Date();
-                      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                      setSite((p) => ({
-                        ...p,
-                        bookingBlocks: [...p.bookingBlocks, { date, allDay: true }],
-                      }));
-                    }}
-                  >
-                    <Plus size={14} />
-                    Добави блокиран ден/часове
-                  </button>
-                </div>
-              </div>
-            </Section>
-          )}
+          {activeTab === 'hours' ? (
+            <LazyHoursTabPanel site={site} setSite={setSite} isMobile={isMobile} inp={inp} btn={btn} busyKey={busyKey} saveHours={saveHours} />
+          ) : null}
 
           {/* ── Резервации ── */}
           {activeTab === 'bookings' && (
@@ -2642,193 +2000,24 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 </div>
               }
             >
-              {/* Mobile filter chips */}
-              {isMobile && (
-                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
-                  {([['all', 'Всички'], ['pending', 'Чакащи'], ['confirmed', 'Потвърдени'], ['completed', 'Завършени'], ['cancelled', 'Отказани']] as const).map(([val, lbl]) => {
-                    const isActive = statusFilter === val;
-                    const count = val === 'all' ? bookings.length : bookings.filter(b => b.status === val).length;
-                    return (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => setStatusFilter(val)}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          padding: '8px 16px',
-                          borderRadius: 100, border: 'none',
-                          background: isActive ? T.accent : '#F4F4F5',
-                          color: isActive ? '#fff' : T.muted,
-                          fontSize: 13, fontWeight: isActive ? 600 : 500,
-                          cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                          WebkitTapHighlightColor: 'transparent',
-                        }}
-                      >
-                        {lbl}
-                        {count > 0 && <span style={{ fontSize: 11, opacity: 0.7 }}>{count}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div
-                style={{
-                  marginBottom: 14,
-                  border: isMobile ? 'none' : `1px solid ${T.border}`,
-                  borderRadius: isMobile ? 18 : 14,
-                  background: T.surface,
-                  padding: isMobile ? '14px 14px 12px' : '14px 16px',
-                  boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                    style={{ ...btn('ghost'), padding: '6px 10px' }}
-                  >
-                    ←
-                  </button>
-                  <p style={{ margin: 0, fontSize: isMobile ? 15 : 14, fontWeight: 700, textTransform: 'capitalize' }}>
-                    {calendarMonthLabel}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                    style={{ ...btn('ghost'), padding: '6px 10px' }}
-                  >
-                    →
-                  </button>
-                </div>
-
-                <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
-                  {CALENDAR_DAY_NAMES.map((day) => (
-                    <div key={day} style={{ textAlign: 'center', fontSize: 11, color: T.subtle, fontWeight: 700 }}>
-                      {day}
-                    </div>
-                  ))}
-                  {Array.from({ length: calendarMeta.mondayFirstOffset }).map((_, i) => (
-                    <div key={`offset-${i}`} />
-                  ))}
-                  {Array.from({ length: calendarMeta.daysInMonth }).map((_, i) => {
-                    const day = i + 1;
-                    const key = ymdKey(calendarMeta.year, calendarMeta.month, day);
-                    const count = bookingsCountByDate.get(key) ?? 0;
-                    const active = selectedCalendarDate === key;
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setSelectedCalendarDate(prev => (prev === key ? null : key))}
-                        style={{
-                          border: 'none',
-                          borderRadius: 12,
-                          minHeight: 42,
-                          background: active ? T.accent : count > 0 ? '#4F46E5' : '#F4F4F5',
-                          color: active || count > 0 ? '#fff' : T.text,
-                          fontSize: 13,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          padding: '6px 4px',
-                        }}
-                      >
-                        <div>{day}</div>
-                        {count > 0 ? <div style={{ fontSize: 10, opacity: 0.85 }}>{count}</div> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-                {selectedCalendarDate ? (
-                  <p style={{ margin: '10px 2px 0', fontSize: 12, color: T.muted }}>
-                    Филтър: {formatBgDateDMY(selectedCalendarDate)}{' '}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCalendarDate(null)}
-                      style={{ border: 'none', background: 'none', color: T.accent, cursor: 'pointer', padding: 0 }}
-                    >
-                      (изчисти)
-                    </button>
-                  </p>
-                ) : null}
-              </div>
-
-              {visibleBookings.length === 0 ? (
-                <EmptyState title="Няма резервации" desc="Когато клиент резервира през сайта, ще я видиш тук." />
-              ) : (
-                <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
-                  {([
-                    ['upcoming', 'Предстоящи'],
-                    ['past', 'Минали'],
-                    ['completed', 'Завършени'],
-                    ['cancelled', 'Отказани'],
-                  ] as const).map(([groupKey, groupLabel]) => {
-                    const rows = groupedVisibleBookings[groupKey];
-                    if (rows.length === 0) return null;
-                    return (
-                      <div key={groupKey} style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
-                        <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 700, color: T.subtle, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                          {groupLabel}
-                        </p>
-                        {rows.map(b => {
-                          const cfg = STATUS_CFG[b.status];
-                          return (
-                            <div key={b.id} style={{
-                              border: isMobile ? 'none' : `1px solid ${T.border}`,
-                              borderRadius: isMobile ? 18 : T.radiusSm,
-                              padding: isMobile ? '16px 18px' : '14px 16px',
-                              background: T.surface,
-                              boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                            }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                    <span style={{ fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{b.client_name}</span>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, background: cfg.bg, color: cfg.text, fontSize: 11, fontWeight: 600 }}>
-                                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-                                      {cfg.label}
-                                    </span>
-                                  </div>
-                                  <p style={{ margin: 0, fontSize: isMobile ? 14 : 13, color: T.text, lineHeight: 1.5, fontWeight: 500 }}>
-                                    {b.service_name}
-                                    {Number.isFinite(Number(b.service_price)) ? ` · ${formatSalonPrice(Number(b.service_price))}` : ''}
-                                  </p>
-                                  <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
-                                    {formatBgDateDMY(b.date)} · {b.time}
-                                    {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
-                                  </p>
-                                  <p style={{ margin: '2px 0 0', fontSize: 13, color: T.subtle }}>
-                                    {b.client_phone}
-                                    {b.client_email ? ` · ${b.client_email}` : ''}
-                                  </p>
-                                  {b.notes && <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle, fontStyle: 'italic' }}>{b.notes}</p>}
-                                </div>
-                                <select
-                                  value={b.status}
-                                  onChange={e => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
-                                  style={{
-                                    ...inp,
-                                    width: isMobile ? '100%' : 'auto',
-                                    cursor: 'pointer', flexShrink: 0,
-                                    marginTop: isMobile ? 8 : 0,
-                                    background: isMobile ? '#F4F4F5' : T.surface,
-                                    textAlign: 'center',
-                                  }}
-                                >
-                                  <option value="pending">Чакаща</option>
-                                  <option value="confirmed">Потвърдена</option>
-                                  <option value="completed">Завършена</option>
-                                  <option value="cancelled">Отказана</option>
-                                </select>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <BookingsPanel
+                isMobile={isMobile}
+                bookings={bookings}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                calendarMonthLabel={calendarMonthLabel}
+                calendarMeta={calendarMeta}
+                bookingsCountByDate={bookingsCountByDate}
+                selectedCalendarDate={selectedCalendarDate}
+                setSelectedCalendarDate={setSelectedCalendarDate}
+                setCalendarCursor={setCalendarCursor}
+                visibleBookings={visibleBookings}
+                groupedVisibleBookings={groupedVisibleBookings}
+                updateBookingStatus={updateBookingStatus}
+                inp={inp}
+                btn={btn}
+                T={T}
+              />
             </Section>
           )}
 
@@ -2842,44 +2031,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 </span>
               }
             >
-              {clients.length === 0 ? (
-                <EmptyState title="Няма клиенти" desc="Когато имаш резервации, тук ще се появят клиентите ти." />
-              ) : (
-                <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
-                  {clients.map(client => (
-                    <div
-                      key={client.key}
-                      style={{
-                        border: isMobile ? 'none' : `1px solid ${T.border}`,
-                        borderRadius: isMobile ? 18 : T.radiusSm,
-                        padding: isMobile ? '16px 18px' : '14px 16px',
-                        background: T.surface,
-                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600 }}>{client.name}</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted }}>
-                            {client.phone || 'Няма телефон'}
-                            {client.email ? ` · ${client.email}` : ''}
-                          </p>
-                          <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle }}>
-                            Последна резервация: {new Date(client.lastVisit).toLocaleString('bg-BG', { dateStyle: 'medium', timeStyle: 'short' })}
-                          </p>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>Посещения</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>{client.visits}</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: T.muted }}>
-                            {formatSalonPrice(client.totalSpent)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ClientsPanel clients={clients} isMobile={isMobile} T={T} />
             </Section>
           )}
 
@@ -2901,416 +2053,61 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             />
           )}
 
-          {/* ── Правни документи ── */}
-          {activeTab === 'legal' && (
-            <Section title="Правни документи" desc="Попълни фирмените данни за автоматични шаблони или включи собствен текст за условия, GDPR и бисквитки.">
-              <div style={{ display: 'grid', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Официално наименование на фирмата</label>
-                  <input
-                    style={inp}
-                    value={legalInfo.companyName}
-                    onChange={e => setLegalInfo(p => ({ ...p, companyName: e.target.value }))}
-                    placeholder="напр. Ню Лукс ООД"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>ЕИК / Булстат</label>
-                  <input
-                    style={inp}
-                    value={legalInfo.eik}
-                    onChange={e => setLegalInfo(p => ({ ...p, eik: e.target.value }))}
-                    placeholder="напр. 123456789"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>МОЛ (материалноотговорно лице / управител)</label>
-                  <input
-                    style={inp}
-                    value={legalInfo.managerName}
-                    onChange={e => setLegalInfo(p => ({ ...p, managerName: e.target.value }))}
-                    placeholder="напр. Деляна Иванова"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Адрес на управление</label>
-                  <input
-                    style={inp}
-                    value={legalInfo.address}
-                    onChange={e => setLegalInfo(p => ({ ...p, address: e.target.value }))}
-                    placeholder="напр. гр. София, ул. Витоша 1"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: T.muted, marginBottom: 4 }}>Имейл за връзка (за правни документи)</label>
-                  <input
-                    type="email"
-                    inputMode="email"
-                    autoComplete="email"
-                    style={inp}
-                    value={legalInfo.contactEmail}
-                    onChange={e => setLegalInfo(p => ({ ...p, contactEmail: e.target.value }))}
-                    placeholder="напр. info@salon.bg"
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-                  <button
-                    type="button"
-                    onClick={saveLegalInfo}
-                    disabled={legalSaving}
-                    style={{ ...btn('primary'), opacity: legalSaving ? 0.6 : 1 }}
-                  >
-                    {legalSaving ? 'Запазване…' : 'Запази'}
-                  </button>
-                  {legalNotice && (
-                    <span style={{ fontSize: 13, color: legalNotice.includes('Грешка') ? '#EF4444' : '#047857' }}>{legalNotice}</span>
-                  )}
-                </div>
-                <div style={{ padding: '12px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', marginTop: 4 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
-                    След запазване документите са публични на{' '}
-                    <strong style={{ color: T.text }}>{publicSiteHost}</strong>
-                    {isSalonCustomDomainLive(site.domainStatus) ? ' (свързаният ти домейн)' : ''}:
-                  </p>
-                  <ul style={{ margin: '8px 0 0', paddingLeft: 0, listStyle: 'none', fontSize: 13, color: T.muted, lineHeight: 1.85 }}>
-                    {legalDocLinks.map(({ kind, url }) => (
-                      <li key={kind}>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: T.accent, fontWeight: 500, wordBreak: 'break-all' }}
-                        >
-                          {url}
-                        </a>
-                        <span style={{ color: T.subtle }}> — {LEGAL_DOCUMENT_LABELS[kind]}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <LegalCustomDocumentsEditor
-                  value={legalInfo.customDocuments}
-                  inputStyle={inp}
-                  onChange={customDocuments => setLegalInfo(p => ({ ...p, customDocuments }))}
-                />
-              </div>
-            </Section>
-          )}
+          {activeTab === 'legal' ? (
+            <LazyLegalTabPanel
+              site={site}
+              legalInfo={legalInfo}
+              setLegalInfo={setLegalInfo}
+              inp={inp}
+              btn={btn}
+              legalSaving={legalSaving}
+              legalNotice={legalNotice}
+              saveLegalInfo={saveLegalInfo}
+              publicSiteHost={publicSiteHost}
+              legalDocLinks={legalDocLinks}
+            />
+          ) : null}
 
-          {/* ── Интеграции ── */}
-          {activeTab === 'integrations' && (
-            <Section title="Интеграции" desc="Telegram известия и Google отзиви на сайта.">
-              <div style={{ display: 'grid', gap: 10 }}>
-                {/* Telegram */}
-                <InfoCard
-                  title="Telegram"
-                  status={site.telegramChatId ? 'connected' : 'pending'}
-                >
-                  {site.telegramChatId ? (
-                    <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>Telegram е свързан. Ще получаваш известия при нова резервация.</p>
-                  ) : (
-                    <>
-                      <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
-                        Отвори{' '}
-                        <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: T.text, fontWeight: 600 }}>@clicka_booking_bot</a>
-                        {' '}в Telegram и изпрати:
-                      </p>
-                      {site.onboardingCode ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
-                            setBusyKey('copied-tg');
-                            setTimeout(() => setBusyKey(k => k === 'copied-tg' ? '' : k), 2000);
-                          }}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: T.radiusSm, background: '#F4F4F5', border: 'none', cursor: 'pointer', transition: 'background 150ms' }}
-                        >
-                          <code style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
-                            /start {site.onboardingCode}
-                          </code>
-                          {busyKey === 'copied-tg'
-                            ? <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
-                            : <Copy size={15} style={{ color: T.muted, flexShrink: 0 }} />
-                          }
-                        </button>
-                      ) : (
-                        <p style={{ margin: '8px 0 0', fontSize: 12, color: T.subtle }}>Кодът се генерира при активиране на акаунта.</p>
-                      )}
-                    </>
-                  )}
-                </InfoCard>
+          {activeTab === 'integrations' ? (
+            <LazyIntegrationsTabPanel
+              site={site}
+              setSite={setSite}
+              setNotice={setNotice}
+              busyKey={busyKey}
+              setBusyKey={setBusyKey}
+              inp={inp}
+              btn={btn}
+              hasGoogleReviewsCandidate={hasGoogleReviewsCandidate}
+              googleReviewsStatus={googleReviewsStatus}
+              reviewsFetch={reviewsFetch}
+              fetchGoogleReviews={fetchGoogleReviews}
+              loadGoogleReviewsStatus={loadGoogleReviewsStatus}
+              googleBizQuery={googleBizQuery}
+              setGoogleBizQuery={setGoogleBizQuery}
+              googleBizLoading={googleBizLoading}
+              googleBizResults={googleBizResults}
+              googleBizMessage={googleBizMessage}
+              searchGoogleBusinesses={searchGoogleBusinesses}
+            />
+          ) : null}
 
-                <InfoCard
-                  title="Google Reviews"
-                  status={googleReviewsStatus.connected ? 'connected' : 'pending'}
-                >
-                  <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
-                    {hasGoogleReviewsCandidate
-                      ? googleReviewsStatus.loading
-                        ? 'Проверяваме...'
-                        : googleReviewsStatus.connected
-                          ? googleReviewsStatus.totalCount && googleReviewsStatus.totalCount > 0
-                            ? `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) от общо ${googleReviewsStatus.totalCount} в Google.`
-                            : `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) на сайта.`
-                          : googleReviewsStatus.reason === 'missing_outscraper_key'
-                            ? 'Липсва OUTSCRAPER_API_KEY на сървъра — без него отзивите не се зареждат.'
-                            : googleReviewsStatus.reason === 'outscraper_api_error'
-                              ? 'Outscraper върна грешка. Провери OUTSCRAPER_API_KEY и лимитите на акаунта.'
-                              : googleReviewsStatus.reason === 'outscraper_pending'
-                                ? 'Outscraper още обработва заявката. Изчакай малко и натисни „Обнови статуса“.'
-                              : 'Place ID е запазен. Натисни „Извлечи ревютата", за да ги заредим на сайта.'
-                      : (
-                        <>
-                          Добави Google Place ID или Maps линк в раздел <strong>Сайт</strong> — виж{' '}
-                          <a
-                            href={GOOGLE_PLACE_ID_FINDER_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: T.accent, fontWeight: 600 }}
-                          >
-                            Place ID Finder
-                          </a>
-                          .
-                        </>
-                      )}
-                  </p>
-                  {reviewsFetch.result ? (
-                    <p style={{
-                      margin: '6px 0 0',
-                      fontSize: 12,
-                      color: reviewsFetch.result.success ? '#16a34a' : '#dc2626',
-                      lineHeight: 1.5,
-                    }}>
-                      {reviewsFetch.result.success
-                        ? `Показваме ${reviewsFetch.result.count ?? 0} ревюта (4+ звезди) на сайта.${Number(reviewsFetch.result.newCount ?? 0) > 0 ? ` Нови: ${reviewsFetch.result.newCount}.` : ' Няма нови ревюта от последното зареждане.'}`
-                        : reviewsFetch.result.message}
-                    </p>
-                  ) : null}
-                  {hasGoogleReviewsCandidate ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => void fetchGoogleReviews()}
-                        disabled={reviewsFetch.loading}
-                        style={{
-                          ...btn('primary'),
-                          opacity: reviewsFetch.loading ? 0.65 : 1,
-                          cursor: reviewsFetch.loading ? 'wait' : 'pointer',
-                        }}
-                      >
-                        {reviewsFetch.loading ? (
-                          <>
-                            <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: -2, animation: 'spin 1s linear infinite' }} />
-                            Извличаме ревютата…
-                          </>
-                        ) : (
-                          'Извлечи ревютата'
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void loadGoogleReviewsStatus({ cacheBust: true })}
-                        disabled={googleReviewsStatus.loading}
-                        style={{
-                          ...btn('sm-ghost'),
-                          opacity: googleReviewsStatus.loading ? 0.65 : 1,
-                          cursor: googleReviewsStatus.loading ? 'wait' : 'pointer',
-                        }}
-                      >
-                        {googleReviewsStatus.loading ? 'Проверяваме…' : 'Обнови статуса'}
-                      </button>
-                    </div>
-                  ) : null}
-                  <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-                    <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>
-                      Търси бизнес в Google и избери правилния профил:
-                    </p>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        value={googleBizQuery}
-                        onChange={(e) => setGoogleBizQuery(e.target.value)}
-                        placeholder="Напр. Salon Urban Varna"
-                        style={{ ...inp, fontSize: 13 }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void searchGoogleBusinesses()}
-                        style={btn('sm-ghost')}
-                        disabled={googleBizLoading}
-                      >
-                        {googleBizLoading ? 'Търсим…' : 'Търси'}
-                      </button>
-                    </div>
-                    {googleBizResults.length > 0 ? (
-                      <div style={{ display: 'grid', gap: 6 }}>
-                        {googleBizResults.map((biz) => (
-                          <button
-                            key={biz.placeId}
-                            type="button"
-                            onClick={() => {
-                              const selectedPlaceId = biz.placeId;
-                              const selectedMapsUrl = biz.mapsUrl || site.googleMapsUrl;
-                              setSite((p) => ({
-                                ...p,
-                                googlePlaceId: selectedPlaceId,
-                                googleMapsUrl: biz.mapsUrl || p.googleMapsUrl,
-                              }));
-                              setNotice('Избран е Google бизнес профил. Извличаме ревютата...');
-                              void fetchGoogleReviews({ placeId: selectedPlaceId, mapsUrl: selectedMapsUrl });
-                            }}
-                            style={{
-                              border: `1px solid ${T.border}`,
-                              borderRadius: 10,
-                              background: '#fff',
-                              padding: '8px 10px',
-                              textAlign: 'left',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{biz.name}</div>
-                            <div style={{ fontSize: 12, color: T.muted }}>{biz.address || 'Без адрес'}</div>
-                            {biz.businessStatus ? (
-                              <div style={{ fontSize: 11, color: T.subtle, marginTop: 3 }}>
-                                Статус: {biz.businessStatus}
-                              </div>
-                            ) : null}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                    {!googleBizLoading && googleBizMessage ? (
-                      <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>{googleBizMessage}</p>
-                    ) : null}
-                  </div>
-                </InfoCard>
-              </div>
-            </Section>
-          )}
+          {activeTab === 'sms' ? (
+            <LazySmsTabPanel
+              site={site}
+              smsDraftEnabled={smsDraftEnabled}
+              setSmsDraftEnabled={setSmsDraftEnabled}
+              smsDraftMode={smsDraftMode}
+              setSmsDraftMode={setSmsDraftMode}
+              smsPanelLoading={smsPanelLoading}
+              smsPendingReminders={smsPendingReminders}
+              smsTransactions={smsTransactions}
+              btn={btn}
+              busyKey={busyKey}
+              saveSmsSettings={saveSmsSettings}
+              buySmsPack={buySmsPack}
+            />
+          ) : null}
 
-          {/* ── SMS ── */}
-          {activeTab === 'sms' && (
-            <Section title="SMS" desc="Напомняния към клиенти преди резервация и покупка на пакети.">
-              <div style={{ display: 'grid', gap: 10 }}>
-                <InfoCard
-                  title="SMS напомняния"
-                  status={site.smsEnabled && site.smsBalance > 0 ? 'connected' : 'pending'}
-                >
-                  <div style={{ display: 'grid', gap: 12 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10 }}>
-                      <span style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.03em' }}>
-                        {site.smsBalance}
-                      </span>
-                      <span style={{ fontSize: 14, color: T.muted }}>налични SMS</span>
-                      {smsPanelLoading ? (
-                        <span style={{ fontSize: 12, color: T.subtle }}>Обновяваме…</span>
-                      ) : null}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.55 }}>
-                      Пакет: <strong>{SMS_PACK_CREDITS} SMS за {SMS_PACK_PRICE_EUR} €</strong>.
-                      При режим „24ч + 1ч" всяка резервация използва <strong>2 SMS</strong>.
-                      При „1 час" — <strong>1 SMS</strong>. При 0 баланс изпращането спира автоматично.
-                    </p>
-                    {smsPendingReminders > 0 ? (
-                      <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>
-                        Планирани напомняния: {smsPendingReminders}
-                      </p>
-                    ) : null}
-
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: T.text }}>Кога да изпращаме</p>
-                      {(
-                        [
-                          { id: 'off' as const, label: 'Изключено' },
-                          { id: '1h' as const, label: '1 час преди часа' },
-                          { id: '24h_and_1h' as const, label: '24 часа + 1 час преди' },
-                        ] as const
-                      ).map((opt) => (
-                        <label
-                          key={opt.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            fontSize: 13,
-                            color: T.text,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="sms-mode"
-                            checked={smsDraftMode === opt.id}
-                            onChange={() => {
-                              setSmsDraftMode(opt.id);
-                              if (opt.id !== 'off') setSmsDraftEnabled(true);
-                              if (opt.id === 'off') setSmsDraftEnabled(false);
-                            }}
-                          />
-                          {opt.label}
-                          {opt.id !== 'off' ? (
-                            <span style={{ color: T.subtle }}>
-                              ({smsCreditsPerBooking(opt.id)} SMS / резервация)
-                            </span>
-                          ) : null}
-                        </label>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => void saveSmsSettings()}
-                        style={btn('primary')}
-                        disabled={busyKey === 'sms-settings'}
-                      >
-                        {busyKey === 'sms-settings' ? 'Запазваме…' : 'Запази SMS настройки'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void buySmsPack()}
-                        style={btn('ghost')}
-                        disabled={busyKey === 'sms-checkout'}
-                      >
-                        {busyKey === 'sms-checkout'
-                          ? 'Пренасочваме…'
-                          : `Купи ${SMS_PACK_CREDITS} SMS (${SMS_PACK_PRICE_EUR} €)`}
-                      </button>
-                    </div>
-
-                    {smsTransactions.length > 0 ? (
-                      <div style={{ marginTop: 4 }}>
-                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>
-                          Последна активност
-                        </p>
-                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
-                          {smsTransactions.slice(0, 8).map((tx) => (
-                            <li
-                              key={tx.id}
-                              style={{
-                                fontSize: 12,
-                                color: T.muted,
-                                borderTop: `1px solid ${T.border}`,
-                                paddingTop: 6,
-                              }}
-                            >
-                              <span style={{ color: tx.delta > 0 ? '#16a34a' : T.text, fontWeight: 600 }}>
-                                {tx.delta > 0 ? `+${tx.delta}` : tx.delta}
-                              </span>
-                              {' · '}
-                              {tx.note || tx.kind}
-                              {tx.client_phone ? ` · ${tx.client_phone}` : ''}
-                              {' · '}
-                              {new Date(tx.created_at).toLocaleString('bg-BG')}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </div>
-                </InfoCard>
-              </div>
-            </Section>
-          )}
         </main>
       </div>
 
@@ -3370,8 +2167,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           border-color: #18181B !important;
           outline: none;
         }
-        .admin-mobile-root button:active {
+        .admin-mobile-root button:active:not(.admin-sheet-handle) {
           transform: scale(0.97);
+        }
+        .admin-sheet-handle:active {
+          transform: none;
+          opacity: 0.85;
         }
       `}</style>
     </div>
@@ -3580,9 +2381,6 @@ function IconUploadBtn({ label, busy, children }: { label: string; busy: boolean
     </label>
   );
 }
-
-const GOOGLE_PLACE_ID_FINDER_URL =
-  'https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder';
 
 function Field({ label, children, style }: { label: string; children: ReactNode; style?: CSSProperties }) {
   const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
