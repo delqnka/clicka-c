@@ -1366,7 +1366,7 @@ export default function SalonPublicParity({
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Услуги</h2>
               {serviceCategories.length > 1 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none">
                   {serviceCategories.map((cat) => {
                     const isSelected = selectedServiceCategory === cat.id;
                     return (
@@ -1374,10 +1374,10 @@ export default function SalonPublicParity({
                         key={cat.id ?? 'all'}
                         type="button"
                         onClick={() => setSelectedServiceCategory(cat.id)}
-                        className={`rounded-full border px-3 py-1 text-sm font-normal shadow-[0_8px_20px_rgba(0,0,0,0.05)] transition ${
+                        className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
                           isSelected
-                            ? 'border-[color:var(--salon-primary)] text-[color:var(--salon-primary)]'
-                            : 'border-black/25 hover:border-[color:var(--salon-primary)]'
+                            ? 'border-black bg-black text-white shadow-[0_4px_12px_rgba(0,0,0,0.18)]'
+                            : 'border-black/12 bg-white text-[#1a1a1a] hover:border-black/25'
                         }`}
                       >
                         {cat.label}
@@ -1386,7 +1386,7 @@ export default function SalonPublicParity({
                   })}
                 </div>
               ) : null}
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-3 space-y-2">
                 {displayServices.map((service, idxInPage) => {
                   const variants = service.variants && service.variants.length > 0 ? service.variants : null;
                   const selectedVariantLabel = variants
@@ -1399,19 +1399,19 @@ export default function SalonPublicParity({
                   return (
                     <li
                       key={`${service.id}-${idxInPage}`}
-                      className="rounded-[26px] border border-black/10 bg-white px-4 py-5 shadow-none"
+                      className="rounded-2xl border border-black/10 bg-white px-3.5 py-3.5 shadow-none"
                     >
-                      <div className="flex flex-row items-start gap-4">
+                      <div className="flex flex-row items-start gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-[17px] font-normal leading-snug text-[#1a1a1a]">{service.name}</p>
+                          <p className="text-[15px] font-medium leading-snug text-[#1a1a1a]">{service.name}</p>
                           {variants && variants.length > 0 ? (
-                            <div className="relative mt-2 max-w-full sm:max-w-md">
+                            <div className="relative mt-1.5 max-w-full sm:max-w-md">
                               <button
                                 type="button"
                                 onClick={() =>
                                   setVariantDropdownOpenForServiceId((prev) => (prev === service.id ? null : service.id))
                                 }
-                                className="flex w-full items-center justify-between rounded-full border border-black/15 bg-transparent px-4 py-2 text-left text-sm transition hover:border-black/30"
+                                className="flex w-full items-center justify-between rounded-full border border-black/15 bg-transparent px-3 py-1.5 text-left text-xs transition hover:border-black/30"
                               >
                                 <span className="truncate">{selectedVariantLabel ?? 'Изберете вариант'}</span>
                                 <ChevronDown
@@ -1442,15 +1442,15 @@ export default function SalonPublicParity({
                               ) : null}
                             </div>
                           ) : null}
-                          <p className="mt-2 text-sm salon-text-muted">
+                          <p className="mt-1.5 text-xs salon-text-muted">
                             <span className="inline-flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              <Clock className="h-3 w-3 shrink-0" aria-hidden />
                               {effective.duration} мин
                             </span>
                             {effective.price != null ? (
                               <>
                                 <span className="mx-1.5 text-black/35">·</span>
-                                <span className="font-normal text-[#1a1a1a]">{effective.price} €</span>
+                                <span className="font-medium text-[#1a1a1a]">{effective.price} €</span>
                               </>
                             ) : null}
                           </p>
@@ -1459,7 +1459,7 @@ export default function SalonPublicParity({
                           <button
                             type="button"
                             onClick={() => openBookingModal(effective.id)}
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-black px-4 py-2 text-sm font-medium text-white sm:px-5"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-xs font-medium text-white sm:px-4 sm:text-sm"
                           >
                             Резервирай
                           </button>
