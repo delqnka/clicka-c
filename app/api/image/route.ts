@@ -63,7 +63,13 @@ export async function GET(request: NextRequest) {
   const snapped = snapImageWidth(wParam);
   const targetWidth = ALLOWED_WIDTHS.has(snapped) ? snapped : 0;
   const qDefault =
-    targetWidth > 0 && targetWidth <= 480 ? 64 : targetWidth > 0 && targetWidth <= 768 ? 68 : 72;
+    targetWidth > 0 && targetWidth <= 320
+      ? 60
+      : targetWidth > 0 && targetWidth <= 480
+        ? 58
+        : targetWidth > 0 && targetWidth <= 768
+          ? 66
+          : 72;
   const quality = Math.min(Math.max(parseInt(searchParams.get('q') ?? String(qDefault), 10), 10), 100);
 
   const accept = request.headers.get('accept') ?? '';

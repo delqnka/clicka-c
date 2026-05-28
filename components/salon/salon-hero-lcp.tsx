@@ -1,7 +1,8 @@
-import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
+import { publicImageUrl } from '@/lib/public-image-url';
 
-const HERO_WIDTHS = [480, 768] as const;
-const HERO_QUALITY = 64;
+/** LCP hero: one fixed 480px WebP — no srcset (avoids 768w on 2x DPR and wasted preload). */
+const HERO_WIDTH = 480;
+const HERO_QUALITY = 58;
 
 type Props = {
   src: string;
@@ -14,17 +15,14 @@ export function SalonHeroLcp({ src, alt, className }: Props) {
   const trimmed = src.trim();
   if (!trimmed || trimmed.startsWith('data:')) return null;
 
-  const href = publicImageUrl(trimmed, { width: 480, format: 'webp', quality: HERO_QUALITY });
-  const srcSet = publicImageSrcSet(trimmed, HERO_WIDTHS, 'webp', HERO_QUALITY);
+  const href = publicImageUrl(trimmed, { width: HERO_WIDTH, format: 'webp', quality: HERO_QUALITY });
 
   return (
     <div className={className ?? 'overflow-hidden rounded-2xl'}>
       <img
         src={href}
-        srcSet={srcSet || undefined}
-        sizes="100vw"
         alt={alt}
-        width={480}
+        width={HERO_WIDTH}
         height={384}
         className="aspect-[5/4] w-full object-cover"
         fetchPriority="high"
@@ -33,4 +31,10 @@ export function SalonHeroLcp({ src, alt, className }: Props) {
       />
     </div>
   );
+}
+
+export function salonHeroLcpPreloadUrl(src: string): string | null {
+  const trimmed = src.trim();
+  if (!trimmed || trimmed.startsWith('data:')) return null;
+  return publicImageUrl(trimmed, { width: HERO_WIDTH, format: 'webp', quality: HERO_QUALITY });
 }

@@ -3,7 +3,7 @@ import SalonPublicParity from '@/app/components/SalonPublicParity';
 import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { r2PublicBase } from '@/lib/image-delivery';
-import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
+import { salonHeroLcpPreloadUrl } from '@/components/salon/salon-hero-lcp';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { buildSalonJsonLd } from '@/lib/seo';
 
@@ -92,23 +92,13 @@ export default async function SalonSlugPage({ searchParams }: Props) {
     : [];
   const salonName = String(salonRecord.name ?? 'Салон');
   const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
-  const lcpHref = lcpImage ? publicImageUrl(lcpImage, { width: 480, format: 'webp', quality: 64 }) : null;
-  const lcpSrcSet = lcpImage ? publicImageSrcSet(lcpImage, [480, 768] as const, 'webp', 64) : '';
+  const lcpHref = lcpImage ? salonHeroLcpPreloadUrl(lcpImage) : null;
   const r2Origin = r2PublicBase();
 
   return (
     <>
       {r2Origin ? <link rel="preconnect" href={r2Origin} crossOrigin="anonymous" /> : null}
-      {lcpHref ? (
-        <link
-          rel="preload"
-          as="image"
-          href={lcpHref}
-          {...(lcpSrcSet ? { imageSrcSet: lcpSrcSet } : {})}
-          imageSizes="100vw"
-          fetchPriority="high"
-        />
-      ) : null}
+      {lcpHref ? <link rel="preload" as="image" href={lcpHref} fetchPriority="high" /> : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

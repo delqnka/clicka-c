@@ -1324,9 +1324,9 @@ export default function SalonPublicParity({
                       ) : null}
                       {offerImagesList(o.images)[0] ? (
                         <img
-                          src={optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 640)}
-                          srcSet={`${optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 480)} 480w, ${optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 640)} 640w`}
-                          sizes="(max-width: 768px) 92vw, 340px"
+                          src={optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 320, 62)}
+                          srcSet={`${optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 320, 62)} 320w, ${optimizedSrc(wireMediaUri(offerImagesList(o.images)[0]), 480, 62)} 480w`}
+                          sizes="(max-width: 768px) 340px, 340px"
                           alt={name}
                           className="absolute inset-0 h-full w-full object-cover opacity-90"
                           loading="lazy"
