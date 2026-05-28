@@ -1,16 +1,11 @@
-/** Server-only: Google reviews (OpenRouter) + static maps (Google Maps API). */
+/** Server-only: Google reviews (Outscraper) + static maps (Google Maps API). */
 
 import { unstable_cache } from 'next/cache';
-import {
-  fetchGoogleReviewsViaOpenRouter,
-  type GoogleReviewLite,
-} from '@/lib/google-reviews-openrouter';
-import { getOpenRouterApiKey } from '@/lib/openrouter';
 
-export type { GoogleReviewLite };
+export type GoogleReviewLite = { author_name: string; rating: number; text: string };
 export type GoogleReviewsProbe = {
   reviews: GoogleReviewLite[];
-  source: 'openrouter' | 'none';
+  source: 'outscraper' | 'none';
   reason?: string;
 };
 
@@ -52,46 +47,94 @@ export async function resolveGooglePlaceId(options: {
   return null;
 }
 
+async function fetchReviewsViaOutscraper(
+  placeId: string,
+): Promise<{ reviews: GoogleReviewLite[]; reason?: string }> {
+  const key = process.env.OUTSCRAPER_API_KEY?.trim();
+  if (!key) return { reviews: [], reason: 'missing_outscraper_key' };
+
+  const params = new URLSearchParams({
+    query: `place_id:${placeId}`,
+    reviewsLimit: '10',
+    language: 'bg',
+    sort: 'newest',
+  });
+
+  try {
+    const res = await fetch(
+      `https://api.app.outscraper.com/maps/reviews-v3?${params}`,
+      { headers: { 'X-API-KEY': key }, next: { revalidate: 900 } },
+    );
+
+    if (!res.ok) {
+      console.warn('[outscraper] HTTP', res.status, await res.text().catch(() => ''));
+      return { reviews: [], reason: 'outscraper_api_error' };
+    }
+
+    const data = (await res.json()) as {
+      status?: string;
+      data?: {
+        author_title?: string;
+        review_rating?: number;
+        review_text?: string;
+      }[][];
+    };
+
+    const raw = data.data?.[0];
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return { reviews: [], reason: 'outscraper_empty' };
+    }
+
+    const reviews: GoogleReviewLite[] = raw
+      .slice(0, 10)
+      .map((r) => ({
+        author_name: String(r.author_title ?? 'Google потребител').trim(),
+        rating: Math.min(5, Math.max(1, Math.round(Number(r.review_rating ?? 5)))),
+        text: String(r.review_text ?? '').trim(),
+      }))
+      .filter((r) => r.text);
+
+    return { reviews };
+  } catch (err) {
+    console.warn('[outscraper] fetch error:', err);
+    return { reviews: [], reason: 'outscraper_api_error' };
+  }
+}
+
 export async function probeGoogleReviewsForPlace(
   placeId: string,
-  businessContext?: { name?: string; city?: string },
 ): Promise<GoogleReviewsProbe> {
   const id = placeId.trim();
   if (!id) return { reviews: [], source: 'none', reason: 'missing_place_id' };
 
-  if (!getOpenRouterApiKey()) {
-    return { reviews: [], source: 'none', reason: 'missing_openrouter_key' };
-  }
-
-  const result = await fetchGoogleReviewsViaOpenRouter(id, businessContext);
+  const result = await fetchReviewsViaOutscraper(id);
   if (result.reviews.length > 0) {
-    return { reviews: result.reviews, source: 'openrouter' };
+    return { reviews: result.reviews, source: 'outscraper' };
   }
 
   return {
     reviews: [],
     source: 'none',
-    reason: result.reason ?? 'openrouter_empty',
+    reason: result.reason ?? 'outscraper_empty',
   };
 }
 
-/** OpenRouter (Perplexity Sonar) — изисква OPENROUTER_API_KEY и валиден place_id. */
+/** Outscraper — изисква OUTSCRAPER_API_KEY и валиден place_id. */
 export async function fetchGoogleReviewsForPlace(
   placeId: string,
-  businessContext?: { name?: string; city?: string },
 ): Promise<GoogleReviewLite[]> {
   const id = placeId.trim();
   if (!id) return [];
 
   const probe = await unstable_cache(
-    () => probeGoogleReviewsForPlace(id, businessContext),
-    ['google-reviews-or', id],
+    () => probeGoogleReviewsForPlace(id),
+    ['google-reviews-osc', id],
     { revalidate: 900 },
   )();
 
   if (probe.reviews.length > 0) return probe.reviews;
 
-  const fresh = await probeGoogleReviewsForPlace(id, businessContext);
+  const fresh = await probeGoogleReviewsForPlace(id);
   return fresh.reviews;
 }
 

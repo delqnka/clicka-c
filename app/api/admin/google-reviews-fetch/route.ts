@@ -31,10 +31,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const probe = await probeGoogleReviewsForPlace(placeId, {
-    name: site.name || undefined,
-    city: site.city || undefined,
-  });
+  const probe = await probeGoogleReviewsForPlace(placeId);
 
   await ensureGoogleReviewsSchema();
 
@@ -57,10 +54,9 @@ export async function POST(request: NextRequest) {
   }
 
   const reasonMessages: Record<string, string> = {
-    missing_openrouter_key: 'Липсва OPENROUTER_API_KEY на сървъра.',
-    openrouter_api_error: 'OpenRouter върна грешка. Провери ключа и модела.',
-    openrouter_parse_error: 'Моделът върна невалиден отговор. Опитай отново.',
-    openrouter_empty: 'Не бяха намерени ревюта за този бизнес. Провери дали Place ID е правилен.',
+    missing_outscraper_key: 'Липсва OUTSCRAPER_API_KEY. Добави го в Vercel env vars.',
+    outscraper_api_error: 'Outscraper API върна грешка. Провери ключа.',
+    outscraper_empty: 'Outscraper не намери ревюта. Провери дали Place ID е правилен.',
   };
 
   return NextResponse.json({

@@ -127,10 +127,7 @@ export async function PATCH(request: NextRequest) {
   if (placeId) {
     try {
       await ensureGoogleReviewsSchema();
-      const probe = await probeGoogleReviewsForPlace(placeId, {
-        name: next.name || undefined,
-        city: next.city || undefined,
-      });
+      const probe = await probeGoogleReviewsForPlace(placeId);
       if (probe.reviews.length > 0) {
         await sql`
           UPDATE salons

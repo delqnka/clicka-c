@@ -11,16 +11,16 @@ export type OpenRouterReviewsResult = {
   reason?: 'missing_openrouter_key' | 'openrouter_api_error' | 'openrouter_parse_error' | 'openrouter_empty';
 };
 
-/** Модел с уеб достъп (Perplexity Sonar през OpenRouter). */
-const DEFAULT_REVIEWS_MODEL = 'perplexity/sonar';
+/** Google Gemini модел през OpenRouter (fallback ако Places API не е наличен). */
+const DEFAULT_REVIEWS_MODEL = 'google/gemini-2.5-flash-preview';
 
-const SYSTEM_PROMPT = `Ти извличаш публични отзиви от Google Maps за бизнес.
-Върни САМО валиден JSON масив, започващ с [ и завършващ с ]. Без markdown, без пояснения.
-Формат: [{ "author_name": string, "rating": number, "text": string }]
-- rating: цяло число от 1 до 5
-- text: текста на отзива (ако липсва, кратко резюме)
-- author_name: име на автора или "Google потребител"
-Максимум 10 най-нови отзива. Ако няма отзиви, върни [].`;
+const SYSTEM_PROMPT = `You extract public Google Maps reviews for a business.
+Return ONLY a valid JSON array starting with [ and ending with ]. No markdown, no explanation.
+Format: [{ "author_name": string, "rating": number, "text": string }]
+- rating: integer 1-5
+- text: the review text (original language)
+- author_name: reviewer name or "Google потребител"
+Return up to 10 most recent reviews. If no reviews found, return [].`;
 
 function reviewsModel(): string {
   return process.env.OPENROUTER_REVIEWS_MODEL?.trim() || DEFAULT_REVIEWS_MODEL;
@@ -109,12 +109,12 @@ async function fetchOnce(
       { role: 'system', content: SYSTEM_PROMPT },
       {
         role: 'user',
-        content: `Намери и извлечи публичните Google Maps отзиви за този бизнес.${nameLine}
+        content: `Search Google Maps and find the public reviews for this business.${nameLine}
 
 Google Place ID: ${id}
-Линк: ${mapsUrl}
+Google Maps URL: ${mapsUrl}
 
-Търси отзивите в Google Maps за този бизнес. Върни САМО JSON масив [ {...}, ... ] с до 10 най-нови отзива.`,
+Please search the web for Google Maps reviews of this business and return ONLY a JSON array with up to 10 reviews.`,
       },
     ],
   });

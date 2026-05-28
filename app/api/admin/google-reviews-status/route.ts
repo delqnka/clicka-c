@@ -32,10 +32,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const probe = await probeGoogleReviewsForPlace(placeId, {
-    name: site.name || undefined,
-    city: site.city || undefined,
-  });
+  const probe = await probeGoogleReviewsForPlace(placeId);
   return NextResponse.json(
     {
       connected: probe.reviews.length > 0,
