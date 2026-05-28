@@ -33,7 +33,14 @@ export async function GET(request: NextRequest) {
   `;
   const cacheRaw = cacheRows[0]?.google_reviews_cache;
   const totalGoogleReviews = Number(cacheRows[0]?.google_reviews_count);
-  const cachedCount = Array.isArray(cacheRaw) ? cacheRaw.length : 0;
+  const shownReviews = Array.isArray(cacheRaw)
+    ? cacheRaw.filter((r: unknown) => {
+      if (!r || typeof r !== 'object') return false;
+      const rating = Number((r as { rating?: unknown }).rating);
+      return Number.isFinite(rating) && rating >= 4;
+    }).slice(0, 10)
+    : [];
+  const cachedCount = shownReviews.length;
   const hasGoogleConnection =
     (Number.isFinite(totalGoogleReviews) && totalGoogleReviews > 0) || cachedCount > 0;
 

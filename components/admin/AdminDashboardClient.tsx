@@ -124,17 +124,19 @@ type ClientSummary = {
   totalSpent: number;
   lastVisit: string;
 };
+type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
 type GoogleReviewsStatus = {
   loading: boolean;
   connected: boolean;
   count: number;
+  totalCount: number | null;
   source: 'outscraper' | 'cache' | 'none' | null;
   reason: string | null;
   providerStatus?: string | null;
 };
 type GoogleReviewsFetchState = {
   loading: boolean;
-  result: null | { success: boolean; count?: number; message?: string };
+  result: null | { success: boolean; count?: number; newCount?: number; message?: string };
 };
 type GoogleBusinessCandidate = {
   placeId: string;
@@ -186,6 +188,16 @@ function formatBgDateDMY(dateStr: string) {
     return direct.toLocaleDateString('bg-BG');
   }
   return s;
+}
+
+function bookingSlotIsPastSimple(dateStr: string, timeStr: string): boolean {
+  const date = String(dateStr ?? '').trim();
+  const time = String(timeStr ?? '').trim().slice(0, 5);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return false;
+  const [y, m, d] = date.split('-').map(Number);
+  const [hh, mm] = time.split(':').map(Number);
+  const slot = new Date(y, m - 1, d, hh, mm, 0, 0);
+  return Number.isFinite(slot.getTime()) && slot.getTime() < Date.now();
 }
 
 function ymdKey(year: number, monthIndex: number, day: number) {
@@ -244,6 +256,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     loading: false,
     connected: false,
     count: 0,
+    totalCount: null,
     source: null,
     reason: null,
     providerStatus: null,
@@ -341,6 +354,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       ({ svc }) => String((svc as { category?: string }).category ?? '').trim() === selectedAdminServiceCategory
     );
   }, [site.services, selectedAdminServiceCategory]);
+  const existingServiceCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const svc of site.services) {
+      const category = String((svc as { category?: string }).category ?? '').trim();
+      if (category) set.add(category);
+    }
+    const primarySalonCategory = String(site.category ?? '').trim();
+    if (primarySalonCategory) set.add(primarySalonCategory);
+    return [...set].sort((a, b) => a.localeCompare(b, 'bg'));
+  }, [site.services, site.category]);
   const visibleBookings = useMemo(
     () =>
       selectedCalendarDate
@@ -348,6 +371,31 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         : filteredBookings,
     [filteredBookings, selectedCalendarDate]
   );
+  const groupedVisibleBookings = useMemo(() => {
+    const groups: Record<BookingGroupKey, BookingRecord[]> = {
+      upcoming: [],
+      past: [],
+      completed: [],
+      cancelled: [],
+    };
+    for (const booking of visibleBookings) {
+      const status = String(booking.status ?? '').trim().toLowerCase();
+      if (status === 'cancelled') {
+        groups.cancelled.push(booking);
+        continue;
+      }
+      if (status === 'completed') {
+        groups.completed.push(booking);
+        continue;
+      }
+      if (bookingSlotIsPastSimple(String(booking.date ?? ''), String(booking.time ?? ''))) {
+        groups.past.push(booking);
+      } else {
+        groups.upcoming.push(booking);
+      }
+    }
+    return groups;
+  }, [visibleBookings]);
   const bookingsCountByDate = useMemo(() => {
     const map = new Map<string, number>();
     for (const b of filteredBookings) {
@@ -448,6 +496,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           loading: false,
           connected: false,
           count: 0,
+          totalCount: null,
           source: null,
           reason: 'missing_place_id',
           providerStatus: null,
@@ -468,6 +517,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         const data = (await readJson(res)) as {
           connected?: boolean;
           count?: number;
+          totalCount?: number | null;
           source?: 'outscraper' | 'cache' | 'none';
           reason?: string | null;
           providerStatus?: string | null;
@@ -478,6 +528,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           loading: false,
           connected: data.connected === true,
           count: Number(data.count ?? 0) || 0,
+          totalCount: Number.isFinite(Number(data.totalCount)) ? Number(data.totalCount) : null,
           source: data.source ?? 'none',
           reason: data.reason ?? null,
           providerStatus: data.providerStatus ?? null,
@@ -487,6 +538,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           loading: false,
           connected: false,
           count: 0,
+          totalCount: null,
           source: 'none',
           reason: 'probe_failed',
           providerStatus: null,
@@ -517,13 +569,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       const data = (await readJson(res)) as {
         success?: boolean;
         count?: number;
+        newCount?: number;
         message?: string;
         reason?: string;
         providerStatus?: string | null;
         providerHint?: string | null;
       };
       if (data.success) {
-        setReviewsFetch({ loading: false, result: { success: true, count: data.count } });
+        setReviewsFetch({ loading: false, result: { success: true, count: data.count, newCount: data.newCount } });
         void loadGoogleReviewsStatus({ cacheBust: true });
       } else {
         const suffix = data.providerStatus ? ` (Outscraper status: ${data.providerStatus})` : '';
@@ -1635,58 +1688,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <Field label="Instagram"><input value={site.instagram} onChange={e => setSite(p => ({ ...p, instagram: e.target.value }))} style={inp} /></Field>
                 <Field label="Facebook"><input value={site.facebook} onChange={e => setSite(p => ({ ...p, facebook: e.target.value }))} style={inp} /></Field>
                 <Field label="TikTok"><input value={site.tiktok} onChange={e => setSite(p => ({ ...p, tiktok: e.target.value }))} style={inp} /></Field>
-                <Field label="Google Maps URL"><input value={site.googleMapsUrl} onChange={e => setSite(p => ({ ...p, googleMapsUrl: e.target.value }))} style={inp} /></Field>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <GooglePlaceIdField
-                  value={site.googlePlaceId}
-                  onChange={googlePlaceId => setSite(p => ({ ...p, googlePlaceId }))}
-                  isMobile={isMobile}
-                  inputStyle={inp}
-                />
-                {site.googlePlaceId.trim() ? (
-                  <div style={{ marginTop: 10 }}>
-                    <button
-                      type="button"
-                      onClick={() => void fetchGoogleReviews()}
-                      disabled={reviewsFetch.loading}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '10px 20px',
-                        borderRadius: T.radiusSm,
-                        border: 'none',
-                        background: reviewsFetch.result?.success ? '#16a34a' : T.accent,
-                        color: '#fff',
-                        fontSize: 14,
-                        fontWeight: 600,
-                        cursor: reviewsFetch.loading ? 'wait' : 'pointer',
-                        opacity: reviewsFetch.loading ? 0.7 : 1,
-                        transition: 'background 200ms, opacity 200ms',
-                      }}
-                    >
-                      {reviewsFetch.loading ? (
-                        <>
-                          <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
-                          Извличаме ревютата...
-                        </>
-                      ) : reviewsFetch.result?.success ? (
-                        <>
-                          <CheckCircle2 size={15} />
-                          {reviewsFetch.result.count} ревюта заредени
-                        </>
-                      ) : (
-                        'Извлечи Google ревютата'
-                      )}
-                    </button>
-                    {reviewsFetch.result && !reviewsFetch.result.success ? (
-                      <p style={{ margin: '6px 0 0', fontSize: 12, color: '#dc2626' }}>
-                        {reviewsFetch.result.message}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
               <div style={{ marginTop: 12 }}>
                 <Field label="За салона">
@@ -1704,20 +1705,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   setSite(p => ({ ...p, visitorAdditionalInfo }))
                 }
               />
-              {site.googleMapsUrl ? (
-                <iframe
-                  src={site.googleMapsUrl}
-                  title="Локация на картата"
-                  loading="lazy"
-                  style={{
-                    width: '100%',
-                    height: isMobile ? 160 : 200,
-                    marginTop: 14,
-                    borderRadius: 12,
-                    border: `1px solid ${T.border}`,
-                  }}
-                />
-              ) : null}
             </Section>
           )}
 
@@ -1725,7 +1712,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'images' && (
             <Section
               title="Снимки"
-              desc={isMobile ? undefined : 'Cover, лого и галерия за публичния сайт.'}
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -1749,6 +1735,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   gap: isMobile ? 20 : 12,
                 }}
               >
+                <datalist id="service-category-options">
+                  {existingServiceCategories.map((category) => (
+                    <option key={category} value={category} />
+                  ))}
+                </datalist>
                 <ImageAssetField
                   label="Cover"
                   uploadLabel="Качи cover"
@@ -1756,16 +1747,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   mobile={isMobile}
                   imageUrl={site.coverImageUrl}
                   onUpload={files => void handleCoverUpload(files?.[0] ?? null)}
-                >
-                  {!isMobile && (
-                    <input
-                      value={site.coverImageUrl}
-                      onChange={e => setSite(p => ({ ...p, coverImageUrl: e.target.value }))}
-                      style={{ ...inp, marginTop: 6 }}
-                      placeholder="https://…"
-                    />
-                  )}
-                </ImageAssetField>
+                />
 
                 <ImageAssetField
                   label="Лого"
@@ -1775,16 +1757,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   imageUrl={site.logoImageUrl}
                   roundPreview
                   onUpload={files => void handleLogoUpload(files?.[0] ?? null)}
-                >
-                  {!isMobile && (
-                    <input
-                      value={site.logoImageUrl}
-                      onChange={e => setSite(p => ({ ...p, logoImageUrl: e.target.value }))}
-                      style={{ ...inp, marginTop: 6 }}
-                      placeholder="https://…"
-                    />
-                  )}
-                </ImageAssetField>
+                />
               </div>
 
               <div style={{ marginTop: isMobile ? 24 : 20 }}>
@@ -1800,12 +1773,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   {galleryUploadProgress ? (
                     <p style={{ margin: '0 0 10px', fontSize: 13, color: T.muted, lineHeight: 1.45 }}>
                       Качваме {galleryUploadProgress.done}/{galleryUploadProgress.total}…
-                    </p>
-                  ) : site.galleryImages.length > 0 ? (
-                    <p style={{ margin: '0 0 10px', fontSize: 12, color: T.subtle, lineHeight: 1.45 }}>
-                      {isMobile
-                        ? 'Снимките се появяват веднага; на телефон се запазват автоматично. Задръж ~0.5 сек. и плъзни за нов ред.'
-                        : 'Задръж снимка ~0.5 сек., после плъзни за нов ред. Натисни дискетата, за да запазиш.'}
                     </p>
                   ) : null}
                   <GalleryDropZone busy={busyKey === 'upload-gallery'} mobile={isMobile} onUpload={handleGalleryUpload}>
@@ -2031,6 +1998,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                             <Field label="Категория" style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
                               <input
                                 value={(svc as { category?: string }).category ?? ''}
+                                list="service-category-options"
                                 onChange={e =>
                                   setSite(p => ({
                                     ...p,
@@ -2342,7 +2310,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   </div>
                   <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
                     <Field label="Име"><input style={inp} value={newServiceDraft.name} onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))} /></Field>
-                    <Field label="Категория"><input style={inp} value={newServiceDraft.category} onChange={(e) => setNewServiceDraft((p) => ({ ...p, category: e.target.value }))} /></Field>
+                    <Field label="Категория">
+                      <input
+                        style={inp}
+                        value={newServiceDraft.category}
+                        list="service-category-options"
+                        onChange={(e) => setNewServiceDraft((p) => ({ ...p, category: e.target.value }))}
+                      />
+                    </Field>
                     <Field label="Описание"><input style={inp} value={newServiceDraft.description} onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))} /></Field>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <Field label="Цена (€)"><input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} /></Field>
@@ -2782,57 +2757,73 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <EmptyState title="Няма резервации" desc="Когато клиент резервира през сайта, ще я видиш тук." />
               ) : (
                 <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
-                  {visibleBookings.map(b => {
-                    const cfg = STATUS_CFG[b.status];
+                  {([
+                    ['upcoming', 'Предстоящи'],
+                    ['past', 'Минали'],
+                    ['completed', 'Завършени'],
+                    ['cancelled', 'Отказани'],
+                  ] as const).map(([groupKey, groupLabel]) => {
+                    const rows = groupedVisibleBookings[groupKey];
+                    if (rows.length === 0) return null;
                     return (
-                      <div key={b.id} style={{
-                        border: isMobile ? 'none' : `1px solid ${T.border}`,
-                        borderRadius: isMobile ? 18 : T.radiusSm,
-                        padding: isMobile ? '16px 18px' : '14px 16px',
-                        background: T.surface,
-                        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                              <span style={{ fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{b.client_name}</span>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, background: cfg.bg, color: cfg.text, fontSize: 11, fontWeight: 600 }}>
-                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-                                {cfg.label}
-                              </span>
+                      <div key={groupKey} style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+                        <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 700, color: T.subtle, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                          {groupLabel}
+                        </p>
+                        {rows.map(b => {
+                          const cfg = STATUS_CFG[b.status];
+                          return (
+                            <div key={b.id} style={{
+                              border: isMobile ? 'none' : `1px solid ${T.border}`,
+                              borderRadius: isMobile ? 18 : T.radiusSm,
+                              padding: isMobile ? '16px 18px' : '14px 16px',
+                              background: T.surface,
+                              boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                    <span style={{ fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{b.client_name}</span>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, background: cfg.bg, color: cfg.text, fontSize: 11, fontWeight: 600 }}>
+                                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                                      {cfg.label}
+                                    </span>
+                                  </div>
+                                  <p style={{ margin: 0, fontSize: isMobile ? 14 : 13, color: T.text, lineHeight: 1.5, fontWeight: 500 }}>
+                                    {b.service_name}
+                                    {Number.isFinite(Number(b.service_price)) ? ` · ${formatSalonPrice(Number(b.service_price))}` : ''}
+                                  </p>
+                                  <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
+                                    {formatBgDateDMY(b.date)} · {b.time}
+                                    {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
+                                  </p>
+                                  <p style={{ margin: '2px 0 0', fontSize: 13, color: T.subtle }}>
+                                    {b.client_phone}
+                                    {b.client_email ? ` · ${b.client_email}` : ''}
+                                  </p>
+                                  {b.notes && <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle, fontStyle: 'italic' }}>{b.notes}</p>}
+                                </div>
+                                <select
+                                  value={b.status}
+                                  onChange={e => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
+                                  style={{
+                                    ...inp,
+                                    width: isMobile ? '100%' : 'auto',
+                                    cursor: 'pointer', flexShrink: 0,
+                                    marginTop: isMobile ? 8 : 0,
+                                    background: isMobile ? '#F4F4F5' : T.surface,
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  <option value="pending">Чакаща</option>
+                                  <option value="confirmed">Потвърдена</option>
+                                  <option value="completed">Завършена</option>
+                                  <option value="cancelled">Отказана</option>
+                                </select>
+                              </div>
                             </div>
-                            <p style={{ margin: 0, fontSize: isMobile ? 14 : 13, color: T.text, lineHeight: 1.5, fontWeight: 500 }}>
-                              {b.service_name}
-                              {typeof b.service_price === 'number' ? ` · ${formatSalonPrice(b.service_price)}` : ''}
-                            </p>
-                            <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
-                              {formatBgDateDMY(b.date)} · {b.time}
-                              {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
-                            </p>
-                            <p style={{ margin: '2px 0 0', fontSize: 13, color: T.subtle }}>
-                              {b.client_phone}
-                              {b.client_email ? ` · ${b.client_email}` : ''}
-                            </p>
-                            {b.notes && <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle, fontStyle: 'italic' }}>{b.notes}</p>}
-                          </div>
-                          <select
-                            value={b.status}
-                            onChange={e => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
-                            style={{
-                              ...inp,
-                              width: isMobile ? '100%' : 'auto',
-                              cursor: 'pointer', flexShrink: 0,
-                              marginTop: isMobile ? 8 : 0,
-                              background: isMobile ? '#F4F4F5' : T.surface,
-                              textAlign: 'center',
-                            }}
-                          >
-                            <option value="pending">Чакаща</option>
-                            <option value="confirmed">Потвърдена</option>
-                            <option value="completed">Завършена</option>
-                            <option value="cancelled">Отказана</option>
-                          </select>
-                        </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -3058,7 +3049,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       ? googleReviewsStatus.loading
                         ? 'Проверяваме...'
                         : googleReviewsStatus.connected
-                          ? `${googleReviewsStatus.count} ревюта са заредени и се показват на сайта.`
+                          ? googleReviewsStatus.totalCount && googleReviewsStatus.totalCount > 0
+                            ? `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) от общо ${googleReviewsStatus.totalCount} в Google.`
+                            : `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) на сайта.`
                           : googleReviewsStatus.reason === 'missing_outscraper_key'
                             ? 'Липсва OUTSCRAPER_API_KEY на сървъра — без него отзивите не се зареждат.'
                             : googleReviewsStatus.reason === 'outscraper_api_error'
@@ -3089,7 +3082,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       lineHeight: 1.5,
                     }}>
                       {reviewsFetch.result.success
-                        ? `Заредени ${reviewsFetch.result.count} ревюта на сайта.`
+                        ? `Показваме ${reviewsFetch.result.count ?? 0} ревюта (4+ звезди) на сайта.${Number(reviewsFetch.result.newCount ?? 0) > 0 ? ` Нови: ${reviewsFetch.result.newCount}.` : ' Няма нови ревюта от последното зареждане.'}`
                         : reviewsFetch.result.message}
                     </p>
                   ) : null}
@@ -3590,65 +3583,6 @@ function IconUploadBtn({ label, busy, children }: { label: string; busy: boolean
 
 const GOOGLE_PLACE_ID_FINDER_URL =
   'https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder';
-
-function GooglePlaceIdField({
-  value,
-  onChange,
-  isMobile,
-  inputStyle,
-}: {
-  value: string;
-  onChange: (googlePlaceId: string) => void;
-  isMobile: boolean;
-  inputStyle: CSSProperties;
-}) {
-  return (
-    <Field label="Google Place ID">
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder="ChIJ…"
-        style={inputStyle}
-        autoComplete="off"
-        spellCheck={false}
-      />
-      <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.55, color: T.subtle }}>
-        Тук се показват Google отзивите на сайта ти и се изпращат покани за отзив. Открий ID в{' '}
-        <a
-          href={GOOGLE_PLACE_ID_FINDER_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: T.accent, fontWeight: 600, textDecoration: 'underline' }}
-        >
-          Google Place ID Finder
-        </a>
-        — попълни адреса на салона на картата и копирай стойността от прозореца (обикновено започва с{' '}
-        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11 }}>ChIJ</span>).
-      </p>
-      <a
-        href={GOOGLE_PLACE_ID_FINDER_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Отвори Google Place ID Finder — инструкция с карта"
-        style={{ display: 'block', marginTop: 10, maxWidth: isMobile ? '100%' : 520 }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/google-place-id-guide.png"
-          alt="Пример: попълваш адреса на салона в Google Place ID Finder и копираш Place ID от прозореца на картата"
-          style={{
-            width: '100%',
-            height: 'auto',
-            borderRadius: 12,
-            border: `1px solid ${T.border}`,
-            display: 'block',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-          }}
-        />
-      </a>
-    </Field>
-  );
-}
 
 function Field({ label, children, style }: { label: string; children: ReactNode; style?: CSSProperties }) {
   const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;

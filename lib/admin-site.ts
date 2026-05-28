@@ -144,11 +144,21 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
 
   if (rows.length === 0) return null;
   const row = rows[0] as Record<string, unknown>;
+  const normalizedServices = normalizeServices(row.services);
 
   if (!row.onboarding_code) {
     const code = crypto.randomBytes(4).toString('hex').toUpperCase();
     await sql`UPDATE salons SET onboarding_code = ${code} WHERE slug = ${slug}`;
     row.onboarding_code = code;
+  }
+
+  if (JSON.stringify(row.services ?? null) !== JSON.stringify(normalizedServices)) {
+    await sql`
+      UPDATE salons
+      SET services = ${JSON.stringify(normalizedServices)}::jsonb,
+          updated_at = now()
+      WHERE slug = ${slug}
+    `;
   }
 
   return {
@@ -173,7 +183,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     ownerPublicRole: String(row.owner_public_role ?? ''),
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),
     ownerPublicBio: String(row.owner_public_bio ?? ''),
-    services: normalizeServices(row.services),
+    services: normalizedServices,
     workingHours: normalizeWorkingHours(row.working_hours),
     bookingBlocks: normalizeBookingBlocks(
       row.opening_hours && typeof row.opening_hours === 'object'

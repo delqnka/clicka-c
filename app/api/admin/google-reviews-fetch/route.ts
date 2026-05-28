@@ -8,6 +8,28 @@ import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 export const dynamic = 'force-dynamic';
 const GOOGLE_REVIEWS_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+type ReviewLite = { author_name: string; rating: number; text: string };
+
+function normalizeReviewLite(raw: unknown): ReviewLite | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const author = String(row.author_name ?? '').trim();
+  const text = String(row.text ?? '').trim();
+  const rating = Number(row.rating);
+  if (!author || !text || !Number.isFinite(rating) || rating < 4) return null;
+  return {
+    author_name: author,
+    text,
+    rating: Math.min(5, Math.max(1, Math.round(rating))),
+  };
+}
+
+function reviewLiteKey(r: ReviewLite): string {
+  const author = r.author_name.toLowerCase().replace(/\s+/g, ' ').trim();
+  const text = r.text.toLowerCase().replace(/\s+/g, ' ').trim();
+  return `${author}|${r.rating}|${text}`;
+}
+
 export async function POST(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
   const forceRefresh = request.nextUrl.searchParams.get('force') === '1';
@@ -56,11 +78,7 @@ export async function POST(request: NextRequest) {
   const cachedOverallRating = Number(cacheRows[0]?.google_reviews_rating);
   const cachedTotalReviews = Number(cacheRows[0]?.google_reviews_count);
   const cachedReviews = Array.isArray(cachedRaw)
-    ? cachedRaw.filter((r: unknown) => {
-      if (!r || typeof r !== 'object') return false;
-      const rating = Number((r as { rating?: unknown }).rating);
-      return Number.isFinite(rating) && rating >= 4;
-    })
+    ? cachedRaw.map(normalizeReviewLite).filter((r): r is ReviewLite => Boolean(r))
     : [];
   const cachedFetchedAt = cachedFetchedAtRaw ? new Date(String(cachedFetchedAtRaw)) : null;
   const cacheIsFresh =
@@ -89,10 +107,17 @@ export async function POST(request: NextRequest) {
     Number.isFinite(Number(probe.overallRating)) ||
     (Number.isFinite(Number(probe.totalReviews)) && Number(probe.totalReviews) > 0)
   ) {
+    const incomingReviews = probe.reviews
+      .map(normalizeReviewLite)
+      .filter((r): r is ReviewLite => Boolean(r));
+    const existingKeys = new Set(cachedReviews.map(reviewLiteKey));
+    const newOnly = incomingReviews.filter((r) => !existingKeys.has(reviewLiteKey(r)));
+    const mergedReviews = [...newOnly, ...cachedReviews].slice(0, 10);
+
     await sql`
       UPDATE salons
       SET
-        google_reviews_cache = ${JSON.stringify(probe.reviews)}::jsonb,
+        google_reviews_cache = ${JSON.stringify(mergedReviews)}::jsonb,
         google_reviews_rating = ${Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null},
         google_reviews_count = ${Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null},
         google_reviews_fetched_at = now(),
@@ -102,8 +127,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      count: probe.reviews.length,
-      reviews: probe.reviews,
+      count: mergedReviews.length,
+      newCount: newOnly.length,
+      reviews: mergedReviews,
       source: probe.source,
       overallRating: Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null,
       totalReviews: Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null,
