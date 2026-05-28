@@ -131,7 +131,7 @@ export async function getPublicSalonPageData({
           && 'rating' in r
           && 'text' in r
           && Number.isFinite(Number((r as { rating?: unknown }).rating))
-          && Number((r as { rating?: unknown }).rating) > 4,
+          && Number((r as { rating?: unknown }).rating) >= 4,
       );
     }
   } catch {

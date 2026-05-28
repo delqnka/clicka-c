@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       FROM bookings
       WHERE salon_id = ${salonId}
         AND date = ${date}
-        AND status IN ('pending', 'confirmed')
+        AND status <> 'cancelled'
       ORDER BY time ASC
     `;
     const occupied = occupiedRows.map((r) => ({
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
       FROM bookings
       WHERE salon_id = ${salonId}
         AND date = ${date}
-        AND status IN ('pending', 'confirmed')
+        AND status <> 'cancelled'
         AND (
           (split_part(time, ':', 1)::int * 60 + split_part(time, ':', 2)::int) < ${requestedEndMinutes}
           AND

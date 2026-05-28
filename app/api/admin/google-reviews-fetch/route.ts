@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     ? cachedRaw.filter((r: unknown) => {
       if (!r || typeof r !== 'object') return false;
       const rating = Number((r as { rating?: unknown }).rating);
-      return Number.isFinite(rating) && rating > 4;
+      return Number.isFinite(rating) && rating >= 4;
     })
     : [];
   const cachedFetchedAt = cachedFetchedAtRaw ? new Date(String(cachedFetchedAtRaw)) : null;

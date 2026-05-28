@@ -97,7 +97,7 @@ function mapOutscraperReviews(data: unknown): GoogleReviewLite[] {
       rating: Math.min(5, Math.max(1, Math.round(Number(r.review_rating ?? r.rating ?? r.stars ?? 5)))),
       text: String(r.review_text ?? r.text ?? '').trim(),
     }))
-    .filter((r) => Number.isFinite(r.rating) && r.rating > 4)
+    .filter((r) => Number.isFinite(r.rating) && r.rating >= 4)
     .slice(0, 10);
 }
 

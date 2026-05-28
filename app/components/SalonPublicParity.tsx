@@ -6,6 +6,7 @@
  */
 
 import {
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -37,7 +38,6 @@ import {
   offerSpotsLeft,
   type SalonOfferRow,
 } from '@/lib/salon-offers';
-import { getGradientColorsForUser, getInitialsDotted } from '@/lib/avatar-gradient';
 import { formatDistanceFromUserToSalon, getDistanceKm } from '@/lib/geo';
 import {
   DAY_LABELS_BG,
@@ -320,7 +320,7 @@ export default function SalonPublicParity({
   salonSlug,
   salon: rawSalon,
   offers: offersProp,
-  reviews,
+  reviews: _reviews,
   googleReviews,
   highlightReviewId: highlightReviewIdProp,
   tabParam: tabParamProp,
@@ -398,8 +398,6 @@ export default function SalonPublicParity({
     return links;
   }, [instagram, tiktok, facebook]);
   const googlePlaceId = (rawSalon.google_place_id as string | null | undefined) ?? null;
-  const ratingAgg = Number(rawSalon.rating) || 0;
-  const reviewCountAgg = Number(rawSalon.review_count) || 0;
   const lat = rawSalon.latitude != null ? Number(rawSalon.latitude) : null;
   const lng = rawSalon.longitude != null ? Number(rawSalon.longitude) : null;
   const verified = rawSalon.verified === true;
@@ -529,8 +527,6 @@ export default function SalonPublicParity({
     return offersProp.filter((o) => offerVisibleToClient(o, now));
   }, [offersProp]);
 
-  const headerPlatformRating =
-    reviewCountAgg > 0 && ratingAgg > 0 ? { rating: ratingAgg, count: reviewCountAgg } : null;
   const headerGoogleRating = useMemo(() => {
     if (!googlePlaceId) return null;
     const dbRatingRaw = Number(rawSalon.google_reviews_rating);
@@ -538,11 +534,8 @@ export default function SalonPublicParity({
     const dbRating = Number.isFinite(dbRatingRaw) ? Math.round(dbRatingRaw * 10) / 10 : null;
     const dbCount = Number.isFinite(dbCountRaw) ? Math.max(0, Math.floor(dbCountRaw)) : null;
     if (dbRating != null && dbCount != null && dbCount > 0) return { rating: dbRating, count: dbCount };
-    if (googleReviews.length === 0) return null;
-    const sum = googleReviews.reduce((s, r) => s + (Number(r.rating) || 0), 0);
-    const rating = Math.round((sum / googleReviews.length) * 10) / 10;
-    return { rating, count: googleReviews.length };
-  }, [googlePlaceId, googleReviews, rawSalon.google_reviews_rating, rawSalon.google_reviews_count]);
+    return null;
+  }, [googlePlaceId, rawSalon.google_reviews_rating, rawSalon.google_reviews_count]);
 
   const addressDistanceLabel = useMemo(() => {
     if (!userLocation || lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
@@ -1069,31 +1062,11 @@ export default function SalonPublicParity({
     }
   }
 
-  const [showAllPlatformReviews, setShowAllPlatformReviews] = useState(false);
   const [showAllGoogleReviews, setShowAllGoogleReviews] = useState(false);
   const [cookieConsent, setCookieConsent] = useState<boolean | null>(true);
   const [todayDayName, setTodayDayName] = useState<string | null>(null);
-  useEffect(() => {
-    const hid = highlightReviewId?.trim();
-    if (!hid) return;
-    const idx = reviews.findIndex((r) => r.id === hid);
-    if (idx >= 0 && idx >= INITIAL_REVIEWS_VISIBLE) setShowAllPlatformReviews(true);
-  }, [highlightReviewId, reviews]);
 
-  const bookaToShow = showAllPlatformReviews ? reviews : reviews.slice(0, INITIAL_REVIEWS_VISIBLE);
-  const bookaHasMore = reviews.length > INITIAL_REVIEWS_VISIBLE;
-  const bookaRatingAvg =
-    reviews.length > 0 ? reviews.reduce((acc, r) => acc + (r.rating ?? 0), 0) / reviews.length : null;
-
-  const googleRatingAvg =
-    googleReviews.length > 0
-      ? googleReviews.reduce((acc, r) => acc + r.rating, 0) / googleReviews.length
-      : null;
-
-  const formatReviewDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
+  const googleRatingAvg = headerGoogleRating?.rating ?? null;
 
   return (
     <div
@@ -1144,30 +1117,19 @@ export default function SalonPublicParity({
                 <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{name}</h1>
                 {category ? <p className="text-sm text-black/45 lg:mt-2">{category}</p> : null}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
-                  {(headerPlatformRating != null || headerGoogleRating != null) && (
+                  {headerGoogleRating != null && (
                     <button
                       type="button"
                       className="inline-flex flex-wrap items-center gap-2 text-left"
                       onClick={() => scrollToSection('reviews')}
                     >
-                      {headerPlatformRating != null ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden />
-                          <span className="font-medium text-[#1a1a1a]">
-                            {headerPlatformRating.rating.toFixed(1).replace('.', ',')}
-                          </span>
-                          <span className="text-black/45">({headerPlatformRating.count} отзива)</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden />
+                        <span className="font-medium text-[#1a1a1a]">
+                          {headerGoogleRating.rating.toFixed(1).replace('.', ',')}
                         </span>
-                      ) : null}
-                      {headerGoogleRating != null ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden />
-                          <span className="font-medium text-[#1a1a1a]">
-                            {headerGoogleRating.rating.toFixed(1).replace('.', ',')}
-                          </span>
-                          <span className="text-black/45">({headerGoogleRating.count} Google)</span>
-                        </span>
-                      ) : null}
+                        <span className="text-black/45">({headerGoogleRating.count} Google)</span>
+                      </span>
                     </button>
                   )}
                   <span className="inline-flex items-center gap-1">
@@ -1546,115 +1508,16 @@ export default function SalonPublicParity({
             >
               <div className="mt-2 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-lg font-normal tracking-tight text-[#1a1a1a]">Отзиви от клиенти</h2>
-                  {bookaRatingAvg != null ? (
+                  <h2 className="text-lg font-normal tracking-tight text-[#1a1a1a]">Ревюта от Google</h2>
+                  {googleRatingAvg != null ? (
                     <div className="flex items-center gap-1 rounded-xl bg-amber-500/10 px-2.5 py-1">
-                      <span className="text-sm font-semibold text-[#1a1a1a]">{bookaRatingAvg.toFixed(1)}</span>
+                      <span className="text-sm font-semibold text-[#1a1a1a]">{googleRatingAvg.toFixed(1)}</span>
                       <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" aria-hidden />
                     </div>
                   ) : null}
                 </div>
-
-                {reviews.length === 0 ? (
-                  <p className="py-5 text-center text-sm font-normal text-black/45">Все още няма отзиви</p>
-                ) : (
-                  <>
-                    <div className="grid gap-3 md:grid-cols-2 md:gap-4">
-                      {bookaToShow.map((review) => {
-                        const highlighted = !!highlightReviewId?.trim() && review.id === highlightReviewId;
-                        const specCommentRaw = review.specialist_comment;
-                        const salonCommentTrim = String(review.comment ?? '').trim();
-                        const specCommentTrim = String(specCommentRaw ?? '').trim();
-                        const duplicateSalonAndSpecialistText =
-                          salonCommentTrim.length > 0 && salonCommentTrim === specCommentTrim;
-                        return (
-                          <article
-                            key={review.id}
-                            className={`rounded-xl border border-black/10 bg-white p-3.5 shadow-md ${
-                              highlighted ? 'border-2 border-[color:var(--salon-primary)]' : ''
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
-                                {review.client_avatar ? (
-                                  <img src={wireMediaUri(review.client_avatar)} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
-                                ) : (
-                                  <div
-                                    className="flex h-full w-full items-center justify-center text-[11px] font-medium text-white"
-                                    style={{
-                                      background: `linear-gradient(135deg, ${getGradientColorsForUser(review.client_email ?? '').join(', ')})`,
-                                    }}
-                                  >
-                                    {getInitialsDotted(review.client_name)}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium text-[#1a1a1a]">{review.client_name || 'Клиент'}</p>
-                                <p className="text-xs text-black/45">{formatReviewDate(review.created_at)}</p>
-                              </div>
-                              <div className="flex shrink-0 gap-0.5">
-                                {Array.from({ length: 5 }, (_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${i < (review.rating ?? 0) ? 'fill-amber-500 text-amber-500' : 'text-black/15'}`}
-                                    aria-hidden
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                            {duplicateSalonAndSpecialistText ? (
-                              <p className="mt-2 text-sm leading-relaxed text-[#1a1a1a]">{salonCommentTrim}</p>
-                            ) : (
-                              <>
-                                {salonCommentTrim ? (
-                                  <p className="mt-2 text-sm leading-relaxed text-[#1a1a1a]">
-                                    {specCommentTrim ? <span className="text-black/55">За салона </span> : null}
-                                    {salonCommentTrim}
-                                  </p>
-                                ) : null}
-                                {specCommentTrim ? (
-                                  <p className="mt-2 text-sm leading-relaxed text-black/55">
-                                    <span>За {review.team_member_name?.trim() || 'специалиста'} </span>
-                                    {specCommentTrim}
-                                  </p>
-                                ) : null}
-                              </>
-                            )}
-                            {review.owner_reply ? (
-                              <div className="mt-3 rounded-lg border border-black/10 bg-white p-2">
-                                <p className="text-xs font-medium text-black/55">Отговор на салона</p>
-                                <p className="mt-1 text-sm text-[#1a1a1a]">{review.owner_reply}</p>
-                              </div>
-                            ) : null}
-                          </article>
-                        );
-                      })}
-                    </div>
-                    {bookaHasMore ? (
-                      <button
-                        type="button"
-                        className="mt-3 w-full rounded-full border border-black/10 py-2 text-sm font-medium text-[color:var(--salon-primary)] md:col-span-2"
-                        onClick={() => setShowAllPlatformReviews((v) => !v)}
-                      >
-                        {showAllPlatformReviews ? 'Свий' : `Виж още (${reviews.length - INITIAL_REVIEWS_VISIBLE})`}
-                      </button>
-                    ) : null}
-                  </>
-                )}
-
                 {googlePlaceId && googleReviews.length > 0 ? (
                   <>
-                    <div className="my-6 border-t border-black/10" />
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-base font-normal text-[#1a1a1a]">Ревюта от Google</h3>
-                      {googleRatingAvg != null ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm font-semibold">{googleRatingAvg.toFixed(1)}</span>
-                          <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" aria-hidden />
-                        </div>
-                      ) : null}
-                    </div>
                     <div className="grid gap-3 md:grid-cols-2 md:gap-4">
                       {(showAllGoogleReviews ? googleReviews : googleReviews.slice(0, INITIAL_REVIEWS_VISIBLE)).map(
                         (r, i) => (
@@ -1689,7 +1552,9 @@ export default function SalonPublicParity({
                       </button>
                     ) : null}
                   </>
-                ) : null}
+                ) : (
+                  <p className="py-5 text-center text-sm font-normal text-black/45">Все още няма Google ревюта</p>
+                )}
               </div>
             </section>
 
@@ -1715,6 +1580,49 @@ export default function SalonPublicParity({
                 })}
               </ul>
             </section>
+
+            {showVenueBlock ? (
+              <div className="pt-8">
+                <h2 className="text-lg font-semibold text-[#1a1a1a]">Удобства и достъп</h2>
+                <ul className="mt-3 space-y-2">
+                  {activeExtraKeys.map((k) => {
+                    const label = SALON_VENUE_EXTRA_LABELS_BG[k];
+                    const detail =
+                      k === 'nearMetro' && (ve.nearMetroDetails?.trim() ?? '')
+                        ? (ve.nearMetroDetails ?? '').trim()
+                        : k === 'convenientTransport' && (ve.convenientTransportDetails?.trim() ?? '')
+                          ? (ve.convenientTransportDetails ?? '').trim()
+                          : null;
+                    return (
+                      <li key={k} className="flex items-start gap-2 text-sm">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                        <div>
+                          <span className="text-[#1a1a1a]">{label}</span>
+                          {detail ? <p className="text-black/55">{detail}</p> : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                  {parkingActive.map((pk) => (
+                    <li key={pk} className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                      <span
+                        style={SALON_PARKING_PUBLIC_TEXT_COLOR[pk] ? { color: SALON_PARKING_PUBLIC_TEXT_COLOR[pk] } : undefined}
+                        className="text-[#1a1a1a]"
+                      >
+                        {SALON_PARKING_LABELS_BG[pk]}
+                      </span>
+                    </li>
+                  ))}
+                  {pay ? (
+                    <li className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                      <span>{pay}</span>
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+            ) : null}
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
               <section className="cv-defer pt-10">
@@ -1751,65 +1659,6 @@ export default function SalonPublicParity({
               </section>
             ) : null}
 
-            {showVenueBlock ? (
-              <div className="pt-8">
-                {activeExtraKeys.length > 0 ? (
-                  <div>
-                    <h3 className="text-base font-semibold text-[#1a1a1a]">Допълнителна информация</h3>
-                    <ul className="mt-2 space-y-2">
-                      {activeExtraKeys.map((k) => {
-                        const label = SALON_VENUE_EXTRA_LABELS_BG[k];
-                        const detail =
-                          k === 'nearMetro' && (ve.nearMetroDetails?.trim() ?? '')
-                            ? (ve.nearMetroDetails ?? '').trim()
-                            : k === 'convenientTransport' && (ve.convenientTransportDetails?.trim() ?? '')
-                              ? (ve.convenientTransportDetails ?? '').trim()
-                              : null;
-                        return (
-                          <li key={k} className="flex items-start gap-2 text-sm">
-                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[color:var(--salon-primary)]" />
-                            <div>
-                              <span className="text-[#1a1a1a]">{label}</span>
-                              {detail ? <p className="text-black/55">{detail}</p> : null}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ) : null}
-                {showParking ? (
-                  <div className="mt-6">
-                    <h3 className="text-base font-semibold text-[#1a1a1a]">Паркиране</h3>
-                    <ul className="mt-2 space-y-2">
-                      {parkingActive.map((pk) => (
-                        <li key={pk} className="flex items-center gap-2 text-sm">
-                          <span className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--salon-primary)]" />
-                          <span
-                            style={SALON_PARKING_PUBLIC_TEXT_COLOR[pk] ? { color: SALON_PARKING_PUBLIC_TEXT_COLOR[pk] } : undefined}
-                            className="text-[#1a1a1a]"
-                          >
-                            {SALON_PARKING_LABELS_BG[pk]}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {pay ? (
-                  <div className="mt-6">
-                    <h3 className="text-base font-semibold text-[#1a1a1a]">Плащане</h3>
-                    <ul className="mt-2">
-                      <li className="flex items-center gap-2 text-sm">
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--salon-primary)]" />
-                        <span>{pay}</span>
-                      </li>
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
           </div>
 
           <aside
@@ -1817,30 +1666,19 @@ export default function SalonPublicParity({
           >
             <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
               <p className="text-lg font-semibold leading-snug text-[color:var(--salon-primary)]">{name}</p>
-              {(headerPlatformRating != null || headerGoogleRating != null) && (
+              {headerGoogleRating != null && (
                 <button
                   type="button"
                   className="mt-2 flex flex-col items-start gap-1 text-left text-sm"
                   onClick={() => scrollToSection('reviews')}
                 >
-                  {headerPlatformRating != null ? (
-                    <span className="inline-flex items-center gap-1 text-black/55">
-                      <span className="font-medium text-[#1a1a1a]">
-                        {headerPlatformRating.rating.toFixed(1).replace('.', ',')}
-                      </span>
-                      <Star className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden />
-                      <span className="text-black/45">({headerPlatformRating.count} отзива)</span>
+                  <span className="inline-flex items-center gap-1 text-black/55">
+                    <span className="font-medium text-[#1a1a1a]">
+                      {headerGoogleRating.rating.toFixed(1).replace('.', ',')}
                     </span>
-                  ) : null}
-                  {headerGoogleRating != null ? (
-                    <span className="inline-flex items-center gap-1 text-black/55">
-                      <span className="font-medium text-[#1a1a1a]">
-                        {headerGoogleRating.rating.toFixed(1).replace('.', ',')}
-                      </span>
-                      <Star className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden />
-                      <span className="text-black/45">({headerGoogleRating.count} Google)</span>
-                    </span>
-                  ) : null}
+                    <Star className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden />
+                    <span className="text-black/45">({headerGoogleRating.count} Google)</span>
+                  </span>
                 </button>
               )}
               <button
