@@ -81,8 +81,8 @@ const SalonOfferBookingModal = dynamic(
   { ssr: false }
 );
 
-/** WCAG AA on white for small link text (Lighthouse contrast). */
-const SALON_LINK_COLOR = '#155DFC';
+/** WCAG AA 4.5:1+ on white for 14px link text. */
+const SALON_LINK_COLOR = '#0F3D99';
 
 const SALON_TABS = [
   { id: 'offers' as const, label: 'Оферти' },
@@ -225,7 +225,7 @@ function SalonGalleryMosaic({
   if (uris.length === 0) {
     return (
       <div
-        className={`flex h-44 items-center justify-center rounded-2xl border border-black/10 bg-white text-sm text-black/50 md:h-56`}
+        className={`flex h-44 items-center justify-center rounded-2xl border border-black/10 bg-white text-sm salon-text-muted md:h-56`}
       >
         Галерия
       </div>
@@ -1157,7 +1157,7 @@ export default function SalonPublicParity({
             />
           </div>
         ) : !children ? (
-          <div className="flex h-44 items-center justify-center rounded-2xl border border-black/10 bg-[#fafafa] text-sm text-black/45 md:h-56">
+          <div className="salon-text-muted flex h-44 items-center justify-center rounded-2xl border border-black/10 bg-[#fafafa] text-sm md:h-56">
             Няма снимки
           </div>
         ) : null}
@@ -1193,8 +1193,8 @@ export default function SalonPublicParity({
             <div className="flex flex-wrap items-start justify-between gap-4 pb-5 lg:pb-0">
               <div className="min-w-0 flex-1">
                 <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{name}</h1>
-                {category ? <p className="text-sm text-black/60 lg:mt-2">{category}</p> : null}
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
+                {category ? <p className="salon-text-light text-sm lg:mt-2">{category}</p> : null}
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm salon-text-muted">
                   {headerGoogleRating != null && (
                     <button
                       type="button"
@@ -1206,7 +1206,7 @@ export default function SalonPublicParity({
                         <span className="font-medium text-[#1a1a1a]">
                           {headerGoogleRating.rating.toFixed(1).replace('.', ',')}
                         </span>
-                        <span className="text-black/45">({headerGoogleRating.count} Google)</span>
+                        <span className="salon-text-muted">({headerGoogleRating.count} Google)</span>
                       </span>
                     </button>
                   )}
@@ -1231,14 +1231,14 @@ export default function SalonPublicParity({
                     <span className="truncate">{[address, city].filter(Boolean).join(', ')}</span>
                   </a>
                 ) : null}
-                {addressDistanceLabel ? <p className="mt-1 text-xs text-black/60">{addressDistanceLabel}</p> : null}
+                {addressDistanceLabel ? <p className="salon-text-muted mt-1 text-xs">{addressDistanceLabel}</p> : null}
               </div>
             </div>
 
             {phone ? (
               <a
                 href={`tel:${phone.replace(/\s/g, '')}`}
-                className="mt-3 inline-flex items-center gap-2 text-sm text-black/60 lg:hidden"
+                className="salon-text-muted mt-3 inline-flex items-center gap-2 text-sm lg:hidden"
               >
                 <Phone className="h-4 w-4" aria-hidden />
                 {phone}
@@ -1281,7 +1281,7 @@ export default function SalonPublicParity({
                       className={`relative shrink-0 whitespace-nowrap border-b-2 px-0 py-3 text-[15px] font-medium ${
                         isActive
                           ? 'border-black text-[#1a1a1a]'
-                          : 'border-transparent text-black/65 hover:text-[#1a1a1a]'
+                          : 'border-transparent text-[#404040] hover:text-[#1a1a1a]'
                       }`}
                     >
                       {tab.label}
@@ -1314,7 +1314,7 @@ export default function SalonPublicParity({
                       style={{ minHeight: 200 }}
                     >
                       {o.discount != null && o.discount > 0 ? (
-                        <span className="absolute right-3 top-3 z-10 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-[0_4px_12px_rgba(16,185,129,0.45)]">
+                        <span className="absolute right-3 top-3 z-10 rounded-full bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white shadow-[0_4px_12px_rgba(0,0,0,0.35)]">
                           −{o.discount}%
                         </span>
                       ) : null}
@@ -1351,7 +1351,7 @@ export default function SalonPublicParity({
                   })}
                 </div>
               ) : (
-                <p className="mt-3 rounded-xl border border-black/10 bg-white px-4 py-6 text-center text-sm text-black/55">
+                <p className="mt-3 rounded-xl border border-black/10 bg-white px-4 py-6 text-center text-sm salon-text-muted">
                   Няма активни оферти в момента
                 </p>
               )}
@@ -1432,7 +1432,7 @@ export default function SalonPublicParity({
                                         }}
                                       >
                                         <span className="block truncate">{v.label}</span>
-                                        <span className="text-xs text-black/50">
+                                        <span className="text-xs salon-text-muted">
                                           {v.duration ?? service.duration} мин · {v.price} €
                                         </span>
                                       </button>
@@ -1442,7 +1442,7 @@ export default function SalonPublicParity({
                               ) : null}
                             </div>
                           ) : null}
-                          <p className="mt-2 text-sm text-black/55">
+                          <p className="mt-2 text-sm salon-text-muted">
                             <span className="inline-flex items-center gap-1">
                               <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
                               {effective.duration} мин
@@ -1567,13 +1567,13 @@ export default function SalonPublicParity({
                         )}
                       </div>
                       <p className="mt-2 w-full truncate text-sm font-medium text-[#1a1a1a]">{member.name}</p>
-                      {member.role ? <p className="w-full truncate text-xs text-black/55">{member.role}</p> : null}
-                      {member.bio ? <p className="mt-1 w-full text-[11px] leading-relaxed text-black/50">{member.bio}</p> : null}
+                      {member.role ? <p className="w-full truncate text-xs salon-text-muted">{member.role}</p> : null}
+                      {member.bio ? <p className="mt-1 w-full text-[11px] leading-relaxed salon-text-muted">{member.bio}</p> : null}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-black/55">Няма добавени специалисти.</p>
+                <p className="mt-3 text-sm salon-text-muted">Няма добавени специалисти.</p>
               )}
             </DeferredSection>
 
@@ -1615,7 +1615,7 @@ export default function SalonPublicParity({
                                 ))}
                               </div>
                             </div>
-                            {r.text ? <p className="mt-2 line-clamp-4 text-sm text-black/55">{r.text}</p> : null}
+                            {r.text ? <p className="mt-2 line-clamp-4 text-sm salon-text-muted">{r.text}</p> : null}
                           </article>
                         )
                       )}
@@ -1631,7 +1631,7 @@ export default function SalonPublicParity({
                     ) : null}
                   </>
                 ) : (
-                  <p className="py-5 text-center text-sm font-normal text-black/45">Все още няма Google ревюта</p>
+                  <p className="py-5 text-center text-sm font-normal salon-text-muted">Все още няма Google ревюта</p>
                 )}
               </div>
             </DeferredSection>
@@ -1649,7 +1649,7 @@ export default function SalonPublicParity({
                       <span
                         className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-black/25'}`}
                       />
-                      <span className={isToday ? 'font-semibold text-[#1a1a1a]' : 'text-black/55'}>{label}</span>
+                      <span className={isToday ? 'font-semibold text-[#1a1a1a]' : 'salon-text-muted'}>{label}</span>
                       <span className={`ml-auto ${isToday ? 'font-semibold text-[#1a1a1a]' : 'text-[#1a1a1a]'}`}>
                         {isOpen ? `${hours!.open} - ${hours!.close}` : 'Затворено'}
                       </span>
@@ -1682,7 +1682,7 @@ export default function SalonPublicParity({
                         <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
                         <div>
                           <span className="text-[#1a1a1a]">{label}</span>
-                          {detail ? <p className="text-black/55">{detail}</p> : null}
+                          {detail ? <p className="salon-text-muted">{detail}</p> : null}
                         </div>
                       </li>
                     );
@@ -1756,12 +1756,12 @@ export default function SalonPublicParity({
                   className="mt-2 flex flex-col items-start gap-1 text-left text-sm"
                   onClick={() => scrollToSection('reviews')}
                 >
-                  <span className="inline-flex items-center gap-1 text-black/55">
+                  <span className="inline-flex items-center gap-1 salon-text-muted">
                     <span className="font-medium text-[#1a1a1a]">
                       {headerGoogleRating.rating.toFixed(1).replace('.', ',')}
                     </span>
                     <Star className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden />
-                    <span className="text-black/45">({headerGoogleRating.count} Google)</span>
+                    <span className="salon-text-muted">({headerGoogleRating.count} Google)</span>
                   </span>
                 </button>
               )}
@@ -1773,7 +1773,7 @@ export default function SalonPublicParity({
               >
                 Резервирай сега
               </button>
-              <div className="mt-5 space-y-4 pt-2 text-sm text-black/55">
+              <div className="mt-5 space-y-4 pt-2 text-sm salon-text-muted">
                 <div className="flex gap-2">
                   <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--salon-primary)]" aria-hidden />
                   <span className="min-w-0 leading-snug">{getCurrentStatusString(openingHoursMerged)}</span>
@@ -1785,7 +1785,7 @@ export default function SalonPublicParity({
                       <span className="min-w-0" style={{ color: SALON_LINK_COLOR }}>
                         {[address, city].filter(Boolean).join(', ')}
                         {addressDistanceLabel ? (
-                          <span className="mt-1 block text-xs text-black/45">{addressDistanceLabel}</span>
+                          <span className="salon-text-muted mt-1 block text-xs">{addressDistanceLabel}</span>
                         ) : null}
                       </span>
                     </div>
@@ -2039,7 +2039,7 @@ export default function SalonPublicParity({
       {cookieConsent === null ? (
         <div className="fixed bottom-4 left-4 right-4 z-30 pb-[env(safe-area-inset-bottom,0px)] lg:bottom-6 lg:left-auto lg:right-6 lg:max-w-sm lg:pb-0">
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_8px_32px_rgba(0,0,0,0.14)]">
-            <p className="text-sm leading-relaxed text-black/70">
+            <p className="salon-text-muted text-sm leading-relaxed">
               Използваме бисквитки, за да управляваме резервациите ви.{' '}
               <a
                 href={`${basePath}/cookies`}
@@ -2061,7 +2061,7 @@ export default function SalonPublicParity({
               <button
                 type="button"
                 onClick={() => { localStorage.setItem('clicka-cookie-consent', '0'); setCookieConsent(false); }}
-                className="flex-1 rounded-full border border-black/20 py-2 text-sm font-medium text-black/70 hover:bg-black/5"
+                className="salon-text-muted flex-1 rounded-full border border-black/20 py-2 text-sm font-medium hover:bg-black/5"
               >
                 Отказвам
               </button>

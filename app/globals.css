@@ -93,17 +93,15 @@ body {
   font-weight: 400;
 }
 
-/* Secondary / muted copy uses Manrope Thin */
-.client-site [class*='text-black/45'],
-.client-site [class*='text-black/50'],
-.client-site [class*='text-black/55'],
-.client-site [class*='text-black/60'],
-.client-site [class*='text-black/65'],
-.client-site [class*='text-black/70'],
-.client-site [class*='text-white/40'],
-.client-site [class*='text-white/50'],
-.client-site [class*='text-white/55'] {
-  font-weight: 200;
+/* Muted copy: readable contrast (no font-weight 200 — that failed Lighthouse a11y). */
+.client-site .salon-text-muted {
+  color: #52525b;
+  font-weight: 400;
+}
+
+.client-site .salon-text-light {
+  color: #3f3f46;
+  font-weight: 300;
 }
 
 /* ── Utility color classes ────────────────────────────── */
