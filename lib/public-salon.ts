@@ -126,7 +126,12 @@ export async function getPublicSalonPageData({
     if (Array.isArray(cached) && cached.length > 0) {
       googleReviews = cached.filter(
         (r: unknown): r is GoogleReviewLite =>
-          !!r && typeof r === 'object' && 'rating' in r && 'text' in r,
+          !!r
+          && typeof r === 'object'
+          && 'rating' in r
+          && 'text' in r
+          && Number.isFinite(Number((r as { rating?: unknown }).rating))
+          && Number((r as { rating?: unknown }).rating) > 4,
       );
     }
   } catch {

@@ -53,7 +53,13 @@ export async function POST(request: NextRequest) {
   `;
   const cachedRaw = cacheRows[0]?.google_reviews_cache;
   const cachedFetchedAtRaw = cacheRows[0]?.google_reviews_fetched_at;
-  const cachedReviews = Array.isArray(cachedRaw) ? cachedRaw : [];
+  const cachedReviews = Array.isArray(cachedRaw)
+    ? cachedRaw.filter((r: unknown) => {
+      if (!r || typeof r !== 'object') return false;
+      const rating = Number((r as { rating?: unknown }).rating);
+      return Number.isFinite(rating) && rating > 4;
+    })
+    : [];
   const cachedFetchedAt = cachedFetchedAtRaw ? new Date(String(cachedFetchedAtRaw)) : null;
   const cacheIsFresh =
     cachedFetchedAt instanceof Date

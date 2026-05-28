@@ -90,13 +90,13 @@ function collectOutscraperRows(input: unknown): Array<Record<string, unknown>> {
 
 function mapOutscraperReviews(data: unknown): GoogleReviewLite[] {
   return collectOutscraperRows(data)
-    .slice(0, 10)
     .map((r) => ({
       author_name: String(r.author_title ?? r.reviewer_name ?? r.author_name ?? 'Google потребител').trim(),
       rating: Math.min(5, Math.max(1, Math.round(Number(r.review_rating ?? r.rating ?? r.stars ?? 5)))),
       text: String(r.review_text ?? r.text ?? '').trim(),
     }))
-    .filter((r) => Number.isFinite(r.rating));
+    .filter((r) => Number.isFinite(r.rating) && r.rating > 4)
+    .slice(0, 10);
 }
 
 async function outscraperGet(url: string, apiKey: string): Promise<OutscraperPayload> {
