@@ -372,11 +372,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const clients = useMemo<ClientSummary[]>(() => {
     const map = new Map<string, ClientSummary>();
     for (const b of bookings) {
+      if (String(b.status ?? '').trim().toLowerCase() === 'cancelled') continue;
       const phone = String(b.client_phone ?? '').trim();
       const email = String(b.client_email ?? '').trim().toLowerCase();
       const name = String(b.client_name ?? '').trim();
       const key = email || phone || b.id;
-      const spent = typeof b.service_price === 'number' ? b.service_price : 0;
+      const spent = Number(b.service_price ?? 0) || 0;
       const visitMoment = `${b.date}T${b.time || '00:00'}:00`;
       const existing = map.get(key);
       if (!existing) {

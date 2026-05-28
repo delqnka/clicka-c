@@ -22,6 +22,14 @@ export type ParsedSalonService = {
   assignedTeamMemberIds?: string[];
 };
 
+function pickFirstNonEmptyString(...values: unknown[]): string {
+  for (const value of values) {
+    const text = String(value ?? '').trim();
+    if (text) return text;
+  }
+  return '';
+}
+
 function assignUniqueServiceId(candidate: string, index: number, usedIds: Set<string>): string {
   let id = candidate.trim();
   if (!id || usedIds.has(id)) id = `svc-${index}`;
@@ -39,12 +47,13 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
 
   raw.forEach((item, index) => {
     const row = item as Record<string, unknown>;
-    const name = String(row.name ?? '').trim();
+    const name = pickFirstNonEmptyString(row.name, row.service_name, row.serviceName, row.title);
     if (!name) return;
 
     const id = assignUniqueServiceId(String(row.id ?? ''), index, usedIds);
-    const duration = Number(row.duration ?? row.duration_min ?? 30) || 30;
-    const price = row.price != null ? Number(row.price) : undefined;
+    const duration = Number(row.duration ?? row.duration_min ?? row.durationMin ?? 30) || 30;
+    const priceRaw = row.price ?? row.service_price ?? row.servicePrice;
+    const price = priceRaw != null ? Number(priceRaw) : undefined;
     const variants = Array.isArray(row.variants)
       ? (row.variants as unknown[])
           .map((variant): { label: string; price: number; duration?: number } | null => {
@@ -78,7 +87,14 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
       id,
       name,
       description: String(row.description ?? '').trim() || undefined,
-      category: String(row.category ?? '').trim() || undefined,
+      category:
+        pickFirstNonEmptyString(
+          row.category,
+          row.category_name,
+          row.categoryName,
+          row.service_category,
+          row.serviceCategory,
+        ) || undefined,
       price: price != null && Number.isFinite(price) ? price : undefined,
       duration,
       images,
