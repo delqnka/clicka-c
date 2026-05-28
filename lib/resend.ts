@@ -93,7 +93,8 @@ export async function sendGoogleReviewInvitation(
   salonName: string,
   googlePlaceId: string
 ): Promise<void> {
-  const mapsPlaceUrl = `https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${encodeURIComponent(googlePlaceId)}`;
+  const searchReviewUrl = `https://www.google.com/search?hl=bg-BG&gl=bg&q=${encodeURIComponent(`${salonName} Отзиви`)}`;
+  const mapsPlaceUrl = `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(googlePlaceId)}`;
   const directReviewUrl = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(googlePlaceId)}`;
 
   await resend.emails.send({
@@ -109,19 +110,24 @@ export async function sendGoogleReviewInvitation(
           Ако сте доволни от услугата, ще ни помогнете много с кратък отзив в Google.
         </p>
         <p style="margin: 24px 0;">
-          <a href="${mapsPlaceUrl}"
+          <a href="${searchReviewUrl}"
              style="display: inline-block; background: #000; color: #fff; padding: 14px 24px;
                     border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 15px;">
-            Отвори в Google Maps
+            Остави отзив в Google
           </a>
         </p>
         <p style="font-size: 14px; line-height: 1.7; color: #555;">
-          След като се отвори профилът, натиснете „Write a review“ / „Напишете отзив“.
+          Ще се отвори Google резултатът за салона. Изберете „Напишете отзив“.
         </p>
         <p style="font-size: 13px; line-height: 1.7; color: #666;">
           Ако бутонът не работи, използвайте директния линк за отзив:
           <br />
           <a href="${directReviewUrl}" style="color: #000;">${directReviewUrl}</a>
+        </p>
+        <p style="font-size: 13px; line-height: 1.7; color: #666;">
+          Алтернативно отворете директно Google Maps профила:
+          <br />
+          <a href="${mapsPlaceUrl}" style="color: #000;">${mapsPlaceUrl}</a>
         </p>
         <p style="margin-top: 24px; font-size: 13px; line-height: 1.7; color: #999;">
           Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
