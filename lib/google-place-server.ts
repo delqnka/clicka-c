@@ -105,6 +105,9 @@ async function fetchReviewsViaOutscraper(
 
     const rawRows = collectRows(data.data);
     if (rawRows.length === 0) {
+      if (String(data.status ?? '').toLowerCase() === 'pending') {
+        return { reviews: [], reason: 'outscraper_pending' };
+      }
       return { reviews: [], reason: 'outscraper_empty' };
     }
 

@@ -128,7 +128,7 @@ type GoogleReviewsStatus = {
   loading: boolean;
   connected: boolean;
   count: number;
-  source: 'openrouter' | 'none' | null;
+  source: 'outscraper' | 'none' | null;
   reason: string | null;
 };
 type GoogleReviewsFetchState = {
@@ -452,7 +452,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         const data = (await readJson(res)) as {
           connected?: boolean;
           count?: number;
-          source?: 'openrouter' | 'none';
+          source?: 'outscraper' | 'none';
           reason?: string | null;
           error?: string;
         };
@@ -2707,10 +2707,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         ? 'Проверяваме...'
                         : googleReviewsStatus.connected
                           ? `${googleReviewsStatus.count} ревюта са заредени и се показват на сайта.`
-                          : googleReviewsStatus.reason === 'missing_openrouter_key'
-                            ? 'Липсва OPENROUTER_API_KEY на сървъра — без него отзивите не се зареждат.'
-                            : googleReviewsStatus.reason === 'openrouter_api_error'
-                              ? 'OpenRouter върна грешка. Провери ключа и модела.'
+                          : googleReviewsStatus.reason === 'missing_outscraper_key'
+                            ? 'Липсва OUTSCRAPER_API_KEY на сървъра — без него отзивите не се зареждат.'
+                            : googleReviewsStatus.reason === 'outscraper_api_error'
+                              ? 'Outscraper върна грешка. Провери OUTSCRAPER_API_KEY и лимитите на акаунта.'
+                              : googleReviewsStatus.reason === 'outscraper_pending'
+                                ? 'Outscraper още обработва заявката. Изчакай малко и натисни „Обнови статуса“.'
                               : 'Place ID е запазен. Натисни „Извлечи ревютата", за да ги заредим на сайта.'
                       : (
                         <>

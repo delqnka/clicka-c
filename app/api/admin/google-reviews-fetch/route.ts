@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
   const reasonMessages: Record<string, string> = {
     missing_outscraper_key: 'Липсва OUTSCRAPER_API_KEY. Добави го в Vercel env vars.',
     outscraper_api_error: 'Outscraper API върна грешка. Провери ключа.',
+    outscraper_pending: 'Outscraper още обработва заявката. Натисни пак след 5-10 секунди.',
     outscraper_empty: 'Outscraper не намери ревюта. Провери дали Place ID е правилен.',
   };
 
