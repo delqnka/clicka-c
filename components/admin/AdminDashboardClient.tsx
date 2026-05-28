@@ -737,7 +737,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     try {
       const res = await fetch(`/api/admin/site-settings?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ownerName: site.ownerName, ownerPublicRole: site.ownerPublicRole, ownerPublicPhotoUrl: site.ownerPublicPhotoUrl }),
+        body: JSON.stringify({
+          ownerName: site.ownerName,
+          ownerPublicRole: site.ownerPublicRole,
+          ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
+          ownerPublicBio: site.ownerPublicBio,
+        }),
       });
       const data = await guardResponse(res);
       setSite(data.site as AdminSitePayload);
@@ -1867,10 +1872,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 <Field label="Роля"><input value={site.ownerPublicRole} onChange={e => setSite(p => ({ ...p, ownerPublicRole: e.target.value }))} style={inp} /></Field>
               </div>
               <div style={{ marginTop: 12 }}>
+                <Field label="Био">
+                  <textarea
+                    value={site.ownerPublicBio}
+                    onChange={e => setSite(p => ({ ...p, ownerPublicBio: e.target.value }))}
+                    style={{ ...inp, minHeight: 96, resize: 'vertical' }}
+                    placeholder="Кратко представяне на специалиста..."
+                  />
+                </Field>
+              </div>
+              <div style={{ marginTop: 12 }}>
                 <Field label="Снимка на специалиста">
-                  <FileUploadBtn label="Качи снимка" busy={busyKey === 'upload-owner'}>
+                  <IconUploadBtn label="Качи снимка" busy={busyKey === 'upload-owner'}>
                     <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => void handleOwnerPhotoUpload(e.target.files?.[0] ?? null)} />
-                  </FileUploadBtn>
+                  </IconUploadBtn>
                   <input value={site.ownerPublicPhotoUrl} onChange={e => setSite(p => ({ ...p, ownerPublicPhotoUrl: e.target.value }))} style={{ ...inp, marginTop: 6 }} placeholder="https://…" />
                   {site.ownerPublicPhotoUrl && <PreviewImg src={site.ownerPublicPhotoUrl} alt="Специалист" round />}
                 </Field>

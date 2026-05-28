@@ -75,6 +75,10 @@ export async function PATCH(request: NextRequest) {
       typeof body.ownerPublicPhotoUrl === 'string'
         ? body.ownerPublicPhotoUrl.trim()
         : current.ownerPublicPhotoUrl,
+    ownerPublicBio:
+      typeof body.ownerPublicBio === 'string'
+        ? body.ownerPublicBio.trim()
+        : current.ownerPublicBio,
     faqItems: Array.isArray(body.faqItems)
       ? normalizeSalonFaqItems(body.faqItems)
       : current.faqItems,
@@ -92,6 +96,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Името на салона е задължително.' }, { status: 400 });
   }
 
+  await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
   await sql`
     UPDATE salons
     SET
@@ -111,6 +116,7 @@ export async function PATCH(request: NextRequest) {
       owner_name = ${next.ownerName || null},
       owner_public_role = ${next.ownerPublicRole || null},
       owner_public_photo_url = ${next.ownerPublicPhotoUrl || null},
+      owner_public_bio = ${next.ownerPublicBio || null},
       faq_items = ${JSON.stringify(next.faqItems)}::jsonb,
       visitor_info = ${JSON.stringify(next.visitorInfo)}::jsonb,
       visitor_additional_info = ${next.visitorAdditionalInfo || null},

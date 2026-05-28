@@ -404,6 +404,7 @@ export default function SalonPublicParity({
   const ownerName = String(rawSalon.owner_name ?? '').trim();
   const ownerRole = String(rawSalon.owner_public_role ?? '').trim();
   const ownerPhoto = String(rawSalon.owner_public_photo_url ?? '').trim();
+  const ownerBio = String(rawSalon.owner_public_bio ?? '').trim();
   const workingHours = rawSalon.working_hours as
     | Record<string, { open?: string; close?: string; closed?: boolean }>
     | undefined;
@@ -564,6 +565,7 @@ export default function SalonPublicParity({
             id: `tm-${i}`,
             name: (m.name ?? '').trim(),
             role: (m.role ?? '').trim(),
+            bio: '',
             photoUrl: wireMediaUri((m.photo_url ?? '').trim()),
           }))
       : [];
@@ -575,10 +577,11 @@ export default function SalonPublicParity({
         id: 'owner',
         name: displayName,
         role: ownerRole,
+        bio: ownerBio,
         photoUrl: wireMediaUri(ownerPhoto),
       },
     ];
-  }, [teamJson, ownerName, ownerRole, ownerPhoto, name]);
+  }, [teamJson, ownerName, ownerRole, ownerBio, ownerPhoto, name]);
 
   const requestGeolocation = useCallback(() => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return;
@@ -1492,6 +1495,7 @@ export default function SalonPublicParity({
                       </div>
                       <p className="mt-2 w-full truncate text-sm font-medium text-[#1a1a1a]">{member.name}</p>
                       {member.role ? <p className="w-full truncate text-xs text-black/55">{member.role}</p> : null}
+                      {member.bio ? <p className="mt-1 w-full text-[11px] leading-relaxed text-black/50">{member.bio}</p> : null}
                     </div>
                   ))}
                 </div>

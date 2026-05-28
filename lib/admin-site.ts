@@ -67,6 +67,7 @@ export type AdminSitePayload = {
   ownerName: string;
   ownerPublicRole: string;
   ownerPublicPhotoUrl: string;
+  ownerPublicBio: string;
   services: ServiceItem[];
   workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
@@ -122,13 +123,14 @@ export function normalizeImageList(raw: unknown): string[] {
 
 export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
   await ensureSmsSchema().catch(() => {});
+  await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
 
   const rows = await sql`
     SELECT
       slug, name, category, phone, email, city, address, about,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       cover_image_url, logo_image_url, gallery_images,
-      owner_name, owner_public_role, owner_public_photo_url,
+      owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
       services, working_hours, opening_hours,
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code,
@@ -170,6 +172,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     ownerName: String(row.owner_name ?? ''),
     ownerPublicRole: String(row.owner_public_role ?? ''),
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),
+    ownerPublicBio: String(row.owner_public_bio ?? ''),
     services: normalizeServices(row.services),
     workingHours: normalizeWorkingHours(row.working_hours),
     bookingBlocks: normalizeBookingBlocks(
