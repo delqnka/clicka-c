@@ -455,7 +455,19 @@ export default function SalonPublicParity({
 
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
   const scrollSpySuppressUntilRef = useRef(0);
+  const [revealedSections, setRevealedSections] = useState<Set<TabId>>(
+    () => new Set<TabId>(['offers', 'services']),
+  );
   const [activeTab, setActiveTab] = useState<TabId>('about');
+
+  const revealSection = useCallback((tabId: TabId) => {
+    setRevealedSections((prev) => {
+      if (prev.has(tabId)) return prev;
+      const next = new Set(prev);
+      next.add(tabId);
+      return next;
+    });
+  }, []);
   const [showStickySectionTabs, setShowStickySectionTabs] = useState(false);
   const [selectedServiceCategory, setSelectedServiceCategory] = useState<string | null>(null);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
@@ -630,13 +642,14 @@ export default function SalonPublicParity({
 
   useEffect(() => {
     if (tabParam === 'reviews' || highlightReviewId) {
+      revealSection('reviews');
       setActiveTab('reviews');
       scrollSpySuppressUntilRef.current = Date.now() + 900;
       setTimeout(() => {
         sectionRefs.current.reviews?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
     }
-  }, [tabParam, highlightReviewId]);
+  }, [tabParam, highlightReviewId, revealSection]);
 
   useEffect(() => {
     if (disableStickySectionTabs) {
@@ -681,6 +694,7 @@ export default function SalonPublicParity({
           break;
         }
       }
+      revealSection(next);
       setActiveTab((prev) => (prev === next ? prev : next));
     };
     let ticking = false;
@@ -699,13 +713,16 @@ export default function SalonPublicParity({
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
     };
-  }, [salonId, showStickySectionTabs, scrollSpyTabOrder]);
+  }, [salonId, showStickySectionTabs, scrollSpyTabOrder, revealSection]);
 
   const scrollToSection = useCallback((tabId: TabId) => {
+    revealSection(tabId);
     setActiveTab(tabId);
     scrollSpySuppressUntilRef.current = Date.now() + 800;
-    sectionRefs.current[tabId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+    requestAnimationFrame(() => {
+      sectionRefs.current[tabId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [revealSection]);
 
   const servicesFilteredByCategory = useMemo(() => {
     if (!selectedServiceCategory) return servicesWithImages;
@@ -1294,6 +1311,7 @@ export default function SalonPublicParity({
             <DeferredSection
               className="cv-defer scroll-mt-36 pt-6"
               minHeight={240}
+              eager={revealedSections.has('offers')}
               sectionRef={(el) => {
                 sectionRefs.current.offers = el;
               }}
@@ -1360,6 +1378,7 @@ export default function SalonPublicParity({
             <DeferredSection
               className="cv-defer scroll-mt-36 pt-10"
               minHeight={280}
+              eager={revealedSections.has('services')}
               sectionRef={(el) => {
                 sectionRefs.current.services = el;
               }}
@@ -1486,6 +1505,7 @@ export default function SalonPublicParity({
               <DeferredSection
                 className="cv-defer scroll-mt-36 pt-10"
                 minHeight={280}
+                eager={revealedSections.has('portfolio')}
                 sectionRef={(el) => {
                   sectionRefs.current.portfolio = el;
                 }}
@@ -1545,6 +1565,7 @@ export default function SalonPublicParity({
             <DeferredSection
               className="cv-defer scroll-mt-36 pt-10"
               minHeight={120}
+              eager={revealedSections.has('team')}
               sectionRef={(el) => {
                 sectionRefs.current.team = el;
               }}
@@ -1580,6 +1601,7 @@ export default function SalonPublicParity({
             <DeferredSection
               className="cv-defer scroll-mt-36 pt-10"
               minHeight={200}
+              eager={revealedSections.has('reviews')}
               sectionRef={(el) => {
                 sectionRefs.current.reviews = el;
               }}

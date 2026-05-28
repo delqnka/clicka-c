@@ -7,6 +7,8 @@ type DeferredSectionProps = {
   className?: string;
   minHeight?: number;
   rootMargin?: string;
+  /** Render immediately (offers, services) instead of waiting for scroll. */
+  eager?: boolean;
   /** Optional ref for scroll-spy (always attached to the placeholder section). */
   sectionRef?: (el: HTMLElement | null) => void;
 };
@@ -16,11 +18,12 @@ export function DeferredSection({
   children,
   className,
   minHeight = 1,
-  rootMargin = '280px 0px',
+  rootMargin = '480px 0px',
+  eager = false,
   sectionRef,
 }: DeferredSectionProps) {
   const ref = useRef<HTMLElement | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(eager);
 
   const setRefs = (el: HTMLElement | null) => {
     ref.current = el;
@@ -49,6 +52,10 @@ export function DeferredSection({
     observer.observe(el);
     return () => observer.disconnect();
   }, [visible, rootMargin]);
+
+  useEffect(() => {
+    if (eager) setVisible(true);
+  }, [eager]);
 
   return (
     <section ref={setRefs} className={className} style={!visible && minHeight > 0 ? { minHeight } : undefined}>
