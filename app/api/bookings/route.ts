@@ -329,6 +329,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  try {
+    await ensureBookingsSchema();
+  } catch (err) {
+    console.error('[bookings PATCH] schema', err);
+    return NextResponse.json(
+      { error: 'Резервационната система не е налична. Моля опитайте по-късно.' },
+      { status: 503 },
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const auth = await requireAdminRequestAccess(request, searchParams.get('slug'));
   if (!auth.ok) return auth.response;
@@ -373,20 +383,49 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const reviewInvite = {
+    attempted: false,
+    sent: false,
+    reason: null as string | null,
+  };
+
   if (status === 'completed') {
     const booking = updated[0] as Record<string, unknown>;
     const clientEmail = String(booking.client_email ?? '').trim();
     const googlePlaceId = String((resolved.salon as Record<string, unknown>).google_place_id ?? '').trim();
 
-    if (clientEmail && googlePlaceId) {
-      void sendGoogleReviewInvitation(
-        clientEmail,
-        String(booking.client_name ?? ''),
-        resolved.salon.name,
-        googlePlaceId
-      ).catch(() => {});
+    const inviteLock = await sql`
+      UPDATE bookings
+      SET google_review_invite_sent_at = now()
+      WHERE id = ${bookingId}
+        AND salon_id = ${salonId}
+        AND google_review_invite_sent_at IS NULL
+      RETURNING id
+    `;
+
+    reviewInvite.attempted = true;
+
+    if (inviteLock.length === 0) {
+      reviewInvite.reason = 'already_sent';
+    } else if (!clientEmail) {
+      reviewInvite.reason = 'missing_client_email';
+    } else if (!googlePlaceId) {
+      reviewInvite.reason = 'missing_google_place_id';
+    } else {
+      try {
+        await sendGoogleReviewInvitation(
+          clientEmail,
+          String(booking.client_name ?? ''),
+          resolved.salon.name,
+          googlePlaceId
+        );
+        reviewInvite.sent = true;
+      } catch (err) {
+        console.error('[bookings PATCH] review invite send failed', err);
+        reviewInvite.reason = 'send_failed';
+      }
     }
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, reviewInvite });
 }

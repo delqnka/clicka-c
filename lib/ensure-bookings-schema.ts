@@ -46,6 +46,10 @@ export async function ensureBookingsSchema() {
         ADD COLUMN IF NOT EXISTS offer_id uuid
       `;
       await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS google_review_invite_sent_at timestamptz
+      `;
+      await sql`
         CREATE INDEX IF NOT EXISTS bookings_salon_id_idx ON bookings(salon_id)
       `;
     })().catch((err) => {
