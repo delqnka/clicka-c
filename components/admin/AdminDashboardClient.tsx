@@ -128,7 +128,7 @@ type GoogleReviewsStatus = {
   loading: boolean;
   connected: boolean;
   count: number;
-  source: 'outscraper' | 'none' | null;
+  source: 'outscraper' | 'cache' | 'none' | null;
   reason: string | null;
   providerStatus?: string | null;
 };
@@ -466,7 +466,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         const data = (await readJson(res)) as {
           connected?: boolean;
           count?: number;
-          source?: 'outscraper' | 'none';
+          source?: 'outscraper' | 'cache' | 'none';
           reason?: string | null;
           providerStatus?: string | null;
           error?: string;

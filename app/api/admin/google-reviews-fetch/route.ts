@@ -6,9 +6,11 @@ import { probeGoogleReviewsForPlace, resolveGooglePlaceId } from '@/lib/google-p
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 
 export const dynamic = 'force-dynamic';
+const GOOGLE_REVIEWS_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
+  const forceRefresh = request.nextUrl.searchParams.get('force') === '1';
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
@@ -42,9 +44,33 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const probe = await probeGoogleReviewsForPlace(placeId);
-
   await ensureGoogleReviewsSchema();
+  const cacheRows = await sql`
+    SELECT google_reviews_cache, google_reviews_fetched_at
+    FROM salons
+    WHERE slug = ${auth.salon.slug}
+    LIMIT 1
+  `;
+  const cachedRaw = cacheRows[0]?.google_reviews_cache;
+  const cachedFetchedAtRaw = cacheRows[0]?.google_reviews_fetched_at;
+  const cachedReviews = Array.isArray(cachedRaw) ? cachedRaw : [];
+  const cachedFetchedAt = cachedFetchedAtRaw ? new Date(String(cachedFetchedAtRaw)) : null;
+  const cacheIsFresh =
+    cachedFetchedAt instanceof Date
+    && Number.isFinite(cachedFetchedAt.getTime())
+    && Date.now() - cachedFetchedAt.getTime() < GOOGLE_REVIEWS_CACHE_TTL_MS;
+  if (!forceRefresh && cachedReviews.length > 0 && cacheIsFresh) {
+    return NextResponse.json({
+      success: true,
+      count: cachedReviews.length,
+      reviews: cachedReviews,
+      source: 'cache',
+      providerStatus: null,
+      providerHint: 'cached_30_days',
+    });
+  }
+
+  const probe = await probeGoogleReviewsForPlace(placeId);
 
   if (probe.reviews.length > 0) {
     await sql`

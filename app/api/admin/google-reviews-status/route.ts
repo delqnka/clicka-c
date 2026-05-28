@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
-import { probeGoogleReviewsForPlace, resolveGooglePlaceId } from '@/lib/google-place-server';
+import { resolveGooglePlaceId } from '@/lib/google-place-server';
+import { sql } from '@/lib/db';
+import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,24 +24,33 @@ export async function GET(request: NextRequest) {
     mapsUrl: draftMapsUrl ?? site.googleMapsUrl,
   });
 
+  await ensureGoogleReviewsSchema().catch(() => {});
+  const cacheRows = await sql`
+    SELECT google_reviews_cache
+    FROM salons
+    WHERE slug = ${auth.salon.slug}
+    LIMIT 1
+  `;
+  const cacheRaw = cacheRows[0]?.google_reviews_cache;
+  const cachedCount = Array.isArray(cacheRaw) ? cacheRaw.length : 0;
+
   if (!placeId) {
     return NextResponse.json({
       connected: false,
-      count: 0,
-      source: 'none',
+      count: cachedCount,
+      source: cachedCount > 0 ? 'cache' : 'none',
       reason: 'missing_place_id',
       resolvedPlaceId: null,
     });
   }
 
-  const probe = await probeGoogleReviewsForPlace(placeId);
   return NextResponse.json(
     {
-      connected: probe.reviews.length > 0,
-      count: probe.reviews.length,
-      source: probe.source,
-      reason: probe.reason ?? null,
-      providerStatus: probe.providerStatus ?? null,
+      connected: cachedCount > 0,
+      count: cachedCount,
+      source: cachedCount > 0 ? 'cache' : 'none',
+      reason: cachedCount > 0 ? null : 'not_fetched_yet',
+      providerStatus: null,
       resolvedPlaceId: placeId,
     },
     {
