@@ -648,9 +648,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           visitorAdditionalInfo: site.visitorAdditionalInfo,
         }),
       });
-      const data = await guardResponse(res);
-      setSite(data.site as AdminSitePayload);
-      setNotice('Информацията е запазена.');
+      const data = await guardResponse(res) as {
+        site: AdminSitePayload;
+        reviewsFetched?: number;
+        reviewsError?: string | null;
+      };
+      setSite(data.site);
+      if (data.reviewsFetched && data.reviewsFetched > 0) {
+        setNotice(`Информацията е запазена. ${data.reviewsFetched} Google ревюта са заредени на сайта!`);
+        setReviewsFetch({ loading: false, result: { success: true, count: data.reviewsFetched } });
+      } else if (data.reviewsError) {
+        setNotice('Информацията е запазена. Ревютата не бяха намерени — опитай бутона "Извлечи Google ревютата".');
+      } else {
+        setNotice('Информацията е запазена.');
+      }
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1543,6 +1554,49 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   isMobile={isMobile}
                   inputStyle={inp}
                 />
+                {site.googlePlaceId.trim() ? (
+                  <div style={{ marginTop: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => void fetchGoogleReviews()}
+                      disabled={reviewsFetch.loading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '10px 20px',
+                        borderRadius: T.radiusSm,
+                        border: 'none',
+                        background: reviewsFetch.result?.success ? '#16a34a' : T.accent,
+                        color: '#fff',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: reviewsFetch.loading ? 'wait' : 'pointer',
+                        opacity: reviewsFetch.loading ? 0.7 : 1,
+                        transition: 'background 200ms, opacity 200ms',
+                      }}
+                    >
+                      {reviewsFetch.loading ? (
+                        <>
+                          <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                          Извличаме ревютата...
+                        </>
+                      ) : reviewsFetch.result?.success ? (
+                        <>
+                          <CheckCircle2 size={15} />
+                          {reviewsFetch.result.count} ревюта заредени
+                        </>
+                      ) : (
+                        'Извлечи Google ревютата'
+                      )}
+                    </button>
+                    {reviewsFetch.result && !reviewsFetch.result.success ? (
+                      <p style={{ margin: '6px 0 0', fontSize: 12, color: '#dc2626' }}>
+                        {reviewsFetch.result.message}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <div style={{ marginTop: 12 }}>
                 <Field label="За салона">

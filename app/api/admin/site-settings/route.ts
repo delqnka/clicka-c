@@ -7,6 +7,8 @@ import {
   normalizeSalonVisitorInfo,
   normalizeVisitorAdditionalInfo,
 } from '@/lib/salon-visitor-info';
+import { resolveGooglePlaceId, probeGoogleReviewsForPlace } from '@/lib/google-place-server';
+import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -116,6 +118,36 @@ export async function PATCH(request: NextRequest) {
     WHERE slug = ${auth.salon.slug}
   `;
 
+  let reviewsFetched = 0;
+  let reviewsError: string | null = null;
+  const placeId = await resolveGooglePlaceId({
+    explicitPlaceId: next.googlePlaceId,
+    mapsUrl: next.googleMapsUrl,
+  });
+  if (placeId) {
+    try {
+      await ensureGoogleReviewsSchema();
+      const probe = await probeGoogleReviewsForPlace(placeId, {
+        name: next.name || undefined,
+        city: next.city || undefined,
+      });
+      if (probe.reviews.length > 0) {
+        await sql`
+          UPDATE salons
+          SET
+            google_reviews_cache = ${JSON.stringify(probe.reviews)}::jsonb,
+            google_reviews_fetched_at = now()
+          WHERE slug = ${auth.salon.slug}
+        `;
+        reviewsFetched = probe.reviews.length;
+      } else {
+        reviewsError = probe.reason ?? 'no_reviews';
+      }
+    } catch {
+      reviewsError = 'fetch_error';
+    }
+  }
+
   const site = await loadAdminSiteDataBySlug(auth.salon.slug);
-  return NextResponse.json({ success: true, site });
+  return NextResponse.json({ success: true, site, reviewsFetched, reviewsError });
 }
