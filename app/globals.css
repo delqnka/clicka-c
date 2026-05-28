@@ -235,7 +235,7 @@ body {
 .client-site [class*='text-white/40'],
 .client-site [class*='text-white/50'],
 .client-site [class*='text-white/55'] {
-  font-weight: 100;
+  font-weight: 200;
 }
 
 /* ── Utility color classes ────────────────────────────── */
