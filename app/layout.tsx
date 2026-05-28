@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Merriweather, Montserrat, Playfair_Display, Source_Code_Pro } from 'next/font/google';
+import { Inter, Manrope, Merriweather, Montserrat, Playfair_Display, Source_Code_Pro } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
@@ -37,6 +37,13 @@ const sourceCodePro = Source_Code_Pro({
   weight: ['400', '500'],
 });
 
+const manrope = Manrope({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-client-manrope',
+  display: 'swap',
+  weight: ['100', '400', '500', '600', '700'],
+});
+
 export const viewport: Viewport = {
   themeColor: '#ffffff',
   width: 'device-width',
@@ -54,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="bg"
-      className={`${inter.variable} ${merriweather.variable} ${montserrat.variable} ${playfair.variable} ${sourceCodePro.variable}`}
+      className={`${inter.variable} ${merriweather.variable} ${montserrat.variable} ${playfair.variable} ${sourceCodePro.variable} ${manrope.variable}`}
     >
       <body>{children}</body>
     </html>

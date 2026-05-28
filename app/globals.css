@@ -219,6 +219,25 @@ body {
   line-height: 1.6;
 }
 
+/* ── Client public site typography (SalonPublicParity scope) ───────────── */
+.client-site {
+  font-family: var(--font-client-manrope, 'Manrope', 'Inter', system-ui, -apple-system, sans-serif);
+  font-weight: 400;
+}
+
+/* Secondary / muted copy uses Manrope Thin */
+.client-site [class*='text-black/45'],
+.client-site [class*='text-black/50'],
+.client-site [class*='text-black/55'],
+.client-site [class*='text-black/60'],
+.client-site [class*='text-black/65'],
+.client-site [class*='text-black/70'],
+.client-site [class*='text-white/40'],
+.client-site [class*='text-white/50'],
+.client-site [class*='text-white/55'] {
+  font-weight: 100;
+}
+
 /* ── Utility color classes ────────────────────────────── */
 .bg-primary       { background-color: var(--primary)       !important; }
 .bg-primary-light { background-color: var(--primary-light) !important; }

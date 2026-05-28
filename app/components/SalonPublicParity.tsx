@@ -1070,7 +1070,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className={`min-h-screen bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
+      className={`client-site min-h-screen bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
