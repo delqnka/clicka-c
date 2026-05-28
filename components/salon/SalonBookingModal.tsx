@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 export type BookingServiceOption = {
   id: string;
   name: string;
+  category?: string;
   price?: number;
   duration: number;
 };
@@ -92,8 +93,12 @@ export function SalonBookingModal({
   onSubmit,
 }: SalonBookingModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   useEffect(() => {
-    if (open) setStep(1);
+    if (open) {
+      setStep(1);
+      setSelectedCategory(null);
+    }
   }, [open]);
 
   const hasServices = selectedServiceIdxs.length > 0;
@@ -108,6 +113,30 @@ export function SalonBookingModal({
         .filter((svc): svc is BookingServiceOption => Boolean(svc)),
     [selectedServiceIdxs, services]
   );
+  const serviceCategories = useMemo(() => {
+    const labels = new Set<string>();
+    for (const svc of services) {
+      const cat = String(svc.category ?? '').trim();
+      if (cat) labels.add(cat);
+    }
+    const sorted = [...labels].sort((a, b) => a.localeCompare(b, 'bg'));
+    return [{ id: null as string | null, label: 'Всички' }, ...sorted.map((cat) => ({ id: cat, label: cat }))];
+  }, [services]);
+  const visibleServiceItems = useMemo(
+    () =>
+      services
+        .map((service, idx) => ({ service, idx }))
+        .filter(({ service }) =>
+          selectedCategory ? String(service.category ?? '').trim() === selectedCategory : true
+        ),
+    [services, selectedCategory]
+  );
+
+  useEffect(() => {
+    if (!selectedCategory) return;
+    const hasCategory = services.some((svc) => String(svc.category ?? '').trim() === selectedCategory);
+    if (!hasCategory) setSelectedCategory(null);
+  }, [services, selectedCategory]);
 
   const dateOptions = useMemo(() => {
     if (!minDate || !maxDate) return [];
@@ -227,7 +256,29 @@ export function SalonBookingModal({
                     </div>
                   ) : null}
 
-                  {services.map((s, i) => {
+                  {serviceCategories.length > 1 ? (
+                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
+                      {serviceCategories.map((cat) => {
+                        const active = selectedCategory === cat.id;
+                        return (
+                          <button
+                            key={cat.id ?? 'all'}
+                            type="button"
+                            onClick={() => setSelectedCategory(cat.id)}
+                            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                              active
+                                ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/14 text-[color:var(--salon-primary)]'
+                                : 'border-white/65 bg-white/72 text-black/65'
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  {visibleServiceItems.map(({ service: s, idx: i }) => {
                     const active = selectedServiceIdxs.includes(i);
                     return (
                       <button
@@ -268,6 +319,11 @@ export function SalonBookingModal({
                       </button>
                     );
                   })}
+                  {visibleServiceItems.length === 0 ? (
+                    <p className="rounded-2xl border border-white/55 bg-white/68 px-3.5 py-3 text-sm text-black/55">
+                      Няма услуги в избраната категория.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 

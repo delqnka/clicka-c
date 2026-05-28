@@ -131,6 +131,10 @@ type GoogleReviewsStatus = {
   source: 'openrouter' | 'none' | null;
   reason: string | null;
 };
+type GoogleReviewsFetchState = {
+  loading: boolean;
+  result: null | { success: boolean; count?: number; message?: string };
+};
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -235,6 +239,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     source: null,
     reason: null,
   });
+  const [reviewsFetch, setReviewsFetch] = useState<GoogleReviewsFetchState>({ loading: false, result: null });
   const [calendarCursor, setCalendarCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -250,6 +255,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [selectedAdminServiceCategory, setSelectedAdminServiceCategory] = useState<string | null>(null);
   const [newServiceDraft, setNewServiceDraft] = useState({
     name: '',
     category: '',
@@ -305,6 +311,22 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     statusFilter === 'all' ? bookings : bookings.filter(b => b.status === statusFilter),
     [bookings, statusFilter]
   );
+  const adminServiceCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const svc of site.services) {
+      const cat = String((svc as { category?: string }).category ?? '').trim();
+      if (cat) set.add(cat);
+    }
+    const categories = [...set].sort((a, b) => a.localeCompare(b, 'bg'));
+    return [{ id: null as string | null, label: 'Всички' }, ...categories.map((c) => ({ id: c, label: c }))];
+  }, [site.services]);
+  const filteredAdminServices = useMemo(() => {
+    const indexed = site.services.map((svc, i) => ({ svc, i }));
+    if (!selectedAdminServiceCategory) return indexed;
+    return indexed.filter(
+      ({ svc }) => String((svc as { category?: string }).category ?? '').trim() === selectedAdminServiceCategory
+    );
+  }, [site.services, selectedAdminServiceCategory]);
   const visibleBookings = useMemo(
     () =>
       selectedCalendarDate
@@ -371,6 +393,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     if (t === 'notifications') t = p.get('smsPurchase') ? 'sms' : 'integrations';
     if (t && TABS.some(tab => tab.id === t)) setActiveTab(t as TabId);
   }, []);
+
+  useEffect(() => {
+    if (!selectedAdminServiceCategory) return;
+    const hasCategory = site.services.some(
+      (svc) => String((svc as { category?: string }).category ?? '').trim() === selectedAdminServiceCategory
+    );
+    if (!hasCategory) setSelectedAdminServiceCategory(null);
+  }, [site.services, selectedAdminServiceCategory]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
@@ -451,6 +481,35 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     if (activeTab !== 'integrations') return;
     void loadGoogleReviewsStatus();
   }, [activeTab, loadGoogleReviewsStatus]);
+
+  const fetchGoogleReviews = useCallback(async () => {
+    setReviewsFetch({ loading: true, result: null });
+    try {
+      const res = await fetch(`/api/admin/google-reviews-fetch?slug=${encodeURIComponent(slug)}`, {
+        method: 'POST',
+      });
+      const data = (await readJson(res)) as {
+        success?: boolean;
+        count?: number;
+        message?: string;
+        reason?: string;
+      };
+      if (data.success) {
+        setReviewsFetch({ loading: false, result: { success: true, count: data.count } });
+        void loadGoogleReviewsStatus({ cacheBust: true });
+      } else {
+        setReviewsFetch({
+          loading: false,
+          result: { success: false, message: data.message || 'Неуспешно извличане.' },
+        });
+      }
+    } catch {
+      setReviewsFetch({
+        loading: false,
+        result: { success: false, message: 'Грешка при заявката. Опитай отново.' },
+      });
+    }
+  }, [slug, loadGoogleReviewsStatus]);
 
   useEffect(() => {
     setSmsDraftEnabled(site.smsEnabled);
@@ -1387,10 +1446,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
           <aside style={{
-            width: 220, flexShrink: 0,
+            width: 196, flexShrink: 0,
             position: 'sticky', top: 56, height: 'calc(100dvh - 56px)',
             overflowY: 'auto', borderRight: `1px solid ${T.border}`,
-            background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '16px 10px',
+            background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '14px 8px',
             display: 'flex', flexDirection: 'column', gap: 2,
           }}>
             {TABS.map(({ id, label, Icon }) => {
@@ -1402,16 +1461,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   onClick={() => switchTab(id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '9px 12px', borderRadius: T.radiusSm,
+                    padding: '7px 10px', borderRadius: T.radiusSm,
                     border: 'none', width: '100%', textAlign: 'left',
                     background: active ? '#F4F4F5' : 'transparent',
                     color: active ? T.text : T.muted,
-                    fontSize: 13, fontWeight: active ? 600 : 400,
+                    fontSize: 12, fontWeight: active ? 600 : 400,
                     cursor: 'pointer',
                     transition: 'background 120ms, color 120ms',
                   }}
                 >
-                  <Icon size={15} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
+                  <Icon size={14} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
                   <span style={{ flex: 1 }}>{label}</span>
                   {active && <ChevronRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />}
                 </button>
@@ -1719,31 +1778,57 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 />
               ) : (
                 <div style={{ display: 'grid', gap: isMobile ? 12 : 10 }}>
-                  {Array.from(
-                    site.services.reduce((map, svc, i) => {
-                      const key = String((svc as { category?: string }).category ?? '').trim() || 'Без категория';
-                      const arr = map.get(key) ?? [];
-                      arr.push({ svc, i });
-                      map.set(key, arr);
-                      return map;
-                    }, new Map<string, { svc: (typeof site.services)[number]; i: number }[]>())
-                  ).map(([category, items]) => (
-                    <div key={category} style={{ display: 'grid', gap: 8 }}>
-                      <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {category}
+                  {adminServiceCategories.length > 1 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {adminServiceCategories.map((cat) => {
+                        const active = selectedAdminServiceCategory === cat.id;
+                        return (
+                          <button
+                            key={cat.id ?? 'all'}
+                            type="button"
+                            onClick={() => setSelectedAdminServiceCategory(cat.id)}
+                            style={{
+                              borderRadius: 999,
+                              border: active ? `1px solid ${T.accent}` : `1px solid ${T.border}`,
+                              background: active ? '#F5F3FF' : '#fff',
+                              color: active ? T.accent : T.text,
+                              padding: '6px 12px',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {cat.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {filteredAdminServices.map(({ svc, i }) => (
+                    <div
+                      key={`svc-${i}`}
+                      style={{
+                        border: `1px solid ${T.border}`,
+                        borderRadius: isMobile ? 16 : 14,
+                        padding: isMobile ? '16px 14px' : '14px 14px',
+                        background: '#fff',
+                        position: 'relative',
+                        boxShadow: '0 2px 8px rgba(24,24,27,0.04)',
+                      }}
+                    >
+                      <p
+                        style={{
+                          margin: '0 0 10px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: T.muted,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                        }}
+                      >
+                        {String((svc as { category?: string }).category ?? '').trim() || 'Без категория'}
                       </p>
-                      {items.map(({ svc, i }) => (
-                        <div
-                          key={`svc-${i}`}
-                          style={{
-                            border: 'none',
-                            borderBottom: `1px solid ${T.border}`,
-                            borderRadius: 0,
-                            padding: isMobile ? '16px 0' : '14px 0',
-                            background: 'transparent',
-                            position: 'relative',
-                          }}
-                        >
+                      <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 10 }}>
                           <button
                             type="button"
                             aria-label="Премахни услуга"
@@ -1842,10 +1927,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                               />
                             </Field>
                           </div>
-                        </div>
-                      ))}
+                      </div>
                     </div>
                   ))}
+                  {filteredAdminServices.length === 0 ? (
+                    <EmptyState
+                      title="Няма услуги в категорията"
+                      desc="Избери друга категория или добави нова услуга в тази категория."
+                    />
+                  ) : null}
                 </div>
               )}
             </Section>
@@ -2560,16 +2650,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
                     {hasGoogleReviewsCandidate
                       ? googleReviewsStatus.loading
-                        ? 'Проверяваме през OpenRouter (може да отнеме до половин минута)...'
+                        ? 'Проверяваме...'
                         : googleReviewsStatus.connected
-                          ? `Ревютата са активни (${googleReviewsStatus.count}) чрез OpenRouter. Запази в „Сайт“, ако още не си.`
+                          ? `${googleReviewsStatus.count} ревюта са заредени и се показват на сайта.`
                           : googleReviewsStatus.reason === 'missing_openrouter_key'
                             ? 'Липсва OPENROUTER_API_KEY на сървъра — без него отзивите не се зареждат.'
                             : googleReviewsStatus.reason === 'openrouter_api_error'
-                              ? 'OpenRouter върна грешка. Провери ключа и модела (OPENROUTER_REVIEWS_MODEL).'
-                              : googleReviewsStatus.reason === 'probe_failed'
-                                ? 'Неуспешна проверка. Опитай отново или провери дали си влязъл в админ панела.'
-                                : 'Не успяхме да заредим отзиви. Провери Place ID / Maps линка и натисни „Обнови статуса“.'
+                              ? 'OpenRouter върна грешка. Провери ключа и модела.'
+                              : 'Place ID е запазен. Натисни „Извлечи ревютата", за да ги заредим на сайта.'
                       : (
                         <>
                           Добави Google Place ID или Maps линк в раздел <strong>Сайт</strong> — виж{' '}
@@ -2585,27 +2673,52 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         </>
                       )}
                   </p>
+                  {reviewsFetch.result ? (
+                    <p style={{
+                      margin: '6px 0 0',
+                      fontSize: 12,
+                      color: reviewsFetch.result.success ? '#16a34a' : '#dc2626',
+                      lineHeight: 1.5,
+                    }}>
+                      {reviewsFetch.result.success
+                        ? `Заредени ${reviewsFetch.result.count} ревюта на сайта.`
+                        : reviewsFetch.result.message}
+                    </p>
+                  ) : null}
                   {hasGoogleReviewsCandidate ? (
-                    <button
-                      type="button"
-                      onClick={() => void loadGoogleReviewsStatus({ cacheBust: true })}
-                      disabled={googleReviewsStatus.loading}
-                      style={{
-                        ...btn('sm-ghost'),
-                        marginTop: 8,
-                        opacity: googleReviewsStatus.loading ? 0.65 : 1,
-                        cursor: googleReviewsStatus.loading ? 'wait' : 'pointer',
-                      }}
-                    >
-                      {googleReviewsStatus.loading ? (
-                        <>
-                          <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: -2, animation: 'spin 1s linear infinite' }} />
-                          Обновяваме…
-                        </>
-                      ) : (
-                        'Обнови статуса'
-                      )}
-                    </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => void fetchGoogleReviews()}
+                        disabled={reviewsFetch.loading}
+                        style={{
+                          ...btn('primary'),
+                          opacity: reviewsFetch.loading ? 0.65 : 1,
+                          cursor: reviewsFetch.loading ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {reviewsFetch.loading ? (
+                          <>
+                            <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: -2, animation: 'spin 1s linear infinite' }} />
+                            Извличаме ревютата…
+                          </>
+                        ) : (
+                          'Извлечи ревютата'
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void loadGoogleReviewsStatus({ cacheBust: true })}
+                        disabled={googleReviewsStatus.loading}
+                        style={{
+                          ...btn('sm-ghost'),
+                          opacity: googleReviewsStatus.loading ? 0.65 : 1,
+                          cursor: googleReviewsStatus.loading ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {googleReviewsStatus.loading ? 'Проверяваме…' : 'Обнови статуса'}
+                      </button>
+                    </div>
                   ) : null}
                 </InfoCard>
               </div>
@@ -2632,8 +2745,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     </div>
                     <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.55 }}>
                       Пакет: <strong>{SMS_PACK_CREDITS} SMS за {SMS_PACK_PRICE_EUR} €</strong>.
-                      При режим „24ч + 1ч“ всяка резервация използва <strong>2 SMS</strong>.
-                      При „1 час“ — <strong>1 SMS</strong>. При 0 баланс изпращането спира автоматично.
+                      При режим „24ч + 1ч" всяка резервация използва <strong>2 SMS</strong>.
+                      При „1 час" — <strong>1 SMS</strong>. При 0 баланс изпращането спира автоматично.
                     </p>
                     {smsPendingReminders > 0 ? (
                       <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>
@@ -2747,16 +2860,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
           borderTop: '0.5px solid rgba(0,0,0,0.08)',
         }}>
-          <div style={{ display: 'flex', paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))' }}>
+          <div style={{ display: 'flex', paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}>
             {TAB_BAR_TABS.map(({ id, label, Icon }) => {
               const active = activeTab === id && !navOpen;
               return (
                 <button key={id} type="button" onClick={() => switchTab(id)}
                   style={{
                     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                    padding: '12px 4px 6px', border: 'none', background: 'transparent',
+                    padding: '9px 4px 4px', border: 'none', background: 'transparent',
                     color: '#000',
-                    cursor: 'pointer', minHeight: 58,
+                    cursor: 'pointer', minHeight: 48,
                     WebkitTapHighlightColor: 'transparent',
                     position: 'relative',
                   }}>
@@ -2766,8 +2879,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: active ? 34 : 28,
-                      height: active ? 34 : 28,
+                      width: active ? 30 : 24,
+                      height: active ? 30 : 24,
                       borderRadius: 999,
                       background: active ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' : 'transparent',
                       color: active ? '#fff' : '#000',
@@ -2775,9 +2888,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       transition: 'all 180ms ease',
                     }}
                   >
-                    <Icon size={active ? 22 : 20} strokeWidth={active ? 2.3 : 1.5} />
+                    <Icon size={active ? 18 : 16} strokeWidth={active ? 2.2 : 1.6} />
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, letterSpacing: '-0.01em', color: '#000' }}>{label.split(' ')[0]}</span>
+                  <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: '-0.01em', color: '#000' }}>{label.split(' ')[0]}</span>
                   {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 3, borderRadius: 3, background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }} />}
                 </button>
               );

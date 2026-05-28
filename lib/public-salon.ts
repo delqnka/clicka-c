@@ -1,9 +1,10 @@
 import { sql } from '@/lib/db';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
+import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 import {
   buildStaticMapUrl,
-  fetchGoogleReviewsForPlace,
   resolveGooglePlaceId,
+  type GoogleReviewLite,
 } from '@/lib/google-place-server';
 import { extractHostname, getPlatformSubdomain, isPlatformApexHost } from '@/lib/domain-routing';
 
@@ -117,16 +118,25 @@ export async function getPublicSalonPageData({
     reviews = [];
   }
 
+  await ensureGoogleReviewsSchema().catch(() => {});
+
+  let googleReviews: GoogleReviewLite[] = [];
+  try {
+    const cached = salon.google_reviews_cache;
+    if (Array.isArray(cached) && cached.length > 0) {
+      googleReviews = cached.filter(
+        (r: unknown): r is GoogleReviewLite =>
+          !!r && typeof r === 'object' && 'rating' in r && 'text' in r,
+      );
+    }
+  } catch {
+    googleReviews = [];
+  }
+
   const placeId = await resolveGooglePlaceId({
     explicitPlaceId: typeof salon.google_place_id === 'string' ? salon.google_place_id : '',
     mapsUrl: typeof salon.google_maps_url === 'string' ? salon.google_maps_url : '',
   });
-  const googleReviews = placeId
-    ? await fetchGoogleReviewsForPlace(placeId, {
-        name: typeof salon.name === 'string' ? salon.name : undefined,
-        city: typeof salon.city === 'string' ? salon.city : undefined,
-      })
-    : [];
 
   const lat = salon.latitude != null ? Number(salon.latitude) : NaN;
   const lng = salon.longitude != null ? Number(salon.longitude) : NaN;
