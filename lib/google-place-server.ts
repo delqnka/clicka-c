@@ -10,6 +10,13 @@ export type GoogleReviewsProbe = {
   providerStatus?: string;
 };
 
+type OutscraperPayload = {
+  status?: string;
+  id?: string;
+  results_location?: string;
+  data?: unknown;
+};
+
 export function extractGooglePlaceIdFromMapsUrl(url: string | null | undefined): string | null {
   const raw = String(url ?? '').trim();
   if (!raw) return null;
@@ -41,11 +48,58 @@ export async function resolveGooglePlaceId(options: {
 }): Promise<string | null> {
   const explicit = String(options.explicitPlaceId ?? '').trim();
   if (explicit) return explicit;
+  return extractGooglePlaceIdFromMapsUrl(options.mapsUrl);
+}
 
-  const fromMapsUrl = extractGooglePlaceIdFromMapsUrl(options.mapsUrl);
-  if (fromMapsUrl) return fromMapsUrl;
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
 
-  return null;
+function collectOutscraperRows(input: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(input)) return [];
+  const out: Array<Record<string, unknown>> = [];
+  for (const item of input) {
+    if (!item) continue;
+    if (Array.isArray(item)) {
+      for (const nested of item) {
+        if (nested && typeof nested === 'object') out.push(nested as Record<string, unknown>);
+      }
+      continue;
+    }
+    if (typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    if (Array.isArray(row.reviews_data)) {
+      for (const nested of row.reviews_data) {
+        if (nested && typeof nested === 'object') out.push(nested as Record<string, unknown>);
+      }
+      continue;
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+function mapOutscraperReviews(data: unknown): GoogleReviewLite[] {
+  return collectOutscraperRows(data)
+    .slice(0, 10)
+    .map((r) => ({
+      author_name: String(r.author_title ?? r.reviewer_name ?? r.author_name ?? 'Google потребител').trim(),
+      rating: Math.min(5, Math.max(1, Math.round(Number(r.review_rating ?? r.rating ?? r.stars ?? 5)))),
+      text: String(r.review_text ?? r.text ?? '').trim(),
+    }))
+    .filter((r) => Number.isFinite(r.rating));
+}
+
+async function outscraperGet(url: string, apiKey: string): Promise<OutscraperPayload> {
+  const res = await fetch(url, {
+    headers: { 'X-API-KEY': apiKey },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    console.warn('[outscraper] HTTP', res.status, await res.text().catch(() => ''));
+    throw new Error('outscraper_api_error');
+  }
+  return (await res.json()) as OutscraperPayload;
 }
 
 async function fetchReviewsViaOutscraperQuery(
@@ -62,76 +116,29 @@ async function fetchReviewsViaOutscraperQuery(
   });
 
   try {
-    const res = await fetch(`https://api.app.outscraper.com/maps/reviews-v3?${params}`, {
-      headers: { 'X-API-KEY': key },
-      cache: 'no-store',
-    });
+    const first = await outscraperGet(`https://api.app.outscraper.com/maps/reviews-v3?${params}`, key);
+    const firstStatus = String(first.status ?? '').trim() || 'Success';
+    const firstStatusLower = firstStatus.toLowerCase();
+    const firstReviews = mapOutscraperReviews(first.data);
+    if (firstReviews.length > 0) return { reviews: firstReviews, status: firstStatus };
+    if (firstStatusLower !== 'pending') return { reviews: [], reason: 'outscraper_empty', status: firstStatus };
 
-    if (!res.ok) {
-      console.warn('[outscraper] HTTP', res.status, await res.text().catch(() => ''));
-      return { reviews: [], reason: 'outscraper_api_error' };
+    const requestUrl =
+      String(first.results_location ?? '').trim()
+      || (first.id ? `https://api.app.outscraper.com/requests/${encodeURIComponent(first.id)}` : '');
+    if (!requestUrl) return { reviews: [], reason: 'outscraper_pending', status: 'Pending' };
+
+    for (let i = 0; i < 6; i++) {
+      await delay(2000);
+      const polled = await outscraperGet(requestUrl, key);
+      const polledStatus = String(polled.status ?? '').trim() || 'Pending';
+      const polledStatusLower = polledStatus.toLowerCase();
+      const polledReviews = mapOutscraperReviews(polled.data);
+      if (polledReviews.length > 0) return { reviews: polledReviews, status: polledStatus };
+      if (polledStatusLower === 'success') return { reviews: [], reason: 'outscraper_empty', status: polledStatus };
     }
-
-    const data = (await res.json()) as {
-      status?: string;
-      data?: unknown;
-    };
-
-    const collectRows = (input: unknown): Array<Record<string, unknown>> => {
-      if (!Array.isArray(input)) return [];
-      const out: Array<Record<string, unknown>> = [];
-      for (const item of input) {
-        if (!item) continue;
-        // Variant A: data: [[{ review_rating, review_text, ... }]]
-        if (Array.isArray(item)) {
-          for (const nested of item) {
-            if (nested && typeof nested === 'object') out.push(nested as Record<string, unknown>);
-          }
-          continue;
-        }
-        if (typeof item !== 'object') continue;
-        const row = item as Record<string, unknown>;
-        // Variant B: data: [{ reviews_data: [...] }]
-        if (Array.isArray(row.reviews_data)) {
-          for (const nested of row.reviews_data) {
-            if (nested && typeof nested === 'object') out.push(nested as Record<string, unknown>);
-          }
-          continue;
-        }
-        // Variant C: data: [{ review_rating, review_text, ... }]
-        out.push(row);
-      }
-      return out;
-    };
-
-    const rawRows = collectRows(data.data);
-    if (rawRows.length === 0) {
-      if (String(data.status ?? '').trim().toLowerCase() === 'pending') {
-        return { reviews: [], reason: 'outscraper_pending', status: String(data.status ?? '').trim() };
-      }
-      return { reviews: [], reason: 'outscraper_empty', status: String(data.status ?? '').trim() };
-    }
-
-    const reviews: GoogleReviewLite[] = rawRows
-      .slice(0, 10)
-      .map((r) => ({
-        author_name: String(
-          r.author_title ?? r.reviewer_name ?? r.author_name ?? 'Google потребител'
-        ).trim(),
-        rating: Math.min(
-          5,
-          Math.max(
-            1,
-            Math.round(Number(r.review_rating ?? r.rating ?? r.stars ?? 5))
-          )
-        ),
-        text: String(r.review_text ?? r.text ?? '').trim(),
-      }))
-      .filter((r) => Number.isFinite(r.rating));
-
-    return { reviews, status: String(data.status ?? '').trim() };
-  } catch (err) {
-    console.warn('[outscraper] fetch error:', err);
+    return { reviews: [], reason: 'outscraper_pending', status: 'Pending' };
+  } catch {
     return { reviews: [], reason: 'outscraper_api_error' };
   }
 }
@@ -142,7 +149,6 @@ async function fetchReviewsViaOutscraper(
   const id = placeId.trim();
   if (!id) return { reviews: [], reason: 'missing_place_id', status: '' };
 
-  // Outscraper accepts different query styles depending on place data shape.
   const attempts = [`place_id:${id}`, id];
   let sawPending = false;
   let sawSuccessEmpty = false;
@@ -162,14 +168,12 @@ async function fetchReviewsViaOutscraper(
     }
   }
 
-  if (sawSuccessEmpty) return { reviews: [], reason: 'outscraper_empty', status: lastStatus };
-  if (sawPending) return { reviews: [], reason: 'outscraper_pending', status: lastStatus };
-  return { reviews: [], reason: 'outscraper_empty', status: lastStatus };
+  if (sawSuccessEmpty) return { reviews: [], reason: 'outscraper_empty', status: lastStatus || 'Success' };
+  if (sawPending) return { reviews: [], reason: 'outscraper_pending', status: lastStatus || 'Pending' };
+  return { reviews: [], reason: 'outscraper_empty', status: lastStatus || 'Success' };
 }
 
-export async function probeGoogleReviewsForPlace(
-  placeId: string,
-): Promise<GoogleReviewsProbe> {
+export async function probeGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewsProbe> {
   const id = placeId.trim();
   if (!id) return { reviews: [], source: 'none', reason: 'missing_place_id' };
 
@@ -177,7 +181,6 @@ export async function probeGoogleReviewsForPlace(
   if (result.reviews.length > 0) {
     return { reviews: result.reviews, source: 'outscraper', providerStatus: result.status };
   }
-
   return {
     reviews: [],
     source: 'none',
@@ -186,10 +189,8 @@ export async function probeGoogleReviewsForPlace(
   };
 }
 
-/** Outscraper — изисква OUTSCRAPER_API_KEY и валиден place_id. */
-export async function fetchGoogleReviewsForPlace(
-  placeId: string,
-): Promise<GoogleReviewLite[]> {
+/** Outscraper - requires OUTSCRAPER_API_KEY and valid place_id. */
+export async function fetchGoogleReviewsForPlace(placeId: string): Promise<GoogleReviewLite[]> {
   const id = placeId.trim();
   if (!id) return [];
 
@@ -200,7 +201,6 @@ export async function fetchGoogleReviewsForPlace(
   )();
 
   if (probe.reviews.length > 0) return probe.reviews;
-
   const fresh = await probeGoogleReviewsForPlace(id);
   return fresh.reviews;
 }
