@@ -36,7 +36,9 @@ export function PublicVisitorFaq({
   visitorInfo,
   visitorAdditionalInfo,
 }: PublicVisitorFaqProps) {
-  const amenityLines = getPublicVisitorAmenityLines(visitorInfo);
+  const amenityLines = getPublicVisitorAmenityLines(visitorInfo).filter(
+    (line) => !line.label.toLowerCase().includes('плащане с карта'),
+  );
   const [openFaqId, setOpenFaqId] = useState<string | null>(faqItems[0]?.id ?? null);
 
   if (amenityLines.length === 0 && !visitorAdditionalInfo && faqItems.length === 0) {

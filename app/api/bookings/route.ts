@@ -22,6 +22,31 @@ function formatBgDateDMY(dateStr: string): string {
   return d.toLocaleDateString('bg-BG');
 }
 
+function formatLegacyDateDMY(dateStr: string): string | null {
+  const d = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String(d.getFullYear());
+  return `${day}.${month}.${year}`;
+}
+
+function parseTimeToMinutes(raw: unknown): number | null {
+  const value = String(raw ?? '').trim();
+  if (!value) return null;
+  const match = value.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function isCancelledStatus(raw: unknown): boolean {
+  const s = String(raw ?? '').trim().toLowerCase();
+  return s === 'cancelled' || s === 'canceled' || s === 'отказана' || s === 'анулирана';
+}
+
 async function resolveSalonFromRequest(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const lookup = await resolveSalonBySlugOrHost({
@@ -58,18 +83,28 @@ export async function GET(request: NextRequest) {
     const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
     const date = String(requestSearchParams.get('date') ?? '').trim();
     if (!date) return NextResponse.json({ occupied: [] });
+    const legacyDate = formatLegacyDateDMY(date);
     const occupiedRows = await sql`
-      SELECT time, service_duration
+      SELECT time, service_duration, status
       FROM bookings
       WHERE salon_id = ${salonId}
-        AND date = ${date}
-        AND status <> 'cancelled'
+        AND date IN (${date}, ${legacyDate ?? date})
       ORDER BY time ASC
     `;
-    const occupied = occupiedRows.map((r) => ({
-      time: String((r as Record<string, unknown>).time ?? ''),
-      duration: Math.max(5, Number((r as Record<string, unknown>).service_duration ?? 30) || 30),
-    }));
+    const occupied = occupiedRows
+      .filter((r) => !isCancelledStatus((r as Record<string, unknown>).status))
+      .map((r) => {
+        const row = r as Record<string, unknown>;
+        const mins = parseTimeToMinutes(row.time);
+        if (mins == null) return null;
+        const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+        const mm = String(mins % 60).padStart(2, '0');
+        return {
+          time: `${hh}:${mm}`,
+          duration: Math.max(5, Number(row.service_duration ?? 30) || 30),
+        };
+      })
+      .filter((x): x is { time: string; duration: number } => x != null);
     return NextResponse.json({ occupied });
   }
 
@@ -262,20 +297,23 @@ export async function POST(request: NextRequest) {
       Number.parseInt(time.slice(0, 2), 10) * 60 + Number.parseInt(time.slice(3, 5), 10);
     const requestedDurationMinutes = Math.max(5, durationValue ?? 30);
     const requestedEndMinutes = requestedStartMinutes + requestedDurationMinutes;
+    const legacyDate = formatLegacyDateDMY(date);
     const overlaps = await sql`
-      SELECT id
+      SELECT id, time, service_duration, status
       FROM bookings
       WHERE salon_id = ${salonId}
-        AND date = ${date}
-        AND status <> 'cancelled'
-        AND (
-          (split_part(time, ':', 1)::int * 60 + split_part(time, ':', 2)::int) < ${requestedEndMinutes}
-          AND
-          ((split_part(time, ':', 1)::int * 60 + split_part(time, ':', 2)::int) + GREATEST(5, COALESCE(service_duration, 30))) > ${requestedStartMinutes}
-        )
-      LIMIT 1
+        AND date IN (${date}, ${legacyDate ?? date})
     `;
-    if (overlaps.length > 0) {
+    const hasOverlap = overlaps.some((row) => {
+      const r = row as Record<string, unknown>;
+      if (isCancelledStatus(r.status)) return false;
+      const start = parseTimeToMinutes(r.time);
+      if (start == null) return false;
+      const duration = Math.max(5, Number(r.service_duration ?? 30) || 30);
+      const end = start + duration;
+      return start < requestedEndMinutes && end > requestedStartMinutes;
+    });
+    if (hasOverlap) {
       return NextResponse.json(
         { error: 'Този час току-що беше зает. Моля изберете друг свободен час.' },
         { status: 409 },
