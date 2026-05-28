@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { normalizeR2PublicBase } from '@/lib/image-delivery';
 
 const r2Endpoint = process.env.R2_ENDPOINT || process.env.CLOUDFLARE_R2_ENDPOINT;
 const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
@@ -28,8 +29,20 @@ export async function uploadToR2(
       Key: key,
       Body: file,
       ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
     })
   );
+
+  const publicBase = normalizeR2PublicBase(
+    process.env.R2_PUBLIC_URL ?? process.env.CLOUDFLARE_R2_PUBLIC_URL,
+  );
+  if (publicBase) {
+    const encoded = key
+      .split('/')
+      .map((part) => encodeURIComponent(part))
+      .join('/');
+    return `${publicBase}/${encoded}`;
+  }
 
   return `/api/image?key=${encodeURIComponent(key)}`;
 }

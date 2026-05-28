@@ -122,6 +122,9 @@ const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings', 'c
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
 
+const ICON_GRADIENT = 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)';
+const PWA_HOME_STORAGE_KEY = (slug: string) => `admin-pwa-homescreen:${slug}`;
+
 const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
   images:     ['#FF9966', '#FF5E62'],
   specialist: ['#a955ff', '#ea51ff'],
@@ -302,6 +305,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
+  const [pwaOnHomeScreen, setPwaOnHomeScreen] = useState(false);
+  const mobileNavSheetRef = useRef<HTMLDivElement>(null);
+  const sheetDragRef = useRef({ startY: 0, offset: 0, dragging: false });
   const [legalInfo, setLegalInfo] = useState<LegalInfoStored>(
     () => initialSite.legalInfo ?? defaultLegalInfoStored(),
   );
@@ -517,15 +523,28 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (standalone) return;
+    if (standalone) {
+      setPwaOnHomeScreen(true);
+      setShowInstallButton(false);
+      return;
+    }
+    try {
+      if (localStorage.getItem(PWA_HOME_STORAGE_KEY(slug)) === '1') setPwaOnHomeScreen(true);
+    } catch { /* ignore */ }
     const ua = window.navigator.userAgent.toLowerCase();
     if (/iphone|ipad|ipod/.test(ua)) { setShowInstallButton(true); return; }
     const onPrompt = (e: Event) => { e.preventDefault(); setInstallPromptEvent(e as BeforeInstallPromptEvent); setShowInstallButton(true); };
-    const onInstalled = () => { setInstallPromptEvent(null); setShowInstallButton(false); setNotice('Приложението е добавено.'); };
+    const onInstalled = () => {
+      setInstallPromptEvent(null);
+      setShowInstallButton(false);
+      setPwaOnHomeScreen(true);
+      try { localStorage.setItem(PWA_HOME_STORAGE_KEY(slug), '1'); } catch { /* ignore */ }
+      setNotice('Приложението е добавено.');
+    };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled); };
-  }, []);
+  }, [slug]);
 
   useEffect(() => {
     if (!isMobile || !navOpen || typeof document === 'undefined') return;
@@ -1262,14 +1281,75 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     setPriceListUrls(next);
   }
 
-  async function installAsApp() {
-    setError('');
-    if (/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) { setNotice('На iPhone: Share → Add to Home Screen.'); return; }
-    if (!installPromptEvent) { setNotice('Инсталацията не е налична. Пробвай от Chrome.'); return; }
-    await installPromptEvent.prompt();
-    const r = await installPromptEvent.userChoice;
-    if (r.outcome === 'accepted') { setNotice('Приложението се инсталира.'); setShowInstallButton(false); setInstallPromptEvent(null); }
+  function markPwaOnHomeScreen() {
+    setPwaOnHomeScreen(true);
+    try { localStorage.setItem(PWA_HOME_STORAGE_KEY(slug), '1'); } catch { /* ignore */ }
   }
+
+  function triggerPwaInstall() {
+    if (pwaOnHomeScreen) return;
+    setError('');
+    const ua = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) {
+      setNotice('На iPhone: Share → „Добави на началния екран“.');
+      return;
+    }
+    const ev = installPromptEvent;
+    if (!ev) {
+      setNotice('От менюто на браузъра избери „Инсталирай“ или „Добави на началния екран“.');
+      return;
+    }
+    void ev
+      .prompt()
+      .then(() => ev.userChoice)
+      .then((r) => {
+        if (r.outcome !== 'accepted') return;
+        markPwaOnHomeScreen();
+        setNotice('Приложението се добавя на екрана.');
+        setInstallPromptEvent(null);
+      })
+      .catch(() => setNotice('Неуспешна инсталация. Опитай отново.'));
+  }
+
+  const onSheetDragStart = useCallback((clientY: number) => {
+    sheetDragRef.current = { startY: clientY, offset: 0, dragging: true };
+    const el = mobileNavSheetRef.current;
+    if (el) el.style.transition = 'none';
+  }, []);
+
+  const onSheetDragMove = useCallback((clientY: number) => {
+    const drag = sheetDragRef.current;
+    if (!drag.dragging) return;
+    const offset = Math.max(0, clientY - drag.startY);
+    drag.offset = offset;
+    const el = mobileNavSheetRef.current;
+    if (el) el.style.transform = `translateY(${offset}px)`;
+  }, []);
+
+  const onSheetDragEnd = useCallback(() => {
+    const drag = sheetDragRef.current;
+    const el = mobileNavSheetRef.current;
+    if (el) {
+      el.style.transition = 'transform 220ms cubic-bezier(0.32, 0.72, 0, 1)';
+      el.style.transform = drag.offset > 72 ? 'translateY(100%)' : '';
+      if (drag.offset > 72) {
+        window.setTimeout(() => {
+          setNavOpen(false);
+          if (mobileNavSheetRef.current) {
+            mobileNavSheetRef.current.style.transition = '';
+            mobileNavSheetRef.current.style.transform = '';
+          }
+        }, 220);
+      } else {
+        window.setTimeout(() => {
+          if (mobileNavSheetRef.current) mobileNavSheetRef.current.style.transition = '';
+        }, 220);
+      }
+    } else if (drag.offset > 72) {
+      setNavOpen(false);
+    }
+    sheetDragRef.current = { startY: 0, offset: 0, dragging: false };
+  }, []);
 
   /* ── Shared styles ── */
   const inp: CSSProperties = {
@@ -1541,8 +1621,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 width: isMobile ? 36 : undefined, height: isMobile ? 36 : undefined,
                 borderRadius: isMobile ? 10 : T.radiusSm,
                 border: isMobile ? 'none' : `1px solid ${T.border}`,
-                background: isMobile ? '#F4F4F5' : 'transparent',
-                textDecoration: 'none', color: T.muted,
+                background: isMobile ? ICON_GRADIENT : 'transparent',
+                boxShadow: isMobile ? '0 6px 16px rgba(124,58,237,0.28)' : 'none',
+                textDecoration: 'none', color: isMobile ? '#fff' : T.muted,
                 padding: isMobile ? 0 : '6px 12px',
                 fontSize: 13, cursor: 'pointer',
               }}
@@ -1551,7 +1632,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               {!isMobile && <span style={{ marginLeft: 6 }}>Виж сайта</span>}
             </a>
             {showInstallButton && !isMobile && (
-              <button type="button" onClick={() => void installAsApp()} style={btn('sm-ghost')}>
+              <button type="button" onClick={triggerPwaInstall} style={btn('sm-ghost')}>
                 Инсталирай
               </button>
             )}
@@ -1599,9 +1680,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             }}
           />
           <div
+            ref={mobileNavSheetRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Още секции"
+            aria-label="Навигация"
             style={{
               position: 'fixed',
               left: 0,
@@ -1617,25 +1699,36 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               flexDirection: 'column',
               boxShadow: '0 -12px 40px rgba(0,0,0,0.12)',
               pointerEvents: 'auto',
+              touchAction: 'pan-y',
             }}
           >
             <button
               type="button"
               aria-label="Затвори менюто"
               className="admin-sheet-handle"
-              onClick={() => setNavOpen(false)}
+              onClick={() => {
+                if (sheetDragRef.current.offset > 10) return;
+                setNavOpen(false);
+              }}
+              onTouchStart={(e) => onSheetDragStart(e.touches[0]?.clientY ?? 0)}
+              onTouchMove={(e) => {
+                onSheetDragMove(e.touches[0]?.clientY ?? 0);
+                if (sheetDragRef.current.offset > 8) e.preventDefault();
+              }}
+              onTouchEnd={() => onSheetDragEnd()}
+              onTouchCancel={() => onSheetDragEnd()}
               style={{
                 display: 'flex',
                 width: '100%',
                 minHeight: 48,
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '14px 16px 10px',
+                padding: '14px 16px 8px',
                 border: 'none',
                 background: 'transparent',
-                cursor: 'pointer',
+                cursor: 'grab',
                 flexShrink: 0,
-                touchAction: 'manipulation',
+                touchAction: 'none',
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
@@ -1644,10 +1737,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 style={{ width: 44, height: 5, borderRadius: 3, background: '#A1A1AA', pointerEvents: 'none' }}
               />
             </button>
-
-            <p style={{ margin: '0 16px 10px', fontSize: 13, fontWeight: 600, color: T.muted, letterSpacing: '0.02em' }}>
-              Още секции
-            </p>
 
             <div
               style={{
@@ -1683,6 +1772,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       cursor: 'pointer',
                       minHeight: 88,
                       WebkitTapHighlightColor: 'transparent',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)',
                     }}
                   >
                     <div
@@ -1691,7 +1781,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         height: 36,
                         borderRadius: 11,
                         background: active
-                          ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)'
+                          ? ICON_GRADIENT
                           : '#fff',
                         display: 'flex',
                         alignItems: 'center',
@@ -1725,6 +1815,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 flexShrink: 0,
                 display: 'flex',
                 gap: 8,
+                alignItems: 'center',
               }}
             >
               <a
@@ -1738,43 +1829,58 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 8,
-                  padding: '12px 10px',
+                  padding: '11px 10px',
                   borderRadius: 12,
                   textDecoration: 'none',
-                  color: T.text,
+                  color: '#fff',
                   fontSize: 14,
-                  fontWeight: 500,
-                  background: '#F4F4F5',
+                  fontWeight: 600,
+                  background: ICON_GRADIENT,
+                  boxShadow: '0 6px 16px rgba(124,58,237,0.28)',
                 }}
               >
                 <ExternalLink size={16} /> Виж сайта
               </a>
-              {showInstallButton ? (
+              {!pwaOnHomeScreen ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setNavOpen(false);
-                    void installAsApp();
-                  }}
+                  aria-label="Добави на началния екран"
+                  onClick={triggerPwaInstall}
                   style={{
-                    flex: 1,
+                    flexShrink: 0,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 8,
-                    padding: '12px 10px',
+                    width: 44,
+                    height: 44,
                     borderRadius: 12,
-                    border: 'none',
-                    background: '#F4F4F5',
+                    border: `1px solid ${T.border}`,
+                    background: '#fff',
                     color: T.text,
-                    fontSize: 14,
-                    fontWeight: 500,
                     cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                   }}
                 >
-                  <Plus size={16} /> На екрана
+                  <Plus size={18} strokeWidth={2} />
                 </button>
-              ) : null}
+              ) : (
+                <div
+                  aria-label="Добавено на началния екран"
+                  style={{
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    border: '1px solid #BBF7D0',
+                    background: '#F0FDF4',
+                  }}
+                >
+                  <Check size={20} strokeWidth={2.5} style={{ color: '#22C55E' }} />
+                </div>
+              )}
             </div>
           </div>
         </>

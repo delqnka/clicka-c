@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { IMAGE_DELIVERY_WIDTHS, snapImageWidth } from '@/lib/image-delivery';
 
 const r2Endpoint = process.env.R2_ENDPOINT || process.env.CLOUDFLARE_R2_ENDPOINT;
 const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
 const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
 const r2Bucket = process.env.R2_BUCKET || process.env.CLOUDFLARE_R2_BUCKET;
+
+const ALLOWED_WIDTHS = new Set<number>(IMAGE_DELIVERY_WIDTHS);
 
 const r2 = new S3Client({
   region: 'auto',
@@ -17,12 +20,15 @@ const r2 = new S3Client({
   },
 });
 
-const ALLOWED_WIDTHS = new Set([128, 320, 480, 640, 768, 1024, 1280]);
-
-const CACHE_MAX_ENTRIES = 200;
-const CACHE_MAX_BYTES = 150 * 1024 * 1024;
+const CACHE_MAX_ENTRIES = 400;
+const CACHE_MAX_BYTES = 200 * 1024 * 1024;
 const processedCache = new Map<string, { buf: Buffer; type: string; size: number }>();
 let cacheTotalBytes = 0;
+
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=31536000, immutable',
+  Vary: 'Accept',
+} as const;
 
 function evictIfNeeded(needed: number) {
   while (
@@ -36,6 +42,15 @@ function evictIfNeeded(needed: number) {
   }
 }
 
+function cacheAndRespond(cacheKey: string, buf: Buffer, type: string) {
+  evictIfNeeded(buf.length);
+  processedCache.set(cacheKey, { buf, type, size: buf.length });
+  cacheTotalBytes += buf.length;
+  return new NextResponse(buf as unknown as BodyInit, {
+    headers: { 'Content-Type': type, ...CACHE_HEADERS },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const key = searchParams.get('key');
@@ -45,13 +60,16 @@ export async function GET(request: NextRequest) {
   }
 
   const wParam = parseInt(searchParams.get('w') ?? '', 10);
-  const targetWidth = ALLOWED_WIDTHS.has(wParam) ? wParam : 0;
-  const quality = Math.min(Math.max(parseInt(searchParams.get('q') ?? '70', 10), 10), 100);
+  const snapped = snapImageWidth(wParam);
+  const targetWidth = ALLOWED_WIDTHS.has(snapped) ? snapped : 0;
+  const qDefault =
+    targetWidth > 0 && targetWidth <= 480 ? 64 : targetWidth > 0 && targetWidth <= 768 ? 68 : 72;
+  const quality = Math.min(Math.max(parseInt(searchParams.get('q') ?? String(qDefault), 10), 10), 100);
 
   const accept = request.headers.get('accept') ?? '';
-  const supportsAvif = accept.includes('image/avif');
   const supportsWebp = accept.includes('image/webp');
-  const fmt = supportsAvif ? 'avif' : supportsWebp ? 'webp' : 'jpeg';
+  /** WebP only on the image API — AVIF encode is much slower on cold serverless invocations (hurts LCP). */
+  const fmt = supportsWebp ? 'webp' : 'jpeg';
 
   const cacheKey = `${key}:${targetWidth}:${fmt}:${quality}`;
   const cached = processedCache.get(cacheKey);
@@ -59,32 +77,29 @@ export async function GET(request: NextRequest) {
     processedCache.delete(cacheKey);
     processedCache.set(cacheKey, cached);
     return new NextResponse(cached.buf as unknown as BodyInit, {
-      headers: {
-        'Content-Type': cached.type,
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Vary': 'Accept',
-      },
+      headers: { 'Content-Type': cached.type, ...CACHE_HEADERS },
     });
   }
 
   try {
-    const command = new GetObjectCommand({
-      Bucket: r2Bucket!,
-      Key: key,
-    });
-
-    const object = await r2.send(command);
+    const object = await r2.send(
+      new GetObjectCommand({
+        Bucket: r2Bucket!,
+        Key: key,
+      })
+    );
 
     if (!object.Body) {
       return NextResponse.json({ error: 'Файлът не е намерен' }, { status: 404 });
     }
 
     const bytes = await object.Body.transformToByteArray();
+    const buffer = Buffer.from(bytes);
     const contentType = object.ContentType || 'image/jpeg';
     const isImage = contentType.startsWith('image/') && !contentType.includes('svg');
 
     if (!isImage) {
-      return new NextResponse(Buffer.from(bytes), {
+      return new NextResponse(buffer, {
         headers: {
           'Content-Type': contentType,
           'Cache-Control': 'public, max-age=31536000, immutable',
@@ -92,37 +107,51 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    let pipeline = sharp(Buffer.from(bytes));
-
-    if (targetWidth > 0) {
-      pipeline = pipeline.resize({ width: targetWidth, withoutEnlargement: true });
+    if (targetWidth === 0) {
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
     }
 
+    const meta = await sharp(buffer, { failOn: 'none' }).metadata();
+    const sourceWidth = meta.width ?? 0;
+
+    const alreadyWebp = contentType === 'image/webp';
+    const skipReencode =
+      sourceWidth > 0 &&
+      sourceWidth <= targetWidth &&
+      ((fmt === 'webp' && alreadyWebp) || (fmt === 'jpeg' && contentType === 'image/jpeg'));
+
+    if (skipReencode) {
+      return cacheAndRespond(cacheKey, buffer, contentType);
+    }
+
+    let pipeline = sharp(buffer, { failOn: 'none' }).rotate();
+
+    if (targetWidth > 0 && (sourceWidth === 0 || sourceWidth > targetWidth)) {
+      pipeline = pipeline.resize({
+        width: targetWidth,
+        withoutEnlargement: true,
+        fastShrinkOnLoad: true,
+      });
+    }
+
+    const thumbQ = targetWidth <= 320 ? Math.min(quality, 66) : quality;
+
     let outputType: string;
-    if (supportsAvif) {
-      pipeline = pipeline.avif({ quality });
-      outputType = 'image/avif';
-    } else if (supportsWebp) {
-      pipeline = pipeline.webp({ quality });
+    if (supportsWebp) {
+      pipeline = pipeline.webp({ quality: thumbQ, effort: 2 });
       outputType = 'image/webp';
     } else {
-      pipeline = pipeline.jpeg({ quality, mozjpeg: true });
+      pipeline = pipeline.jpeg({ quality: thumbQ, mozjpeg: true });
       outputType = 'image/jpeg';
     }
 
     const optimized = await pipeline.toBuffer();
-
-    evictIfNeeded(optimized.length);
-    processedCache.set(cacheKey, { buf: optimized, type: outputType, size: optimized.length });
-    cacheTotalBytes += optimized.length;
-
-    return new NextResponse(optimized as unknown as BodyInit, {
-      headers: {
-        'Content-Type': outputType,
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Vary': 'Accept',
-      },
-    });
+    return cacheAndRespond(cacheKey, optimized, outputType);
   } catch {
     return NextResponse.json({ error: 'Грешка при зареждане на файла' }, { status: 500 });
   }

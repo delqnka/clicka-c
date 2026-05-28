@@ -1,7 +1,7 @@
 'use client';
 
-import { ImagePlus, Plus, Trash2, X } from 'lucide-react';
-import type { CSSProperties } from 'react';
+import { Camera, Plus, Trash2, X } from 'lucide-react';
+import { useState, type CSSProperties } from 'react';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer, offerSpotsLeft } from '@/lib/salon-offers';
 
@@ -73,8 +73,35 @@ export function SalonOffersSection({
   onUploadImages,
   onSave,
 }: Props) {
+  const [durationDrafts, setDurationDrafts] = useState<Record<number, string>>({});
+
   function updateOffer(index: number, patch: Partial<AdminSalonOffer>) {
     onChange(offers.map((o, i) => (i === index ? { ...o, ...patch } : o)));
+  }
+
+  function durationDisplay(index: number, durationMin: number): string {
+    if (durationDrafts[index] !== undefined) return durationDrafts[index];
+    return String(durationMin);
+  }
+
+  function onDurationChange(index: number, raw: string) {
+    setDurationDrafts((prev) => ({ ...prev, [index]: raw }));
+    if (raw.trim() === '') return;
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 0) updateOffer(index, { durationMin: n });
+  }
+
+  function onDurationBlur(index: number) {
+    const raw = durationDrafts[index];
+    setDurationDrafts((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+    const parsed = raw !== undefined ? Number(raw) : offers[index]?.durationMin;
+    const final =
+      Number.isFinite(parsed) && parsed >= 5 ? Math.round(parsed) : 60;
+    updateOffer(index, { durationMin: final });
   }
 
   function removeOffer(index: number) {
@@ -252,15 +279,17 @@ export function SalonOffersSection({
                   />
                 </label>
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Минути</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Продължителност</span>
                   <input
                     type="number"
-                    min={15}
+                    inputMode="numeric"
+                    min={5}
+                    step={5}
                     style={inp}
-                    value={offer.durationMin}
-                    onChange={(e) =>
-                      updateOffer(i, { durationMin: Math.max(15, Number(e.target.value) || 60) })
-                    }
+                    value={durationDisplay(i, offer.durationMin)}
+                    onChange={(e) => onDurationChange(i, e.target.value)}
+                    onBlur={() => onDurationBlur(i)}
+                    placeholder="мин."
                   />
                 </label>
               </div>
@@ -321,16 +350,18 @@ export function SalonOffersSection({
                     style={{
                       width: 72,
                       height: 72,
-                      borderRadius: 12,
+                      borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: uploadBusy ? 'wait' : 'pointer',
-                      background: 'linear-gradient(145deg, #FDF4FF 0%, #F5F3FF 100%)',
+                      background: 'transparent',
+                      border: '1.5px dashed #D4D4D8',
                       opacity: uploadBusy ? 0.6 : 1,
+                      transition: 'border-color 160ms ease, transform 160ms ease',
                     }}
                   >
-                    <ImagePlus size={24} strokeWidth={1.75} color="#7C3AED" />
+                    <Camera size={22} strokeWidth={1.85} color="#18181B" aria-hidden />
                     <input
                       type="file"
                       accept="image/*"

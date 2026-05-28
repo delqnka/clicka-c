@@ -135,14 +135,14 @@ function wireMediaUri(raw: string | null | undefined): string {
   return s;
 }
 
-function optimizedSrc(src: string, w: number): string {
-  return publicImageUrl(src, { width: w, format: 'webp' });
+function optimizedSrc(src: string, w: number, quality = 68): string {
+  return publicImageUrl(src, { width: w, format: 'webp', quality });
 }
 
-const HERO_SRCSET_WIDTHS = [480, 640, 768, 1024, 1280] as const;
+const HERO_SRCSET_WIDTHS = [480, 768, 1280] as const;
 
-function heroSrcSet(src: string): string {
-  return publicImageSrcSet(src, HERO_SRCSET_WIDTHS, 'webp');
+function heroSrcSet(src: string, quality = 68): string {
+  return publicImageSrcSet(src, HERO_SRCSET_WIDTHS, 'webp', quality);
 }
 
 function salonPublicInstagramUrl(handle: string | null | undefined): string | null {
@@ -337,7 +337,8 @@ export default function SalonPublicParity({
   tabParam: tabParamProp,
   staticMapUrl,
   disableStickySectionTabs = false,
-}: SalonPublicParityProps) {
+  children,
+}: SalonPublicParityProps & { children?: ReactNode }) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
   const tabParam = (tabParamProp ?? '').trim();
 
@@ -1144,18 +1145,21 @@ export default function SalonPublicParity({
             <Share2 className="h-5 w-5" aria-hidden />
           </button>
         </div>
+        {children ? <div className="md:hidden">{children}</div> : null}
         {heroUris.length > 0 ? (
-          <SalonGalleryMosaic
-            uris={heroUris}
-            onOpenGallery={(i) => setGalleryModal({ uris: heroUris, index: i })}
-            ringClass={ringClass}
-            salonName={name}
-          />
-        ) : (
+          <div className={children ? 'hidden md:block' : undefined}>
+            <SalonGalleryMosaic
+              uris={heroUris}
+              onOpenGallery={(i) => setGalleryModal({ uris: heroUris, index: i })}
+              ringClass={ringClass}
+              salonName={name}
+            />
+          </div>
+        ) : !children ? (
           <div className="flex h-44 items-center justify-center rounded-2xl border border-black/10 bg-[#fafafa] text-sm text-black/45 md:h-56">
             Няма снимки
           </div>
-        )}
+        ) : null}
       </div>
 
       {!disableStickySectionTabs && showStickySectionTabs ? (

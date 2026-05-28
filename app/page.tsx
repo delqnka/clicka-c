@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import SalonPublicParity from '@/app/components/SalonPublicParity';
 import MarketingHomePage from '@/app/components/HomePage';
+import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
 import { extractHostname, isPlatformApexHost, getPrimaryPublicUrl } from '@/lib/domain-routing';
+import { r2PublicBase } from '@/lib/image-delivery';
+import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 import { getMarketingActivity } from '@/lib/marketing-activity';
@@ -87,26 +90,25 @@ export default async function HomePage() {
     const galleryRaw = Array.isArray(salonRecord.gallery_images)
       ? salonRecord.gallery_images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
       : [];
+    const salonName = String(salonRecord.name ?? 'Салон');
     const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
-    const lcpHref = lcpImage
-      ? (lcpImage.includes('?') ? `${lcpImage}&w=768` : `${lcpImage}?w=768`)
-      : null;
+    const lcpHref = lcpImage ? publicImageUrl(lcpImage, { width: 480, format: 'webp', quality: 64 }) : null;
+    const lcpSrcSet = lcpImage ? publicImageSrcSet(lcpImage, [480, 768] as const, 'webp', 64) : '';
+    const r2Origin = r2PublicBase();
 
     return (
       <>
-        {lcpHref && (
+        {r2Origin ? <link rel="preconnect" href={r2Origin} crossOrigin="anonymous" /> : null}
+        {lcpHref ? (
           <link
             rel="preload"
             as="image"
             href={lcpHref}
-            imageSrcSet={[480, 640, 768, 1024, 1280].map(w => {
-              const src = lcpImage!.includes('?') ? `${lcpImage}&w=${w}` : `${lcpImage}?w=${w}`;
-              return `${src} ${w}w`;
-            }).join(', ')}
-            imageSizes="(max-width: 768px) 100vw, 768px"
+            {...(lcpSrcSet ? { imageSrcSet: lcpSrcSet } : {})}
+            imageSizes="100vw"
             fetchPriority="high"
           />
-        )}
+        ) : null}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -118,7 +120,9 @@ export default async function HomePage() {
           reviews={pageData.reviews as never}
           googleReviews={pageData.googleReviews}
           staticMapUrl={pageData.staticMapUrl}
-        />
+        >
+          {lcpImage ? <SalonHeroLcp src={lcpImage} alt={salonName} /> : null}
+        </SalonPublicParity>
       </>
     );
   }

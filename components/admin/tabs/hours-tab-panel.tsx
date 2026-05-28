@@ -7,6 +7,8 @@ import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
 
+const TIME_TAB_SHADOW = '0 4px 14px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)';
+
 export function HoursTabPanel({
   site,
   setSite,
@@ -24,43 +26,69 @@ export function HoursTabPanel({
   busyKey: string;
   saveHours: () => void;
 }) {
+  const timeTabInp = (extra?: CSSProperties): CSSProperties => ({
+    ...inp,
+    width: 'auto',
+    flex: 1,
+    minWidth: 0,
+    minHeight: isMobile ? 36 : undefined,
+    padding: isMobile ? '8px 6px' : inp.padding,
+    fontSize: isMobile ? 14 : inp.fontSize,
+    textAlign: 'center',
+    boxShadow: TIME_TAB_SHADOW,
+    ...extra,
+  });
+
   return (
     <AdminSection
       title="Работно време"
-      desc="Настрой часовете и блокирай конкретни дни/часове."
       action={
         <button type="button" onClick={saveHours} style={btn('primary')} disabled={busyKey === 'hours'}>
           {busyKey === 'hours' ? 'Запазваме…' : 'Запази'}
         </button>
       }
     >
-      <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : '1fr',
+          gap: isMobile ? 8 : 8,
+        }}
+      >
         {ADMIN_DAYS.map((day) => {
           const d = site.workingHours[day.key];
+          const dayLabel = isMobile ? day.shortLabel : day.label;
           return (
             <div
               key={day.key}
               style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '130px 1fr auto auto',
-                gap: isMobile ? 12 : 10,
-                alignItems: 'center',
-                padding: isMobile ? '16px 18px' : '12px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: isMobile ? 8 : 0,
+                padding: isMobile ? '10px 10px' : '10px 14px',
                 border: isMobile ? 'none' : `1px solid ${ADMIN_T.border}`,
-                borderRadius: isMobile ? 18 : ADMIN_T.radiusSm,
+                borderRadius: isMobile ? 14 : ADMIN_T.radiusSm,
                 background: ADMIN_T.surface,
-                boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                boxShadow: isMobile ? TIME_TAB_SHADOW : 'none',
                 opacity: d.closed ? 0.5 : 1,
                 transition: 'opacity 200ms ease',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: isMobile ? 16 : 14, fontWeight: isMobile ? 600 : 500, letterSpacing: '-0.01em' }}>
-                  {day.label}
+              {isMobile ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {dayLabel}
                 </span>
-                {isMobile ? (
                   <button
                     type="button"
+                    aria-label={d.closed ? 'Отвори' : 'Затвори'}
                     onClick={() =>
                       setSite((p) => ({
                         ...p,
@@ -71,34 +99,35 @@ export function HoursTabPanel({
                       }))
                     }
                     style={{
-                      width: 48,
-                      height: 28,
-                      borderRadius: 14,
+                      width: 40,
+                      height: 22,
+                      borderRadius: 11,
                       border: 'none',
                       background: d.closed ? '#E5E7EB' : ADMIN_T.accent,
                       position: 'relative',
                       cursor: 'pointer',
+                      flexShrink: 0,
                       transition: 'background 200ms ease',
                     }}
                   >
                     <div
                       style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 11,
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
                         background: '#fff',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                         position: 'absolute',
-                        top: 3,
-                        left: d.closed ? 3 : 23,
+                        top: 2,
+                        left: d.closed ? 2 : 20,
                         transition: 'left 200ms ease',
                       }}
                     />
                   </button>
-                ) : null}
               </div>
-              {!d.closed ? (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              ) : null}
+              {isMobile && !d.closed ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <input
                     type="time"
                     value={d.open}
@@ -111,9 +140,9 @@ export function HoursTabPanel({
                         },
                       }))
                     }
-                    style={{ ...inp, width: 'auto', flex: 1 }}
+                    style={timeTabInp()}
                   />
-                  <span style={{ color: ADMIN_T.muted, fontSize: 13 }}>–</span>
+                  <span style={{ color: ADMIN_T.muted, fontSize: 12, flexShrink: 0 }}>–</span>
                   <input
                     type="time"
                     value={d.close}
@@ -126,38 +155,85 @@ export function HoursTabPanel({
                         },
                       }))
                     }
-                    style={{ ...inp, width: 'auto', flex: 1 }}
+                    style={timeTabInp()}
                   />
                 </div>
               ) : null}
-              {d.closed && isMobile ? <span style={{ fontSize: 14, color: ADMIN_T.subtle }}>Почивен ден</span> : null}
+              {d.closed && isMobile ? (
+                <span style={{ fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.2 }}>Почивен</span>
+              ) : null}
               {!isMobile ? (
-                <label
+                <div
                   style={{
-                    display: 'flex',
+                    display: 'grid',
+                    gridTemplateColumns: '130px 1fr auto',
+                    gap: 10,
                     alignItems: 'center',
-                    gap: 6,
-                    fontSize: 13,
-                    color: ADMIN_T.muted,
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer',
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={d.closed}
-                    onChange={(e) =>
-                      setSite((p) => ({
-                        ...p,
-                        workingHours: {
-                          ...p.workingHours,
-                          [day.key]: { ...p.workingHours[day.key], closed: e.target.checked },
-                        },
-                      }))
-                    }
-                  />
-                  Почивен
-                </label>
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>{day.label}</span>
+                  {!d.closed ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        type="time"
+                        value={d.open}
+                        onChange={(e) =>
+                          setSite((p) => ({
+                            ...p,
+                            workingHours: {
+                              ...p.workingHours,
+                              [day.key]: { ...p.workingHours[day.key], open: e.target.value },
+                            },
+                          }))
+                        }
+                        style={timeTabInp({ flex: 'none', width: 120 })}
+                      />
+                      <span style={{ color: ADMIN_T.muted, fontSize: 13 }}>–</span>
+                      <input
+                        type="time"
+                        value={d.close}
+                        onChange={(e) =>
+                          setSite((p) => ({
+                            ...p,
+                            workingHours: {
+                              ...p.workingHours,
+                              [day.key]: { ...p.workingHours[day.key], close: e.target.value },
+                            },
+                          }))
+                        }
+                        style={timeTabInp({ flex: 'none', width: 120 })}
+                      />
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 13, color: ADMIN_T.subtle }}>Почивен ден</span>
+                  )}
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 13,
+                      color: ADMIN_T.muted,
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={d.closed}
+                      onChange={(e) =>
+                        setSite((p) => ({
+                          ...p,
+                          workingHours: {
+                            ...p.workingHours,
+                            [day.key]: { ...p.workingHours[day.key], closed: e.target.checked },
+                          },
+                        }))
+                      }
+                    />
+                    Почивен
+                  </label>
+                </div>
               ) : null}
             </div>
           );
@@ -177,7 +253,7 @@ export function HoursTabPanel({
                 borderRadius: isMobile ? 16 : ADMIN_T.radiusSm,
                 padding: isMobile ? '14px 14px' : '10px 12px',
                 background: ADMIN_T.surface,
-                boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                boxShadow: isMobile ? TIME_TAB_SHADOW : 'none',
               }}
             >
               <div
@@ -196,7 +272,7 @@ export function HoursTabPanel({
                       bookingBlocks: p.bookingBlocks.map((b, j) => (j === i ? { ...b, date: e.target.value } : b)),
                     }))
                   }
-                  style={inp}
+                  style={{ ...inp, boxShadow: isMobile ? TIME_TAB_SHADOW : undefined }}
                 />
                 <input
                   type="time"
@@ -210,7 +286,7 @@ export function HoursTabPanel({
                     }))
                   }
                   disabled={block.allDay}
-                  style={inp}
+                  style={{ ...inp, boxShadow: isMobile ? TIME_TAB_SHADOW : undefined }}
                 />
                 <input
                   type="time"
@@ -224,7 +300,7 @@ export function HoursTabPanel({
                     }))
                   }
                   disabled={block.allDay}
-                  style={inp}
+                  style={{ ...inp, boxShadow: isMobile ? TIME_TAB_SHADOW : undefined }}
                 />
                 <div
                   style={{

@@ -38,6 +38,8 @@ After `npm run build`, inspect the route table in the terminal output for `/admi
 
 **Already in place:** LCP image preload (WebP hints), hero `fetchPriority="high"`, booking modals code-split, `DeferredSection` for portfolio/team/reviews/map/offers/services, `content-visibility: auto` on `.cv-defer`, `/api/image` AVIF/WebP via `Accept`, lazy below-fold images.
 
+**Image delivery (May 2026):** widths snap to allowed sizes (`lib/image-delivery.ts`) so portfolio/hero never accidentally request full 2K originals. `/api/image` skips Sharp when no resize is needed; new uploads use `R2_PUBLIC_URL` CDN when configured (`NEXT_PUBLIC_R2_PUBLIC_URL` in client).
+
 **Measure a live salon:**
 
 ```bash

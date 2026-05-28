@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import SalonPublicParity from '@/app/components/SalonPublicParity';
+import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
 import { getPublicSalonPageData } from '@/lib/public-salon';
+import { r2PublicBase } from '@/lib/image-delivery';
 import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { buildSalonJsonLd } from '@/lib/seo';
@@ -88,22 +90,25 @@ export default async function SalonSlugPage({ searchParams }: Props) {
   const galleryRaw = Array.isArray(salonRecord.gallery_images)
     ? salonRecord.gallery_images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
     : [];
+  const salonName = String(salonRecord.name ?? 'Салон');
   const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
-  const lcpHref = lcpImage ? publicImageUrl(lcpImage, { width: 768, format: 'webp' }) : null;
-  const lcpSrcSet = lcpImage ? publicImageSrcSet(lcpImage, [480, 640, 768, 1024, 1280] as const, 'webp') : '';
+  const lcpHref = lcpImage ? publicImageUrl(lcpImage, { width: 480, format: 'webp', quality: 64 }) : null;
+  const lcpSrcSet = lcpImage ? publicImageSrcSet(lcpImage, [480, 768] as const, 'webp', 64) : '';
+  const r2Origin = r2PublicBase();
 
   return (
     <>
-      {lcpHref && (
+      {r2Origin ? <link rel="preconnect" href={r2Origin} crossOrigin="anonymous" /> : null}
+      {lcpHref ? (
         <link
           rel="preload"
           as="image"
           href={lcpHref}
           {...(lcpSrcSet ? { imageSrcSet: lcpSrcSet } : {})}
-          imageSizes="(max-width: 768px) 100vw, 768px"
+          imageSizes="100vw"
           fetchPriority="high"
         />
-      )}
+      ) : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -117,7 +122,9 @@ export default async function SalonSlugPage({ searchParams }: Props) {
         highlightReviewId={highlightReviewId || null}
         tabParam={tabParam || null}
         staticMapUrl={pageData.staticMapUrl}
-      />
+      >
+        {lcpImage ? <SalonHeroLcp src={lcpImage} alt={salonName} /> : null}
+      </SalonPublicParity>
     </>
   );
 }

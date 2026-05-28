@@ -7,9 +7,19 @@ function hostnameFromUrl(maybeUrl) {
   }
 }
 
-const r2Host = hostnameFromUrl(process.env.R2_PUBLIC_URL ?? '');
+const r2PublicRaw =
+  process.env.R2_PUBLIC_URL ?? process.env.CLOUDFLARE_R2_PUBLIC_URL ?? '';
+const r2PublicNormalized = r2PublicRaw.trim().startsWith('http')
+  ? r2PublicRaw.trim().replace(/\/$/, '')
+  : r2PublicRaw.trim()
+    ? `https://${r2PublicRaw.trim().replace(/\/$/, '')}`
+    : '';
+const r2Host = hostnameFromUrl(r2PublicNormalized);
 
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_R2_PUBLIC_URL: r2PublicNormalized,
+  },
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion', '@radix-ui/react-accordion'],
   },
