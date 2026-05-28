@@ -249,10 +249,11 @@ export async function searchGoogleBusinessesByName(
   if (!q) return { results: [], reason: 'empty_query' };
 
   const params = new URLSearchParams({
-    query: q,
+    query: q.includes(',') ? q : `${q}, България`,
     limit: '6',
     async: 'false',
     language: 'bg',
+    region: 'bg',
   });
 
   try {
@@ -284,11 +285,11 @@ export async function searchGoogleBusinessesByName(
       .map((item) => {
         const row = item && typeof item === 'object' ? (item as Record<string, unknown>) : null;
         if (!row) return null;
-        const placeId = String(row.place_id ?? '').trim();
+        const placeId = String(row.place_id ?? row.google_id ?? row.id ?? '').trim();
         if (!placeId) return null;
         return {
           placeId,
-          name: String(row.name ?? '').trim() || 'Без име',
+          name: String(row.name ?? row.title ?? '').trim() || 'Без име',
           address: String(row.full_address ?? row.address ?? '').trim(),
           mapsUrl: String(row.location_link ?? '').trim(),
           businessStatus: String(row.business_status ?? '').trim(),
