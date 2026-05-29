@@ -13,18 +13,25 @@ import {
 } from 'lucide-react';
 import type { SalonFaqItem, SalonVisitorInfo } from '@/lib/salon-visitor-info';
 import { getPublicVisitorAmenityLines } from '@/lib/salon-visitor-info';
+import {
+  getPublicVenueExtraLines,
+  mergeLegacyVisitorIntoVenueExtras,
+  parseSalonVenueExtras,
+  type PublicVenueExtraLine,
+} from '@/lib/salon-venue-extras';
 
 type PublicVisitorFaqProps = {
   faqItems: SalonFaqItem[];
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
+  venueExtrasRaw?: unknown;
 };
 
 function amenityIcon(label: string) {
-  if (label.includes('паркинг') || label.includes('Паркинг')) return MapPin;
-  if (label.includes('Автобус')) return Bus;
-  if (label.includes('карта')) return CreditCard;
-  if (label.includes('Метро')) return TrainFront;
+  if (label.includes('паркинг') || label.includes('Паркинг') || label.includes('зона')) return MapPin;
+  if (label.includes('Автобус') || label.includes('транспорт')) return Bus;
+  if (label.includes('карта') || label.includes('Карта') || label.includes('кеш')) return CreditCard;
+  if (label.includes('Метро') || label.includes('метро')) return TrainFront;
   if (label.includes('деца')) return Baby;
   if (label.includes('консуматив')) return Package;
   if (label.includes('увреждания')) return Accessibility;
@@ -35,10 +42,24 @@ export function PublicVisitorFaq({
   faqItems,
   visitorInfo,
   visitorAdditionalInfo,
+  venueExtrasRaw,
 }: PublicVisitorFaqProps) {
-  const amenityLines = getPublicVisitorAmenityLines(visitorInfo).filter(
+  const venueExtras = mergeLegacyVisitorIntoVenueExtras(
+    parseSalonVenueExtras(venueExtrasRaw),
+    visitorInfo,
+  );
+  const venueLines = getPublicVenueExtraLines(venueExtras);
+  const legacyLines = getPublicVisitorAmenityLines(visitorInfo).filter(
     (line) => !line.label.toLowerCase().includes('плащане с карта'),
   );
+  const amenityLines: PublicVenueExtraLine[] = [
+    ...venueLines,
+    ...legacyLines.filter((line) => !venueLines.some((v) => v.label.toLowerCase() === line.label.toLowerCase())),
+  ].filter((line, index, arr) => {
+    const key = line.label.toLowerCase();
+    return arr.findIndex((x) => x.label.toLowerCase() === key) === index;
+  });
+
   const [openFaqId, setOpenFaqId] = useState<string | null>(faqItems[0]?.id ?? null);
 
   if (amenityLines.length === 0 && !visitorAdditionalInfo && faqItems.length === 0) {
@@ -46,7 +67,7 @@ export function PublicVisitorFaq({
   }
 
   return (
-    <section className="cv-defer space-y-8 pt-8">
+    <section className="space-y-8 pt-8">
       {amenityLines.length > 0 ? (
         <div>
           <h3 className="text-base font-semibold text-[#1a1a1a]">Удобства и достъп</h3>
@@ -60,7 +81,12 @@ export function PublicVisitorFaq({
                 >
                   <Icon className="mt-0.5 h-4 w-4 shrink-0 text-black/45" aria-hidden />
                   <span>
-                    <span className="font-medium">{line.label}</span>
+                    <span
+                      className="font-medium"
+                      style={line.color ? { color: line.color } : undefined}
+                    >
+                      {line.label}
+                    </span>
                     {line.detail ? (
                       <span className="mt-0.5 block text-black/60">{line.detail}</span>
                     ) : null}

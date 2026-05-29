@@ -87,10 +87,12 @@ export function SiteTabPanel({
         faqItems={site.faqItems}
         visitorInfo={site.visitorInfo}
         visitorAdditionalInfo={site.visitorAdditionalInfo}
+        venueExtras={site.venueExtras}
         inputStyle={inp}
         onChangeFaq={(faqItems) => setSite((p) => ({ ...p, faqItems }))}
         onChangeVisitorInfo={(visitorInfo) => setSite((p) => ({ ...p, visitorInfo }))}
         onChangeAdditionalInfo={(visitorAdditionalInfo) => setSite((p) => ({ ...p, visitorAdditionalInfo }))}
+        onChangeVenueExtras={(venueExtras) => setSite((p) => ({ ...p, venueExtras }))}
       />
     </AdminSection>
   );

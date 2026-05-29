@@ -52,17 +52,6 @@ import {
 } from '@/lib/salon-opening-hours';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 import {
-  parseSalonVenueExtras,
-  SALON_PARKING_KEYS,
-  SALON_PARKING_LABELS_BG,
-  SALON_PARKING_PUBLIC_TEXT_COLOR,
-  SALON_PAYMENT_LABELS_BG,
-  SALON_VENUE_EXTRA_KEYS,
-  SALON_VENUE_EXTRA_LABELS_BG,
-  type SalonParkingKey,
-  type SalonVenueExtraKey,
-} from '@/lib/salon-venue-extras';
-import {
   normalizeSalonFaqItems,
   normalizeSalonVisitorInfo,
   normalizeVisitorAdditionalInfo,
@@ -381,6 +370,7 @@ export default function SalonPublicParity({
   const address = String(rawSalon.address ?? '').trim();
   const cover = String(rawSalon.cover_image_url ?? '').trim();
   const galleryDb = rawSalon.gallery_images;
+  const portfolioDb = rawSalon.portfolio_images;
   const instagram = rawSalon.instagram_username as string | null | undefined;
   const facebook = rawSalon.facebook_username as string | null | undefined;
   const tiktok = (rawSalon.tiktok_username as string | null | undefined) ?? undefined;
@@ -444,14 +434,6 @@ export default function SalonPublicParity({
     setCurrentStatusLabel(getCurrentStatusString(openingHoursMerged));
   }, [openingHoursMerged]);
 
-  const venueRaw = rawSalon.venue_extras ?? rawSalon.venueExtras;
-  const ve = parseSalonVenueExtras(venueRaw);
-  const activeExtraKeys = (SALON_VENUE_EXTRA_KEYS as readonly SalonVenueExtraKey[]).filter((k) => ve[k] === true);
-  const parkingActive = (SALON_PARKING_KEYS as readonly SalonParkingKey[]).filter((k) => ve[k] === true);
-  const showParking = parkingActive.length > 0;
-  const pay = ve.paymentPreference ? SALON_PAYMENT_LABELS_BG[ve.paymentPreference] : null;
-  const showVenueBlock = activeExtraKeys.length > 0 || showParking || !!pay;
-
   const servicesFromDb = useMemo(
     (): ServiceRow[] => parseSalonServices(rawSalon.services),
     [rawSalon.services],
@@ -507,7 +489,7 @@ export default function SalonPublicParity({
 
   const isValidImageUri = useCallback((uri: string | null | undefined) => uri != null && String(uri).trim().length > 0, []);
 
-  /** Снимки, качени от админа в „Снимки на салона“ — единствен източник за публичната галерия. */
+  /** Снимки на помещението — hero галерия (качени в „Снимки на салона“). */
   const salonGalleryPhotos = useMemo(() => {
     if (!Array.isArray(galleryDb)) return [] as string[];
     const seen = new Set<string>();
@@ -521,7 +503,22 @@ export default function SalonPublicParity({
       });
   }, [galleryDb]);
 
+  /** Работа / портфолио — отделна секция на сайта. */
+  const portfolioPhotos = useMemo(() => {
+    if (!Array.isArray(portfolioDb)) return [] as string[];
+    const seen = new Set<string>();
+    return portfolioDb
+      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      .map((u) => wireMediaUri(u.trim()))
+      .filter((u) => {
+        if (seen.has(u)) return false;
+        seen.add(u);
+        return true;
+      });
+  }, [portfolioDb]);
+
   const hasSalonGallery = salonGalleryPhotos.length > 0;
+  const hasPortfolio = portfolioPhotos.length > 0;
 
   const heroUris = useMemo(() => {
     const uris: string[] = [];
@@ -533,7 +530,7 @@ export default function SalonPublicParity({
     return uris;
   }, [cover, salonGalleryPhotos, isValidImageUri]);
 
-  const portfolioDisplay = salonGalleryPhotos;
+  const portfolioDisplay = portfolioPhotos;
 
   const servicesWithImages = useMemo(
     () =>
@@ -579,15 +576,15 @@ export default function SalonPublicParity({
   const publicTeamSectionLabel = 'Вашият специалист';
   const salonTabsWithTeamLabel = useMemo(
     () =>
-      SALON_TABS.filter((t) => t.id !== 'portfolio' || hasSalonGallery).map((t) =>
+      SALON_TABS.filter((t) => t.id !== 'portfolio' || hasPortfolio).map((t) =>
         t.id === 'team' ? { ...t, label: publicTeamSectionLabel } : t
       ),
-    [publicTeamSectionLabel, hasSalonGallery]
+    [publicTeamSectionLabel, hasPortfolio]
   );
 
   const scrollSpyTabOrder = useMemo(
-    () => SCROLL_SPY_TAB_ORDER.filter((id) => id !== 'portfolio' || hasSalonGallery),
-    [hasSalonGallery]
+    () => SCROLL_SPY_TAB_ORDER.filter((id) => id !== 'portfolio' || hasPortfolio),
+    [hasPortfolio]
   );
 
   const teamJson = rawSalon.team as { name?: string; role?: string; photo_url?: string }[] | undefined;
@@ -1516,7 +1513,7 @@ export default function SalonPublicParity({
               ) : null}
             </DeferredSection>
 
-            {hasSalonGallery ? (
+            {hasPortfolio ? (
               <DeferredSection
                 className="scroll-mt-36 pt-10"
                 minHeight={280}
@@ -1700,50 +1697,8 @@ export default function SalonPublicParity({
               faqItems={faqItems}
               visitorInfo={visitorInfo}
               visitorAdditionalInfo={visitorAdditionalInfo}
+              venueExtrasRaw={rawSalon.venue_extras ?? rawSalon.venueExtras}
             />
-
-            {showVenueBlock ? (
-              <div className="pt-8">
-                <h2 className="text-lg font-semibold text-[#1a1a1a]">Удобства и достъп</h2>
-                <ul className="mt-3 space-y-2">
-                  {activeExtraKeys.map((k) => {
-                    const label = SALON_VENUE_EXTRA_LABELS_BG[k];
-                    const detail =
-                      k === 'nearMetro' && (ve.nearMetroDetails?.trim() ?? '')
-                        ? (ve.nearMetroDetails ?? '').trim()
-                        : k === 'convenientTransport' && (ve.convenientTransportDetails?.trim() ?? '')
-                          ? (ve.convenientTransportDetails ?? '').trim()
-                          : null;
-                    return (
-                      <li key={k} className="flex items-start gap-2 text-sm">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-                        <div>
-                          <span className="text-[#1a1a1a]">{label}</span>
-                          {detail ? <p className="salon-text-muted">{detail}</p> : null}
-                        </div>
-                      </li>
-                    );
-                  })}
-                  {parkingActive.map((pk) => (
-                    <li key={pk} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-                      <span
-                        style={SALON_PARKING_PUBLIC_TEXT_COLOR[pk] ? { color: SALON_PARKING_PUBLIC_TEXT_COLOR[pk] } : undefined}
-                        className="text-[#1a1a1a]"
-                      >
-                        {SALON_PARKING_LABELS_BG[pk]}
-                      </span>
-                    </li>
-                  ))}
-                  {pay ? (
-                    <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-                      <span>{pay}</span>
-                    </li>
-                  ) : null}
-                </ul>
-              </div>
-            ) : null}
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
               <DeferredSection className="pt-10" minHeight={220}>

@@ -11,6 +11,11 @@ import {
   type SalonFaqItem,
   type SalonVisitorInfo,
 } from '@/lib/salon-visitor-info';
+import {
+  mergeLegacyVisitorIntoVenueExtras,
+  parseSalonVenueExtras,
+  type SalonVenueExtras,
+} from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { normalizeSmsReminderMode, type SmsReminderMode } from '@/lib/sms-shared';
 import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
@@ -64,6 +69,7 @@ export type AdminSitePayload = {
   coverImageUrl: string;
   logoImageUrl: string;
   galleryImages: string[];
+  portfolioImages: string[];
   ownerName: string;
   ownerPublicRole: string;
   ownerPublicPhotoUrl: string;
@@ -82,6 +88,7 @@ export type AdminSitePayload = {
   faqItems: SalonFaqItem[];
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
+  venueExtras: SalonVenueExtras;
   smsBalance: number;
   smsEnabled: boolean;
   smsReminderMode: SmsReminderMode;
@@ -121,6 +128,19 @@ export function normalizeImageList(raw: unknown): string[] {
     .filter(Boolean);
 }
 
+/** Legacy rows stored the same URLs in gallery + portfolio — keep salon photos in gallery only. */
+export function normalizePortfolioImages(gallery: string[], portfolioRaw: unknown): string[] {
+  const portfolio = normalizeImageList(portfolioRaw);
+  if (!portfolio.length) return [];
+  if (
+    portfolio.length === gallery.length &&
+    portfolio.every((url, index) => url === gallery[index])
+  ) {
+    return [];
+  }
+  return portfolio;
+}
+
 export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
   await ensureSmsSchema().catch(() => {});
   await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
@@ -129,13 +149,13 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     SELECT
       slug, name, category, phone, email, city, address, about,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
-      cover_image_url, logo_image_url, gallery_images,
+      cover_image_url, logo_image_url, gallery_images, portfolio_images,
       owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
       services, working_hours, opening_hours,
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code,
       site_status, legal_info, latitude, longitude,
-      faq_items, visitor_info, visitor_additional_info,
+      faq_items, visitor_info, visitor_additional_info, venue_extras,
       sms_balance, sms_enabled, sms_reminder_mode
     FROM salons
     WHERE slug = ${slug}
@@ -179,6 +199,10 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     coverImageUrl: String(row.cover_image_url ?? ''),
     logoImageUrl: String(row.logo_image_url ?? ''),
     galleryImages: normalizeImageList(row.gallery_images),
+    portfolioImages: normalizePortfolioImages(
+      normalizeImageList(row.gallery_images),
+      row.portfolio_images,
+    ),
     ownerName: String(row.owner_name ?? ''),
     ownerPublicRole: String(row.owner_public_role ?? ''),
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),
@@ -205,6 +229,10 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     faqItems: normalizeSalonFaqItems(row.faq_items),
     visitorInfo: normalizeSalonVisitorInfo(row.visitor_info),
     visitorAdditionalInfo: normalizeVisitorAdditionalInfo(row.visitor_additional_info),
+    venueExtras: mergeLegacyVisitorIntoVenueExtras(
+      parseSalonVenueExtras(row.venue_extras),
+      normalizeSalonVisitorInfo(row.visitor_info),
+    ),
     smsBalance: Math.max(0, Number(row.sms_balance ?? 0) || 0),
     smsEnabled: row.sms_enabled === true,
     smsReminderMode: normalizeSmsReminderMode(row.sms_reminder_mode),

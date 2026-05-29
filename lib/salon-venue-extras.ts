@@ -121,3 +121,85 @@ export function parseSalonVenueExtras(raw: unknown): SalonVenueExtras {
   }
   return out;
 }
+
+export function serializeSalonVenueExtras(ve: SalonVenueExtras): SalonVenueExtras {
+  const out: SalonVenueExtras = {};
+  for (const k of SALON_VENUE_EXTRA_KEYS) {
+    if (ve[k] === true) (out as Record<string, boolean>)[k] = true;
+  }
+  for (const k of SALON_PARKING_KEYS) {
+    if (ve[k] === true) (out as Record<string, boolean>)[k] = true;
+  }
+  if (ve.paymentPreference) out.paymentPreference = ve.paymentPreference;
+  if (ve.nearMetroDetails?.trim()) {
+    out.nearMetroDetails = ve.nearMetroDetails.trim().slice(0, SALON_VENUE_TRANSPORT_DETAIL_MAX);
+  }
+  if (ve.convenientTransportDetails?.trim()) {
+    out.convenientTransportDetails = ve.convenientTransportDetails
+      .trim()
+      .slice(0, SALON_VENUE_TRANSPORT_DETAIL_MAX);
+  }
+  return out;
+}
+
+export type PublicVenueExtraLine = {
+  label: string;
+  detail?: string;
+  color?: string;
+};
+
+/** Lines for public „Удобства и достъп“ from venue_extras. */
+export function getPublicVenueExtraLines(ve: SalonVenueExtras): PublicVenueExtraLine[] {
+  const lines: PublicVenueExtraLine[] = [];
+  for (const k of SALON_VENUE_EXTRA_KEYS) {
+    if (ve[k] !== true) continue;
+    let detail: string | undefined;
+    if (k === 'nearMetro' && ve.nearMetroDetails?.trim()) detail = ve.nearMetroDetails.trim();
+    if (k === 'convenientTransport' && ve.convenientTransportDetails?.trim()) {
+      detail = ve.convenientTransportDetails.trim();
+    }
+    lines.push({ label: SALON_VENUE_EXTRA_LABELS_BG[k], detail });
+  }
+  for (const k of SALON_PARKING_KEYS) {
+    if (ve[k] !== true) continue;
+    lines.push({
+      label: SALON_PARKING_LABELS_BG[k],
+      color: SALON_PARKING_PUBLIC_TEXT_COLOR[k],
+    });
+  }
+  if (ve.paymentPreference) {
+    lines.push({ label: SALON_PAYMENT_LABELS_BG[ve.paymentPreference] });
+  }
+  return lines;
+}
+
+/** Map legacy visitor_info checkboxes into venue_extras for admin + public display. */
+export function mergeLegacyVisitorIntoVenueExtras(
+  ve: SalonVenueExtras,
+  visitor: {
+    hasParking?: boolean;
+    parkingNotes?: string;
+    busLines?: string;
+    acceptsCard?: boolean;
+    hasMetroNearby?: boolean;
+    suitableForChildren?: boolean;
+  },
+): SalonVenueExtras {
+  const out: SalonVenueExtras = { ...ve };
+  if (visitor.hasMetroNearby && !out.nearMetro) out.nearMetro = true;
+  if (visitor.suitableForChildren && !out.childFriendly) out.childFriendly = true;
+  if (visitor.acceptsCard && !out.paymentPreference) out.paymentPreference = 'card_and_cash';
+  const hasParkingZone =
+    out.parkingBlueZone || out.parkingGreenZone || out.parkingNoZone || out.parkingAvailable;
+  if (visitor.hasParking && !hasParkingZone) out.parkingAvailable = true;
+  if (visitor.parkingNotes?.trim() && !out.convenientTransportDetails) {
+    if (!hasParkingZone && !out.parkingAvailable) out.parkingAvailable = true;
+  }
+  if (visitor.busLines?.trim()) {
+    if (!out.convenientTransport) out.convenientTransport = true;
+    if (!out.convenientTransportDetails?.trim()) {
+      out.convenientTransportDetails = visitor.busLines.trim().slice(0, SALON_VENUE_TRANSPORT_DETAIL_MAX);
+    }
+  }
+  return out;
+}

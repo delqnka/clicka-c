@@ -344,7 +344,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [smsPanelLoading, setSmsPanelLoading] = useState(false);
   const [smsPendingReminders, setSmsPendingReminders] = useState(0);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
+  const [portfolioPending, setPortfolioPending] = useState<Set<string>>(() => new Set());
   const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [portfolioUploadProgress, setPortfolioUploadProgress] = useState<{
     done: number;
     total: number;
   } | null>(null);
@@ -845,6 +850,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           faqItems: site.faqItems,
           visitorInfo: site.visitorInfo,
           visitorAdditionalInfo: site.visitorAdditionalInfo,
+          venueExtras: site.venueExtras,
         }),
       });
       const data = await guardResponse(res) as {
@@ -867,7 +873,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   async function saveSpecialist() {
     setError(''); setNotice(''); setBusyKey('specialist');
     try {
-      const res = await fetch(`/api/admin/site-settings?slug=${encodeURIComponent(slug)}`, {
+      const res = await fetch(`/api/admin/site-specialist?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ownerName: site.ownerName,
@@ -887,6 +893,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       coverImageUrl: string;
       logoImageUrl: string;
       galleryImages: string[];
+      portfolioImages: string[];
       ownerPublicPhotoUrl: string;
     },
     opts?: { silent?: boolean },
@@ -897,6 +904,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     }
     setBusyKey(opts?.silent ? 'images-auto' : 'images');
     const galleryImages = payload.galleryImages.filter(u => u && !u.startsWith('blob:'));
+    const portfolioImages = payload.portfolioImages.filter(u => u && !u.startsWith('blob:'));
     let coverImageUrl = payload.coverImageUrl;
     if (!coverImageUrl || coverImageUrl.startsWith('blob:')) {
       coverImageUrl = galleryImages[0] ?? '';
@@ -909,6 +917,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           coverImageUrl,
           logoImageUrl: payload.logoImageUrl,
           galleryImages,
+          portfolioImages,
           ownerPublicPhotoUrl: payload.ownerPublicPhotoUrl,
         }),
       });
@@ -928,6 +937,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       coverImageUrl: site.coverImageUrl,
       logoImageUrl: site.logoImageUrl,
       galleryImages: site.galleryImages,
+      portfolioImages: site.portfolioImages,
       ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
     });
   }
@@ -1025,12 +1035,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     } catch (e) { setBookings(previous); handleErr(e); }
   }
 
-  async function uploadSingleFile(file: File, opts?: { compress?: boolean }) {
+  async function uploadSingleFile(
+    file: File,
+    opts?: { compress?: boolean; profile?: boolean },
+  ) {
     const prepared =
-      opts?.compress === false ? file : await prepareImageForUpload(file, { maxDim: isMobile ? 1400 : 1600 });
+      opts?.compress === false
+        ? file
+        : await prepareImageForUpload(file, {
+            maxDim: opts?.profile ? 1200 : isMobile ? 1400 : 1600,
+          });
     const fd = new FormData();
     fd.append('file', prepared);
-    const res = await fetch(`/api/upload?slug=${encodeURIComponent(slug)}`, { method: 'POST', body: fd });
+    const kind = opts?.profile ? '&kind=profile' : '';
+    const res = await fetch(`/api/upload?slug=${encodeURIComponent(slug)}${kind}`, { method: 'POST', body: fd });
     const d = await guardResponse(res);
     return String(d.url ?? '');
   }
@@ -1055,6 +1073,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             coverImageUrl: nextSite.coverImageUrl,
             logoImageUrl: nextSite.logoImageUrl,
             galleryImages: nextSite.galleryImages,
+            portfolioImages: nextSite.portfolioImages,
             ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
           },
           { silent: true },
@@ -1091,6 +1110,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             coverImageUrl: nextSite.coverImageUrl,
             logoImageUrl: nextSite.logoImageUrl,
             galleryImages: nextSite.galleryImages,
+            portfolioImages: nextSite.portfolioImages,
             ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
           },
           { silent: true },
@@ -1112,14 +1132,43 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   }
 
   async function handleOwnerPhotoUpload(file: File | null) {
-    if (!file) return; setBusyKey('upload-owner'); setError('');
-    try { const url = await uploadSingleFile(file); setSite(p => ({ ...p, ownerPublicPhotoUrl: url })); setNotice('Снимката е качена. Натисни „Запази профила".'); }
-    catch (e) { handleErr(e); } finally { setBusyKey(''); }
+    if (!file) return;
+    setBusyKey('upload-owner');
+    setError('');
+    const preview = URL.createObjectURL(file);
+    setSite((p) => ({ ...p, ownerPublicPhotoUrl: preview }));
+    try {
+      const url = await uploadSingleFile(file, { compress: false, profile: true });
+      setSite((p) => ({ ...p, ownerPublicPhotoUrl: url }));
+      const res = await fetch(`/api/admin/site-specialist?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerName: site.ownerName,
+          ownerPublicRole: site.ownerPublicRole,
+          ownerPublicPhotoUrl: url,
+          ownerPublicBio: site.ownerPublicBio,
+        }),
+      });
+      const data = await guardResponse(res);
+      setSite(data.site as AdminSitePayload);
+      setNotice('Снимката е запазена.');
+    } catch (e) {
+      handleErr(e);
+      setSite((p) => ({
+        ...p,
+        ownerPublicPhotoUrl: p.ownerPublicPhotoUrl === preview ? '' : p.ownerPublicPhotoUrl,
+      }));
+    } finally {
+      URL.revokeObjectURL(preview);
+      setBusyKey('');
+    }
   }
 
-  async function handleGalleryUpload(
+  async function uploadAdminImageList(
     files: FileList | File[] | null,
-    input?: HTMLInputElement | null,
+    input: HTMLInputElement | null | undefined,
+    target: 'gallery' | 'portfolio',
   ) {
     const images = imageFilesFromInput(files);
     if (!images.length) {
@@ -1127,31 +1176,38 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       return;
     }
 
-    const previews = images.map(file => ({
+    const listKey = target === 'gallery' ? 'galleryImages' : 'portfolioImages';
+    const busyUploadKey = target === 'gallery' ? 'upload-gallery' : 'upload-portfolio';
+    const setPending = target === 'gallery' ? setGalleryPending : setPortfolioPending;
+    const setProgress = target === 'gallery' ? setGalleryUploadProgress : setPortfolioUploadProgress;
+    const label = target === 'gallery' ? 'салона' : 'портфолиото';
+    const stableBefore = site[listKey].filter((u) => u && !u.startsWith('blob:'));
+
+    const previews = images.map((file) => ({
       file,
       blob: URL.createObjectURL(file),
     }));
-    const blobUrls = previews.map(p => p.blob);
+    const blobUrls = previews.map((p) => p.blob);
 
-    setGalleryPending(prev => {
+    setPending((prev) => {
       const next = new Set(prev);
-      blobUrls.forEach(b => next.add(b));
+      blobUrls.forEach((b) => next.add(b));
       return next;
     });
-    setSite(p => {
-      const stable = p.galleryImages.filter(u => !u.startsWith('blob:'));
-      const nextGallery = [...stable, ...blobUrls];
+    setSite((p) => {
+      const stable = p[listKey].filter((u) => !u.startsWith('blob:'));
+      const nextList = [...stable, ...blobUrls];
       return {
         ...p,
-        galleryImages: nextGallery,
-        coverImageUrl: p.coverImageUrl && !p.coverImageUrl.startsWith('blob:')
-          ? p.coverImageUrl
-          : (nextGallery[0] ?? ''),
+        [listKey]: nextList,
+        ...(target === 'gallery' && (!p.coverImageUrl || p.coverImageUrl.startsWith('blob:'))
+          ? { coverImageUrl: nextList[0] ?? '' }
+          : {}),
       };
     });
 
-    setBusyKey('upload-gallery');
-    setGalleryUploadProgress({ done: 0, total: images.length });
+    setBusyKey(busyUploadKey);
+    setProgress({ done: 0, total: images.length });
     setError('');
 
     const uploadedUrls: string[] = [];
@@ -1162,70 +1218,84 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         try {
           const url = await uploadSingleFile(file);
           uploadedUrls.push(url);
-          setSite(p => ({
+          setSite((p) => ({
             ...p,
-            galleryImages: p.galleryImages.map(u => (u === blob ? url : u)),
-            coverImageUrl:
-              !p.coverImageUrl || p.coverImageUrl === blob ? url : p.coverImageUrl,
+            [listKey]: p[listKey].map((u) => (u === blob ? url : u)),
+            ...(target === 'gallery' && (!p.coverImageUrl || p.coverImageUrl === blob)
+              ? { coverImageUrl: url }
+              : {}),
           }));
         } catch (e) {
-          setSite(p => ({
+          setSite((p) => ({
             ...p,
-            galleryImages: p.galleryImages.filter(u => u !== blob),
+            [listKey]: p[listKey].filter((u) => u !== blob),
           }));
           throw e;
         } finally {
           URL.revokeObjectURL(blob);
-          setGalleryPending(prev => {
+          setPending((prev) => {
             const next = new Set(prev);
             next.delete(blob);
             return next;
           });
           progressDone += 1;
-          setGalleryUploadProgress({ done: progressDone, total: images.length });
+          setProgress({ done: progressDone, total: images.length });
         }
       });
 
-      let nextSite = site;
-      setSite(p => {
-        const galleryImages = p.galleryImages.filter(u => !u.startsWith('blob:'));
-        const coverImageUrl =
-          p.coverImageUrl && !p.coverImageUrl.startsWith('blob:')
-            ? p.coverImageUrl
-            : (galleryImages[0] ?? '');
-        nextSite = { ...p, galleryImages, coverImageUrl };
-        return nextSite;
-      });
+      const finalList = [...stableBefore, ...uploadedUrls];
+      const persistPayload = {
+        coverImageUrl:
+          target === 'gallery' && (!site.coverImageUrl || site.coverImageUrl.startsWith('blob:'))
+            ? (finalList[0] ?? site.coverImageUrl)
+            : site.coverImageUrl,
+        logoImageUrl: site.logoImageUrl,
+        galleryImages: target === 'gallery' ? finalList : site.galleryImages.filter((u) => !u.startsWith('blob:')),
+        portfolioImages:
+          target === 'portfolio' ? finalList : site.portfolioImages.filter((u) => !u.startsWith('blob:')),
+        ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
+      };
 
-      if (isMobile) {
-        await persistImages(
-          {
-            coverImageUrl: nextSite.coverImageUrl,
-            logoImageUrl: nextSite.logoImageUrl,
-            galleryImages: nextSite.galleryImages,
-            ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
-          },
-          { silent: true },
-        );
-        setNotice(
-          uploadedUrls.length === 1
-            ? 'Снимката е качена и запазена.'
-            : `${uploadedUrls.length} снимки са качени и запазени.`,
-        );
-      } else {
-        setNotice(
-          uploadedUrls.length === 1
-            ? 'Снимката е качена. Натисни „Запази снимките".'
-            : `${uploadedUrls.length} снимки са качени. Натисни „Запази снимките".`,
-        );
-      }
+      setSite((p) => ({
+        ...p,
+        [listKey]: finalList,
+        ...(target === 'gallery'
+          ? {
+              coverImageUrl:
+                p.coverImageUrl && !p.coverImageUrl.startsWith('blob:')
+                  ? p.coverImageUrl
+                  : (finalList[0] ?? ''),
+            }
+          : {}),
+      }));
+
+      await persistImages(persistPayload, { silent: true });
+      setNotice(
+        uploadedUrls.length === 1
+          ? `Снимката е качена и запазена в ${label}.`
+          : `${uploadedUrls.length} снимки са качени и запазени в ${label}.`,
+      );
     } catch (e) {
       handleErr(e);
     } finally {
       setBusyKey('');
-      setGalleryUploadProgress(null);
+      setProgress(null);
       if (input) input.value = '';
     }
+  }
+
+  async function handleGalleryUpload(
+    files: FileList | File[] | null,
+    input?: HTMLInputElement | null,
+  ) {
+    await uploadAdminImageList(files, input, 'gallery');
+  }
+
+  async function handlePortfolioUpload(
+    files: FileList | File[] | null,
+    input?: HTMLInputElement | null,
+  ) {
+    await uploadAdminImageList(files, input, 'portfolio');
   }
 
   async function runPriceListAnalysis(urls: string[]) {
@@ -1973,12 +2043,15 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               btn={btn}
               busyKey={busyKey}
               galleryPending={galleryPending}
+              portfolioPending={portfolioPending}
               galleryUploadProgress={galleryUploadProgress}
+              portfolioUploadProgress={portfolioUploadProgress}
               existingServiceCategories={existingServiceCategories}
               saveImages={saveImages}
               handleCoverUpload={handleCoverUpload}
               handleLogoUpload={handleLogoUpload}
               handleGalleryUpload={handleGalleryUpload}
+              handlePortfolioUpload={handlePortfolioUpload}
             />
           ) : null}
 

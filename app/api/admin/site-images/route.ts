@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     coverImageUrl: site.coverImageUrl,
     logoImageUrl: site.logoImageUrl,
     galleryImages: site.galleryImages,
+    portfolioImages: site.portfolioImages,
     ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
   });
 }
@@ -48,6 +49,10 @@ export async function PATCH(request: NextRequest) {
       : current.ownerPublicPhotoUrl;
   const galleryImages =
     body.galleryImages !== undefined ? normalizeImageList(body.galleryImages) : current.galleryImages;
+  const portfolioImages =
+    body.portfolioImages !== undefined
+      ? normalizeImageList(body.portfolioImages)
+      : current.portfolioImages;
   const normalizedCoverImageUrl =
     coverImageUrl || galleryImages[0] || logoImageUrl || current.coverImageUrl || current.logoImageUrl;
   const normalizedLogoImageUrl =
@@ -59,7 +64,7 @@ export async function PATCH(request: NextRequest) {
       cover_image_url = ${normalizedCoverImageUrl},
       logo_image_url = ${normalizedLogoImageUrl},
       gallery_images = ${JSON.stringify(galleryImages)}::jsonb,
-      portfolio_images = ${JSON.stringify(galleryImages)}::jsonb,
+      portfolio_images = ${JSON.stringify(portfolioImages)}::jsonb,
       owner_public_photo_url = ${ownerPublicPhotoUrl || null},
       updated_at = now()
     WHERE slug = ${auth.salon.slug}

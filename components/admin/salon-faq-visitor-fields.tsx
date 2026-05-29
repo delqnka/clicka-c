@@ -3,7 +3,17 @@
 import { Plus, Trash2 } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import {
-  VISITOR_AMENITY_LABELS,
+  SALON_PARKING_KEYS,
+  SALON_PARKING_LABELS_BG,
+  SALON_PAYMENT_LABELS_BG,
+  SALON_VENUE_EXTRA_KEYS,
+  SALON_VENUE_EXTRA_LABELS_BG,
+  type SalonParkingKey,
+  type SalonPaymentPreference,
+  type SalonVenueExtraKey,
+  type SalonVenueExtras,
+} from '@/lib/salon-venue-extras';
+import {
   type SalonFaqItem,
   type SalonVisitorInfo,
 } from '@/lib/salon-visitor-info';
@@ -19,19 +29,15 @@ type Props = {
   faqItems: SalonFaqItem[];
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
+  venueExtras: SalonVenueExtras;
   inputStyle: CSSProperties;
   onChangeFaq: (items: SalonFaqItem[]) => void;
   onChangeVisitorInfo: (info: SalonVisitorInfo) => void;
   onChangeAdditionalInfo: (text: string) => void;
+  onChangeVenueExtras: (extras: SalonVenueExtras) => void;
 };
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label style={{ display: 'grid', gap: 5 }}>
       <span style={{ fontSize: 12, fontWeight: 600, color: T.muted, letterSpacing: '0.02em' }}>
@@ -42,14 +48,60 @@ function Field({
   );
 }
 
+function CheckboxGrid({
+  items,
+  checked,
+  onToggle,
+}: {
+  items: { key: string; label: string }[];
+  checked: (key: string) => boolean;
+  onToggle: (key: string, value: boolean) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))',
+        gap: 10,
+      }}
+    >
+      {items.map(({ key, label }) => (
+        <label
+          key={key}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            padding: '10px 12px',
+            border: `1px solid ${T.border}`,
+            borderRadius: 10,
+            background: checked(key) ? '#F4F4F5' : '#fff',
+            cursor: 'pointer',
+            fontSize: 13,
+            lineHeight: 1.4,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={checked(key)}
+            onChange={(e) => onToggle(key, e.target.checked)}
+            style={{ marginTop: 2, accentColor: T.accent }}
+          />
+          <span>{label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function SalonFaqVisitorFields({
   faqItems,
-  visitorInfo,
   visitorAdditionalInfo,
+  venueExtras,
   inputStyle,
   onChangeFaq,
-  onChangeVisitorInfo,
   onChangeAdditionalInfo,
+  onChangeVenueExtras,
 }: Props) {
   function addFaq() {
     onChangeFaq([
@@ -63,16 +115,33 @@ export function SalonFaqVisitorFields({
   }
 
   function updateFaq(id: string, patch: Partial<SalonFaqItem>) {
-    onChangeFaq(faqItems.map(item => (item.id === id ? { ...item, ...patch } : item)));
+    onChangeFaq(faqItems.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
   function removeFaq(id: string) {
-    onChangeFaq(faqItems.filter(item => item.id !== id));
+    onChangeFaq(faqItems.filter((item) => item.id !== id));
   }
 
-  function setVisitor<K extends keyof SalonVisitorInfo>(key: K, value: SalonVisitorInfo[K]) {
-    onChangeVisitorInfo({ ...visitorInfo, [key]: value });
+  function setExtra(key: SalonVenueExtraKey | SalonParkingKey, value: boolean) {
+    onChangeVenueExtras({ ...venueExtras, [key]: value || undefined });
   }
+
+  function setPayment(value: SalonPaymentPreference | '') {
+    onChangeVenueExtras({
+      ...venueExtras,
+      paymentPreference: value || undefined,
+    });
+  }
+
+  const amenityItems = (SALON_VENUE_EXTRA_KEYS as readonly SalonVenueExtraKey[]).map((key) => ({
+    key,
+    label: SALON_VENUE_EXTRA_LABELS_BG[key],
+  }));
+
+  const parkingItems = (SALON_PARKING_KEYS as readonly SalonParkingKey[]).map((key) => ({
+    key,
+    label: SALON_PARKING_LABELS_BG[key],
+  }));
 
   return (
     <div style={{ display: 'grid', gap: 28, marginTop: 20 }}>
@@ -120,13 +189,13 @@ export function SalonFaqVisitorFields({
               </div>
               <input
                 value={item.question}
-                onChange={e => updateFaq(item.id, { question: e.target.value })}
+                onChange={(e) => updateFaq(item.id, { question: e.target.value })}
                 placeholder="Напр. Има ли паркинг?"
                 style={{ ...inputStyle, marginBottom: 8 }}
               />
               <textarea
                 value={item.answer}
-                onChange={e => updateFaq(item.id, { answer: e.target.value })}
+                onChange={(e) => updateFaq(item.id, { answer: e.target.value })}
                 placeholder="Отговор за клиентите…"
                 style={{ ...inputStyle, minHeight: 72, resize: 'vertical', lineHeight: 1.55 }}
               />
@@ -161,69 +230,78 @@ export function SalonFaqVisitorFields({
           Удобства и достъп
         </h3>
         <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
-          Отбележи само това, което важи — на сайта се показват само отметнатите.
+          Отбележи само това, което важи — на сайта се показват само отметнатите. Натисни „Запази“ след промяна.
         </p>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))',
-            gap: 10,
-          }}
-        >
-          {VISITOR_AMENITY_LABELS.map(({ key, label }) => (
-            <label
-              key={key}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                padding: '10px 12px',
-                border: `1px solid ${T.border}`,
-                borderRadius: 10,
-                background: visitorInfo[key] ? '#F4F4F5' : '#fff',
-                cursor: 'pointer',
-                fontSize: 13,
-                lineHeight: 1.4,
-              }}
+
+        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: T.text }}>Удобства</p>
+        <CheckboxGrid
+          items={amenityItems}
+          checked={(key) => venueExtras[key as SalonVenueExtraKey] === true}
+          onToggle={(key, value) => setExtra(key as SalonVenueExtraKey, value)}
+        />
+
+        <p style={{ margin: '16px 0 8px', fontSize: 12, fontWeight: 700, color: T.text }}>Паркинг / зона</p>
+        <CheckboxGrid
+          items={parkingItems}
+          checked={(key) => venueExtras[key as SalonParkingKey] === true}
+          onToggle={(key, value) => setExtra(key as SalonParkingKey, value)}
+        />
+
+        <div style={{ marginTop: 14 }}>
+          <Field label="Плащане">
+            <select
+              value={venueExtras.paymentPreference ?? ''}
+              onChange={(e) => setPayment(e.target.value as SalonPaymentPreference | '')}
+              style={inputStyle}
             >
-              <input
-                type="checkbox"
-                checked={visitorInfo[key]}
-                onChange={e => setVisitor(key, e.target.checked)}
-                style={{ marginTop: 2, accentColor: T.accent }}
-              />
-              <span>{label}</span>
-            </label>
-          ))}
+              <option value="">— не е посочено —</option>
+              {(Object.keys(SALON_PAYMENT_LABELS_BG) as SalonPaymentPreference[]).map((key) => (
+                <option key={key} value={key}>
+                  {SALON_PAYMENT_LABELS_BG[key]}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
-        {visitorInfo.hasParking ? (
+
+        {venueExtras.nearMetro ? (
           <div style={{ marginTop: 12 }}>
-            <Field label="Уточнение за паркинг (по желание)">
+            <Field label="Уточнение за метро (по желание)">
               <input
-                value={visitorInfo.parkingNotes}
-                onChange={e => setVisitor('parkingNotes', e.target.value)}
-                placeholder="Напр. безплатен, зад сградата"
+                value={venueExtras.nearMetroDetails ?? ''}
+                onChange={(e) =>
+                  onChangeVenueExtras({ ...venueExtras, nearMetroDetails: e.target.value || undefined })
+                }
+                placeholder="Напр. станция Витоша, 3 мин пеша"
                 style={inputStyle}
               />
             </Field>
           </div>
         ) : null}
-        <div style={{ marginTop: 12 }}>
-          <Field label="Автобуси / транспорт (по желание)">
-            <input
-              value={visitorInfo.busLines}
-              onChange={e => setVisitor('busLines', e.target.value)}
-              placeholder="Напр. № 9, 117, метро Витоша"
-              style={inputStyle}
-            />
-          </Field>
-        </div>
+
+        {venueExtras.convenientTransport ? (
+          <div style={{ marginTop: 12 }}>
+            <Field label="Уточнение за транспорт (по желание)">
+              <input
+                value={venueExtras.convenientTransportDetails ?? ''}
+                onChange={(e) =>
+                  onChangeVenueExtras({
+                    ...venueExtras,
+                    convenientTransportDetails: e.target.value || undefined,
+                  })
+                }
+                placeholder="Напр. № 9, 117, спирка пред салона"
+                style={inputStyle}
+              />
+            </Field>
+          </div>
+        ) : null}
       </div>
 
       <Field label="Допълнителна информация за клиенти">
         <textarea
           value={visitorAdditionalInfo}
-          onChange={e => onChangeAdditionalInfo(e.target.value)}
+          onChange={(e) => onChangeAdditionalInfo(e.target.value)}
           placeholder="Всичко друго, което искаш клиентите да знаят преди резервация…"
           style={{ ...inputStyle, minHeight: 100, resize: 'vertical', lineHeight: 1.6 }}
         />

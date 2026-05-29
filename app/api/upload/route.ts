@@ -4,6 +4,7 @@ import { uploadToR2 } from '@/lib/r2';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 
 const MAX_DIMENSION = 2048;
+const PROFILE_MAX_DIMENSION = 1200;
 const WEBP_QUALITY = 82;
 
 export async function POST(request: NextRequest) {
@@ -11,6 +12,7 @@ export async function POST(request: NextRequest) {
   const salonSlug =
     request.headers.get('x-salon-slug') ||
     searchParams.get('slug');
+  const isProfile = searchParams.get('kind') === 'profile';
 
   if (!salonSlug) {
     return NextResponse.json(
@@ -57,7 +59,12 @@ export async function POST(request: NextRequest) {
   const raw = Buffer.from(bytes);
 
   const webpBuffer = await sharp(raw)
-    .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
+    .resize({
+      width: isProfile ? PROFILE_MAX_DIMENSION : MAX_DIMENSION,
+      height: isProfile ? PROFILE_MAX_DIMENSION : MAX_DIMENSION,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
     .rotate()
     .webp({ quality: WEBP_QUALITY })
     .toBuffer();

@@ -7,6 +7,12 @@ import {
   normalizeSalonVisitorInfo,
   normalizeVisitorAdditionalInfo,
 } from '@/lib/salon-visitor-info';
+import {
+  mergeLegacyVisitorIntoVenueExtras,
+  parseSalonVenueExtras,
+  serializeSalonVenueExtras,
+  type SalonVenueExtras,
+} from '@/lib/salon-venue-extras';
 import { resolveGooglePlaceId, probeGoogleReviewsForPlace } from '@/lib/google-place-server';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 
@@ -90,6 +96,10 @@ export async function PATCH(request: NextRequest) {
       typeof body.visitorAdditionalInfo === 'string'
         ? normalizeVisitorAdditionalInfo(body.visitorAdditionalInfo)
         : current.visitorAdditionalInfo,
+    venueExtras:
+      body.venueExtras && typeof body.venueExtras === 'object'
+        ? serializeSalonVenueExtras(body.venueExtras as SalonVenueExtras)
+        : current.venueExtras,
   };
 
   if (!next.name) {
@@ -97,6 +107,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
+  await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb`;
   await sql`
     UPDATE salons
     SET
@@ -120,36 +131,43 @@ export async function PATCH(request: NextRequest) {
       faq_items = ${JSON.stringify(next.faqItems)}::jsonb,
       visitor_info = ${JSON.stringify(next.visitorInfo)}::jsonb,
       visitor_additional_info = ${next.visitorAdditionalInfo || null},
+      venue_extras = ${JSON.stringify(next.venueExtras)}::jsonb,
       updated_at = now()
     WHERE slug = ${auth.salon.slug}
   `;
 
   let reviewsFetched = 0;
   let reviewsError: string | null = null;
-  const placeId = await resolveGooglePlaceId({
-    explicitPlaceId: next.googlePlaceId,
-    mapsUrl: next.googleMapsUrl,
-  });
-  if (placeId) {
-    try {
-      await ensureGoogleReviewsSchema();
-      const probe = await probeGoogleReviewsForPlace(placeId);
-      if (probe.reviews.length > 0) {
-        await sql`
-          UPDATE salons
-          SET
-            google_reviews_cache = ${JSON.stringify(probe.reviews)}::jsonb,
-            google_reviews_rating = ${Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null},
-            google_reviews_count = ${Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null},
-            google_reviews_fetched_at = now()
-          WHERE slug = ${auth.salon.slug}
-        `;
-        reviewsFetched = probe.reviews.length;
-      } else {
-        reviewsError = probe.reason ?? 'no_reviews';
+  const shouldRefreshGoogleReviews =
+    Object.prototype.hasOwnProperty.call(body, 'googleMapsUrl') ||
+    Object.prototype.hasOwnProperty.call(body, 'googlePlaceId');
+
+  if (shouldRefreshGoogleReviews) {
+    const placeId = await resolveGooglePlaceId({
+      explicitPlaceId: next.googlePlaceId,
+      mapsUrl: next.googleMapsUrl,
+    });
+    if (placeId) {
+      try {
+        await ensureGoogleReviewsSchema();
+        const probe = await probeGoogleReviewsForPlace(placeId);
+        if (probe.reviews.length > 0) {
+          await sql`
+            UPDATE salons
+            SET
+              google_reviews_cache = ${JSON.stringify(probe.reviews)}::jsonb,
+              google_reviews_rating = ${Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null},
+              google_reviews_count = ${Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null},
+              google_reviews_fetched_at = now()
+            WHERE slug = ${auth.salon.slug}
+          `;
+          reviewsFetched = probe.reviews.length;
+        } else {
+          reviewsError = probe.reason ?? 'no_reviews';
+        }
+      } catch {
+        reviewsError = 'fetch_error';
       }
-    } catch {
-      reviewsError = 'fetch_error';
     }
   }
 
