@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, ChevronDown, Loader2, Plus, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CLICKA_MARKETING_GRADIENT_BORDER_STYLE,
   CLICKA_MARKETING_GRADIENT_STYLE,
@@ -123,8 +123,10 @@ export function SalonBookingModal({
 }: SalonBookingModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [browseAllServices, setBrowseAllServices] = useState(true);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
   const [variantDropdownOpenForServiceId, setVariantDropdownOpenForServiceId] = useState<string | null>(null);
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -138,6 +140,19 @@ export function SalonBookingModal({
     }
     setSelectedVariantByServiceId(initial);
   }, [open, serviceCatalog]);
+
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setBrowseAllServices(selectedServiceIdxs.length === 0);
+    }
+    prevOpenRef.current = open;
+  }, [open, selectedServiceIdxs.length]);
+
+  useEffect(() => {
+    if (selectedServiceIdxs.length === 0) {
+      setBrowseAllServices(true);
+    }
+  }, [selectedServiceIdxs.length]);
 
   const hasServices = selectedServiceIdxs.length > 0;
   const endTime = useMemo(
@@ -167,7 +182,9 @@ export function SalonBookingModal({
     const variantLabel = variants.length > 0 ? selectedVariantByServiceId[service.id] ?? variants[0]!.label : null;
     const idx = getBookingRowIndex(services, service.id, variantLabel);
     if (idx < 0) return;
+    const wasSelected = selectedServiceIdxs.includes(idx);
     onToggleService(idx);
+    if (!wasSelected) setBrowseAllServices(false);
   }
 
   const dateOptions = useMemo(() => {
@@ -287,31 +304,84 @@ export function SalonBookingModal({
           </button>
         </div>
 
-        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-5">
+        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5">
           {bookingSuccess ? (
             <p className="rounded-2xl bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-700">
               {bookingSuccess}
             </p>
           ) : (
-            <form onSubmit={onSubmit} className="min-w-0 space-y-3.5 bg-white">
+            <form id="salon-booking-form" onSubmit={onSubmit} className="min-w-0 space-y-3.5 bg-white">
               {step === 1 ? (
                 <div className="space-y-3">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-[13px] font-semibold text-black">Услуги</p>
-                    <p className="text-[12px] font-medium tabular-nums text-black/40">
-                      {visibleCatalog.length} {visibleCatalog.length === 1 ? 'услуга' : 'услуги'}
-                    </p>
-                  </div>
+                  {hasServices && !browseAllServices ? (
+                    <>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-[13px] font-semibold text-black">Избрани услуги</p>
+                        <p className="text-[12px] font-medium tabular-nums text-black/40">
+                          {selectedServices.length} {selectedServices.length === 1 ? 'услуга' : 'услуги'}
+                        </p>
+                      </div>
+                      {selectedServiceIdxs.map((idx) => {
+                        const svc = services[idx];
+                        if (!svc) return null;
+                        return (
+                          <div
+                            key={`selected-${svc.id}-${idx}`}
+                            className={`flex items-start justify-between gap-3 rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[15px] font-semibold text-black">{svc.name}</p>
+                              <p className="mt-1 text-[13px] tabular-nums text-black/45">
+                                {svc.duration} мин · {Number(svc.price ?? 0).toFixed(2)} EUR
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onToggleService(idx)}
+                              className={`mt-0.5 shrink-0 rounded-full bg-white px-2.5 py-1.5 text-xs font-semibold text-black/55 ${cardShadow}`}
+                            >
+                              Премахни
+                            </button>
+                          </div>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => setBrowseAllServices(true)}
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-2xl bg-white px-3.5 py-3 text-sm font-semibold text-black ${cardShadow}`}
+                      >
+                        <Plus className="h-4 w-4" aria-hidden />
+                        Добави още услуги
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-[13px] font-semibold text-black">Услуги</p>
+                        <p className="text-[12px] font-medium tabular-nums text-black/40">
+                          {visibleCatalog.length} {visibleCatalog.length === 1 ? 'услуга' : 'услуги'}
+                        </p>
+                      </div>
 
-                  <SalonServiceCategoryTabs
-                    categories={categoryTabs}
-                    selectedId={selectedCategory}
-                    onSelect={setSelectedCategory}
-                    size="sm"
-                    className="-mx-1 px-1"
-                  />
+                      {hasServices ? (
+                        <button
+                          type="button"
+                          onClick={() => setBrowseAllServices(false)}
+                          className="text-[12px] font-semibold text-black underline underline-offset-2"
+                        >
+                          Скрий списъка · {selectedServices.length} избрани
+                        </button>
+                      ) : null}
 
-                  {visibleCatalog.map((service) => {
+                      <SalonServiceCategoryTabs
+                        categories={categoryTabs}
+                        selectedId={selectedCategory}
+                        onSelect={setSelectedCategory}
+                        size="sm"
+                        className="-mx-1 px-1"
+                      />
+
+                      {visibleCatalog.map((service) => {
                     const variants = service.variants ?? [];
                     const variantLabel =
                       variants.length > 0
@@ -412,6 +482,8 @@ export function SalonBookingModal({
                       Няма услуги в избраната категория.
                     </p>
                   ) : null}
+                    </>
+                  )}
                 </div>
               ) : null}
 
@@ -607,70 +679,75 @@ export function SalonBookingModal({
                 </div>
               ) : null}
 
-              {hasServices ? (
-                <div className={`rounded-2xl bg-white px-3.5 py-3 ${cardShadow}`}>
-                  <p className="text-sm font-semibold tabular-nums text-black">
-                    Общо: {Math.max(0, totalDuration)} мин · {totalPrice.toFixed(2)} EUR
-                  </p>
-                  {selectedTime ? (
-                    <p className="mt-1 text-sm tabular-nums text-black/45">
-                      Старт {selectedTime} · Готови около {endTime}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-xs text-black/35 truncate">
-                    {selectedServices.map((s) => s.name).join(' + ')}
-                  </p>
-                </div>
-              ) : null}
-
               {bookingError ? (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
                   {bookingError}
                 </p>
               ) : null}
-
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
-                  disabled={step === 1}
-                  className={`rounded-full border border-black/[0.04] bg-white py-3.5 text-[15px] font-semibold text-black/75 transition disabled:opacity-25 active:scale-[0.98] active:shadow-[0_2px_8px_rgba(0,0,0,0.14)] ${backButtonShadow}`}
-                >
-                  Назад
-                </button>
-                {step < 3 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (step === 1 && !hasServices) return;
-                      if (step === 2 && !selectedTime) return;
-                      setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
-                    }}
-                    disabled={
-                      (step === 1 && !hasServices) ||
-                      (step === 2 && (!selectedDate || !selectedTime))
-                    }
-                    className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                    style={CLICKA_MARKETING_GRADIENT_STYLE}
-                  >
-                    Продължи
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || !selectedTime || !hasServices}
-                    className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                    style={CLICKA_MARKETING_GRADIENT_STYLE}
-                  >
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                    Изпрати заявка
-                  </button>
-                )}
-              </div>
             </form>
           )}
-
         </div>
+
+        {!bookingSuccess ? (
+          <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
+            {hasServices ? (
+              <div className="mb-3 rounded-2xl bg-white px-3.5 py-2.5">
+                <p className="text-sm font-semibold tabular-nums text-black">
+                  Общо: {Math.max(0, totalDuration)} мин · {totalPrice.toFixed(2)} EUR
+                </p>
+                {selectedTime ? (
+                  <p className="mt-0.5 text-xs tabular-nums text-black/45">
+                    Старт {selectedTime} · Готови около {endTime}
+                  </p>
+                ) : step > 1 ? (
+                  <p className="mt-0.5 truncate text-xs text-black/35">
+                    {selectedServices.map((s) => s.name).join(' + ')}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
+                disabled={step === 1}
+                className={`rounded-full border border-black/[0.04] bg-white py-3.5 text-[15px] font-semibold text-black/75 transition disabled:opacity-25 active:scale-[0.98] active:shadow-[0_2px_8px_rgba(0,0,0,0.14)] ${backButtonShadow}`}
+              >
+                Назад
+              </button>
+              {step < 3 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (step === 1 && !hasServices) return;
+                    if (step === 2 && !selectedTime) return;
+                    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
+                  }}
+                  disabled={
+                    (step === 1 && !hasServices) ||
+                    (step === 2 && (!selectedDate || !selectedTime))
+                  }
+                  className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                  style={CLICKA_MARKETING_GRADIENT_STYLE}
+                >
+                  Продължи
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  form="salon-booking-form"
+                  disabled={isSubmitting || !selectedTime || !hasServices}
+                  className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                  style={CLICKA_MARKETING_GRADIENT_STYLE}
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                  Изпрати заявка
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

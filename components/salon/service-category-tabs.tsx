@@ -10,7 +10,7 @@ type SalonServiceCategoryTabsProps = {
   className?: string;
 };
 
-/** Text category filter — horizontal scroll, black bold labels. */
+/** Text category filter — horizontal scroll, all labels in black. */
 export function SalonServiceCategoryTabs({
   categories,
   selectedId,
@@ -45,7 +45,7 @@ export function SalonServiceCategoryTabs({
               }
             }}
             className={`shrink-0 cursor-pointer select-none whitespace-nowrap font-bold text-black transition ${
-              active ? '' : 'opacity-45 hover:opacity-70'
+              active ? 'underline decoration-2 underline-offset-[6px]' : 'hover:opacity-80'
             }`}
           >
             {cat.label}
