@@ -7,6 +7,7 @@ export type BookingCatalogVariant = {
 export type BookingCatalogService = {
   id: string;
   name: string;
+  description?: string;
   category?: string;
   price?: number;
   duration: number;

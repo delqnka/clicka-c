@@ -1,5 +1,6 @@
 'use client';
 
+import { CLICKA_MARKETING_GRADIENT } from '@/lib/clicka-marketing-site';
 import type { ServiceCategoryTab } from '@/lib/salon-service-categories';
 
 type SalonServiceCategoryTabsProps = {
@@ -44,11 +45,20 @@ export function SalonServiceCategoryTabs({
                 onSelect(cat.id);
               }
             }}
-            className={`shrink-0 cursor-pointer select-none whitespace-nowrap font-bold text-black transition ${
-              active ? 'underline decoration-2 underline-offset-[6px]' : 'hover:opacity-80'
+            className={`relative inline-block shrink-0 cursor-pointer select-none whitespace-nowrap pb-1.5 font-bold text-black transition ${
+              active ? '' : 'hover:opacity-80'
             }`}
           >
             {cat.label}
+            <span
+              aria-hidden
+              className="absolute bottom-0 left-0 h-[2px] rounded-full transition-[width,opacity] duration-200"
+              style={{
+                width: active ? '100%' : '0%',
+                opacity: active ? 1 : 0,
+                backgroundImage: CLICKA_MARKETING_GRADIENT,
+              }}
+            />
           </span>
         );
       })}

@@ -18,6 +18,7 @@ import { SalonServiceCategoryTabs } from '@/components/salon/service-category-ta
 export type BookingServiceOption = {
   id: string;
   name: string;
+  description?: string;
   category?: string;
   price?: number;
   duration: number;
@@ -82,6 +83,14 @@ function addMinutesToTime(time: string, minutesToAdd: number): string {
   const outH = Math.floor(total / 60) % 24;
   const outM = total % 60;
   return `${String(outH).padStart(2, '0')}:${String(outM).padStart(2, '0')}`;
+}
+
+function ServiceDescription({ text }: { text?: string }) {
+  const description = text?.trim();
+  if (!description) return null;
+  return (
+    <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-black/50">{description}</p>
+  );
 }
 
 export function SalonBookingModal({
@@ -182,9 +191,7 @@ export function SalonBookingModal({
     const variantLabel = variants.length > 0 ? selectedVariantByServiceId[service.id] ?? variants[0]!.label : null;
     const idx = getBookingRowIndex(services, service.id, variantLabel);
     if (idx < 0) return;
-    const wasSelected = selectedServiceIdxs.includes(idx);
     onToggleService(idx);
-    if (!wasSelected) setBrowseAllServices(false);
   }
 
   const dateOptions = useMemo(() => {
@@ -327,21 +334,27 @@ export function SalonBookingModal({
                         return (
                           <div
                             key={`selected-${svc.id}-${idx}`}
-                            className={`flex items-start justify-between gap-3 rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}
+                            className={`rounded-2xl p-px transition ${gradientRingShadow}`}
+                            style={CLICKA_MARKETING_GRADIENT_BORDER_STYLE}
                           >
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-[15px] font-semibold text-black">{svc.name}</p>
-                              <p className="mt-1 text-[13px] tabular-nums text-black/45">
-                                {svc.duration} мин · {Number(svc.price ?? 0).toFixed(2)} EUR
-                              </p>
+                            <div className="flex items-start justify-between gap-3 rounded-[15px] bg-white px-3.5 py-3.5">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-[15px] font-semibold text-black">{svc.name}</p>
+                                <ServiceDescription text={svc.description} />
+                                <p className="mt-1 text-[13px] tabular-nums text-black/45">
+                                  {svc.duration} мин · {Number(svc.price ?? 0).toFixed(2)} EUR
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => onToggleService(idx)}
+                                className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-white transition ${gradientCtaShadow}`}
+                                style={CLICKA_MARKETING_GRADIENT_STYLE}
+                              >
+                                <Check className="h-3.5 w-3.5" aria-hidden />
+                                Добавена
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => onToggleService(idx)}
-                              className={`mt-0.5 shrink-0 rounded-full bg-white px-2.5 py-1.5 text-xs font-semibold text-black/55 ${cardShadow}`}
-                            >
-                              Премахни
-                            </button>
                           </div>
                         );
                       })}
@@ -409,6 +422,7 @@ export function SalonBookingModal({
                         >
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-[15px] font-semibold text-black">{service.name}</p>
+                            <ServiceDescription text={service.description} />
                             {variants.length > 0 ? (
                               <div className="relative mt-1.5 max-w-full">
                                 <button
@@ -454,21 +468,17 @@ export function SalonBookingModal({
                           <button
                             type="button"
                             onClick={() => toggleCatalogService(service)}
-                            className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition ${
-                              active
-                                ? `text-white ${gradientCtaShadow}`
-                                : `bg-white text-black/60 ${cardShadow}`
-                            }`}
-                            style={active ? CLICKA_MARKETING_GRADIENT_STYLE : undefined}
+                            className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-white transition ${gradientCtaShadow}`}
+                            style={CLICKA_MARKETING_GRADIENT_STYLE}
                           >
                             {active ? (
                               <>
-                                <Check className="h-3.5 w-3.5" />
+                                <Check className="h-3.5 w-3.5" aria-hidden />
                                 Добавена
                               </>
                             ) : (
                               <>
-                                <Plus className="h-3.5 w-3.5" />
+                                <Plus className="h-3.5 w-3.5" aria-hidden />
                                 Добави
                               </>
                             )}

@@ -205,6 +205,7 @@ function offerImagesList(images: unknown): string[] {
 type ServiceRow = {
   id: string;
   name: string;
+  description?: string;
   duration: number;
   price?: number;
   category?: string;
@@ -1158,7 +1159,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className={`client-site min-h-screen overflow-x-hidden bg-white pb-24 text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
+      className={`client-site min-h-screen overflow-x-hidden bg-white text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -1852,7 +1853,11 @@ export default function SalonPublicParity({
         </div>
 
         <footer
-          className="mt-10 border-t border-white/10 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-px lg:mt-12"
+          className={`mt-10 border-t border-white/10 pt-px lg:mt-12 ${
+            disableStickySectionTabs
+              ? 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'
+              : 'pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-[max(0.75rem,env(safe-area-inset-bottom))]'
+          }`}
           style={{
             background: `linear-gradient(150deg, color-mix(in srgb, ${primary} 36%, #151515) 0%, #15121f 38%, #0f1118 68%, #090b12 100%)`,
             boxShadow: '0 -14px 48px rgba(4,8,20,0.28)',
