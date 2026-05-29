@@ -4,6 +4,22 @@
  */
 export const CLICKA_LOGO_PATH = '/clicka-logo.png';
 
+/** Rose → pink → purple, used on marketing CTAs and booking modal accents */
+export const CLICKA_MARKETING_GRADIENT =
+  'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
+
+export const CLICKA_MARKETING_GRADIENT_STYLE = {
+  backgroundImage: CLICKA_MARKETING_GRADIENT,
+} as const;
+
+/** 1px continuous gradient ring on rounded corners (no p-[npx] gap at edges) */
+export const CLICKA_MARKETING_GRADIENT_BORDER_STYLE = {
+  border: '1px solid transparent',
+  backgroundImage: `linear-gradient(#ffffff, #ffffff), ${CLICKA_MARKETING_GRADIENT}`,
+  backgroundOrigin: 'border-box',
+  backgroundClip: 'padding-box, border-box',
+} as const;
+
 export const clickaMarketingSite = {
   name: 'clicka.bg',
   logoSrc: CLICKA_LOGO_PATH,

@@ -1,7 +1,19 @@
 'use client';
 
-import { Check, Loader2, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, Loader2, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  CLICKA_MARKETING_GRADIENT_BORDER_STYLE,
+  CLICKA_MARKETING_GRADIENT_STYLE,
+} from '@/lib/clicka-marketing-site';
+import {
+  getBookingRowIndex,
+  getCatalogDisplayPriceDuration,
+  isCatalogServiceSelected,
+  type BookingCatalogService,
+} from '@/lib/booking-modal-catalog';
+import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-service-categories';
+import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 
 export type BookingServiceOption = {
   id: string;
@@ -9,12 +21,17 @@ export type BookingServiceOption = {
   category?: string;
   price?: number;
   duration: number;
+  variants?: { label: string; price: number; duration?: number }[];
 };
 
 type SalonBookingModalProps = {
   open: boolean;
   primaryColor: string;
+  /** One row per service (same as public site). */
+  serviceCatalog: BookingCatalogService[];
+  /** Expanded rows for booking API (includes variant rows). */
   services: BookingServiceOption[];
+  categoryTabs: ServiceCategoryTab[];
   selectedServiceIdxs: number[];
   selectedDate: string;
   selectedTime: string;
@@ -25,6 +42,7 @@ type SalonBookingModalProps = {
   clientEmail: string;
   notes: string;
   smsReminderConsent: boolean;
+  smsEnabled?: boolean;
   salonName: string;
   termsHref: string;
   privacyHref: string;
@@ -46,8 +64,16 @@ type SalonBookingModalProps = {
   onSubmit: (e: React.FormEvent) => void;
 };
 
+const cardShadow =
+  'shadow-[0_2px_6px_rgba(0,0,0,0.14),0_10px_32px_rgba(0,0,0,0.18),0_1px_2px_rgba(0,0,0,0.1)]';
+const backButtonShadow =
+  'shadow-[0_4px_14px_rgba(0,0,0,0.22),0_14px_40px_rgba(0,0,0,0.16),0_1px_0_rgba(0,0,0,0.06)]';
+const gradientCtaShadow = 'shadow-[0_8px_28px_rgba(225,29,72,0.32)]';
+const gradientRingShadow = 'shadow-[0_2px_10px_rgba(219,39,119,0.1)]';
+const blackCtaShadow = 'shadow-[0_4px_14px_rgba(0,0,0,0.15)]';
+
 const fieldClass =
-  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-white/60 bg-white/72 px-3.5 py-3 text-[16px] leading-tight text-[#111] shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_26px_rgba(0,0,0,0.05)] outline-none backdrop-blur-md transition focus:border-white/80 focus:ring-2 focus:ring-white/55';
+  `mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 text-[16px] leading-tight text-[#111] ${cardShadow} outline-none transition focus:border-[color:var(--salon-primary)]/40 focus:ring-2 focus:ring-[color:var(--salon-primary)]/12`;
 
 function addMinutesToTime(time: string, minutesToAdd: number): string {
   const [h, m] = time.split(':').map(Number);
@@ -61,7 +87,9 @@ function addMinutesToTime(time: string, minutesToAdd: number): string {
 export function SalonBookingModal({
   open,
   primaryColor,
+  serviceCatalog,
   services,
+  categoryTabs,
   selectedServiceIdxs,
   selectedDate,
   selectedTime,
@@ -72,6 +100,7 @@ export function SalonBookingModal({
   clientEmail,
   notes,
   smsReminderConsent,
+  smsEnabled,
   salonName,
   termsHref,
   privacyHref,
@@ -94,12 +123,21 @@ export function SalonBookingModal({
 }: SalonBookingModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
+  const [variantDropdownOpenForServiceId, setVariantDropdownOpenForServiceId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (open) {
-      setStep(1);
-      setSelectedCategory(null);
+    if (!open) return;
+    setStep(1);
+    setSelectedCategory(null);
+    setVariantDropdownOpenForServiceId(null);
+    const initial: Record<string, string> = {};
+    for (const service of serviceCatalog) {
+      const variants = service.variants ?? [];
+      if (variants.length > 0) initial[service.id] = variants[0]!.label;
     }
-  }, [open]);
+    setSelectedVariantByServiceId(initial);
+  }, [open, serviceCatalog]);
 
   const hasServices = selectedServiceIdxs.length > 0;
   const endTime = useMemo(
@@ -113,30 +151,24 @@ export function SalonBookingModal({
         .filter((svc): svc is BookingServiceOption => Boolean(svc)),
     [selectedServiceIdxs, services]
   );
-  const serviceCategories = useMemo(() => {
-    const labels = new Set<string>();
-    for (const svc of services) {
-      const cat = String(svc.category ?? '').trim();
-      if (cat) labels.add(cat);
-    }
-    const sorted = [...labels].sort((a, b) => a.localeCompare(b, 'bg'));
-    return [{ id: null as string | null, label: 'Всички' }, ...sorted.map((cat) => ({ id: cat, label: cat }))];
-  }, [services]);
-  const visibleServiceItems = useMemo(
-    () =>
-      services
-        .map((service, idx) => ({ service, idx }))
-        .filter(({ service }) =>
-          selectedCategory ? String(service.category ?? '').trim() === selectedCategory : true
-        ),
-    [services, selectedCategory]
+  const visibleCatalog = useMemo(
+    () => serviceCatalog.filter((service) => serviceMatchesCategory(service, selectedCategory)),
+    [serviceCatalog, selectedCategory],
   );
 
   useEffect(() => {
     if (!selectedCategory) return;
-    const hasCategory = services.some((svc) => String(svc.category ?? '').trim() === selectedCategory);
+    const hasCategory = serviceCatalog.some((svc) => serviceMatchesCategory(svc, selectedCategory));
     if (!hasCategory) setSelectedCategory(null);
-  }, [services, selectedCategory]);
+  }, [serviceCatalog, selectedCategory]);
+
+  function toggleCatalogService(service: BookingCatalogService) {
+    const variants = service.variants ?? [];
+    const variantLabel = variants.length > 0 ? selectedVariantByServiceId[service.id] ?? variants[0]!.label : null;
+    const idx = getBookingRowIndex(services, service.id, variantLabel);
+    if (idx < 0) return;
+    onToggleService(idx);
+  }
 
   const dateOptions = useMemo(() => {
     if (!minDate || !maxDate) return [];
@@ -170,29 +202,49 @@ export function SalonBookingModal({
     onClose();
   }
 
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return;
+    document.documentElement.style.setProperty('overflow', 'hidden');
+    document.documentElement.style.setProperty('background-color', '#ffffff');
+    document.body.style.setProperty('overflow', 'hidden');
+    document.body.style.setProperty('position', 'fixed');
+    document.body.style.setProperty('inset', '0');
+    document.body.style.setProperty('width', '100%');
+    document.body.style.setProperty('background-color', '#ffffff');
+    const scrollY = window.scrollY;
+    document.body.style.setProperty('top', `-${scrollY}px`);
+    return () => {
+      document.documentElement.style.removeProperty('overflow');
+      document.documentElement.style.removeProperty('background-color');
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('position');
+      document.body.style.removeProperty('inset');
+      document.body.style.removeProperty('width');
+      document.body.style.removeProperty('background-color');
+      document.body.style.removeProperty('top');
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] overflow-hidden" role="presentation">
-      <div className="absolute inset-0 bg-[#0b1020]/45 backdrop-blur-[2px]" aria-hidden />
+    <div className="fixed inset-0 z-[110] overflow-hidden bg-white sm:bg-transparent" role="presentation">
+      <div className="absolute inset-0 hidden bg-black/30 backdrop-blur-sm sm:block" aria-hidden />
 
       <div
         role="dialog"
         aria-modal
         aria-label="Резервация"
-        className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-h-[94dvh] w-full max-w-none flex-col overflow-hidden rounded-t-[1.35rem] border border-white/45 bg-[linear-gradient(155deg,rgba(255,255,255,0.9),rgba(255,255,255,0.78))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
+        className="absolute inset-x-0 bottom-0 z-10 mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-white sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem] sm:bg-white sm:shadow-[0_25px_60px_rgba(0,0,0,0.12)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.7),transparent_68%)]"
-          aria-hidden
-        />
-        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-black/15 sm:hidden" aria-hidden />
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-black/10 sm:hidden" aria-hidden />
 
-        <div className="relative z-[1] flex shrink-0 items-center justify-between gap-2 px-4 pb-1.5 pt-3.5 sm:px-5">
-          <div className="flex min-w-0 items-center gap-2">
-            <h3 className="text-lg font-semibold tracking-tight text-[#161616]">Резервация</h3>
-            <div className="flex items-center gap-1">
+        <div className="relative z-[1] flex shrink-0 items-center justify-between gap-2 bg-white px-4 pb-3 pt-3.5 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <h3 className="text-[17px] font-semibold tracking-tight text-black">Резервация</h3>
+            <div className="flex items-center gap-1.5">
               {(
                 [
                   { n: 1 as const, label: 'Услуги' },
@@ -210,11 +262,12 @@ export function SalonBookingModal({
                     type="button"
                     disabled={disabled}
                     onClick={() => goToStep(n)}
-                    className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border px-2 text-[10px] font-semibold transition disabled:opacity-40 ${
+                    className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-2.5 text-[11px] font-bold transition disabled:opacity-20 ${
                       active || complete
-                        ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)] text-white'
-                        : 'border-white/65 bg-white/72 text-black/55'
+                        ? `text-white ${gradientCtaShadow}`
+                        : `bg-white text-black/50 ${cardShadow}`
                     }`}
+                    style={active || complete ? CLICKA_MARKETING_GRADIENT_STYLE : undefined}
                     title={label}
                     aria-label={`Стъпка ${n}: ${label}`}
                   >
@@ -226,7 +279,7 @@ export function SalonBookingModal({
           </div>
           <button
             type="button"
-            className="shrink-0 rounded-full border border-white/60 bg-white/55 p-2 text-black/55 shadow-sm transition hover:bg-white/75"
+            className={`shrink-0 rounded-full bg-white p-2 text-black/40 transition active:bg-black/[0.03] ${cardShadow}`}
             onClick={requestClose}
             aria-label="Затвори"
           >
@@ -234,100 +287,128 @@ export function SalonBookingModal({
           </button>
         </div>
 
-        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5">
+        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-5">
           {bookingSuccess ? (
-            <p className="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 px-3.5 py-3 text-sm leading-relaxed text-[#0f5132]">
+            <p className="rounded-2xl bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-700">
               {bookingSuccess}
             </p>
           ) : (
-            <form onSubmit={onSubmit} className="min-w-0 space-y-3.5">
+            <form onSubmit={onSubmit} className="min-w-0 space-y-3.5 bg-white">
               {step === 1 ? (
-                <div className="space-y-2.5">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
-                      1/3 Услуги
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[13px] font-semibold text-black">Услуги</p>
+                    <p className="text-[12px] font-medium tabular-nums text-black/40">
+                      {visibleCatalog.length} {visibleCatalog.length === 1 ? 'услуга' : 'услуги'}
                     </p>
                   </div>
 
-                  {hasServices ? (
-                    <div className="rounded-2xl border border-[color:var(--salon-primary)]/25 bg-[color:var(--salon-primary)]/8 px-3 py-2.5">
-                      <p className="text-xs font-semibold text-[color:var(--salon-primary)]">
-                        Избрани: {selectedServices.length}
-                      </p>
-                      <p className="mt-1 text-sm text-black/65 truncate">
-                        {selectedServices.map((s) => s.name).join(' · ')}
-                      </p>
-                      <p className="mt-1.5 text-xs text-black/45">
-                        За още услуга — докоснете ред от списъка по-долу.
-                      </p>
-                    </div>
-                  ) : null}
+                  <SalonServiceCategoryTabs
+                    categories={categoryTabs}
+                    selectedId={selectedCategory}
+                    onSelect={setSelectedCategory}
+                    size="sm"
+                    className="-mx-1 px-1"
+                  />
 
-                  {serviceCategories.length > 1 ? (
-                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
-                      {serviceCategories.map((cat) => {
-                        const active = selectedCategory === cat.id;
-                        return (
-                          <button
-                            key={cat.id ?? 'all'}
-                            type="button"
-                            onClick={() => setSelectedCategory(cat.id)}
-                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                              active
-                                ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/14 text-[color:var(--salon-primary)]'
-                                : 'border-white/65 bg-white/72 text-black/65'
-                            }`}
-                          >
-                            {cat.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-
-                  {visibleServiceItems.map(({ service: s, idx: i }) => {
-                    const active = selectedServiceIdxs.includes(i);
+                  {visibleCatalog.map((service) => {
+                    const variants = service.variants ?? [];
+                    const variantLabel =
+                      variants.length > 0
+                        ? selectedVariantByServiceId[service.id] ?? variants[0]!.label
+                        : null;
+                    const active = isCatalogServiceSelected(
+                      selectedServiceIdxs,
+                      services,
+                      service,
+                      variantLabel,
+                    );
+                    const { price, duration } = getCatalogDisplayPriceDuration(service, variantLabel);
                     return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => onToggleService(i)}
-                        className={`flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${
-                          active
-                            ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/12'
-                            : 'border-white/60 bg-white/70'
+                      <div
+                        key={service.id}
+                        className={`rounded-2xl transition ${
+                          active ? `p-px ${gradientRingShadow}` : `bg-white ${cardShadow}`
                         }`}
+                        style={active ? CLICKA_MARKETING_GRADIENT_BORDER_STYLE : undefined}
                       >
-                        <span className="min-w-0">
-                          <span className="block truncate text-[15px] font-semibold text-[#131313]">{s.name}</span>
-                          <span className="mt-0.5 block text-sm tabular-nums text-black/55">
-                            {s.duration} мин · {s.price ?? 0} EUR
-                          </span>
-                        </span>
-                        <span
-                          className={`ml-3 inline-flex shrink-0 items-center gap-1 rounded-xl border px-2 py-1.5 text-xs font-semibold ${
-                            active
-                              ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)] text-white'
-                              : 'border-black/15 bg-white text-black/70'
+                        <div
+                          className={`flex items-start justify-between gap-3 ${
+                            active ? 'rounded-[15px] bg-white px-3.5 py-3.5' : 'px-3.5 py-3.5'
                           }`}
                         >
-                          {active ? (
-                            <>
-                              <Check className="h-3.5 w-3.5" />
-                              Добавена
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="h-3.5 w-3.5" />
-                              Добави
-                            </>
-                          )}
-                        </span>
-                      </button>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[15px] font-semibold text-black">{service.name}</p>
+                            {variants.length > 0 ? (
+                              <div className="relative mt-1.5 max-w-full">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setVariantDropdownOpenForServiceId((prev) =>
+                                      prev === service.id ? null : service.id,
+                                    )
+                                  }
+                                  className="flex w-full items-center justify-between rounded-full border border-black/12 bg-white px-3 py-1.5 text-left text-xs transition hover:border-black/25"
+                                >
+                                  <span className="truncate">{variantLabel}</span>
+                                  <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 text-black/45" aria-hidden />
+                                </button>
+                                {variantDropdownOpenForServiceId === service.id ? (
+                                  <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                                    {variants.map((variant) => (
+                                      <button
+                                        key={variant.label}
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedVariantByServiceId((prev) => ({
+                                            ...prev,
+                                            [service.id]: variant.label,
+                                          }));
+                                          setVariantDropdownOpenForServiceId(null);
+                                        }}
+                                        className={`w-full px-3 py-2 text-left text-xs hover:bg-black/[0.04] ${
+                                          variantLabel === variant.label ? 'font-semibold text-black' : 'text-black/70'
+                                        }`}
+                                      >
+                                        {variant.label} · {variant.price} €
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                            <p className="mt-1.5 text-[13px] tabular-nums text-black/45">
+                              {duration} мин · {price} EUR
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleCatalogService(service)}
+                            className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition ${
+                              active
+                                ? `text-white ${gradientCtaShadow}`
+                                : `bg-white text-black/60 ${cardShadow}`
+                            }`}
+                            style={active ? CLICKA_MARKETING_GRADIENT_STYLE : undefined}
+                          >
+                            {active ? (
+                              <>
+                                <Check className="h-3.5 w-3.5" />
+                                Добавена
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-3.5 w-3.5" />
+                                Добави
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
-                  {visibleServiceItems.length === 0 ? (
-                    <p className="rounded-2xl border border-white/55 bg-white/68 px-3.5 py-3 text-sm text-black/55">
+                  {visibleCatalog.length === 0 ? (
+                    <p className={`rounded-2xl bg-white px-3.5 py-3 text-sm text-black/40 ${cardShadow}`}>
                       Няма услуги в избраната категория.
                     </p>
                   ) : null}
@@ -335,15 +416,15 @@ export function SalonBookingModal({
               ) : null}
 
               {step === 2 ? (
-                <div className="space-y-3.5">
+                <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
-                      2/3 Дата и час
+                    <p className="text-[13px] font-semibold text-black">
+                      Дата и час
                     </p>
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="inline-flex items-center gap-1 rounded-xl border border-white/60 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-[color:var(--salon-primary)]"
+                      className={`inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--salon-primary)] ${cardShadow} active:bg-black/[0.03]`}
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Добави услуга
@@ -351,16 +432,16 @@ export function SalonBookingModal({
                   </div>
 
                   {hasServices ? (
-                    <p className="text-sm text-black/55">
+                    <p className="text-sm text-black/45">
                       {selectedServices.map((s) => s.name).join(' + ')}
                     </p>
                   ) : null}
 
                   <div className="min-w-0">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                    <label className="block text-[13px] font-semibold text-black">
                       Дата
                     </label>
-                    <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
+                    <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1.5 scrollbar-none">
                       {dateOptions.map((d) => {
                         const active = selectedDate === d.iso;
                         return (
@@ -368,13 +449,14 @@ export function SalonBookingModal({
                             key={d.iso}
                             type="button"
                             onClick={() => onDateChange(d.iso)}
-                            className={`flex h-[4.25rem] w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-xl border text-center transition ${
+                            className={`flex h-[4.25rem] w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-2xl text-center transition ${
                               active
-                                ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/14 text-[color:var(--salon-primary)]'
-                                : 'border-white/60 bg-white/75 text-black/70'
+                                ? 'text-white shadow-[0_3px_12px_rgba(0,0,0,0.15)]'
+                                : `bg-white text-black/60 ${cardShadow}`
                             }`}
+                            style={active ? { backgroundColor: '#000' } : undefined}
                           >
-                            <span className="text-[10px] font-medium uppercase leading-none opacity-80 tabular-nums">
+                            <span className="text-[10px] font-medium uppercase leading-none tabular-nums opacity-75">
                               {d.weekday}
                             </span>
                             <span className="mt-1 text-[12px] font-bold leading-tight tabular-nums">{d.day}</span>
@@ -385,15 +467,15 @@ export function SalonBookingModal({
                   </div>
 
                   <div className="min-w-0">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                    <label className="block text-[13px] font-semibold text-black">
                       Час
                     </label>
                     {!selectedDate ? (
-                      <p className="mt-1.5 text-sm text-black/45">Първо изберете дата.</p>
+                      <p className="mt-1.5 text-sm text-black/35">Първо изберете дата.</p>
                     ) : timeSlots === 'closed' ? (
-                      <p className="mt-1.5 text-sm text-black/45">В този ден салонът е затворен.</p>
+                      <p className="mt-1.5 text-sm text-black/35">В този ден салонът е затворен.</p>
                     ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
-                      <p className="mt-1.5 text-sm text-black/45">Няма свободни часове за избраните услуги.</p>
+                      <p className="mt-1.5 text-sm text-black/35">Няма свободни часове за избраните услуги.</p>
                     ) : Array.isArray(timeSlots) ? (
                       <div className="mt-2 grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4">
                         {timeSlots.map((t) => {
@@ -403,11 +485,12 @@ export function SalonBookingModal({
                               key={t}
                               type="button"
                               onClick={() => onTimeChange(t)}
-                              className={`min-w-0 touch-manipulation rounded-xl border px-2 py-2.5 text-center text-sm font-medium tabular-nums shadow-sm backdrop-blur-md transition ${
+                              className={`min-w-0 touch-manipulation rounded-xl px-2 py-2.5 text-center text-sm font-medium tabular-nums transition ${
                                 active
-                                  ? 'border-[color:var(--salon-primary)] bg-[color:var(--salon-primary)]/16 text-[color:var(--salon-primary)]'
-                                  : 'border-white/60 bg-white/65 text-[#1a1a1a] active:bg-white/85'
+                                  ? 'text-white shadow-[0_3px_12px_rgba(0,0,0,0.15)]'
+                                  : `bg-white text-black/70 ${cardShadow} active:bg-black/[0.03]`
                               }`}
+                              style={active ? { backgroundColor: '#000' } : undefined}
                             >
                               {t}
                             </button>
@@ -415,7 +498,7 @@ export function SalonBookingModal({
                         })}
                       </div>
                     ) : (
-                      <p className="mt-1.5 text-sm text-black/45">Първо изберете услуга.</p>
+                      <p className="mt-1.5 text-sm text-black/35">Първо изберете услуга.</p>
                     )}
                   </div>
                 </div>
@@ -423,11 +506,11 @@ export function SalonBookingModal({
 
               {step === 3 ? (
                 <div className="space-y-3.5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/45">
-                    3/3 Данни за контакт
+                  <p className="text-[13px] font-semibold text-black">
+                    Данни за контакт
                   </p>
                   <div className="min-w-0">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                    <label className="block text-[13px] font-semibold text-black">
                       Име
                     </label>
                     <input
@@ -440,7 +523,7 @@ export function SalonBookingModal({
                   </div>
 
                   <div className="min-w-0">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                    <label className="block text-[13px] font-semibold text-black">
                       Телефон
                     </label>
                     <input
@@ -455,7 +538,7 @@ export function SalonBookingModal({
                   </div>
 
                   <div className="min-w-0">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                    <label className="block text-[13px] font-semibold text-black">
                       Имейл
                     </label>
                     <input
@@ -470,7 +553,7 @@ export function SalonBookingModal({
                   </div>
 
                   <div className="min-w-0">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-black/45">
+                    <label className="block text-[13px] font-semibold text-black">
                       Бележки (по желание)
                     </label>
                     <textarea
@@ -481,56 +564,60 @@ export function SalonBookingModal({
                     />
                   </div>
 
-                  <label className="flex cursor-pointer gap-3 rounded-2xl border border-white/60 bg-white/70 px-3.5 py-3">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--salon-primary)]"
-                      checked={smsReminderConsent}
-                      onChange={(e) => onSmsReminderConsentChange(e.target.checked)}
-                    />
-                    <span className="text-sm leading-relaxed text-black/70">
-                      Съгласявам се да получавам SMS напомняния за резервацията от{' '}
-                      <strong className="font-semibold text-[#171717]">{salonName}</strong> на посочения
-                      телефон. Прочетох{' '}
-                      <a
-                        href={termsHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Общите условия
-                      </a>{' '}
-                      и{' '}
-                      <a
-                        href={privacyHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Политиката за поверителност
-                      </a>
-                      .
-                    </span>
-                  </label>
-                  <p className="text-xs leading-relaxed text-black/45">
-                    Без отметка резервацията ви остава валидна, но няма да получите SMS напомняние от салона.
-                  </p>
+                  {smsEnabled ? (
+                    <>
+                      <label className={`flex cursor-pointer gap-3 rounded-2xl bg-white px-3.5 py-3 ${cardShadow}`}>
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--salon-primary)]"
+                          checked={smsReminderConsent}
+                          onChange={(e) => onSmsReminderConsentChange(e.target.checked)}
+                        />
+                        <span className="text-sm leading-relaxed text-black/50">
+                          Съгласявам се да получавам SMS напомняния за резервацията от{' '}
+                          <strong className="font-semibold text-black">{salonName}</strong> на посочения
+                          телефон. Прочетох{' '}
+                          <a
+                            href={termsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Общите условия
+                          </a>{' '}
+                          и{' '}
+                          <a
+                            href={privacyHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Политиката за поверителност
+                          </a>
+                          .
+                        </span>
+                      </label>
+                      <p className="text-xs leading-relaxed text-black/30">
+                        Без отметка резервацията ви остава валидна, но няма да получите SMS напомняние от салона.
+                      </p>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
 
               {hasServices ? (
-                <div className="rounded-2xl border border-white/65 bg-white/60 px-3.5 py-3">
-                  <p className="text-sm font-semibold tabular-nums text-[#171717]">
+                <div className={`rounded-2xl bg-white px-3.5 py-3 ${cardShadow}`}>
+                  <p className="text-sm font-semibold tabular-nums text-black">
                     Общо: {Math.max(0, totalDuration)} мин · {totalPrice.toFixed(2)} EUR
                   </p>
                   {selectedTime ? (
-                    <p className="mt-1 text-sm tabular-nums text-black/60">
+                    <p className="mt-1 text-sm tabular-nums text-black/45">
                       Старт {selectedTime} · Готови около {endTime}
                     </p>
                   ) : null}
-                  <p className="mt-1 text-xs text-black/45 truncate">
+                  <p className="mt-1 text-xs text-black/35 truncate">
                     {selectedServices.map((s) => s.name).join(' + ')}
                   </p>
                 </div>
@@ -542,12 +629,12 @@ export function SalonBookingModal({
                 </p>
               ) : null}
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
                   type="button"
                   onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
                   disabled={step === 1}
-                  className="rounded-full border border-white/60 bg-white/60 py-3 text-sm font-semibold text-black/65 disabled:opacity-40"
+                  className={`rounded-full border border-black/[0.04] bg-white py-3.5 text-[15px] font-semibold text-black/75 transition disabled:opacity-25 active:scale-[0.98] active:shadow-[0_2px_8px_rgba(0,0,0,0.14)] ${backButtonShadow}`}
                 >
                   Назад
                 </button>
@@ -563,10 +650,8 @@ export function SalonBookingModal({
                       (step === 1 && !hasServices) ||
                       (step === 2 && (!selectedDate || !selectedTime))
                     }
-                    className="rounded-full border border-white/60 py-3 text-sm font-semibold text-white disabled:opacity-50"
-                    style={{
-                      background: `linear-gradient(135deg, color-mix(in srgb, ${primaryColor} 92%, white), color-mix(in srgb, ${primaryColor} 74%, #2b2b2b))`,
-                    }}
+                    className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                    style={CLICKA_MARKETING_GRADIENT_STYLE}
                   >
                     Продължи
                   </button>
@@ -574,10 +659,8 @@ export function SalonBookingModal({
                   <button
                     type="submit"
                     disabled={isSubmitting || !selectedTime || !hasServices}
-                    className="flex items-center justify-center gap-2 rounded-full border border-white/60 py-3 text-sm font-semibold text-white disabled:opacity-50"
-                    style={{
-                      background: `linear-gradient(135deg, color-mix(in srgb, ${primaryColor} 92%, white), color-mix(in srgb, ${primaryColor} 74%, #2b2b2b))`,
-                    }}
+                    className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                    style={CLICKA_MARKETING_GRADIENT_STYLE}
                   >
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
                     Изпрати заявка

@@ -62,10 +62,16 @@
 }
 
 
-/* ── Deferred rendering for below-fold sections ──────── */
+/* ── Deferred rendering (marketing only — not salon public scroll) ── */
 .cv-defer {
   content-visibility: auto;
   contain-intrinsic-size: auto 500px;
+}
+
+/* Salon public page: avoid content-visibility repaint flicker while scrolling */
+.client-site .cv-defer {
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
 }
 
 /* ── Base ──────────────────────────────────────────────── */

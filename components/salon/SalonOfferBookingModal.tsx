@@ -122,11 +122,31 @@ export function SalonOfferBookingModal({
     return out;
   }, [minDate, maxDate]);
 
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return;
+    document.documentElement.style.setProperty('overflow', 'hidden');
+    document.body.style.setProperty('overflow', 'hidden');
+    document.body.style.setProperty('position', 'fixed');
+    document.body.style.setProperty('inset', '0');
+    document.body.style.setProperty('width', '100%');
+    const scrollY = window.scrollY;
+    document.body.style.setProperty('top', `-${scrollY}px`);
+    return () => {
+      document.documentElement.style.removeProperty('overflow');
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('position');
+      document.body.style.removeProperty('inset');
+      document.body.style.removeProperty('width');
+      document.body.style.removeProperty('top');
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
   if (!open || !offer) return null;
 
   return (
     <div className="fixed inset-0 z-[120] overflow-hidden" role="presentation" onClick={onClose}>
-      <div className="absolute inset-0 bg-[#0b1020]/45 backdrop-blur-[2px]" aria-hidden />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" aria-hidden />
 
       <div
         role="dialog"

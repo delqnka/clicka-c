@@ -40,12 +40,26 @@ function assignUniqueServiceId(candidate: string, index: number, usedIds: Set<st
 
 /** Parse salon services JSON for public UI and admin (skips unnamed rows, guarantees unique ids). */
 export function parseSalonServices(raw: unknown): ParsedSalonService[] {
-  if (!Array.isArray(raw)) return [];
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw) as unknown;
+    } catch {
+      return [];
+    }
+  }
+  let items: unknown[] = [];
+  if (Array.isArray(raw)) {
+    items = raw;
+  } else if (raw && typeof raw === 'object') {
+    items = Object.values(raw as Record<string, unknown>);
+  } else {
+    return [];
+  }
 
   const usedIds = new Set<string>();
   const out: ParsedSalonService[] = [];
 
-  raw.forEach((item, index) => {
+  items.forEach((item, index) => {
     const row = item as Record<string, unknown>;
     const name = pickFirstNonEmptyString(row.name, row.service_name, row.serviceName, row.title);
     if (!name) return;

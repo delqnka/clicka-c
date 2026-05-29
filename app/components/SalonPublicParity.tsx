@@ -30,6 +30,8 @@ import {
 } from 'react';
 import dynamic from 'next/dynamic';
 import { DeferredSection } from '@/components/salon/deferred-section';
+import { SalonBookingModal } from '@/components/salon/SalonBookingModal';
+import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
 
 import {
@@ -66,16 +68,17 @@ import {
   normalizeVisitorAdditionalInfo,
 } from '@/lib/salon-visitor-info';
 import { parseSalonServices } from '@/lib/salon-services';
+import {
+  buildServiceCategoryTabs,
+  enrichServiceCategories,
+  serviceMatchesCategory,
+} from '@/lib/salon-service-categories';
 
 const PublicVisitorFaq = dynamic(
   () => import('@/components/salon/public-visitor-faq').then((m) => m.PublicVisitorFaq),
   { ssr: true }
 );
 
-const SalonBookingModal = dynamic(
-  () => import('@/components/salon/SalonBookingModal').then((m) => m.SalonBookingModal),
-  { ssr: false }
-);
 const SalonOfferBookingModal = dynamic(
   () => import('@/components/salon/SalonOfferBookingModal').then((m) => m.SalonOfferBookingModal),
   { ssr: false }
@@ -453,8 +456,15 @@ export default function SalonPublicParity({
     [rawSalon.services],
   );
 
+  const servicesEnriched = useMemo(
+    () => enrichServiceCategories(servicesFromDb),
+    [servicesFromDb],
+  );
+
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
   const scrollSpySuppressUntilRef = useRef(0);
+  const showStickySectionTabsRef = useRef(false);
+  const lastScrollYRef = useRef(0);
   const [revealedSections, setRevealedSections] = useState<Set<TabId>>(
     () => new Set<TabId>(['offers', 'services']),
   );
@@ -526,22 +536,17 @@ export default function SalonPublicParity({
 
   const servicesWithImages = useMemo(
     () =>
-      servicesFromDb.map((s) => ({
+      servicesEnriched.map((s) => ({
         ...s,
         images: Array.isArray(s.images) ? s.images : [],
       })),
-    [servicesFromDb]
+    [servicesEnriched]
   );
 
-  const serviceCategories = useMemo(() => {
-    const labels = new Set<string>();
-    for (const s of servicesFromDb) {
-      const c = (s.category ?? '').trim();
-      if (c) labels.add(c);
-    }
-    const cats = [...labels].sort((a, b) => a.localeCompare(b, 'bg'));
-    return [{ id: null as string | null, label: 'Всички' }, ...cats.map((c) => ({ id: c, label: c }))];
-  }, [servicesFromDb]);
+  const serviceCategories = useMemo(
+    () => buildServiceCategoryTabs(servicesEnriched),
+    [servicesEnriched],
+  );
 
   const activeOffers = useMemo(() => {
     const now = Date.now();
@@ -652,68 +657,84 @@ export default function SalonPublicParity({
   }, [tabParam, highlightReviewId, revealSection]);
 
   useEffect(() => {
-    if (disableStickySectionTabs) {
-      setShowStickySectionTabs(false);
-      return;
-    }
-    if (typeof window === 'undefined') return;
-    const updateStickyTabs = () => {
-      const el = sectionRefs.current.about;
-      if (!el) return;
-      const aboutBottom = el.getBoundingClientRect().bottom;
-      const hasScrolled = window.scrollY > 48;
-      const shouldShow = hasScrolled && aboutBottom <= 72;
-      setShowStickySectionTabs((prev) => (prev === shouldShow ? prev : shouldShow));
-    };
-    updateStickyTabs();
-    window.addEventListener('scroll', updateStickyTabs, { passive: true });
-    window.addEventListener('resize', updateStickyTabs);
-    return () => {
-      window.removeEventListener('scroll', updateStickyTabs);
-      window.removeEventListener('resize', updateStickyTabs);
-    };
-  }, [disableStickySectionTabs]);
-
-  useEffect(() => {
     if (typeof window === 'undefined' || !salonId) return;
+
+    const STICKY_SHOW_BELOW = 56;
+    const STICKY_HIDE_BELOW = 88;
+    const SCROLL_SPY_OFFSET = 12;
+
     const activationLine = () => {
-      if (showStickySectionTabs) return 92;
+      if (showStickySectionTabsRef.current) return 92;
       return Math.min(200, Math.round(window.innerHeight * 0.16) + 72);
     };
-    const updateActiveFromScroll = () => {
+
+    const updateFromScroll = () => {
       if (Date.now() < scrollSpySuppressUntilRef.current) return;
-      const line = activationLine();
-      let next: TabId = 'offers';
+
+      if (!disableStickySectionTabs) {
+        const aboutEl = sectionRefs.current.about;
+        if (aboutEl) {
+          const aboutBottom = aboutEl.getBoundingClientRect().bottom;
+          const hasScrolled = window.scrollY > 48;
+          const prevSticky = showStickySectionTabsRef.current;
+          let nextSticky = prevSticky;
+          if (!prevSticky && hasScrolled && aboutBottom <= STICKY_SHOW_BELOW) {
+            nextSticky = true;
+          } else if (prevSticky && (!hasScrolled || aboutBottom > STICKY_HIDE_BELOW)) {
+            nextSticky = false;
+          }
+          if (nextSticky !== prevSticky) {
+            showStickySectionTabsRef.current = nextSticky;
+            setShowStickySectionTabs(nextSticky);
+          }
+        }
+      } else if (showStickySectionTabsRef.current) {
+        showStickySectionTabsRef.current = false;
+        setShowStickySectionTabs(false);
+      }
+
+      const scrollY = window.scrollY;
+      const scrollingDown = scrollY >= lastScrollYRef.current;
+      lastScrollYRef.current = scrollY;
+
+      const line = activationLine() + (scrollingDown ? 0 : SCROLL_SPY_OFFSET);
+      let next: TabId = scrollSpyTabOrder[0] ?? 'offers';
       for (let i = scrollSpyTabOrder.length - 1; i >= 0; i--) {
         const id = scrollSpyTabOrder[i];
         const el = sectionRefs.current[id];
         if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        if (top <= line + 6) {
+        if (el.getBoundingClientRect().top <= line) {
           next = id;
           break;
         }
       }
-      revealSection(next);
-      setActiveTab((prev) => (prev === next ? prev : next));
-    };
-    let ticking = false;
-    const onScrollOrResize = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        ticking = false;
-        updateActiveFromScroll();
+
+      setActiveTab((prev) => {
+        if (prev === next) return prev;
+        revealSection(next);
+        return next;
       });
     };
-    updateActiveFromScroll();
-    window.addEventListener('scroll', onScrollOrResize, { passive: true });
-    window.addEventListener('resize', onScrollOrResize);
-    return () => {
-      window.removeEventListener('scroll', onScrollOrResize);
-      window.removeEventListener('resize', onScrollOrResize);
+
+    let rafId = 0;
+    const scheduleUpdate = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        updateFromScroll();
+      });
     };
-  }, [salonId, showStickySectionTabs, scrollSpyTabOrder, revealSection]);
+
+    lastScrollYRef.current = window.scrollY;
+    updateFromScroll();
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+    };
+  }, [salonId, disableStickySectionTabs, scrollSpyTabOrder, revealSection]);
 
   const scrollToSection = useCallback((tabId: TabId) => {
     revealSection(tabId);
@@ -726,7 +747,7 @@ export default function SalonPublicParity({
 
   const servicesFilteredByCategory = useMemo(() => {
     if (!selectedServiceCategory) return servicesWithImages;
-    return servicesWithImages.filter((s) => (s.category ?? '').trim() === selectedServiceCategory);
+    return servicesWithImages.filter((s) => serviceMatchesCategory(s, selectedServiceCategory));
   }, [servicesWithImages, selectedServiceCategory]);
 
   const displayListRaw = servicesFilteredByCategory;
@@ -847,12 +868,10 @@ export default function SalonPublicParity({
     setNotes('');
     setSmsReminderConsent(false);
     setBookingOpen(true);
-    document.body.style.overflow = 'hidden';
   }
 
   function closeBookingModal() {
     setBookingOpen(false);
-    if (!offerBookingOpen) document.body.style.overflow = '';
   }
 
   function openOfferBooking(offer: SalonOfferRow) {
@@ -868,13 +887,11 @@ export default function SalonPublicParity({
     setNotes('');
     setSmsReminderConsent(false);
     setOfferBookingOpen(true);
-    document.body.style.overflow = 'hidden';
   }
 
   function closeOfferBooking() {
     setOfferBookingOpen(false);
     setSelectedOffer(null);
-    if (!bookingOpen) document.body.style.overflow = '';
   }
 
   const offerDurationMin = Math.max(15, Number(selectedOffer?.duration_min ?? 60) || 60);
@@ -898,7 +915,7 @@ export default function SalonPublicParity({
   const wh = openingHoursMerged ?? {};
   const bookingModalServices = useMemo(() => {
     const out: ServiceRow[] = [];
-    for (const service of servicesFromDb) {
+    for (const service of servicesEnriched) {
       const variants = Array.isArray(service.variants) ? service.variants : [];
       if (variants.length === 0) {
         out.push(service);
@@ -916,7 +933,7 @@ export default function SalonPublicParity({
       }
     }
     return out;
-  }, [servicesFromDb]);
+  }, [servicesEnriched]);
   const selectedBookingServices = useMemo(
     () =>
       bookingServiceIdxs
@@ -1180,8 +1197,15 @@ export default function SalonPublicParity({
         ) : null}
       </div>
 
-      {!disableStickySectionTabs && showStickySectionTabs ? (
-        <div className="fixed inset-x-0 top-0 z-20 border-b border-black/10 bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
+      {!disableStickySectionTabs ? (
+        <div
+          className={`fixed inset-x-0 top-0 z-20 border-b border-black/10 bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_6px_24px_rgba(0,0,0,0.08)] transition-[opacity,transform] duration-150 lg:hidden ${
+            showStickySectionTabs
+              ? 'pointer-events-auto translate-y-0 opacity-100'
+              : 'pointer-events-none -translate-y-full opacity-0'
+          }`}
+          aria-hidden={!showStickySectionTabs}
+        >
           <div className="relative mx-auto w-full max-w-[min(100%,1180px)]">
             <div className="flex gap-5 overflow-x-auto scrollbar-none">
               {salonTabsWithTeamLabel.map((tab) => {
@@ -1190,8 +1214,9 @@ export default function SalonPublicParity({
                   <button
                     key={`sticky-${tab.id}`}
                     type="button"
+                    tabIndex={showStickySectionTabs ? 0 : -1}
                     onClick={() => scrollToSection(tab.id)}
-                    className={`relative shrink-0 whitespace-nowrap border-b-2 px-0 py-2 text-[15px] font-medium transition ${
+                    className={`relative shrink-0 whitespace-nowrap border-b-2 px-0 py-2 text-[15px] font-medium ${
                       isActive ? 'border-black text-[#1a1a1a]' : 'border-transparent text-[#1a1a1a] hover:text-[#1a1a1a]'
                     }`}
                   >
@@ -1309,7 +1334,7 @@ export default function SalonPublicParity({
             </div>
 
             <DeferredSection
-              className="cv-defer scroll-mt-36 pt-6"
+              className="scroll-mt-36 pt-6"
               minHeight={240}
               eager={revealedSections.has('offers')}
               sectionRef={(el) => {
@@ -1376,7 +1401,7 @@ export default function SalonPublicParity({
             </DeferredSection>
 
             <DeferredSection
-              className="cv-defer scroll-mt-36 pt-10"
+              className="scroll-mt-36 pt-10"
               minHeight={280}
               eager={revealedSections.has('services')}
               sectionRef={(el) => {
@@ -1385,24 +1410,13 @@ export default function SalonPublicParity({
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Услуги</h2>
               {serviceCategories.length > 1 ? (
-                <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none">
-                  {serviceCategories.map((cat) => {
-                    const isSelected = selectedServiceCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id ?? 'all'}
-                        type="button"
-                        onClick={() => setSelectedServiceCategory(cat.id)}
-                        className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                          isSelected
-                            ? 'border-black bg-black text-white shadow-[0_4px_12px_rgba(0,0,0,0.18)]'
-                            : 'border-black/12 bg-white text-[#1a1a1a] hover:border-black/25'
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    );
-                  })}
+                <div className="mt-3">
+                  <SalonServiceCategoryTabs
+                    categories={serviceCategories}
+                    selectedId={selectedServiceCategory}
+                    onSelect={setSelectedServiceCategory}
+                    className="-mx-4 px-4"
+                  />
                 </div>
               ) : null}
               <ul className="mt-3 space-y-2">
@@ -1503,7 +1517,7 @@ export default function SalonPublicParity({
 
             {hasSalonGallery ? (
               <DeferredSection
-                className="cv-defer scroll-mt-36 pt-10"
+                className="scroll-mt-36 pt-10"
                 minHeight={280}
                 eager={revealedSections.has('portfolio')}
                 sectionRef={(el) => {
@@ -1563,7 +1577,7 @@ export default function SalonPublicParity({
             ) : null}
 
             <DeferredSection
-              className="cv-defer scroll-mt-36 pt-10"
+              className="scroll-mt-36 pt-10"
               minHeight={120}
               eager={revealedSections.has('team')}
               sectionRef={(el) => {
@@ -1599,7 +1613,7 @@ export default function SalonPublicParity({
             </DeferredSection>
 
             <DeferredSection
-              className="cv-defer scroll-mt-36 pt-10"
+              className="scroll-mt-36 pt-10"
               minHeight={200}
               eager={revealedSections.has('reviews')}
               sectionRef={(el) => {
@@ -1658,7 +1672,7 @@ export default function SalonPublicParity({
               </div>
             </DeferredSection>
 
-            <section className="cv-defer pt-10">
+            <section className="pt-10">
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Работно време</h2>
               <ul className="mt-3 space-y-2">
                 {DAY_NAMES_EN.map((dayKey) => {
@@ -1731,7 +1745,7 @@ export default function SalonPublicParity({
             ) : null}
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
-              <DeferredSection className="cv-defer pt-10" minHeight={220}>
+              <DeferredSection className="pt-10" minHeight={220}>
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
                 <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
                   <iframe
@@ -1767,9 +1781,8 @@ export default function SalonPublicParity({
 
           </div>
 
-          <aside
-            className={`hidden lg:sticky lg:block lg:self-start ${showStickySectionTabs ? 'lg:top-[5.5rem]' : 'lg:top-8'}`}
-          >
+          <aside className="hidden lg:block lg:min-h-0 lg:self-stretch">
+            <div className="sticky top-8">
             <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
               <p className="text-lg font-semibold leading-snug text-[color:var(--salon-primary)]">{name}</p>
               {headerGoogleRating != null && (
@@ -1833,6 +1846,7 @@ export default function SalonPublicParity({
                   </a>
                 ) : null}
               </div>
+            </div>
             </div>
           </aside>
         </div>
@@ -1978,9 +1992,12 @@ export default function SalonPublicParity({
         </div>
       ) : null}
 
-      <SalonBookingModal
-        open={bookingOpen}
-        primaryColor={primary}
+      {bookingOpen ? (
+        <SalonBookingModal
+          open
+          primaryColor={primary}
+          serviceCatalog={servicesEnriched}
+          categoryTabs={serviceCategories}
         services={bookingModalServices}
         selectedServiceIdxs={bookingServiceIdxs}
         selectedDate={selectedDate}
@@ -1992,6 +2009,7 @@ export default function SalonPublicParity({
         clientEmail={clientEmail}
         notes={notes}
         smsReminderConsent={smsReminderConsent}
+        smsEnabled={rawSalon.sms_enabled === true}
         salonName={name}
         termsHref={`${basePath}/terms`}
         privacyHref={`${basePath}/privacy`}
@@ -2021,7 +2039,8 @@ export default function SalonPublicParity({
         onNotesChange={setNotes}
         onSmsReminderConsentChange={setSmsReminderConsent}
         onSubmit={submitBooking}
-      />
+        />
+      ) : null}
 
       <SalonOfferBookingModal
         open={offerBookingOpen}
