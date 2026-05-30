@@ -1,8 +1,8 @@
-import { heroLcpImageUrl } from '@/lib/hero-lcp-url';
+import Image from 'next/image';
+import { HERO_LCP_WIDTH, heroImageSourceUrl } from '@/lib/hero-lcp-url';
 import './salon-critical.css';
 
-/** LCP hero: direct R2 CDN when available — avoids /api/image on critical path. */
-const HERO_WIDTH = 480;
+const HERO_HEIGHT = Math.round((HERO_LCP_WIDTH * 4) / 5);
 
 type Props = {
   src: string;
@@ -10,24 +10,25 @@ type Props = {
   className?: string;
 };
 
-/** Server-rendered LCP hero — in initial HTML before client JS (mobile). */
+/** Server-rendered LCP hero — `next/image` priority + WebP resize via Vercel CDN. */
 export function SalonHeroLcp({ src, alt, className }: Props) {
   const trimmed = src.trim();
   if (!trimmed || trimmed.startsWith('data:')) return null;
 
-  const href = heroLcpImageUrl(trimmed);
-  if (!href) return null;
+  const imageSrc = heroImageSourceUrl(trimmed);
+  if (!imageSrc) return null;
 
   return (
     <div className={`salon-hero-lcp ${className ?? ''}`.trim()}>
-      <img
-        src={href}
+      <Image
+        src={imageSrc}
         alt={alt}
-        width={HERO_WIDTH}
-        height={384}
-        fetchPriority="high"
-        loading="eager"
-        decoding="async"
+        width={HERO_LCP_WIDTH}
+        height={HERO_HEIGHT}
+        priority
+        quality={56}
+        sizes="(max-width: 768px) 100vw, 640px"
+        className="salon-hero-lcp-img"
       />
     </div>
   );
@@ -35,5 +36,7 @@ export function SalonHeroLcp({ src, alt, className }: Props) {
 
 /** @deprecated Use heroLcpImageUrl from @/lib/hero-lcp-url */
 export function salonHeroLcpPreloadUrl(src: string): string | null {
-  return heroLcpImageUrl(src);
+  const trimmed = src.trim();
+  if (!trimmed || trimmed.startsWith('data:')) return null;
+  return heroImageSourceUrl(trimmed);
 }

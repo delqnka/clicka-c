@@ -58,21 +58,40 @@ export async function POST(request: NextRequest) {
   const bytes = await file.arrayBuffer();
   const raw = Buffer.from(bytes);
 
-  const webpBuffer = await sharp(raw)
-    .resize({
-      width: isProfile ? PROFILE_MAX_DIMENSION : MAX_DIMENSION,
-      height: isProfile ? PROFILE_MAX_DIMENSION : MAX_DIMENSION,
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
-    .rotate()
-    .webp({ quality: WEBP_QUALITY })
-    .toBuffer();
-
   const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
-  const key = `salons/${salonSlug}/${Date.now()}-${baseName}.webp`;
+  const stamp = Date.now();
+  const key = `salons/${salonSlug}/${stamp}-${baseName}.webp`;
+  const lcpKey = `salons/${salonSlug}/${stamp}-${baseName}-lcp-640.webp`;
+
+  const [webpBuffer, lcpBuffer] = await Promise.all([
+    sharp(raw)
+      .resize({
+        width: isProfile ? PROFILE_MAX_DIMENSION : MAX_DIMENSION,
+        height: isProfile ? PROFILE_MAX_DIMENSION : MAX_DIMENSION,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .rotate()
+      .webp({ quality: WEBP_QUALITY })
+      .toBuffer(),
+    isProfile
+      ? Promise.resolve<Buffer | null>(null)
+      : sharp(raw)
+          .rotate()
+          .resize({ width: 640, withoutEnlargement: true, fastShrinkOnLoad: true })
+          .webp({ quality: 56, effort: 2 })
+          .toBuffer(),
+  ]);
 
   const url = await uploadToR2(webpBuffer, key, 'image/webp');
+  let lcpUrl: string | undefined;
+  if (lcpBuffer) {
+    try {
+      lcpUrl = await uploadToR2(lcpBuffer, lcpKey, 'image/webp');
+    } catch {
+      lcpUrl = undefined;
+    }
+  }
 
-  return NextResponse.json({ url });
+  return NextResponse.json({ url, ...(lcpUrl ? { lcpUrl } : {}) });
 }

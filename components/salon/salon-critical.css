@@ -3,9 +3,11 @@
   overflow: hidden;
   border-radius: 1rem;
 }
-.salon-hero-lcp img {
+.salon-hero-lcp img,
+.salon-hero-lcp .salon-hero-lcp-img {
   aspect-ratio: 5 / 4;
   width: 100%;
+  height: auto;
   object-fit: cover;
   display: block;
 }

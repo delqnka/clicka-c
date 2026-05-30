@@ -4,11 +4,11 @@ import SalonPublicParity from '@/app/components/SalonPublicParity';
 import MarketingHomePage from '@/app/components/HomePage';
 import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
 import { SalonLcpHead } from '@/components/salon/salon-lcp-head';
-import { extractHostname, isPlatformApexHost, getPrimaryPublicUrl } from '@/lib/domain-routing';
+import { extractHostname, isPlatformApexHost } from '@/lib/domain-routing';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 import { getMarketingActivity } from '@/lib/marketing-activity';
-import { buildSalonJsonLd } from '@/lib/seo';
+import { buildSalonJsonLd, buildSalonPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,48 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return { title: 'Салонът не е намерен' };
   }
 
-  const s = pageData.salon as Record<string, unknown>;
-  const name = String(s.name ?? '');
-  const city = String(s.city ?? '');
-  const category = String(s.category ?? '');
-  const about = String(s.about ?? '').slice(0, 155);
-  const coverImage = String(s.cover_image_url ?? '');
-  const slug = pageData.salonSlug;
-
-  const title = city
-    ? `${name} — ${category || 'Салон'} в ${city}`
-    : `${name} — ${category || 'Салон'}`;
-
-  const description = about
-    || `${name} — онлайн резервации, услуги и работно време. Запази час лесно и бързо.`;
-
-  const canonicalUrl = getPrimaryPublicUrl({
-    slug,
-    customDomain: String(s.custom_domain ?? ''),
-    domainStatus: String(s.domain_status ?? ''),
-  });
-
-  return {
-    title,
-    description,
-    alternates: { canonical: canonicalUrl },
-    openGraph: {
-      title,
-      description,
-      url: canonicalUrl,
-      siteName: name,
-      type: 'website',
-      locale: 'bg_BG',
-      ...(coverImage ? { images: [{ url: coverImage, width: 1200, height: 630, alt: name }] } : {}),
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      ...(coverImage ? { images: [coverImage] } : {}),
-    },
-    robots: { index: true, follow: true },
-  };
+  return buildSalonPageMetadata(pageData.salon as Record<string, unknown>, pageData.salonSlug);
 }
 
 export default async function HomePage() {
@@ -94,7 +53,7 @@ export default async function HomePage() {
 
     return (
       <>
-        <SalonLcpHead imageSrc={lcpImage ?? null} />
+        <SalonLcpHead />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
