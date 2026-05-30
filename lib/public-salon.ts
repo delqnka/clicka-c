@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
@@ -64,7 +65,7 @@ async function resolvePublicSalonBySlugOrHost({
   };
 }
 
-export async function getPublicSalonPageData({
+async function fetchPublicSalonPageData({
   slug,
   host,
 }: {
@@ -156,4 +157,20 @@ export async function getPublicSalonPageData({
     googleReviews,
     staticMapUrl,
   };
+}
+
+export async function getPublicSalonPageData({
+  slug,
+  host,
+}: {
+  slug?: string | null;
+  host?: string | null;
+}) {
+  const cacheKey = String(slug ?? '').trim() || extractHostname(host) || 'unknown';
+
+  return unstable_cache(
+    () => fetchPublicSalonPageData({ slug, host }),
+    ['public-salon-page', cacheKey],
+    { revalidate: 60, tags: [`salon-public-${cacheKey}`] },
+  )();
 }

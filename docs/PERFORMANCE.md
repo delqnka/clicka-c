@@ -42,7 +42,13 @@ After `npm run build`, inspect the route table in the terminal output for `/admi
 
 **LCP (May 2026):** Hero uses **`next/image` `priority`** on the R2 source URL — Vercel serves resized WebP via `/_next/image` (edge cache). Do not load raw JPEG from R2 on LCP. Re-upload cover photos to get WebP + `-lcp-640.webp` sidecar. `SalonLcpHead` preconnects R2 only; preload is handled by `next/image`.
 
-**CSS / fonts (salon public):** `x-clicka-salon-public` middleware flag → root layout loads **Manrope only** (not 5 marketing Google fonts). Marketing styles moved to `app/marketing.css` (imported from `HomePage` only). `experimental.optimizeCss` + `critters` for critical CSS inlining.
+**CSS / fonts (salon public):** Route groups `(salon-public)` / `(marketing)` each load a **scoped Tailwind bundle** (`salon.css` vs `marketing-tailwind.css`) via `@config` — salon pages no longer ship marketing utilities. Root `globals.base.css` has tokens/reset only. `x-clicka-salon-public` → Manrope only (not 5 marketing Google fonts). Marketing plain CSS in `app/(marketing)/marketing.css`. `experimental.optimizeCss` + critters. Hero critical CSS inlined in `SalonHeroLcp`.
+
+**Home `/` routing (May 2026):** Middleware rewrites apex `/` → `/marketing-home`, custom domain `/` → `/salon-home` (each route group loads its own CSS).
+
+**LCP sidecar (May 2026):** Upload generates `-lcp-640.webp`; `SalonHeroLcp` prefers `heroLcpVariantUrl()` (direct R2) with `<link rel="preload">` in `SalonLcpHead`. Re-upload cover photos for existing salons without sidecars.
+
+**Cache invalidation (May 2026):** `revalidateSalonPublicCache()` on publish, site-settings PATCH, site-images PATCH — tags `salon-public-{slug}`, subdomain host, custom domain.
 
 **Measure a live salon:**
 

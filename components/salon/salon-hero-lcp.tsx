@@ -1,8 +1,16 @@
 import Image from 'next/image';
-import { HERO_LCP_WIDTH, heroImageSourceUrl } from '@/lib/hero-lcp-url';
-import './salon-critical.css';
+import {
+  HERO_LCP_WIDTH,
+  heroImageSourceUrl,
+  heroLcpVariantUrl,
+} from '@/lib/hero-lcp-url';
 
 const HERO_HEIGHT = Math.round((HERO_LCP_WIDTH * 4) / 5);
+
+const HERO_CRITICAL_CSS = `
+.salon-hero-lcp{overflow:hidden;border-radius:1rem}
+.salon-hero-lcp img,.salon-hero-lcp .salon-hero-lcp-img{aspect-ratio:5/4;width:100%;height:auto;object-fit:cover;display:block}
+`.trim();
 
 type Props = {
   src: string;
@@ -10,27 +18,56 @@ type Props = {
   className?: string;
 };
 
-/** Server-rendered LCP hero — `next/image` priority + WebP resize via Vercel CDN. */
+/**
+ * Server-rendered LCP hero.
+ * Prefers pre-generated `-lcp-640.webp` sidecar (direct R2, no optimizer hop).
+ */
 export function SalonHeroLcp({ src, alt, className }: Props) {
   const trimmed = src.trim();
   if (!trimmed || trimmed.startsWith('data:')) return null;
+
+  const sidecarUrl = heroLcpVariantUrl(trimmed);
+
+  if (sidecarUrl) {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: HERO_CRITICAL_CSS }} />
+        <div className={`salon-hero-lcp ${className ?? ''}`.trim()}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={sidecarUrl}
+            alt={alt}
+            width={HERO_LCP_WIDTH}
+            height={HERO_HEIGHT}
+            className="salon-hero-lcp-img"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+      </>
+    );
+  }
 
   const imageSrc = heroImageSourceUrl(trimmed);
   if (!imageSrc) return null;
 
   return (
-    <div className={`salon-hero-lcp ${className ?? ''}`.trim()}>
-      <Image
-        src={imageSrc}
-        alt={alt}
-        width={HERO_LCP_WIDTH}
-        height={HERO_HEIGHT}
-        priority
-        quality={56}
-        sizes="(max-width: 768px) 100vw, 640px"
-        className="salon-hero-lcp-img"
-      />
-    </div>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: HERO_CRITICAL_CSS }} />
+      <div className={`salon-hero-lcp ${className ?? ''}`.trim()}>
+        <Image
+          src={imageSrc}
+          alt={alt}
+          width={HERO_LCP_WIDTH}
+          height={HERO_HEIGHT}
+          priority
+          quality={56}
+          sizes="(max-width: 768px) 100vw, 640px"
+          className="salon-hero-lcp-img"
+        />
+      </div>
+    </>
   );
 }
 
@@ -38,5 +75,5 @@ export function SalonHeroLcp({ src, alt, className }: Props) {
 export function salonHeroLcpPreloadUrl(src: string): string | null {
   const trimmed = src.trim();
   if (!trimmed || trimmed.startsWith('data:')) return null;
-  return heroImageSourceUrl(trimmed);
+  return heroLcpVariantUrl(trimmed) ?? heroImageSourceUrl(trimmed);
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ROOT_DOMAIN } from '@/lib/domain-routing';
+import { isPlatformApexHost, ROOT_DOMAIN } from '@/lib/domain-routing';
 import { isSalonPublicPath } from '@/lib/salon-public-request';
 
 export function middleware(request: NextRequest) {
@@ -17,6 +17,13 @@ export function middleware(request: NextRequest) {
     if (isSalonPublicPath(hostname, pathname)) {
       requestHeaders.set('x-clicka-salon-public', '1');
     }
+
+    if (pathname === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/marketing-home';
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    }
+
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -24,10 +31,24 @@ export function middleware(request: NextRequest) {
   if (subdomain && subdomain !== hostname) {
     requestHeaders.set('x-salon-slug', subdomain);
     requestHeaders.set('x-clicka-salon-public', '1');
+
+    if (pathname === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/salon-home';
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    }
+
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   requestHeaders.set('x-clicka-salon-public', '1');
+
+  if (pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = isPlatformApexHost(hostname) ? '/marketing-home' : '/salon-home';
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  }
+
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 

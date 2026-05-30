@@ -1,0 +1,20 @@
+@config "../../tailwind.marketing.config.ts";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.cv-defer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}

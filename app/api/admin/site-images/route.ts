@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug, normalizeImageList } from '@/lib/admin-site';
+import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -71,5 +72,11 @@ export async function PATCH(request: NextRequest) {
   `;
 
   const site = await loadAdminSiteDataBySlug(auth.salon.slug);
+
+  revalidateSalonPublicCache({
+    slug: auth.salon.slug,
+    customDomain: auth.salon.customDomain,
+  });
+
   return NextResponse.json({ success: true, site });
 }

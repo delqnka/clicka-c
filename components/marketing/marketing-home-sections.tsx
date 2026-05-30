@@ -28,7 +28,7 @@ const TAGS_ROW_2 = [
 const TAG_STYLES = [
   'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/20',
   'border border-rose-200 bg-rose-50/80 text-rose-700',
-  'border border-rose-300/50 bg-white text-rose-500',
+  'border border-rose-300/50 bg-white text-rose-700',
 ] as const;
 
 function MarqueeRow({ tags, duration = 30, reverse = false }: { tags: string[]; duration?: number; reverse?: boolean }) {
@@ -69,7 +69,7 @@ export function MarketingAudienceSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white pointer-events-none" />
 
       <div className="relative mx-auto max-w-3xl px-5 text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-rose-500 md:text-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-rose-700 md:text-sm">
           За кого е?
         </p>
         <h2
@@ -104,42 +104,42 @@ const FLOW_STYLE = [
   {
     bg: '#fff1f2',
     fg: '#1a1a2e',
-    sub: 'rgba(26,26,46,0.55)',
+    sub: 'rgba(26,26,46,0.72)',
     line: 'rgba(255,241,242,0.9)',
-    accent: '#fb7185',
+    accent: '#be123c',
   },
   {
     bg: '#ffe4e6',
     fg: '#1a1a2e',
-    sub: 'rgba(26,26,46,0.55)',
+    sub: 'rgba(26,26,46,0.72)',
     line: 'rgba(255,228,230,0.9)',
-    accent: '#f97373',
+    accent: '#be123c',
   },
   {
     bg: '#fecdd3',
     fg: '#1a1a2e',
-    sub: 'rgba(26,26,46,0.55)',
+    sub: 'rgba(26,26,46,0.78)',
     line: 'rgba(254,205,211,0.9)',
-    accent: '#f97373',
+    accent: '#9f1239',
   },
   {
     bg: '#fda4af',
     fg: '#1a1a2e',
-    sub: 'rgba(26,26,46,0.6)',
+    sub: 'rgba(26,26,46,0.82)',
     line: 'rgba(253,164,175,0.9)',
-    accent: '#be123c',
+    accent: '#881337',
   },
   {
     bg: '#fb7185',
     fg: '#fff',
-    sub: 'rgba(255,255,255,0.7)',
+    sub: 'rgba(255,255,255,0.88)',
     line: 'rgba(251,113,133,0.9)',
     accent: '#fee2e2',
   },
   {
     bg: '#f43f5e',
     fg: '#fff',
-    sub: 'rgba(255,255,255,0.7)',
+    sub: 'rgba(255,255,255,0.88)',
     line: 'rgba(244,63,94,0.9)',
     accent: '#fee2e2',
   },
@@ -163,7 +163,7 @@ export function MarketingFeaturesSection() {
   return (
     <section id="features" data-home-section="features" aria-label="Какво получаваш">
       <div className="bg-[var(--background)] px-5 pb-3 pt-7 sm:px-[5vw] sm:pt-9">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
           Какво получаваш?
         </p>
       </div>
@@ -174,6 +174,7 @@ export function MarketingFeaturesSection() {
           return (
             <FlowSection
               key={item.title}
+              index={i}
               aria-label={item.title}
               style={{ backgroundColor: s.bg, color: s.fg }}
             >

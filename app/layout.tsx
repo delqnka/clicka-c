@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { Inter, Manrope, Merriweather, Montserrat, Playfair_Display, Source_Code_Pro } from 'next/font/google';
 import { isSalonPublicRequest } from '@/lib/salon-public-request';
-import './globals.css';
+import './globals.base.css';
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],

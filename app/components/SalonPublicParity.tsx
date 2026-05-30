@@ -64,7 +64,7 @@ import {
 
 const PublicVisitorFaq = dynamic(
   () => import('@/components/salon/public-visitor-faq').then((m) => m.PublicVisitorFaq),
-  { ssr: true }
+  { ssr: false }
 );
 
 const SalonBookingModal = dynamic(
@@ -1841,35 +1841,35 @@ export default function SalonPublicParity({
           </div>
 
           <nav
-            className="order-2 flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-0.5 sm:justify-start"
+            className="order-2 flex max-w-full flex-wrap items-center justify-center gap-x-1 gap-y-1 sm:justify-start"
             aria-label="Правни документи"
           >
             <a
               href={`${basePath}/terms`}
-              className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
             >
               Условия
             </a>
             <a
               href={`${basePath}/privacy`}
-              className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
             >
               Поверителност
             </a>
             <a
               href={`${basePath}/cookies`}
-              className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
             >
               Бисквитки
             </a>
           </nav>
 
-          <p className="order-3 w-full text-center text-[10px] leading-snug text-white/50">
+          <p className="order-3 w-full text-center text-[11px] leading-snug text-white/50">
             <a
               href="https://clicka.bg"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/55 transition-colors hover:text-white/80"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-white/55 transition-colors hover:text-white/80"
             >
               Clicka.bg
             </a>

@@ -1,6 +1,5 @@
 import { cookies, headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import '@/app/admin/admin-mobile.css';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 import { ADMIN_COOKIE_NAME, resolveAdminGate } from '@/lib/admin-auth';
 import { getHostAwareSalonPath } from '@/lib/domain-routing';

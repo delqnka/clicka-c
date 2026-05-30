@@ -1,11 +1,7 @@
 'use client';
-import '@/app/marketing.css';
+import '@/app/(marketing)/marketing.css';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
@@ -26,7 +22,7 @@ type MarketingHomePageProps = {
 
 const SeoBenefitsAccordion = dynamic(
   () => import('@/components/ui/seo-benefits-accordion').then((m) => ({ default: m.SeoBenefitsAccordion })),
-  { ssr: false },
+  { ssr: true },
 );
 
 function IconCheck({ color = 'var(--primary)' }: { color?: string }) {
@@ -237,6 +233,7 @@ function getHomeSectionElement(id: string): HTMLElement | null {
 
 export default function HomePage({ activity }: MarketingHomePageProps = {}) {
   const [activeSection, setActiveSection] = useState<string>('audience');
+  const sectionRatiosRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     const els = document.querySelectorAll('[data-reveal]');
@@ -255,37 +252,48 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
   }, []);
 
   useEffect(() => {
-    const triggers: ScrollTrigger[] = [];
+    const ratios = sectionRatiosRef.current;
+    ratios.clear();
 
-    const bindSectionSpy = () => {
-      triggers.forEach((t) => t.kill());
-      triggers.length = 0;
-
-      HOME_SECTION_IDS.forEach((id) => {
-        const el = getHomeSectionElement(id);
-        if (!el) return;
-
-        triggers.push(
-          ScrollTrigger.create({
-            trigger: el,
-            start: `top ${HEADER_OFFSET}px`,
-            end: `bottom ${HEADER_OFFSET}px`,
-            onEnter: () => setActiveSection(id),
-            onEnterBack: () => setActiveSection(id),
-          }),
-        );
-      });
+    const pickActive = () => {
+      let bestId = HOME_SECTION_IDS[0];
+      let bestRatio = 0;
+      for (const id of HOME_SECTION_IDS) {
+        const ratio = ratios.get(id) ?? 0;
+        if (ratio > bestRatio) {
+          bestRatio = ratio;
+          bestId = id;
+        }
+      }
+      if (bestRatio > 0) setActiveSection(bestId);
     };
 
-    bindSectionSpy();
-    // FlowArt инициализира pin след mount — превързваме spy след refresh.
-    const delayed = window.setTimeout(bindSectionSpy, 500);
-    const delayedAgain = window.setTimeout(bindSectionSpy, 1200);
+    const observers: IntersectionObserver[] = [];
+
+    HOME_SECTION_IDS.forEach((id) => {
+      const el = getHomeSectionElement(id);
+      if (!el) return;
+
+      const obs = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            ratios.set(id, entry.intersectionRatio);
+          });
+          pickActive();
+        },
+        {
+          root: null,
+          rootMargin: `-${HEADER_OFFSET}px 0px -45% 0px`,
+          threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        },
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
 
     return () => {
-      window.clearTimeout(delayed);
-      window.clearTimeout(delayedAgain);
-      triggers.forEach((t) => t.kill());
+      observers.forEach((o) => o.disconnect());
+      ratios.clear();
     };
   }, []);
 
@@ -449,7 +457,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
           <h2 id="cta-h" className="hp-heading bg-clip-text" style={{ fontSize: 'clamp(30px,5vw,52px)', lineHeight: 1.1, marginBottom: 20, backgroundImage: 'linear-gradient(135deg, #fb7185, #e879f9, #c084fc)', color: 'transparent' }}>
             Готов ли си за собствен сайт?
           </h2>
-          <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 55%, transparent)', marginBottom: 44, lineHeight: 1.67 }}>
+          <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 72%, transparent)', marginBottom: 44, lineHeight: 1.67 }}>
             Попълни данните, избери план и сайтът ти е онлайн за 15 минути.
           </p>
           <ButtonColorful
@@ -457,7 +465,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             label="Създай своя сайт"
             className="h-14 rounded-full px-12 text-[17px] font-bold"
           />
-          <p style={{ marginTop: 20, fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 35%, transparent)' }}>
+          <p style={{ marginTop: 20, fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 52%, transparent)' }}>
             от 0.82 € на ден. 0% комисионна. Без скрити такси.
           </p>
         </div>
@@ -469,7 +477,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       <footer style={{ background: 'var(--hp-cta-bg)', borderTop: '1px solid color-mix(in srgb, var(--hp-cta-fg) 12%, transparent)', padding: 'clamp(28px,4vw,44px) clamp(20px,5vw,60px)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <ClickaLogo size="footer" variant="on-dark" href={null} />
-          <p style={{ fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 30%, transparent)', margin: 0 }}>
+          <p suppressHydrationWarning style={{ fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 52%, transparent)', margin: 0 }}>
             © {new Date().getFullYear()} clicka.bg
           </p>
         </div>

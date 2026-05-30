@@ -28,6 +28,15 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
+  /** browserslist targets Chrome/Safari 111+ — skip next-polyfill-module (~12 KiB). */
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '../build/polyfills/polyfill-module': false,
+      'next/dist/build/polyfills/polyfill-module': false,
+    };
+    return config;
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 31536000,

@@ -1,0 +1,61 @@
+/* Shared tokens + reset — no @tailwind (each route group loads its own bundle). */
+
+/* ── Design Tokens ─────────────────────────────────────── */
+:root {
+  --ink:    #1C1917;
+  --paper:  #FAF8F5;
+  --brass:  #B07D2E;
+
+  --fg:     var(--ink);
+  --bg-mkt: var(--paper);
+
+  --stone-200: #E7E5E4;
+  --stone-300: #D6D3D1;
+  --stone-400: #A8A29E;
+  --stone-500: #78716C;
+  --stone-600: #57534E;
+
+  --primary:        #1C1917;
+  --primary-light:  #F5F0EB;
+  --text:           #1C1917;
+  --text-secondary: #78716C;
+  --bg:             #ffffff;
+  --card-bg:        #FAF8F5;
+  --border:         #E7E5E4;
+
+  --r-sm:   8px;
+  --r-md:   14px;
+  --r-lg:   20px;
+  --r-xl:   28px;
+  --r-full: 9999px;
+
+  --shadow-xs: 0 1px 2px rgba(28,25,23,.06);
+  --shadow-sm: 0 1px 3px rgba(28,25,23,.08), 0 1px 2px rgba(28,25,23,.04);
+  --shadow-md: 0 4px 16px rgba(28,25,23,.08), 0 2px 6px rgba(28,25,23,.04);
+  --shadow-lg: 0 16px 48px rgba(28,25,23,.10), 0 4px 16px rgba(28,25,23,.04);
+  --shadow-xl: 0 32px 80px rgba(28,25,23,.12), 0 8px 24px rgba(28,25,23,.06);
+
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring:cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-fast:     150ms;
+  --t-mid:      250ms;
+  --t-slow:     400ms;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body, 'Inter', system-ui, -apple-system, sans-serif);
+  background: #ffffff;
+  color: var(--ink);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  line-height: 1.6;
+}

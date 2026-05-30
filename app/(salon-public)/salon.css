@@ -1,0 +1,35 @@
+@config "../../tailwind.salon.config.ts";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.client-site {
+  font-family: var(--font-client-manrope, 'Manrope', 'Inter', system-ui, -apple-system, sans-serif);
+  font-weight: 400;
+}
+
+.client-site .salon-text-muted {
+  color: #52525b;
+  font-weight: 400;
+}
+
+.client-site .salon-text-light {
+  color: #3f3f46;
+  font-weight: 400;
+}
+
+.client-site .cv-defer {
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
+}

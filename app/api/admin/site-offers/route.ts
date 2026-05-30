@@ -9,6 +9,7 @@ import {
   normalizeOfferImages,
   type AdminSalonOffer,
 } from '@/lib/salon-offers';
+import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
 
 function normalizeOffersInput(raw: unknown): AdminSalonOffer[] {
   if (!Array.isArray(raw)) return [];
@@ -158,6 +159,11 @@ export async function PATCH(request: NextRequest) {
     WHERE salon_id = ${auth.salon.salonId}
     ORDER BY created_at DESC
   `;
+
+  revalidateSalonPublicCache({
+    slug: auth.salon.slug,
+    customDomain: auth.salon.customDomain,
+  });
 
   return NextResponse.json({
     success: true,
