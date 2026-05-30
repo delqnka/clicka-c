@@ -40,6 +40,8 @@ After `npm run build`, inspect the route table in the terminal output for `/admi
 
 **Image delivery (May 2026):** widths snap to allowed sizes (`lib/image-delivery.ts`) so portfolio/hero never accidentally request full 2K originals. `/api/image` skips Sharp when no resize is needed; new uploads use `R2_PUBLIC_URL` CDN when configured (`NEXT_PUBLIC_R2_PUBLIC_URL` in client).
 
+**LCP (May 2026):** Hero image uses **direct R2 CDN URL** when available (`lib/hero-lcp-url.ts`) instead of `/api/image?w=480` on the critical path — avoids serverless + Sharp latency (~1–3s on cold start). `SalonLcpHead` adds `preconnect` + `preload` to the R2 origin. `SalonBookingModal` is code-split (`next/dynamic`, `ssr: false`).
+
 **CSS / fonts (salon public):** `x-clicka-salon-public` middleware flag → root layout loads **Manrope only** (not 5 marketing Google fonts). Marketing styles moved to `app/marketing.css` (imported from `HomePage` only). `experimental.optimizeCss` + `critters` for critical CSS inlining.
 
 **Measure a live salon:**

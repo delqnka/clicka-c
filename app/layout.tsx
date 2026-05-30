@@ -43,7 +43,9 @@ const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-client-manrope',
   display: 'swap',
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
+  preload: true,
+  adjustFontFallback: true,
 });
 
 const marketingFontVariables = [

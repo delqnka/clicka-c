@@ -3,8 +3,8 @@ import { headers } from 'next/headers';
 import SalonPublicParity from '@/app/components/SalonPublicParity';
 import MarketingHomePage from '@/app/components/HomePage';
 import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
+import { SalonLcpHead } from '@/components/salon/salon-lcp-head';
 import { extractHostname, isPlatformApexHost, getPrimaryPublicUrl } from '@/lib/domain-routing';
-import { salonHeroLcpPreloadUrl } from '@/components/salon/salon-hero-lcp';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 import { getMarketingActivity } from '@/lib/marketing-activity';
@@ -91,13 +91,10 @@ export default async function HomePage() {
       : [];
     const salonName = String(salonRecord.name ?? 'Салон');
     const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
-    const lcpHref = lcpImage ? salonHeroLcpPreloadUrl(lcpImage) : null;
 
     return (
       <>
-        {lcpHref ? (
-          <link rel="preload" as="image" href={lcpHref} fetchPriority="high" />
-        ) : null}
+        <SalonLcpHead imageSrc={lcpImage ?? null} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

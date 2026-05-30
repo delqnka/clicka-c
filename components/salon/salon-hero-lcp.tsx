@@ -1,9 +1,8 @@
-import { publicImageUrl } from '@/lib/public-image-url';
+import { heroLcpImageUrl } from '@/lib/hero-lcp-url';
 import './salon-critical.css';
 
-/** LCP hero: one fixed 480px WebP — no srcset (avoids 768w on 2x DPR and wasted preload). */
+/** LCP hero: direct R2 CDN when available — avoids /api/image on critical path. */
 const HERO_WIDTH = 480;
-const HERO_QUALITY = 58;
 
 type Props = {
   src: string;
@@ -16,7 +15,8 @@ export function SalonHeroLcp({ src, alt, className }: Props) {
   const trimmed = src.trim();
   if (!trimmed || trimmed.startsWith('data:')) return null;
 
-  const href = publicImageUrl(trimmed, { width: HERO_WIDTH, format: 'webp', quality: HERO_QUALITY });
+  const href = heroLcpImageUrl(trimmed);
+  if (!href) return null;
 
   return (
     <div className={`salon-hero-lcp ${className ?? ''}`.trim()}>
@@ -33,8 +33,7 @@ export function SalonHeroLcp({ src, alt, className }: Props) {
   );
 }
 
+/** @deprecated Use heroLcpImageUrl from @/lib/hero-lcp-url */
 export function salonHeroLcpPreloadUrl(src: string): string | null {
-  const trimmed = src.trim();
-  if (!trimmed || trimmed.startsWith('data:')) return null;
-  return publicImageUrl(trimmed, { width: HERO_WIDTH, format: 'webp', quality: HERO_QUALITY });
+  return heroLcpImageUrl(src);
 }

@@ -30,7 +30,6 @@ import {
 } from 'react';
 import dynamic from 'next/dynamic';
 import { DeferredSection } from '@/components/salon/deferred-section';
-import { SalonBookingModal } from '@/components/salon/SalonBookingModal';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
 
@@ -66,6 +65,11 @@ import {
 const PublicVisitorFaq = dynamic(
   () => import('@/components/salon/public-visitor-faq').then((m) => m.PublicVisitorFaq),
   { ssr: true }
+);
+
+const SalonBookingModal = dynamic(
+  () => import('@/components/salon/SalonBookingModal').then((m) => m.SalonBookingModal),
+  { ssr: false }
 );
 
 const SalonOfferBookingModal = dynamic(

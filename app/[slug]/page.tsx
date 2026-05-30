@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import SalonPublicParity from '@/app/components/SalonPublicParity';
 import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
+import { SalonLcpHead } from '@/components/salon/salon-lcp-head';
 import { getPublicSalonPageData } from '@/lib/public-salon';
-import { salonHeroLcpPreloadUrl } from '@/components/salon/salon-hero-lcp';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { buildSalonJsonLd } from '@/lib/seo';
 
@@ -91,11 +91,10 @@ export default async function SalonSlugPage({ searchParams }: Props) {
     : [];
   const salonName = String(salonRecord.name ?? 'Салон');
   const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
-  const lcpHref = lcpImage ? salonHeroLcpPreloadUrl(lcpImage) : null;
 
   return (
     <>
-      {lcpHref ? <link rel="preload" as="image" href={lcpHref} fetchPriority="high" /> : null}
+      <SalonLcpHead imageSrc={lcpImage ?? null} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
