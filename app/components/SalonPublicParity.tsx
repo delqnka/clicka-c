@@ -1430,7 +1430,7 @@ export default function SalonPublicParity({
                   return (
                     <li
                       key={`${service.id}-${idxInPage}`}
-                      className="rounded-2xl border border-black/10 bg-white px-3.5 py-3.5 shadow-none"
+                      className="rounded-2xl border border-black/10 bg-white px-3.5 py-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
                     >
                       <div className="flex flex-row items-start gap-3">
                         <div className="min-w-0 flex-1">
@@ -1808,23 +1808,16 @@ export default function SalonPublicParity({
         </div>
       </main>
 
-      {!disableStickySectionTabs ? (
-        <div className="mx-auto w-full max-w-[min(100%,1180px)] px-4 pb-4 pt-2 lg:hidden">
-          <button
-            type="button"
-            onClick={() => openBookingModal()}
-            className="block w-full rounded-full py-3.5 text-[16px] font-semibold text-white"
-            style={{ background: primary }}
-          >
-            Резервирай
-          </button>
-        </div>
-      ) : null}
-
       <footer
-        className="w-full border-t border-white/10 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="w-full border-t border-white/10 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         style={{
-          background: `linear-gradient(150deg, color-mix(in srgb, ${primary} 36%, #151515) 0%, #15121f 38%, #0f1118 68%, #090b12 100%)`,
+          background: `linear-gradient(
+            165deg,
+            color-mix(in srgb, ${primary} 52%, #1a1428) 0%,
+            color-mix(in srgb, ${primary} 28%, #14121c) 38%,
+            #0e1018 72%,
+            #06070c 100%
+          )`,
         }}
       >
         <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col items-center gap-1.5 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-2">
@@ -1879,6 +1872,29 @@ export default function SalonPublicParity({
           </p>
         </div>
       </footer>
+
+      {!disableStickySectionTabs ? (
+        <div
+          className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm transition-[opacity,transform] duration-150 lg:hidden ${
+            showStickySectionTabs
+              ? 'pointer-events-auto translate-y-0 opacity-100'
+              : 'pointer-events-none translate-y-full opacity-0'
+          }`}
+          aria-hidden={!showStickySectionTabs}
+        >
+          <div className="mx-auto w-full max-w-[min(100%,1180px)]">
+            <button
+              type="button"
+              tabIndex={showStickySectionTabs ? 0 : -1}
+              onClick={() => openBookingModal()}
+              className="block w-full rounded-full py-3.5 text-[16px] font-semibold text-white"
+              style={{ background: primary }}
+            >
+              Резервирай
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {galleryModal && galleryModal.uris.length > 0 ? (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" role="dialog" aria-modal aria-label="Галерия">
