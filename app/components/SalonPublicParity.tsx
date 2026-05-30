@@ -1351,7 +1351,7 @@ export default function SalonPublicParity({
                       type="button"
                       disabled={soldOut}
                       onClick={() => openOfferBooking(o)}
-                      className={`relative w-[min(92vw,340px)] shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-black text-left shadow-[0_14px_34px_rgba(0,0,0,0.12)] ${soldOut ? 'opacity-60' : ''}`}
+                      className={`relative w-[min(92vw,340px)] shrink-0 overflow-hidden rounded-2xl bg-black text-left ${soldOut ? 'opacity-60' : ''}`}
                       style={{ minHeight: 200 }}
                     >
                       {o.discount != null && o.discount > 0 ? (
@@ -1806,86 +1806,79 @@ export default function SalonPublicParity({
             </div>
           </aside>
         </div>
-
-        <footer
-          className={`mt-10 border-t border-white/10 pt-px lg:mt-12 ${
-            disableStickySectionTabs
-              ? 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'
-              : 'pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-[max(0.75rem,env(safe-area-inset-bottom))]'
-          }`}
-          style={{
-            background: `linear-gradient(150deg, color-mix(in srgb, ${primary} 36%, #151515) 0%, #15121f 38%, #0f1118 68%, #090b12 100%)`,
-            boxShadow: '0 -14px 48px rgba(4,8,20,0.28)',
-          }}
-        >
-          <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col items-center gap-2.5 px-3 py-3 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-4 sm:px-4 sm:py-3.5">
-            <div className="order-1 flex max-w-full flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-2.5">
-              <p className="max-w-full break-words text-center text-[11px] font-medium leading-relaxed text-white/80 sm:text-left sm:text-[11px]">
-                {name}
-              </p>
-              {footerSocial.length > 0 ? (
-                <div className="flex max-w-full items-center justify-center gap-2 sm:justify-start sm:gap-2.5" aria-label="Социални мрежи">
-                  {footerSocial.map((item) => (
-                    <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
-                      {item.node}
-                    </SalonFooterSocialLink>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <nav
-              className="order-2 flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-start"
-              aria-label="Правни документи"
-            >
-              <a
-                href={`${basePath}/terms`}
-                className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85 sm:text-[11px]"
-              >
-                Условия
-              </a>
-              <a
-                href={`${basePath}/privacy`}
-                className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85 sm:text-[11px]"
-              >
-                Поверителност
-              </a>
-              <a
-                href={`${basePath}/cookies`}
-                className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85 sm:text-[11px]"
-              >
-                Бисквитки
-              </a>
-            </nav>
-
-            <p className="order-3 w-full text-center text-[10px] leading-relaxed text-white/50 sm:text-center sm:text-[10px]">
-              <a
-                href="https://clicka.bg"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/55 transition-colors hover:text-white/80"
-              >
-                Clicka.bg
-              </a>
-            </p>
-          </div>
-        </footer>
       </main>
 
       {!disableStickySectionTabs ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-3.5 shadow-[0_-10px_30px_rgba(0,0,0,0.14)] backdrop-blur-sm lg:hidden">
-          <div className="mx-auto w-full max-w-[min(100%,1180px)] drop-shadow-[0_10px_20px_rgba(0,0,0,0.22)]">
-            <button
-              type="button"
-              onClick={() => openBookingModal()}
-              className="block w-full rounded-full py-4 text-[17px] font-semibold text-white shadow-[0_14px_30px_rgba(0,0,0,0.28)]"
-              style={{ background: primary }}
-            >
-              Резервирай
-            </button>
-          </div>
+        <div className="mx-auto w-full max-w-[min(100%,1180px)] px-4 pb-4 pt-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => openBookingModal()}
+            className="block w-full rounded-full py-3.5 text-[16px] font-semibold text-white"
+            style={{ background: primary }}
+          >
+            Резервирай
+          </button>
         </div>
       ) : null}
+
+      <footer
+        className="w-full border-t border-white/10 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        style={{
+          background: `linear-gradient(150deg, color-mix(in srgb, ${primary} 36%, #151515) 0%, #15121f 38%, #0f1118 68%, #090b12 100%)`,
+        }}
+      >
+        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col items-center gap-1.5 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-2">
+          <div className="order-1 flex max-w-full flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <p className="max-w-full break-words text-center text-[11px] font-medium leading-snug text-white/80 sm:text-left">
+              {name}
+            </p>
+            {footerSocial.length > 0 ? (
+              <div className="flex max-w-full items-center justify-center gap-2 sm:justify-start" aria-label="Социални мрежи">
+                {footerSocial.map((item) => (
+                  <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
+                    {item.node}
+                  </SalonFooterSocialLink>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <nav
+            className="order-2 flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-0.5 sm:justify-start"
+            aria-label="Правни документи"
+          >
+            <a
+              href={`${basePath}/terms`}
+              className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85"
+            >
+              Условия
+            </a>
+            <a
+              href={`${basePath}/privacy`}
+              className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85"
+            >
+              Поверителност
+            </a>
+            <a
+              href={`${basePath}/cookies`}
+              className="text-[10px] font-medium text-white/55 transition-colors hover:text-white/85"
+            >
+              Бисквитки
+            </a>
+          </nav>
+
+          <p className="order-3 w-full text-center text-[10px] leading-snug text-white/50">
+            <a
+              href="https://clicka.bg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/55 transition-colors hover:text-white/80"
+            >
+              Clicka.bg
+            </a>
+          </p>
+        </div>
+      </footer>
 
       {galleryModal && galleryModal.uris.length > 0 ? (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" role="dialog" aria-modal aria-label="Галерия">

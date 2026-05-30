@@ -1,16 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Accessibility,
-  Baby,
-  Bus,
-  ChevronDown,
-  CreditCard,
-  MapPin,
-  Package,
-  TrainFront,
-} from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { SalonFaqItem, SalonVisitorInfo } from '@/lib/salon-visitor-info';
 import { getPublicVisitorAmenityLines } from '@/lib/salon-visitor-info';
 import {
@@ -26,17 +17,6 @@ type PublicVisitorFaqProps = {
   visitorAdditionalInfo: string;
   venueExtrasRaw?: unknown;
 };
-
-function amenityIcon(label: string) {
-  if (label.includes('паркинг') || label.includes('Паркинг') || label.includes('зона')) return MapPin;
-  if (label.includes('Автобус') || label.includes('транспорт')) return Bus;
-  if (label.includes('карта') || label.includes('Карта') || label.includes('кеш')) return CreditCard;
-  if (label.includes('Метро') || label.includes('метро')) return TrainFront;
-  if (label.includes('деца')) return Baby;
-  if (label.includes('консуматив')) return Package;
-  if (label.includes('увреждания')) return Accessibility;
-  return MapPin;
-}
 
 export function PublicVisitorFaq({
   faqItems,
@@ -71,29 +51,18 @@ export function PublicVisitorFaq({
       {amenityLines.length > 0 ? (
         <div>
           <h3 className="text-base font-semibold text-[#1a1a1a]">Удобства и достъп</h3>
-          <ul className="mt-3 space-y-2">
-            {amenityLines.map((line) => {
-              const Icon = amenityIcon(line.label);
-              return (
-                <li
-                  key={`${line.label}-${line.detail ?? ''}`}
-                  className="flex gap-3 rounded-xl border border-black/8 bg-[#fafafa] px-3 py-2.5 text-sm text-[#1a1a1a]"
-                >
-                  <Icon className="mt-0.5 h-4 w-4 shrink-0 text-black/45" aria-hidden />
-                  <span>
-                    <span
-                      className="font-medium"
-                      style={line.color ? { color: line.color } : undefined}
-                    >
-                      {line.label}
-                    </span>
-                    {line.detail ? (
-                      <span className="mt-0.5 block text-black/60">{line.detail}</span>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })}
+          <ul className="mt-3 list-disc space-y-1.5 pl-4 marker:text-[#1a1a1a]">
+            {amenityLines.map((line) => (
+              <li
+                key={`${line.label}-${line.detail ?? ''}`}
+                className="text-sm leading-relaxed text-[#1a1a1a]"
+              >
+                <span style={line.color ? { color: line.color } : undefined}>{line.label}</span>
+                {line.detail ? (
+                  <span className="mt-0.5 block text-black/60">{line.detail}</span>
+                ) : null}
+              </li>
+            ))}
           </ul>
         </div>
       ) : null}
