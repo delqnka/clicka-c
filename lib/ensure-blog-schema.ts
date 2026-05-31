@@ -31,6 +31,10 @@ export async function ensureBlogSchema() {
         CREATE INDEX IF NOT EXISTS salon_blog_posts_salon_status_published_idx
         ON salon_blog_posts (salon_id, status, published_at DESC)
       `;
+      await sql`ALTER TABLE salon_blog_posts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'draft'`;
+      await sql`ALTER TABLE salon_blog_posts ADD COLUMN IF NOT EXISTS body_md text NOT NULL DEFAULT ''`;
+      await sql`ALTER TABLE salon_blog_posts ADD COLUMN IF NOT EXISTS cover_image_url text`;
+      await sql`ALTER TABLE salon_blog_posts ADD COLUMN IF NOT EXISTS published_at timestamptz`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS blog_title text`;
     })().catch((err) => {
       ensurePromise = null;

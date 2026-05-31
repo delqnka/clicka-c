@@ -3,7 +3,7 @@
 import { Camera, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { toBlogSlug } from '@/lib/blog-slug';
-import type { AdminSalonBlogPost, BlogPostStatus } from '@/lib/salon-blog-shared';
+import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
 
 const GRADIENT_PRIMARY: CSSProperties = {
@@ -48,7 +48,9 @@ type Props = {
   onReplacePosts: (posts: AdminSalonBlogPost[]) => AdminSalonBlogPost[];
   onBlogTitleChange: (title: string) => void;
   onUploadCover: (postIndex: number, file: File | null) => void | Promise<void>;
-  onSave: (posts?: AdminSalonBlogPost[]) => void | Promise<void>;
+  onSaveDraft: () => void | Promise<void>;
+  onPublish: (index: number) => void | Promise<void>;
+  onUnpublish: (index: number) => void | Promise<void>;
 };
 
 function formatDate(iso: string | null): string {
@@ -102,7 +104,9 @@ export function SalonBlogSection({
   onReplacePosts,
   onBlogTitleChange,
   onUploadCover,
-  onSave,
+  onSaveDraft,
+  onPublish,
+  onUnpublish,
 }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
@@ -127,10 +131,7 @@ export function SalonBlogSection({
   }
 
   function updatePost(index: number, patch: Partial<AdminSalonBlogPost>) {
-    const next = onPatchPost(index, patch);
-    if ('status' in patch) {
-      void onSave(next);
-    }
+    onPatchPost(index, patch);
   }
 
   function removePost(index: number) {
@@ -166,11 +167,11 @@ export function SalonBlogSection({
         </button>
         <button
           type="button"
-          style={SAVE_GREEN}
+          style={{ ...SAVE_GREEN, background: '#374151' }}
           disabled={busyKey === 'blog'}
-          onClick={() => void onSave()}
+          onClick={() => void onSaveDraft()}
         >
-          {busyKey === 'blog' ? 'Запазване…' : 'Запази'}
+          {busyKey === 'blog' ? 'Запазване…' : 'Запази чернова'}
         </button>
       </div>
 
@@ -397,34 +398,60 @@ export function SalonBlogSection({
                   />
                 </label>
 
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))',
-                    gap: 10,
-                  }}
-                >
-                  <label style={{ display: 'grid', gap: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Статус</span>
-                    <select
-                      style={inp}
-                      value={post.status}
-                      onChange={(e) =>
-                        updatePost(index, { status: e.target.value as BlogPostStatus })
-                      }
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  {post.status === 'published' ? (
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#16A34A',
+                        background: '#F0FDF4',
+                        border: '1px solid #BBF7D0',
+                        borderRadius: 999,
+                        padding: '6px 12px',
+                      }}
                     >
-                      <option value="draft">Чернова</option>
-                      <option value="published">Публикувана</option>
-                    </select>
-                  </label>
-                  <div style={{ display: 'grid', gap: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
-                      Публикувана на
+                      Публикувана{post.publishedAt ? ` · ${formatDate(post.publishedAt)}` : ''}
                     </span>
-                    <span style={{ fontSize: 13, color: '#6b7280', paddingTop: 8 }}>
-                      {formatDate(post.publishedAt)}
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#6b7280',
+                        background: '#f3f4f6',
+                        borderRadius: 999,
+                        padding: '6px 12px',
+                      }}
+                    >
+                      Чернова
                     </span>
-                  </div>
+                  )}
+                  {post.status !== 'published' ? (
+                    <button
+                      type="button"
+                      style={SAVE_GREEN}
+                      disabled={busyKey === 'blog'}
+                      onClick={() => void onPublish(index)}
+                    >
+                      {busyKey === 'blog' ? 'Публикуване…' : 'Публикувай'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      style={{
+                        ...SAVE_GREEN,
+                        background: '#fff',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        boxShadow: 'none',
+                      }}
+                      disabled={busyKey === 'blog'}
+                      onClick={() => void onUnpublish(index)}
+                    >
+                      В чернова
+                    </button>
+                  )}
                 </div>
 
                 <details>

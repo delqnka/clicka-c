@@ -337,7 +337,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
   const [blogSectionTitle, setBlogSectionTitle] = useState('');
   const blogPostsRef = useRef<AdminSalonBlogPost[]>([]);
-  const blogSaveChainRef = useRef(Promise.resolve());
+  const blogSaveBusyRef = useRef(false);
+  const blogSaveAgainRef = useRef(false);
+  const blogSaveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [smsDraftEnabled, setSmsDraftEnabled] = useState(initialSite.smsEnabled);
@@ -1536,9 +1538,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     return next;
   }, []);
 
-  async function saveBlogPostsInternal(postsToSave: AdminSalonBlogPost[]) {
+  async function saveBlogPostsInternal(
+    postsToSave: AdminSalonBlogPost[],
+    opts?: { expectPublished?: boolean },
+  ) {
     setError('');
-    setNotice('');
     setBusyKey('blog');
     try {
       const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`, {
@@ -1552,28 +1556,81 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         setBlogPosts(data.posts);
       }
       if (typeof data.blogTitle === 'string') setBlogSectionTitle(data.blogTitle);
-      const published = postsToSave.some((p) => p.status === 'published');
-      setNotice(published ? 'Статията е публикувана.' : 'Блогът е запазен.');
+
+      if (opts?.expectPublished) {
+        const wanted = postsToSave.filter((p) => p.status === 'published');
+        const savedPublished = (data.posts ?? []).filter((p) => p.status === 'published');
+        const ok = wanted.every((post) =>
+          savedPublished.some(
+            (saved) =>
+              (post.id && saved.id === post.id) ||
+              (post.slug && saved.slug === post.slug) ||
+              saved.title === post.title,
+          ),
+        );
+        if (!ok) {
+          throw new Error('Публикацията не се запази. Опитайте отново.');
+        }
+        setNotice('Статията е публикувана.');
+      } else {
+        setNotice('Черновата е запазена.');
+      }
     } catch (e) {
       handleErr(e);
+      throw e;
     } finally {
       setBusyKey('');
     }
   }
 
-  function enqueueBlogSave(overridePosts?: AdminSalonBlogPost[]) {
+  async function flushBlogSave(
+    overridePosts?: AdminSalonBlogPost[],
+    opts?: { expectPublished?: boolean },
+  ) {
     if (overridePosts) {
       blogPostsRef.current = overridePosts;
       setBlogPosts(overridePosts);
     }
-    blogSaveChainRef.current = blogSaveChainRef.current.catch(() => {}).then(async () => {
-      await saveBlogPostsInternal(blogPostsRef.current);
-    });
-    return blogSaveChainRef.current;
+
+    if (blogSaveBusyRef.current) {
+      blogSaveAgainRef.current = true;
+      return;
+    }
+
+    blogSaveBusyRef.current = true;
+    let expectPublished = opts?.expectPublished ?? false;
+    try {
+      do {
+        blogSaveAgainRef.current = false;
+        await saveBlogPostsInternal(blogPostsRef.current, { expectPublished });
+        expectPublished = false;
+      } while (blogSaveAgainRef.current);
+    } finally {
+      blogSaveBusyRef.current = false;
+    }
   }
 
-  async function saveBlogPosts(overridePosts?: AdminSalonBlogPost[]) {
-    return enqueueBlogSave(overridePosts);
+  function scheduleDraftBlogSave() {
+    if (blogSaveDebounceRef.current) clearTimeout(blogSaveDebounceRef.current);
+    blogSaveDebounceRef.current = setTimeout(() => {
+      blogSaveDebounceRef.current = null;
+      void flushBlogSave();
+    }, 250);
+  }
+
+  async function publishBlogPost(index: number) {
+    const current = blogPostsRef.current[index];
+    if (!current) return;
+    const next = patchBlogPost(index, {
+      status: 'published',
+      publishedAt: current.publishedAt || new Date().toISOString(),
+    });
+    await flushBlogSave(next, { expectPublished: true });
+  }
+
+  async function unpublishBlogPost(index: number) {
+    const next = patchBlogPost(index, { status: 'draft', publishedAt: null });
+    await flushBlogSave(next);
   }
 
   async function handleBlogCoverUpload(postIndex: number, file: File | null) {
@@ -1582,12 +1639,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     setError('');
     try {
       const url = await uploadSingleFile(file);
-      const nextPosts = blogPostsRef.current.map((p, i) =>
-        i === postIndex ? { ...p, coverImageUrl: url } : p,
-      );
-      blogPostsRef.current = nextPosts;
-      setBlogPosts(nextPosts);
-      await enqueueBlogSave();
+      patchBlogPost(postIndex, { coverImageUrl: url });
       setNotice('Снимката е качена.');
     } catch (e) {
       handleErr(e);
@@ -2270,7 +2322,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 onReplacePosts={replaceBlogPosts}
                 onBlogTitleChange={setBlogSectionTitle}
                 onUploadCover={handleBlogCoverUpload}
-                onSave={saveBlogPosts}
+                onSaveDraft={scheduleDraftBlogSave}
+                onPublish={publishBlogPost}
+                onUnpublish={unpublishBlogPost}
               />
             </Section>
           )}

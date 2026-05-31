@@ -4,6 +4,7 @@ import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
+import { runAfterResponse } from '@/lib/run-after-response';
 import {
   newEmptyBlogPost,
   normalizeBlogPostStatus,
@@ -24,7 +25,6 @@ function normalizePostsInput(raw: unknown): AdminSalonBlogPost[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((item, index) => {
     const row = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-    const base = newEmptyBlogPost();
     return {
       id: String(row.id ?? '').trim(),
       title: String(row.title ?? '').trim() || `Статия ${index + 1}`,
@@ -54,6 +54,78 @@ function assignSlugs(posts: AdminSalonBlogPost[]): AdminSalonBlogPost[] {
     used.add(slug);
     return { ...post, slug };
   });
+}
+
+async function persistBlogPost(
+  post: AdminSalonBlogPost,
+  salonId: string,
+  publishedAtById: Map<string, string | null>,
+): Promise<string> {
+  const mapped = mapAdminBlogToDb(post, salonId);
+  const preservedPublishedAt =
+    mapped.status === 'published'
+      ? post.publishedAt || publishedAtById.get(post.id) || mapped.published_at
+      : null;
+
+  if (post.id && publishedAtById.has(post.id)) {
+    const updated = await sql`
+      UPDATE salon_blog_posts
+      SET
+        slug = ${mapped.slug},
+        title = ${mapped.title},
+        excerpt = ${mapped.excerpt},
+        body_md = ${mapped.body_md},
+        cover_image_url = ${mapped.cover_image_url},
+        status = ${mapped.status},
+        published_at = ${preservedPublishedAt},
+        meta_title = ${mapped.meta_title},
+        meta_description = ${mapped.meta_description},
+        updated_at = now()
+      WHERE id = ${post.id}::uuid AND salon_id = ${salonId}
+      RETURNING id::text AS id
+    `;
+    const updatedId = String((updated[0] as { id?: string })?.id ?? '');
+    if (updatedId) return updatedId;
+  }
+
+  const updatedBySlug = await sql`
+    UPDATE salon_blog_posts
+    SET
+      title = ${mapped.title},
+      excerpt = ${mapped.excerpt},
+      body_md = ${mapped.body_md},
+      cover_image_url = ${mapped.cover_image_url},
+      status = ${mapped.status},
+      published_at = ${preservedPublishedAt},
+      meta_title = ${mapped.meta_title},
+      meta_description = ${mapped.meta_description},
+      updated_at = now()
+    WHERE salon_id = ${salonId} AND slug = ${mapped.slug}
+    RETURNING id::text AS id
+  `;
+  const slugId = String((updatedBySlug[0] as { id?: string })?.id ?? '');
+  if (slugId) return slugId;
+
+  const inserted = await sql`
+    INSERT INTO salon_blog_posts (
+      salon_id, slug, title, excerpt, body_md, cover_image_url,
+      status, published_at, meta_title, meta_description
+    )
+    VALUES (
+      ${mapped.salon_id},
+      ${mapped.slug},
+      ${mapped.title},
+      ${mapped.excerpt},
+      ${mapped.body_md},
+      ${mapped.cover_image_url},
+      ${mapped.status},
+      ${preservedPublishedAt},
+      ${mapped.meta_title},
+      ${mapped.meta_description}
+    )
+    RETURNING id::text AS id
+  `;
+  return String((inserted[0] as { id?: string })?.id ?? '');
 }
 
 export async function GET(request: NextRequest) {
@@ -108,46 +180,7 @@ export async function PATCH(request: NextRequest) {
   const keepIds: string[] = [];
 
   for (const post of posts) {
-    const mapped = mapAdminBlogToDb(post, auth.salon.salonId);
-    const preservedPublishedAt =
-      post.status === 'published'
-        ? post.publishedAt || publishedAtById.get(post.id) || mapped.published_at
-        : null;
-
-    const upserted = await sql`
-      INSERT INTO salon_blog_posts (
-        salon_id, slug, title, excerpt, body_md, cover_image_url,
-        status, published_at, meta_title, meta_description
-      )
-      VALUES (
-        ${mapped.salon_id},
-        ${mapped.slug},
-        ${mapped.title},
-        ${mapped.excerpt},
-        ${mapped.body_md},
-        ${mapped.cover_image_url},
-        ${mapped.status},
-        ${preservedPublishedAt},
-        ${mapped.meta_title},
-        ${mapped.meta_description}
-      )
-      ON CONFLICT (salon_id, slug)
-      DO UPDATE SET
-        title = EXCLUDED.title,
-        excerpt = EXCLUDED.excerpt,
-        body_md = EXCLUDED.body_md,
-        cover_image_url = EXCLUDED.cover_image_url,
-        status = EXCLUDED.status,
-        published_at = CASE
-          WHEN EXCLUDED.status = 'published' THEN COALESCE(salon_blog_posts.published_at, EXCLUDED.published_at)
-          ELSE NULL
-        END,
-        meta_title = EXCLUDED.meta_title,
-        meta_description = EXCLUDED.meta_description,
-        updated_at = now()
-      RETURNING id::text AS id
-    `;
-    const savedId = String((upserted[0] as { id: string }).id ?? '');
+    const savedId = await persistBlogPost(post, auth.salon.salonId, publishedAtById);
     if (savedId) keepIds.push(savedId);
   }
 
@@ -166,10 +199,14 @@ export async function PATCH(request: NextRequest) {
     loadSalonBlogTitle(auth.salon.salonId),
   ]);
 
-  revalidateSalonPublicCache({
-    slug: auth.salon.slug,
-    customDomain: auth.salon.customDomain,
-  });
+  runAfterResponse(
+    Promise.resolve().then(() => {
+      revalidateSalonPublicCache({
+        slug: auth.salon.slug,
+        customDomain: auth.salon.customDomain,
+      });
+    }),
+  );
 
   return NextResponse.json({
     success: true,
