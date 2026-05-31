@@ -166,7 +166,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const existing = await sql`
-    SELECT id::text AS id, published_at
+    SELECT id::text AS id, published_at, status
     FROM salon_blog_posts
     WHERE salon_id = ${auth.salon.salonId}
   `;
@@ -176,13 +176,19 @@ export async function PATCH(request: NextRequest) {
       r.published_at ? String(r.published_at) : null,
     ]),
   );
+  const hadPublishedBefore = (existing as { status?: string }[]).some(
+    (row) => row.status === 'published',
+  );
 
-  const keepIds: string[] = [];
-
-  for (const post of posts) {
-    const savedId = await persistBlogPost(post, auth.salon.salonId, publishedAtById);
-    if (savedId) keepIds.push(savedId);
-  }
+  const results = await Promise.all(
+    posts.map(async (post) => {
+      const savedId = await persistBlogPost(post, auth.salon.salonId, publishedAtById);
+      if (!savedId) return null;
+      return { ...post, id: savedId };
+    }),
+  );
+  const savedPosts = results.filter((post): post is AdminSalonBlogPost => post !== null);
+  const keepIds = savedPosts.map((post) => post.id);
 
   if (keepIds.length > 0) {
     await sql`
@@ -194,23 +200,29 @@ export async function PATCH(request: NextRequest) {
     await sql`DELETE FROM salon_blog_posts WHERE salon_id = ${auth.salon.salonId}`;
   }
 
-  const [saved, blogTitle] = await Promise.all([
-    loadAdminBlogPosts(auth.salon.salonId),
-    loadSalonBlogTitle(auth.salon.salonId),
-  ]);
+  const hasPublishedAfter = savedPosts.some((post) => post.status === 'published');
+  const blogTitle =
+    blogTitleRaw !== undefined
+      ? blogTitleRaw || 'Блог'
+      : await loadSalonBlogTitle(auth.salon.salonId);
 
-  runAfterResponse(
-    Promise.resolve().then(() => {
-      revalidateSalonPublicCache({
-        slug: auth.salon.slug,
-        customDomain: auth.salon.customDomain,
-      });
-    }),
-  );
+  const shouldRevalidate =
+    blogTitleRaw !== undefined || hadPublishedBefore || hasPublishedAfter;
+
+  if (shouldRevalidate) {
+    runAfterResponse(
+      Promise.resolve().then(() => {
+        revalidateSalonPublicCache({
+          slug: auth.salon.slug,
+          customDomain: auth.salon.customDomain,
+        });
+      }),
+    );
+  }
 
   return NextResponse.json({
     success: true,
-    posts: saved,
+    posts: savedPosts,
     blogTitle,
   });
 }

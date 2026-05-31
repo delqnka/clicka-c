@@ -24,8 +24,9 @@ function coverSrc(url: string): string {
 }
 
 const articleStyles = `
-  .clicka-blog-article h2 { font-size: 1.35rem; margin: 1.75rem 0 0.75rem; line-height: 1.3; }
-  .clicka-blog-article h3 { font-size: 1.15rem; margin: 1.5rem 0 0.5rem; line-height: 1.35; }
+  .clicka-blog-article { font-family: inherit; }
+  .clicka-blog-article h2 { font-size: 1.35rem; margin: 1.75rem 0 0.75rem; line-height: 1.3; font-weight: 600; }
+  .clicka-blog-article h3 { font-size: 1.15rem; margin: 1.5rem 0 0.5rem; line-height: 1.35; font-weight: 600; }
   .clicka-blog-article p { margin: 0 0 1rem; }
   .clicka-blog-article ul { margin: 0 0 1rem; padding-left: 1.25rem; }
   .clicka-blog-article li { margin-bottom: 0.35rem; }
@@ -46,109 +47,75 @@ export function BlogPostView({
 
   return (
     <main
-      style={{
-        maxWidth: 760,
-        margin: '0 auto',
-        padding: '40px 20px 80px',
-        fontFamily: 'system-ui, sans-serif',
-        color: '#111827',
-        lineHeight: 1.7,
-        ['--blog-primary' as string]: primaryColor,
-      }}
+      className="client-site mx-auto min-h-screen max-w-[760px] px-5 py-10 pb-20 text-[#111827] leading-[1.7]"
+      style={{ ['--blog-primary' as string]: primaryColor }}
     >
       <style dangerouslySetInnerHTML={{ __html: articleStyles }} />
 
-      <nav style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginBottom: 24, fontSize: 13 }}>
-        <a href={homeUrl} style={{ color: '#6b7280', textDecoration: 'none' }}>
+      <nav className="mb-6 flex flex-wrap gap-x-4 gap-y-2 text-[13px]">
+        <a href={homeUrl} className="text-[#6b7280] no-underline">
           {salonName}
         </a>
-        <span style={{ color: '#d1d5db' }}>/</span>
-        <a href={blogIndexUrl} style={{ color: '#6b7280', textDecoration: 'none' }}>
+        <span className="text-[#d1d5db]">/</span>
+        <a href={blogIndexUrl} className="text-[#6b7280] no-underline">
           {blogSectionTitle}
         </a>
       </nav>
 
       <article>
         {post.publishedAt ? (
-          <time dateTime={post.publishedAt} style={{ fontSize: 13, color: '#9ca3af' }}>
+          <time dateTime={post.publishedAt} className="text-[13px] text-[#9ca3af]">
             {formatDate(post.publishedAt)}
           </time>
         ) : null}
 
-        <h1
-          style={{
-            margin: '8px 0 16px',
-            fontSize: 'clamp(1.75rem, 4vw, 2.35rem)',
-            lineHeight: 1.2,
-          }}
-        >
-          {post.title}
-        </h1>
+        <h1 className="my-2 mb-4 text-[clamp(1.75rem,4vw,2.35rem)] leading-tight">{post.title}</h1>
 
         {post.excerpt ? (
-          <p style={{ margin: '0 0 24px', fontSize: 17, color: '#4b5563' }}>{post.excerpt}</p>
+          <p className="mb-6 mt-0 text-[17px] text-[#4b5563]">{post.excerpt}</p>
         ) : null}
 
         {cover ? (
           <img
             src={cover}
             alt=""
-            style={{
-              width: '100%',
-              borderRadius: 16,
-              marginBottom: 28,
-              aspectRatio: '16/9',
-              objectFit: 'cover',
-            }}
+            className="mb-7 aspect-video w-full rounded-2xl object-cover"
           />
         ) : null}
 
-        <div
-          className="clicka-blog-article"
-          dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
-        />
+        <div className="clicka-blog-article" dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
       </article>
 
       <div
+        className="mt-10 rounded-[14px] border px-[22px] py-5"
         style={{
-          marginTop: 40,
-          padding: '20px 22px',
-          borderRadius: 14,
           background: `color-mix(in srgb, ${primaryColor} 12%, #fff)`,
-          border: `1px solid color-mix(in srgb, ${primaryColor} 25%, #e5e7eb)`,
+          borderColor: `color-mix(in srgb, ${primaryColor} 25%, #e5e7eb)`,
         }}
       >
-        <p style={{ margin: 0, fontWeight: 600 }}>Хареса ви статията?</p>
-        <p style={{ margin: '6px 0 14px', fontSize: 14, color: '#4b5563' }}>
+        <p className="m-0 font-semibold">Хареса ви статията?</p>
+        <p className="mb-3.5 mt-1.5 text-sm text-[#4b5563]">
           Запазете час онлайн при {salonName}.
         </p>
         <a
           href={homeUrl}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            borderRadius: 10,
-            padding: '10px 18px',
-            background: primaryColor,
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 14,
-            textDecoration: 'none',
-          }}
+          className="inline-flex items-center rounded-[10px] px-[18px] py-2.5 text-sm font-semibold text-white no-underline"
+          style={{ background: primaryColor }}
         >
           Към сайта и резервация
         </a>
       </div>
 
       {related.length > 0 ? (
-        <section style={{ marginTop: 48 }}>
-          <h2 style={{ fontSize: 18, marginBottom: 16 }}>Още статии</h2>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+        <section className="mt-12">
+          <h2 className="mb-4 text-lg">Още статии</h2>
+          <ul className="m-0 grid list-none gap-2.5 p-0">
             {related.map((item) => (
               <li key={item.id}>
                 <a
                   href={`${blogIndexUrl}/${encodeURIComponent(item.slug)}`}
-                  style={{ color: primaryColor, textDecoration: 'none', fontWeight: 500 }}
+                  className="font-medium no-underline"
+                  style={{ color: primaryColor }}
                 >
                   {item.title}
                 </a>

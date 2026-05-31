@@ -32,103 +32,65 @@ export function BlogIndexView({
 }: Props) {
   return (
     <main
-      style={{
-        maxWidth: 920,
-        margin: '0 auto',
-        padding: '40px 20px 80px',
-        fontFamily: 'system-ui, sans-serif',
-        color: '#111827',
-        lineHeight: 1.6,
-      }}
+      className="client-site mx-auto min-h-screen max-w-[920px] px-5 py-10 pb-20 text-[#111827]"
+      style={{ ['--salon-primary' as string]: primaryColor }}
     >
       <a
         href={homeUrl}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
-          color: '#6b7280',
-          textDecoration: 'none',
-          marginBottom: 24,
-        }}
+        className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[#6b7280] no-underline"
       >
         ← Обратно към {salonName}
       </a>
 
-      <header style={{ marginBottom: 32 }}>
-        <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: primaryColor }}>
+      <header className="mb-8">
+        <p className="mb-2 text-[13px] font-semibold" style={{ color: primaryColor }}>
           {blogSectionTitle}
         </p>
-        <h1 style={{ margin: 0, fontSize: 'clamp(1.75rem, 4vw, 2.25rem)', lineHeight: 1.2 }}>
+        <h1 className="m-0 text-[clamp(1.75rem,4vw,2.25rem)] leading-tight">
           {blogSectionTitle} от {salonName}
         </h1>
-        <p style={{ margin: '12px 0 0', color: '#6b7280', maxWidth: 640 }}>
-          Съвети, новини и полезна информация от екипа ни.
-        </p>
       </header>
 
       {posts.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>Все още няма публикувани статии.</p>
+        <p className="text-[#6b7280]">Все още няма публикувани статии.</p>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gap: 20,
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
-          }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-5">
           {posts.map((post) => {
             const href = `${blogIndexUrl}/${encodeURIComponent(post.slug)}`;
             const img = coverSrc(post.coverImageUrl);
             return (
               <article
                 key={post.id}
-                style={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  background: '#fff',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                }}
+                className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
               >
                 {img ? (
-                  <a href={href} style={{ display: 'block', aspectRatio: '16/9', overflow: 'hidden' }}>
+                  <a href={href} className="block aspect-video overflow-hidden">
                     <img
                       src={img}
                       alt=""
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      className="h-full w-full object-cover"
                       loading="lazy"
                     />
                   </a>
                 ) : null}
-                <div style={{ padding: '16px 18px 18px' }}>
+                <div className="px-[18px] py-4 pb-[18px]">
                   {post.publishedAt ? (
-                    <time
-                      dateTime={post.publishedAt}
-                      style={{ fontSize: 12, color: '#9ca3af' }}
-                    >
+                    <time dateTime={post.publishedAt} className="text-xs text-[#9ca3af]">
                       {formatDate(post.publishedAt)}
                     </time>
                   ) : null}
-                  <h2 style={{ margin: '8px 0 0', fontSize: 18, lineHeight: 1.35 }}>
-                    <a href={href} style={{ color: 'inherit', textDecoration: 'none' }}>
+                  <h2 className="mb-0 mt-2 text-lg leading-snug">
+                    <a href={href} className="text-inherit no-underline">
                       {post.title}
                     </a>
                   </h2>
                   {post.excerpt ? (
-                    <p style={{ margin: '8px 0 0', fontSize: 14, color: '#6b7280' }}>{post.excerpt}</p>
+                    <p className="mb-0 mt-2 text-sm text-[#6b7280]">{post.excerpt}</p>
                   ) : null}
                   <a
                     href={href}
-                    style={{
-                      display: 'inline-block',
-                      marginTop: 12,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: primaryColor,
-                      textDecoration: 'none',
-                    }}
+                    className="mt-3 inline-block text-[13px] font-semibold no-underline"
+                    style={{ color: primaryColor }}
                   >
                     Прочети →
                   </a>

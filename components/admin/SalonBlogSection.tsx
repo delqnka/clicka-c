@@ -1,15 +1,8 @@
 'use client';
 
-import { Camera, ChevronDown, Plus, Trash2 } from 'lucide-react';
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { Camera, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { toBlogSlug } from '@/lib/blog-slug';
-import {
-  applyAutoBlogSeoMetaPatch,
-  BLOG_META_DESC_MAX,
-  BLOG_META_TITLE_MAX,
-  suggestBlogMetaDescription,
-  suggestBlogMetaTitle,
-} from '@/lib/blog-seo-meta';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
 
@@ -37,7 +30,7 @@ const SAVE_GREEN: CSSProperties = {
   border: 'none',
   color: '#fff',
   background: '#16A34A',
-  padding: '7px 14px',
+  padding: '8px 16px',
   fontSize: 13,
   fontWeight: 600,
   cursor: 'pointer',
@@ -55,49 +48,16 @@ type Props = {
   onReplacePosts: (posts: AdminSalonBlogPost[]) => AdminSalonBlogPost[];
   onBlogTitleChange: (title: string) => void;
   onUploadCover: (postIndex: number, file: File | null) => void | Promise<void>;
-  onSaveDraft: () => void | Promise<void>;
+  onSave: (index: number) => void | Promise<void>;
   onPublish: (index: number) => void | Promise<void>;
   onUnpublish: (index: number) => void | Promise<void>;
 };
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function AutoGrowTextarea({
-  value,
-  onChange,
-  style,
-  minHeight = 280,
-  ...rest
-}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { minHeight?: number }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.max(minHeight, el.scrollHeight)}px`;
-  }, [value, minHeight]);
-
-  return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={onChange}
-      style={{
-        ...style,
-        minHeight,
-        resize: 'vertical',
-        overflow: 'auto',
-        lineHeight: 1.55,
-      }}
-      {...rest}
-    />
-  );
 }
 
 export function SalonBlogSection({
@@ -111,124 +71,62 @@ export function SalonBlogSection({
   onReplacePosts,
   onBlogTitleChange,
   onUploadCover,
-  onSaveDraft,
+  onSave,
   onPublish,
   onUnpublish,
 }: Props) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
-  const metaTouchedRef = useRef<Map<string, { title?: boolean; description?: boolean }>>(new Map());
+  const [activeIndex, setActiveIndex] = useState(0);
+  const saving = busyKey === 'blog';
 
-  function postKey(post: AdminSalonBlogPost, index: number) {
-    return post.id || `draft-${index}`;
-  }
+  useEffect(() => {
+    if (activeIndex >= posts.length) {
+      setActiveIndex(Math.max(0, posts.length - 1));
+    }
+  }, [activeIndex, posts.length]);
 
-  function getMetaTouched(key: string) {
-    return metaTouchedRef.current.get(key) ?? {};
-  }
-
-  function setMetaTouched(key: string, patch: { title?: boolean; description?: boolean }) {
-    metaTouchedRef.current.set(key, { ...getMetaTouched(key), ...patch });
-  }
-
-  function updatePostWithAutoMeta(index: number, patch: Partial<AdminSalonBlogPost>) {
-    const current = posts[index];
-    if (!current) return;
-    const merged = { ...current, ...patch };
-    const key = postKey(merged, index);
-    const touched = getMetaTouched(key);
-    const metaPatch = applyAutoBlogSeoMetaPatch(merged, {
-      titleTouched: touched.title,
-      descriptionTouched: touched.description,
-    });
-    onPatchPost(index, { ...patch, ...metaPatch });
-  }
+  const post = posts[activeIndex];
+  const previewUrl =
+    post?.status === 'published' && post.slug
+      ? `${blogPreviewBase}/blog/${encodeURIComponent(post.slug)}`
+      : null;
 
   function updatePost(index: number, patch: Partial<AdminSalonBlogPost>) {
-    if ('title' in patch || 'excerpt' in patch || 'bodyMarkdown' in patch) {
-      updatePostWithAutoMeta(index, patch);
-      return;
-    }
     onPatchPost(index, patch);
-  }
-
-  function updateMetaTitle(index: number, value: string) {
-    const post = posts[index];
-    if (!post) return;
-    const key = postKey(post, index);
-    setMetaTouched(key, {
-      title: value.trim().length > 0 && value !== suggestBlogMetaTitle(post.title),
-    });
-    onPatchPost(index, { metaTitle: value });
-  }
-
-  function updateMetaDescription(index: number, value: string) {
-    const post = posts[index];
-    if (!post) return;
-    const key = postKey(post, index);
-    setMetaTouched(key, {
-      description:
-        value.trim().length > 0 &&
-        value !== suggestBlogMetaDescription(post.excerpt, post.bodyMarkdown),
-    });
-    onPatchPost(index, { metaDescription: value });
-  }
-
-  function isExpanded(post: AdminSalonBlogPost, index: number) {
-    const key = postKey(post, index);
-    if (expandedIds.size === 0 && index === 0) return true;
-    return expandedIds.has(key);
-  }
-
-  function toggleExpanded(post: AdminSalonBlogPost, index: number) {
-    const key = postKey(post, index);
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  function removePost(index: number) {
-    onReplacePosts(posts.filter((_, i) => i !== index));
   }
 
   function addPost() {
     onReplacePosts([newEmptyBlogPost(), ...posts]);
-    setExpandedIds(new Set(['draft-0']));
+    setActiveIndex(0);
+  }
+
+  function removePost(index: number) {
+    onReplacePosts(posts.filter((_, i) => i !== index));
+    setActiveIndex((i) => Math.max(0, Math.min(i, posts.length - 2)));
   }
 
   function onTitleBlur(index: number) {
-    const post = posts[index];
-    if (!post) return;
-    const patch: Partial<AdminSalonBlogPost> = {};
-    if (!post.slug.trim() && post.title.trim()) {
-      patch.slug = toBlogSlug(post.title);
+    const current = posts[index];
+    if (!current?.slug.trim() && current?.title.trim()) {
+      updatePost(index, { slug: toBlogSlug(current.title) });
     }
-    updatePostWithAutoMeta(index, patch);
   }
 
   const textareaStyle: CSSProperties = {
     ...inp,
-    minHeight: undefined,
+    minHeight: 360,
+    height: 360,
+    resize: 'vertical',
     fontFamily: 'inherit',
+    lineHeight: 1.55,
     whiteSpace: 'pre-wrap',
   };
 
   return (
-    <div style={{ display: 'grid', gap: isMobile ? 14 : 12 }}>
+    <div style={{ display: 'grid', gap: isMobile ? 16 : 14 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         <button type="button" style={GRADIENT_PRIMARY} onClick={addPost}>
           <Plus size={15} strokeWidth={2.25} />
           Нова статия
-        </button>
-        <button
-          type="button"
-          style={{ ...SAVE_GREEN, background: '#374151' }}
-          disabled={busyKey === 'blog'}
-          onClick={() => void onSaveDraft()}
-        >
-          {busyKey === 'blog' ? 'Запазване…' : 'Запази чернова'}
         </button>
       </div>
 
@@ -250,321 +148,294 @@ export function SalonBlogSection({
           style={{
             border: '1px dashed #d1d5db',
             borderRadius: 12,
-            padding: '24px 16px',
+            padding: '32px 16px',
             textAlign: 'center',
             color: '#6b7280',
             fontSize: 14,
           }}
         >
-          Няма статии.
+          Няма статии. Натиснете „Нова статия“, за да започнете.
         </div>
-      ) : null}
-
-      {posts.map((post, index) => {
-        const key = postKey(post, index);
-        const open = isExpanded(post, index);
-        const previewUrl =
-          post.status === 'published' && post.slug
-            ? `${blogPreviewBase}/blog/${encodeURIComponent(post.slug)}`
-            : null;
-
-        return (
+      ) : (
+        <>
           <div
-            key={key}
             style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: 14,
-              overflow: 'hidden',
-              background: '#fff',
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              paddingBottom: 4,
+              WebkitOverflowScrolling: 'touch',
             }}
           >
-            <button
-              type="button"
-              onClick={() => toggleExpanded(post, index)}
+            {posts.map((item, index) => {
+              const selected = index === activeIndex;
+              const label = item.title.trim() || `Статия ${index + 1}`;
+              return (
+                <button
+                  key={item.id || `draft-${index}`}
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  style={{
+                    flexShrink: 0,
+                    borderRadius: 10,
+                    border: selected ? '2px solid #7C3AED' : '1px solid #e5e7eb',
+                    background: selected ? '#F5F3FF' : '#fff',
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    maxWidth: 220,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#111827',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {label}
+                  </span>
+                  <span style={{ fontSize: 11, color: item.status === 'published' ? '#16A34A' : '#9ca3af' }}>
+                    {item.status === 'published' ? 'Публикувана' : 'Чернова'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {post ? (
+            <div
               style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                padding: isMobile ? '14px 14px' : '14px 16px',
-                border: 'none',
-                background: open ? '#fafafa' : '#fff',
-                cursor: 'pointer',
-                textAlign: 'left',
+                border: '1px solid #e5e7eb',
+                borderRadius: 14,
+                padding: isMobile ? 14 : 18,
+                display: 'grid',
+                gap: 14,
+                background: '#fff',
               }}
             >
-              <div style={{ minWidth: 0 }}>
-                <strong style={{ fontSize: 15, display: 'block' }}>
-                  {post.title.trim() || `Статия ${index + 1}`}
-                </strong>
-                <span style={{ fontSize: 12, color: '#6b7280' }}>
-                  {post.status === 'published' ? 'Публикувана' : 'Чернова'}
-                  {post.publishedAt ? ` · ${formatDate(post.publishedAt)}` : ''}
-                </span>
-              </div>
-              <ChevronDown
-                size={18}
-                style={{
-                  flexShrink: 0,
-                  transform: open ? 'rotate(180deg)' : 'none',
-                  transition: 'transform 150ms ease',
-                  color: '#6b7280',
-                }}
-              />
-            </button>
+              <label style={{ display: 'grid', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Заглавие</span>
+                <input
+                  style={inp}
+                  value={post.title}
+                  onChange={(e) => updatePost(activeIndex, { title: e.target.value })}
+                  onBlur={() => onTitleBlur(activeIndex)}
+                  placeholder="Заглавие на статията"
+                />
+              </label>
 
-            {open ? (
+              <div style={{ display: 'grid', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Снимка на корицата</span>
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 10,
+                    gridTemplateColumns: isMobile ? '1fr' : 'minmax(140px, 220px) 1fr',
+                    alignItems: 'start',
+                  }}
+                >
+                  <div
+                    style={{
+                      aspectRatio: '16/10',
+                      borderRadius: 12,
+                      border: '1px dashed #d1d5db',
+                      background: '#f9fafb',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {post.coverImageUrl ? (
+                      <img
+                        src={post.coverImageUrl}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: 12, color: '#9ca3af', padding: 12, textAlign: 'center' }}>
+                        Без снимка
+                      </span>
+                    )}
+                  </div>
+                  <label
+                    style={{
+                      ...GRADIENT_PRIMARY,
+                      width: 'fit-content',
+                      cursor: busyKey === `upload-blog-${activeIndex}` ? 'wait' : 'pointer',
+                      opacity: busyKey === `upload-blog-${activeIndex}` ? 0.7 : 1,
+                    }}
+                  >
+                    <Camera size={15} />
+                    {post.coverImageUrl ? 'Смени снимката' : 'Качи снимка'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      disabled={busyKey === `upload-blog-${activeIndex}`}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        void onUploadCover(activeIndex, file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <label style={{ display: 'grid', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Текст на статията</span>
+                <textarea
+                  style={textareaStyle}
+                  value={post.bodyMarkdown}
+                  onChange={(e) => updatePost(activeIndex, { bodyMarkdown: e.target.value })}
+                  placeholder="Пишете тук…"
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                  Кратко описание <span style={{ fontWeight: 400, color: '#9ca3af' }}>(по избор)</span>
+                </span>
+                <textarea
+                  style={{ ...inp, minHeight: 72, resize: 'vertical' }}
+                  value={post.excerpt}
+                  onChange={(e) => updatePost(activeIndex, { excerpt: e.target.value })}
+                  placeholder="Показва се в списъка със статии"
+                />
+              </label>
+
               <div
                 style={{
-                  padding: isMobile ? '0 14px 14px' : '0 16px 16px',
-                  display: 'grid',
-                  gap: 12,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  alignItems: 'center',
+                  paddingTop: 4,
                   borderTop: '1px solid #f3f4f6',
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    paddingTop: 12,
-                  }}
+                {post.status === 'published' ? (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#16A34A',
+                      background: '#F0FDF4',
+                      border: '1px solid #BBF7D0',
+                      borderRadius: 999,
+                      padding: '6px 12px',
+                    }}
+                  >
+                    Публикувана{post.publishedAt ? ` · ${formatDate(post.publishedAt)}` : ''}
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#6b7280',
+                      background: '#f3f4f6',
+                      borderRadius: 999,
+                      padding: '6px 12px',
+                    }}
+                  >
+                    Чернова
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  style={SAVE_GREEN}
+                  disabled={saving}
+                  onClick={() => void onSave(activeIndex)}
                 >
-                  {previewUrl ? (
-                    <a
-                      href={previewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: 12, color: '#7C3AED', textDecoration: 'none' }}
-                    >
-                      Преглед ↗
-                    </a>
-                  ) : null}
+                  {saving ? 'Запазване…' : 'Запази'}
+                </button>
+
+                {post.status !== 'published' ? (
                   <button
                     type="button"
-                    onClick={() => removePost(index)}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: '#ef4444',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontSize: 13,
-                    }}
+                    style={{ ...GRADIENT_PRIMARY, padding: '8px 16px', fontSize: 13 }}
+                    disabled={saving}
+                    onClick={() => void onPublish(activeIndex)}
                   >
-                    <Trash2 size={14} />
-                    Изтрий
+                    {saving ? 'Публикуване…' : 'Публикувай'}
                   </button>
-                </div>
+                ) : (
+                  <button
+                    type="button"
+                    style={{
+                      ...SAVE_GREEN,
+                      background: '#fff',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      boxShadow: 'none',
+                    }}
+                    disabled={saving}
+                    onClick={() => void onUnpublish(activeIndex)}
+                  >
+                    В чернова
+                  </button>
+                )}
 
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Заглавие</span>
+                {previewUrl ? (
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 13, color: '#7C3AED', textDecoration: 'none', marginLeft: 'auto' }}
+                  >
+                    Преглед ↗
+                  </a>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => removePost(activeIndex)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 13,
+                    marginLeft: previewUrl ? 0 : 'auto',
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Изтрий
+                </button>
+              </div>
+
+              <details>
+                <summary style={{ fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+                  URL адрес (по избор)
+                </summary>
+                <label style={{ display: 'grid', gap: 4, marginTop: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Slug</span>
                   <input
                     style={inp}
-                    value={post.title}
-                    onChange={(e) => updatePost(index, { title: e.target.value })}
-                    onBlur={() => onTitleBlur(index)}
-                    placeholder="Заглавие на статията"
+                    value={post.slug}
+                    onChange={(e) => updatePost(activeIndex, { slug: e.target.value })}
+                    placeholder="grizha-za-kosata-zimata"
                   />
-                </label>
-
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Снимка</span>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: 10,
-                      gridTemplateColumns: isMobile ? '1fr' : 'minmax(140px, 220px) 1fr',
-                      alignItems: 'start',
-                    }}
-                  >
-                    <div
-                      style={{
-                        aspectRatio: '16/10',
-                        borderRadius: 12,
-                        border: '1px dashed #d1d5db',
-                        background: '#f9fafb',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {post.coverImageUrl ? (
-                        <img
-                          src={post.coverImageUrl}
-                          alt=""
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: 12, color: '#9ca3af', padding: 12, textAlign: 'center' }}>
-                          Без снимка
-                        </span>
-                      )}
-                    </div>
-                    <label
-                      style={{
-                        ...GRADIENT_PRIMARY,
-                        width: 'fit-content',
-                        cursor: busyKey === `upload-blog-${index}` ? 'wait' : 'pointer',
-                        opacity: busyKey === `upload-blog-${index}` ? 0.7 : 1,
-                      }}
-                    >
-                      <Camera size={15} />
-                      {post.coverImageUrl ? 'Смени снимката' : 'Качи снимка'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        disabled={busyKey === `upload-blog-${index}`}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] ?? null;
-                          void onUploadCover(index, file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
-                    Кратко описание
+                  <span style={{ fontSize: 11, color: '#9ca3af' }}>
+                    SEO заглавие и описание се генерират автоматично при запазване.
                   </span>
-                  <textarea
-                    style={{ ...inp, minHeight: 72, resize: 'vertical' }}
-                    value={post.excerpt}
-                    onChange={(e) => updatePost(index, { excerpt: e.target.value })}
-                    placeholder="Кратко описание за списъка със статии"
-                  />
                 </label>
-
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Текст</span>
-                  <AutoGrowTextarea
-                    style={textareaStyle}
-                    value={post.bodyMarkdown}
-                    onChange={(e) => updatePost(index, { bodyMarkdown: e.target.value })}
-                    placeholder="Текст на статията…"
-                    minHeight={isMobile ? 320 : 280}
-                  />
-                </label>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                  {post.status === 'published' ? (
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: '#16A34A',
-                        background: '#F0FDF4',
-                        border: '1px solid #BBF7D0',
-                        borderRadius: 999,
-                        padding: '6px 12px',
-                      }}
-                    >
-                      Публикувана{post.publishedAt ? ` · ${formatDate(post.publishedAt)}` : ''}
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: '#6b7280',
-                        background: '#f3f4f6',
-                        borderRadius: 999,
-                        padding: '6px 12px',
-                      }}
-                    >
-                      Чернова
-                    </span>
-                  )}
-                  {post.status !== 'published' ? (
-                    <button
-                      type="button"
-                      style={SAVE_GREEN}
-                      disabled={busyKey === 'blog'}
-                      onClick={() => void onPublish(index)}
-                    >
-                      {busyKey === 'blog' ? 'Публикуване…' : 'Публикувай'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      style={{
-                        ...SAVE_GREEN,
-                        background: '#fff',
-                        color: '#374151',
-                        border: '1px solid #d1d5db',
-                        boxShadow: 'none',
-                      }}
-                      disabled={busyKey === 'blog'}
-                      onClick={() => void onUnpublish(index)}
-                    >
-                      В чернова
-                    </button>
-                  )}
-                </div>
-
-                <details open>
-                  <summary style={{ fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
-                    URL и SEO
-                  </summary>
-                  <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-                    <label style={{ display: 'grid', gap: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>URL (slug)</span>
-                      <input
-                        style={inp}
-                        value={post.slug}
-                        onChange={(e) => updatePost(index, { slug: e.target.value })}
-                        placeholder="grizha-za-kosata-zimata"
-                      />
-                    </label>
-                    <label style={{ display: 'grid', gap: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
-                        Meta title
-                        <span style={{ marginLeft: 6, fontWeight: 500, color: '#9ca3af' }}>
-                          {(post.metaTitle || suggestBlogMetaTitle(post.title)).length}/{BLOG_META_TITLE_MAX}
-                        </span>
-                      </span>
-                      <input
-                        style={inp}
-                        value={post.metaTitle || suggestBlogMetaTitle(post.title)}
-                        onChange={(e) => updateMetaTitle(index, e.target.value)}
-                        placeholder={post.title || 'Заглавие за Google'}
-                        maxLength={BLOG_META_TITLE_MAX + 10}
-                      />
-                    </label>
-                    <label style={{ display: 'grid', gap: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
-                        Meta description
-                        <span style={{ marginLeft: 6, fontWeight: 500, color: '#9ca3af' }}>
-                          {(post.metaDescription || suggestBlogMetaDescription(post.excerpt, post.bodyMarkdown)).length}/{BLOG_META_DESC_MAX}
-                        </span>
-                      </span>
-                      <textarea
-                        style={{ ...inp, minHeight: 64, resize: 'vertical' }}
-                        value={
-                          post.metaDescription ||
-                          suggestBlogMetaDescription(post.excerpt, post.bodyMarkdown)
-                        }
-                        onChange={(e) => updateMetaDescription(index, e.target.value)}
-                        placeholder="Кратко описание за Google (до 160 символа)"
-                        maxLength={BLOG_META_DESC_MAX + 20}
-                      />
-                    </label>
-                  </div>
-                </details>
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
+              </details>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

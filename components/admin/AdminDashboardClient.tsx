@@ -46,6 +46,8 @@ import {
 import { AdminPriceListScanBtn, PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
+import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
+import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
@@ -339,7 +341,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const blogPostsRef = useRef<AdminSalonBlogPost[]>([]);
   const blogSaveBusyRef = useRef(false);
   const blogSaveAgainRef = useRef(false);
-  const blogSaveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [smsDraftEnabled, setSmsDraftEnabled] = useState(initialSite.smsEnabled);
@@ -1538,17 +1539,32 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     return next;
   }, []);
 
+  function prepareBlogPostsForSave(posts: AdminSalonBlogPost[]): AdminSalonBlogPost[] {
+    const used = new Set<string>();
+    return posts.map((post) => {
+      const withSeo = withAutoBlogSeoMeta(post);
+      const base = withSeo.slug.trim() || toBlogSlug(withSeo.title);
+      const slug = ensureUniqueBlogSlug(base, used);
+      used.add(slug);
+      return { ...withSeo, slug };
+    });
+  }
+
   async function saveBlogPostsInternal(
     postsToSave: AdminSalonBlogPost[],
     opts?: { expectPublished?: boolean },
   ) {
+    const prepared = prepareBlogPostsForSave(postsToSave);
+    blogPostsRef.current = prepared;
+    setBlogPosts(prepared);
+
     setError('');
     setBusyKey('blog');
     try {
       const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posts: postsToSave, blogTitle: blogSectionTitle }),
+        body: JSON.stringify({ posts: prepared, blogTitle: blogSectionTitle }),
       });
       const data = (await guardResponse(res)) as { posts?: AdminSalonBlogPost[]; blogTitle?: string };
       if (Array.isArray(data.posts)) {
@@ -1558,7 +1574,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       if (typeof data.blogTitle === 'string') setBlogSectionTitle(data.blogTitle);
 
       if (opts?.expectPublished) {
-        const wanted = postsToSave.filter((p) => p.status === 'published');
+        const wanted = prepared.filter((p) => p.status === 'published');
         const savedPublished = (data.posts ?? []).filter((p) => p.status === 'published');
         const ok = wanted.every((post) =>
           savedPublished.some(
@@ -1610,12 +1626,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     }
   }
 
-  function scheduleDraftBlogSave() {
-    if (blogSaveDebounceRef.current) clearTimeout(blogSaveDebounceRef.current);
-    blogSaveDebounceRef.current = setTimeout(() => {
-      blogSaveDebounceRef.current = null;
-      void flushBlogSave();
-    }, 250);
+  async function saveBlogDraft(_index: number) {
+    await flushBlogSave();
   }
 
   async function publishBlogPost(index: number) {
@@ -2322,7 +2334,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 onReplacePosts={replaceBlogPosts}
                 onBlogTitleChange={setBlogSectionTitle}
                 onUploadCover={handleBlogCoverUpload}
-                onSaveDraft={scheduleDraftBlogSave}
+                onSave={saveBlogDraft}
                 onPublish={publishBlogPost}
                 onUnpublish={unpublishBlogPost}
               />
