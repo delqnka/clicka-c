@@ -52,38 +52,49 @@ export function BlogPostView({
     >
       <style dangerouslySetInnerHTML={{ __html: articleStyles }} />
 
-      <nav className="mb-6 flex flex-wrap gap-x-4 gap-y-2 text-[13px]">
+      <nav className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" aria-label="Breadcrumb">
         <a href={homeUrl} className="text-[#6b7280] no-underline">
           {salonName}
         </a>
         <span className="text-[#d1d5db]">/</span>
-        <a href={blogIndexUrl} className="text-[#6b7280] no-underline">
+        <a href={blogIndexUrl} className="font-semibold no-underline" style={{ color: primaryColor }}>
           {blogSectionTitle}
         </a>
       </nav>
 
-      <article>
-        {post.publishedAt ? (
-          <time dateTime={post.publishedAt} className="text-[13px] text-[#9ca3af]">
-            {formatDate(post.publishedAt)}
-          </time>
-        ) : null}
+      <article itemScope itemType="https://schema.org/BlogPosting">
+        <header>
+          {post.publishedAt ? (
+            <time dateTime={post.publishedAt} className="text-[13px] text-[#9ca3af]" itemProp="datePublished">
+              {formatDate(post.publishedAt)}
+            </time>
+          ) : null}
 
-        <h1 className="my-2 mb-4 text-[clamp(1.75rem,4vw,2.35rem)] leading-tight">{post.title}</h1>
+          <h1 className="my-2 mb-4 text-[clamp(1.75rem,4vw,2.35rem)] leading-tight" itemProp="headline">
+            {post.title}
+          </h1>
 
-        {post.excerpt ? (
-          <p className="mb-6 mt-0 text-[17px] text-[#4b5563]">{post.excerpt}</p>
-        ) : null}
+          {post.excerpt ? (
+            <p className="mb-6 mt-0 text-[17px] text-[#4b5563]" itemProp="description">
+              {post.excerpt}
+            </p>
+          ) : null}
+        </header>
 
         {cover ? (
           <img
             src={cover}
-            alt=""
+            alt={post.title}
             className="mb-7 aspect-video w-full rounded-2xl object-cover"
+            itemProp="image"
           />
         ) : null}
 
-        <div className="clicka-blog-article" dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
+        <div
+          className="clicka-blog-article"
+          itemProp="articleBody"
+          dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
+        />
       </article>
 
       <div
@@ -107,7 +118,7 @@ export function BlogPostView({
       </div>
 
       {related.length > 0 ? (
-        <section className="mt-12">
+        <section className="mt-12" aria-label="Още статии">
           <h2 className="mb-4 text-lg">Още статии</h2>
           <ul className="m-0 grid list-none gap-2.5 p-0">
             {related.map((item) => (

@@ -5,7 +5,7 @@ import { BlogIndexView } from '@/components/salon/blog-index-view';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
-import { buildBlogPostingJsonLd } from '@/lib/seo';
+import { buildBlogBreadcrumbJsonLd, buildBlogIndexJsonLd, buildBlogPostingJsonLd } from '@/lib/seo';
 import {
   getBlogPostBySlugForSalon,
   getPublishedBlogPostsForSalon,
@@ -54,13 +54,35 @@ export async function renderBlogIndexPage({ slug: slugParam }: { slug?: string }
   const posts = await getPublishedBlogPostsForSalon(salonId, ctx.salonSlug);
 
   return (
-    <BlogIndexView
-      salonName={String(ctx.salon.name ?? 'Салон')}
-      homeUrl={ctx.homeUrl}
-      blogIndexUrl={ctx.blogIndexUrl}
-      primaryColor={ctx.primaryColor}
-      blogSectionTitle={ctx.blogSectionTitle}
-      posts={posts}
+    <>
+      <BlogIndexJsonLd salon={ctx.salon} slug={ctx.salonSlug} posts={posts} />
+      <BlogIndexView
+        salonName={String(ctx.salon.name ?? 'Салон')}
+        homeUrl={ctx.homeUrl}
+        blogIndexUrl={ctx.blogIndexUrl}
+        primaryColor={ctx.primaryColor}
+        blogSectionTitle={ctx.blogSectionTitle}
+        posts={posts}
+      />
+    </>
+  );
+}
+
+function BlogIndexJsonLd({
+  salon,
+  slug,
+  posts,
+}: {
+  salon: Record<string, unknown>;
+  slug: string;
+  posts: PublicSalonBlogPost[];
+}) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(buildBlogIndexJsonLd(salon, slug, posts)),
+      }}
     />
   );
 }
@@ -94,6 +116,12 @@ export async function renderBlogPostPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(buildBlogPostingJsonLd(post, ctx.salon, ctx.salonSlug)),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildBlogBreadcrumbJsonLd(post, ctx.salon, ctx.salonSlug)),
         }}
       />
       <BlogPostView

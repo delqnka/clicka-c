@@ -8,15 +8,24 @@ export function AdminField({
   label,
   children,
   style,
+  compact = false,
 }: {
   label: string;
   children: ReactNode;
   style?: CSSProperties;
+  compact?: boolean;
 }) {
   const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
-    <label style={{ display: 'grid', gap: isMbl ? 6 : 5, ...style }}>
-      <span style={{ fontSize: isMbl ? 13 : 12, fontWeight: 600, color: ADMIN_T.muted, letterSpacing: '0.01em' }}>
+    <label style={{ display: 'grid', gap: compact ? 4 : isMbl ? 6 : 5, ...style }}>
+      <span
+        style={{
+          fontSize: compact ? 12 : isMbl ? 13 : 12,
+          fontWeight: compact ? 500 : 600,
+          color: compact ? ADMIN_T.text : ADMIN_T.muted,
+          letterSpacing: compact ? undefined : '0.01em',
+        }}
+      >
         {label}
       </span>
       {children}
@@ -46,7 +55,7 @@ export function AdminSection({
           justifyContent: 'space-between',
           alignItems: compact ? 'center' : 'flex-start',
           gap: compact ? 10 : 16,
-          marginBottom: isMbl ? (compact ? 16 : 20) : compact ? 14 : 18,
+          marginBottom: isMbl ? (compact ? 12 : 18) : compact ? 10 : 18,
           flexWrap: compact ? 'nowrap' : 'wrap',
         }}
       >
@@ -54,9 +63,9 @@ export function AdminSection({
           <h2
             style={{
               margin: 0,
-              fontSize: isMbl ? (compact ? 20 : 24) : compact ? 17 : 18,
-              fontWeight: 700,
-              letterSpacing: '-0.025em',
+              fontSize: isMbl ? (compact ? 17 : 22) : compact ? 16 : 18,
+              fontWeight: compact ? 600 : 700,
+              letterSpacing: compact ? '-0.02em' : '-0.025em',
               color: ADMIN_T.text,
               lineHeight: 1.2,
             }}
@@ -153,13 +162,20 @@ export function AdminSaveBtn({
   label,
   busy,
   mobile,
+  green = false,
+  compact = false,
   onClick,
 }: {
   label: string;
   busy: boolean;
   mobile: boolean;
+  green?: boolean;
+  compact?: boolean;
   onClick: () => void;
 }) {
+  const bg = green ? '#16A34A' : ADMIN_T.accent;
+  const shadow = green ? '0 4px 12px rgba(22,163,74,0.28)' : '0 4px 12px rgba(34,197,94,0.3)';
+
   if (mobile) {
     return (
       <button
@@ -169,24 +185,24 @@ export function AdminSaveBtn({
         aria-label={label}
         title={label}
         style={{
-          width: 44,
-          height: 44,
-          borderRadius: 14,
+          width: compact ? 36 : 44,
+          height: compact ? 36 : 44,
+          borderRadius: compact ? 10 : 14,
           border: 'none',
-          background: ADMIN_T.accent,
+          background: bg,
           color: '#fff',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(34,197,94,0.3)',
+          boxShadow: shadow,
         }}
       >
         {busy ? (
-          <RefreshCw size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} />
+          <RefreshCw size={compact ? 16 : 18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} />
         ) : (
-          <Check size={20} strokeWidth={2.5} />
+          <Check size={compact ? 18 : 20} strokeWidth={2.5} />
         )}
       </button>
     );
@@ -200,20 +216,21 @@ export function AdminSaveBtn({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
-        borderRadius: 10,
+        gap: compact ? 5 : 6,
+        borderRadius: compact ? 8 : 10,
         border: 'none',
-        background: ADMIN_T.accent,
+        background: bg,
         color: '#fff',
-        padding: '7px 14px',
-        fontSize: 13,
+        padding: compact ? '6px 11px' : '7px 14px',
+        fontSize: compact ? 12 : 13,
         fontWeight: 600,
         cursor: busy ? 'wait' : 'pointer',
         whiteSpace: 'nowrap',
+        boxShadow: green ? shadow : undefined,
       }}
     >
-      {busy ? <RefreshCw size={14} /> : <Check size={14} strokeWidth={2.5} />}
-      {busy ? 'Запазваме…' : label}
+      {busy ? <RefreshCw size={compact ? 13 : 14} /> : <Check size={compact ? 13 : 14} strokeWidth={2.5} />}
+      {busy ? 'Запазване…' : label}
     </button>
   );
 }

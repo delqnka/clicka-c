@@ -69,7 +69,7 @@ function GallerySection({
           <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 700, color: ADMIN_T.text }}>
             {title}
           </p>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.55 }}>{description}</p>
+          {description ? <p style={{ margin: '6px 0 0', fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.55 }}>{description}</p> : null}
         </div>
         {uploadBtn}
       </div>
@@ -193,8 +193,8 @@ export function ImagesTabPanel({
       </div>
 
       <GallerySection
-        title="Галерия"
-        description="Снимки на помещението — показват се в горната част на сайта."
+        title="Снимки на салона"
+        description=""
         uploadBtn={
           <AdminSalonVenueAddBtn
             busy={busyKey === 'upload-gallery'}
@@ -228,14 +228,14 @@ export function ImagesTabPanel({
         }
         emptyHint={
           isMobile
-            ? 'Натисни иконата за да добавиш снимки на помещението'
-            : 'Натисни иконата или плъзни файлове тук.'
+            ? 'Натисни + за да добавиш снимки на салона'
+            : 'Натисни + или плъзни файлове тук.'
         }
       />
 
       <GallerySection
-        title="Портфолио (твоята работа)"
-        description="Снимки на прически и резултати."
+        title="Снимки на работата ти"
+        description=""
         uploadBtn={
           <AdminGalleryAddBtn busy={busyKey === 'upload-portfolio'} onUpload={handlePortfolioUpload} />
         }
@@ -261,7 +261,7 @@ export function ImagesTabPanel({
         }
         emptyHint={
           isMobile
-            ? 'Натисни + за да добавиш работа в портфолиото'
+            ? 'Натисни + за да добавиш снимки на прически и резултати'
             : 'Натисни + или плъзни файлове тук.'
         }
       />

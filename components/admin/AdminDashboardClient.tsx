@@ -42,7 +42,7 @@ import {
   LazySmsTabPanel,
   LazySpecialistTabPanel,
 } from '@/components/admin/lazy-admin-tabs';
-import { AdminPriceListScanBtn, PriceListServicesImport } from '@/components/admin/price-list-services-import';
+import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
@@ -2185,41 +2185,39 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 8,
-                      padding: '12px 8px',
-                      borderRadius: 14,
-                      border: `1px solid ${active ? '#D4D4D8' : '#E4E4E7'}`,
-                      background: '#fff',
-                      color: T.text,
+                      gap: 5,
+                      padding: '8px 6px',
+                      borderRadius: 12,
+                      border: `1px solid ${active ? T.accent : '#E4E4E7'}`,
+                      background: active ? '#F0FDF4' : '#fff',
+                      color: active ? T.accent : T.text,
                       cursor: 'pointer',
-                      minHeight: 88,
+                      minHeight: 68,
                       WebkitTapHighlightColor: 'transparent',
-                      boxShadow: '0 4px 14px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)',
+                      boxShadow: active ? `0 2px 8px rgba(34,197,94,0.15)` : '0 1px 3px rgba(0,0,0,0.05)',
                     }}
                   >
                     <div
                       style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 11,
-                        background: active
-                          ? ICON_GRADIENT
-                          : '#fff',
+                        width: 28,
+                        height: 28,
+                        borderRadius: 8,
+                        background: active ? T.accent : '#F4F4F5',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: active ? '0 6px 16px rgba(124,58,237,0.28)' : 'none',
                       }}
                     >
-                      <Icon size={18} strokeWidth={1.9} style={{ color: active ? '#fff' : '#000' }} />
+                      <Icon size={15} strokeWidth={active ? 2.2 : 1.8} style={{ color: active ? '#fff' : '#52525B' }} />
                     </div>
                     <span
                       style={{
-                        fontSize: 12,
-                        fontWeight: active ? 600 : 500,
-                        letterSpacing: '-0.02em',
+                        fontSize: 11,
+                        fontWeight: active ? 600 : 400,
+                        letterSpacing: '-0.01em',
                         textAlign: 'center',
-                        lineHeight: 1.25,
+                        lineHeight: 1.2,
+                        color: active ? T.accent : T.muted,
                       }}
                     >
                       {label}
@@ -2362,7 +2360,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             flex: 1,
             minWidth: 0,
             padding: isMobile
-              ? '20px 20px calc(80px + env(safe-area-inset-bottom)) 20px'
+              ? '20px 20px calc(88px + env(safe-area-inset-bottom)) 20px'
               : '28px 32px 48px',
           }}
         >
@@ -2372,7 +2370,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
 
           {activeTab === 'site' ? (
-            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} />
+            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} />
           ) : null}
 
           {activeTab === 'images' ? (
@@ -2416,40 +2414,46 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               desc={isMobile ? undefined : 'Управлявай услугите и категориите на салона.'}
               compact={isMobile}
               action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <AdminPriceListScanBtn
-                    busy={busyKey === 'upload-pricelist' || priceListAnalyzing}
-                    onUpload={handlePriceListUpload}
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                   <button
                     type="button"
                     style={{
-                      ...btn('ghost'),
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      borderRadius: 8,
                       border: 'none',
                       color: '#fff',
                       background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
-                      boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
+                      boxShadow: '0 4px 12px rgba(124,58,237,0.22)',
+                      padding: '6px 10px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
                     }}
                     onClick={() => setServiceModalOpen(true)}
                   >
-                    <Plus size={14} />
-                    Добави услуга
+                    <Plus size={13} />
+                    Добави
                   </button>
                   <AdminSaveBtn
-                    label="Запази услугите"
+                    label="Запази"
                     busy={busyKey === 'services'}
                     mobile={isMobile}
+                    green
                     onClick={() => void saveServices()}
                   />
                 </div>
               }
             >
-              <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 10 }}>
                 <PriceListServicesImport
                   urls={priceListUrls}
                   busy={busyKey === 'upload-pricelist'}
                   analyzing={priceListAnalyzing}
                   isMobile={isMobile}
+                  compact
                   onUpload={handlePriceListUpload}
                   onRemove={removePriceListAt}
                   onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
@@ -2670,46 +2674,86 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         </main>
       </div>
 
-      {/* ── Mobile bottom tab bar ────────────────────── */}
+      {/* ── Mobile bottom tab bar (glass pill) ───────── */}
       {isMobile && (
-        <nav aria-label="Навигация" style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50,
-          background: 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-          borderTop: '0.5px solid rgba(0,0,0,0.08)',
-        }}>
-          <div style={{ display: 'flex', paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}>
+        <nav
+          aria-label="Навигация"
+          style={{
+            position: 'fixed',
+            left: 16,
+            right: 16,
+            bottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+            zIndex: 50,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-around',
+              gap: 4,
+              padding: '8px 10px',
+              borderRadius: 9999,
+              background: 'rgba(255,255,255,0.68)',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.72)',
+              boxShadow:
+                '0 10px 40px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.85)',
+            }}
+          >
             {TAB_BAR_TABS.map(({ id, label, Icon }) => {
               const active = activeTab === id && !navOpen;
               return (
-                <button key={id} type="button" onClick={() => switchTab(id)}
+                <button
+                  key={id}
+                  type="button"
+                  aria-label={label}
+                  title={label}
+                  onClick={() => switchTab(id)}
                   style={{
-                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                    padding: '10px 4px 6px', border: 'none', background: 'transparent',
-                    color: '#000',
-                    cursor: 'pointer', minHeight: 56,
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 3,
+                    padding: '4px 6px',
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    minHeight: 48,
                     WebkitTapHighlightColor: 'transparent',
-                    position: 'relative',
-                  }}>
+                  }}
+                >
                   <div
                     style={{
-                      position: 'relative',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: active ? 36 : 30,
-                      height: active ? 36 : 30,
+                      width: 44,
+                      height: 32,
                       borderRadius: 999,
-                      background: active ? 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' : 'transparent',
-                      color: active ? '#fff' : '#000',
-                      boxShadow: active ? '0 8px 20px rgba(124,58,237,0.35)' : 'none',
-                      transition: 'all 180ms ease',
+                      background: active ? 'rgba(124,58,237,0.14)' : 'transparent',
+                      color: active ? '#7C3AED' : '#18181B',
+                      transition: 'background 180ms ease, color 180ms ease, transform 180ms ease',
                     }}
                   >
-                    <Icon size={active ? 22 : 20} strokeWidth={active ? 2.25 : 1.85} />
+                    <Icon size={22} strokeWidth={active ? 2.25 : 1.85} />
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, letterSpacing: '-0.01em', color: '#000' }}>{label.split(' ')[0]}</span>
-                  {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 3, borderRadius: 3, background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }} />}
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: active ? 700 : 500,
+                      letterSpacing: '-0.01em',
+                      color: active ? '#7C3AED' : '#52525B',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {label.split(' ')[0]}
+                  </span>
                 </button>
               );
             })}
@@ -2794,13 +2838,18 @@ function AdminSaveBtn({
   label,
   busy,
   mobile,
+  green = false,
   onClick,
 }: {
   label: string;
   busy: boolean;
   mobile: boolean;
+  green?: boolean;
   onClick: () => void;
 }) {
+  const bg = green ? '#16A34A' : T.accent;
+  const shadow = green ? '0 4px 12px rgba(22,163,74,0.28)' : '0 4px 12px rgba(34,197,94,0.3)';
+
   if (mobile) {
     return (
       <button
@@ -2810,22 +2859,22 @@ function AdminSaveBtn({
         aria-label={label}
         title={label}
         style={{
-          width: 44,
-          height: 44,
-          borderRadius: 14,
+          width: 36,
+          height: 36,
+          borderRadius: 10,
           border: 'none',
-          background: T.accent,
+          background: bg,
           color: '#fff',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(34,197,94,0.3)',
+          boxShadow: shadow,
           transition: 'transform 150ms ease, box-shadow 150ms ease',
         }}
       >
-        {busy ? <RefreshCw size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={20} strokeWidth={2.5} />}
+        {busy ? <RefreshCw size={16} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={18} strokeWidth={2.5} />}
       </button>
     );
   }
@@ -2838,20 +2887,21 @@ function AdminSaveBtn({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
-        borderRadius: 10,
+        gap: 5,
+        borderRadius: 8,
         border: 'none',
-        background: T.accent,
+        background: bg,
         color: '#fff',
-        padding: '7px 14px',
-        fontSize: 13,
+        padding: '6px 11px',
+        fontSize: 12,
         fontWeight: 600,
         cursor: busy ? 'wait' : 'pointer',
         whiteSpace: 'nowrap',
+        boxShadow: green ? shadow : undefined,
       }}
     >
-      {busy ? <RefreshCw size={14} /> : <Check size={14} strokeWidth={2.5} />}
-      {busy ? 'Запазваме…' : label}
+      {busy ? <RefreshCw size={13} /> : <Check size={13} strokeWidth={2.5} />}
+      {busy ? 'Запазване…' : label}
     </button>
   );
 }
@@ -3146,7 +3196,7 @@ function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDis
     return (
       <div style={{
         position: 'fixed', left: 16, right: 16,
-        bottom: 'calc(70px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
         zIndex: 60,
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '14px 16px',

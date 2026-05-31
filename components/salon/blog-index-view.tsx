@@ -43,12 +43,12 @@ export function BlogIndexView({
       </a>
 
       <header className="mb-8">
-        <p className="mb-2 text-[13px] font-semibold" style={{ color: primaryColor }}>
+        <h1 className="m-0 text-[13px] font-semibold uppercase tracking-wide" style={{ color: primaryColor }}>
           {blogSectionTitle}
-        </p>
-        <h1 className="m-0 text-[clamp(1.75rem,4vw,2.25rem)] leading-tight">
-          {blogSectionTitle} от {salonName}
         </h1>
+        <p className="mb-0 mt-2 text-[clamp(1.35rem,3vw,1.75rem)] font-semibold leading-tight text-[#111827]">
+          {salonName}
+        </p>
       </header>
 
       {posts.length === 0 ? (
@@ -67,7 +67,7 @@ export function BlogIndexView({
                   <a href={href} className="block aspect-video overflow-hidden">
                     <img
                       src={img}
-                      alt=""
+                      alt={post.title}
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />

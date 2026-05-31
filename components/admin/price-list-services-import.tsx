@@ -17,12 +17,16 @@ type Props = {
 
 export function AdminPriceListScanBtn({
   busy,
+  size = 'md',
   onUpload,
 }: {
   busy: boolean;
+  size?: 'sm' | 'md';
   onUpload: (files: FileList | null, input?: HTMLInputElement | null) => void | Promise<void>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dim = size === 'sm' ? 34 : 40;
+  const iconSize = size === 'sm' ? 16 : 18;
 
   return (
     <>
@@ -33,8 +37,8 @@ export function AdminPriceListScanBtn({
         disabled={busy}
         onClick={() => inputRef.current?.click()}
         style={{
-          width: 40,
-          height: 40,
+          width: dim,
+          height: dim,
           borderRadius: '50%',
           border: 'none',
           background: busy ? '#86efac' : '#22c55e',
@@ -44,10 +48,10 @@ export function AdminPriceListScanBtn({
           justifyContent: 'center',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 2px 10px rgba(34, 197, 94, 0.38)',
+          boxShadow: '0 2px 8px rgba(34, 197, 94, 0.32)',
         }}
       >
-        {busy ? <RefreshCw size={18} strokeWidth={2} /> : <ScanLine size={18} strokeWidth={2.25} />}
+        {busy ? <RefreshCw size={iconSize} strokeWidth={2} /> : <ScanLine size={iconSize} strokeWidth={2.25} />}
       </button>
       <input
         ref={inputRef}
@@ -84,19 +88,19 @@ export function PriceListServicesImport({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 12,
+          gap: 10,
           flexDirection: 'row',
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#18181B' }}>Ценоразпис с AI</p>
+          <p style={{ margin: 0, fontSize: compact ? 12 : 13, fontWeight: 700, color: '#18181B' }}>Ценоразпис с AI</p>
           {!compact ? (
-            <p style={{ margin: '6px 0 0', fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
-              Снимай хартиения си ценоразпис — услугите се добавят автоматично.
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#71717A', lineHeight: 1.4 }}>
+              Снимай ценоразписа — услугите се добавят автоматично.
             </p>
           ) : null}
         </div>
-        <AdminPriceListScanBtn busy={busy || analyzing} onUpload={onUpload} />
+        {compact ? <AdminPriceListScanBtn busy={busy || analyzing} size="sm" onUpload={onUpload} /> : null}
       </div>
     );
   }
@@ -135,7 +139,7 @@ export function PriceListServicesImport({
               Разчети отново
             </button>
           ) : null}
-          <AdminPriceListScanBtn busy={busy || analyzing} onUpload={onUpload} />
+          <AdminPriceListScanBtn busy={busy || analyzing} size={compact ? 'sm' : 'md'} onUpload={onUpload} />
         </div>
       </div>
 

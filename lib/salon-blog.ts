@@ -2,7 +2,7 @@ import 'server-only';
 
 import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
-import { renderBlogMarkdown } from '@/lib/blog-markdown';
+import { renderBlogBodyHtml } from '@/lib/blog-body-html';
 import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import {
   type AdminSalonBlogPost,
@@ -61,7 +61,7 @@ export function mapAdminBlogToDb(post: AdminSalonBlogPost, salonId: string) {
 export function toPublicBlogPost(post: AdminSalonBlogPost): PublicSalonBlogPost {
   return {
     ...post,
-    bodyHtml: renderBlogMarkdown(post.bodyMarkdown),
+    bodyHtml: renderBlogBodyHtml(post.bodyMarkdown, post.title),
   };
 }
 

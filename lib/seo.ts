@@ -296,10 +296,12 @@ export function buildBlogPostMetadata(
   const description = blogPostDescription(post);
   const canonicalUrl = blogPostPublicUrl(salon, slug, post.slug);
   const coverImage = post.coverImageUrl.trim() || String(salon.cover_image_url ?? '').trim();
+  const keywords = blogPostKeywords(post, salon);
 
   return {
     title: fullTitle,
     description,
+    keywords,
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: fullTitle,
@@ -310,7 +312,10 @@ export function buildBlogPostMetadata(
       locale: 'bg_BG',
       ...(post.publishedAt ? { publishedTime: post.publishedAt } : {}),
       ...(post.updatedAt ? { modifiedTime: post.updatedAt } : {}),
-      ...(coverImage ? { images: [{ url: coverImage, width: 1200, height: 630, alt: title }] } : {}),
+      ...(coverImage
+        ? { images: [{ url: coverImage, width: 1200, height: 630, alt: title }] }
+        : {}),
+      section: resolveBlogSectionTitle(salon.blog_title),
     },
     twitter: {
       card: 'summary_large_image',
@@ -322,16 +327,86 @@ export function buildBlogPostMetadata(
   };
 }
 
+function blogPostKeywords(
+  post: PublicSalonBlogPost,
+  salon: Record<string, unknown>,
+): string[] {
+  const city = String(salon.city ?? '').trim();
+  const category = String(salon.category ?? '').trim();
+  const keywords = new Set<string>();
+  if (post.title.trim()) keywords.add(post.title.trim());
+  if (city) keywords.add(city);
+  if (category) keywords.add(category);
+  if (category && city) keywords.add(`${category} ${city}`);
+  for (const word of post.title.split(/\s+/).filter((w) => w.length > 3).slice(0, 4)) {
+    keywords.add(word);
+  }
+  return [...keywords].slice(0, 12);
+}
+
+export function buildBlogBreadcrumbJsonLd(
+  post: PublicSalonBlogPost,
+  salon: Record<string, unknown>,
+  slug: string,
+) {
+  const salonName = String(salon.name ?? '').trim() || 'Салон';
+  const homeUrl = salonPublicBaseUrl(salon, slug);
+  const blogUrl = `${homeUrl}/blog`;
+  const postUrl = blogPostPublicUrl(salon, slug, post.slug);
+  const sectionTitle = resolveBlogSectionTitle(salon.blog_title);
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: salonName, item: homeUrl },
+      { '@type': 'ListItem', position: 2, name: sectionTitle, item: blogUrl },
+      { '@type': 'ListItem', position: 3, name: post.title, item: postUrl },
+    ],
+  };
+}
+
+export function buildBlogIndexJsonLd(
+  salon: Record<string, unknown>,
+  slug: string,
+  posts: PublicSalonBlogPost[],
+) {
+  const salonName = String(salon.name ?? '').trim() || 'Салон';
+  const blogUrl = `${salonPublicBaseUrl(salon, slug)}/blog`;
+  const sectionTitle = resolveBlogSectionTitle(salon.blog_title);
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: `${sectionTitle} — ${salonName}`,
+    url: blogUrl,
+    inLanguage: 'bg-BG',
+    publisher: {
+      '@type': 'Organization',
+      name: salonName,
+    },
+    blogPost: posts.slice(0, 20).map((post) => ({
+      '@type': 'BlogPosting',
+      headline: post.title,
+      url: blogPostPublicUrl(salon, slug, post.slug),
+      ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+    })),
+  };
+}
+
 export function buildBlogPostingJsonLd(
   post: PublicSalonBlogPost,
   salon: Record<string, unknown>,
   slug: string,
 ) {
   const salonName = String(salon.name ?? '').trim() || 'Салон';
+  const city = String(salon.city ?? '').trim();
   const url = blogPostPublicUrl(salon, slug, post.slug);
+  const blogUrl = `${salonPublicBaseUrl(salon, slug)}/blog`;
   const description = blogPostDescription(post);
   const coverImage = post.coverImageUrl.trim() || String(salon.cover_image_url ?? '').trim();
   const logoImage = String(salon.logo_image_url ?? '').trim();
+  const sectionTitle = resolveBlogSectionTitle(salon.blog_title);
 
   return {
     '@context': 'https://schema.org',
@@ -339,10 +414,19 @@ export function buildBlogPostingJsonLd(
     headline: post.title,
     ...(description ? { description } : {}),
     url,
+    inLanguage: 'bg-BG',
+    ...(city ? { contentLocation: { '@type': 'Place', name: city } } : {}),
+    isPartOf: {
+      '@type': 'Blog',
+      name: `${sectionTitle} — ${salonName}`,
+      url: blogUrl,
+    },
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
     ...(post.updatedAt ? { dateModified: post.updatedAt } : {}),
-    ...(coverImage ? { image: [coverImage] } : {}),
+    ...(coverImage
+      ? { image: { '@type': 'ImageObject', url: coverImage, caption: post.title } }
+      : {}),
     author: {
       '@type': 'Organization',
       name: salonName,

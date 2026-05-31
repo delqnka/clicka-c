@@ -29,27 +29,13 @@ function mapVariants(serviceRow: ServiceItem): ServiceVariant[] {
   }));
 }
 
-function Field({
-  label,
-  children,
-  style,
-  T,
-  isMobile,
-}: {
-  label: string;
-  children: React.ReactNode;
-  style?: CSSProperties;
-  T: ThemePalette;
-  isMobile: boolean;
-}) {
-  return (
-    <label style={{ display: 'grid', gap: isMobile ? 6 : 5, ...style }}>
-      <span style={{ fontSize: isMobile ? 13 : 12, fontWeight: 600, color: T.muted, letterSpacing: '0.01em' }}>
-        {label}
-      </span>
-      {children}
-    </label>
-  );
+function compactInp(base: CSSProperties): CSSProperties {
+  return {
+    ...base,
+    padding: '5px 8px',
+    fontSize: 13,
+    borderRadius: 7,
+  };
 }
 
 function EmptyState({
@@ -66,15 +52,15 @@ function EmptyState({
   return (
     <div
       style={{
-        padding: isMobile ? '40px 24px' : '32px 20px',
+        padding: isMobile ? '28px 20px' : '24px 16px',
         textAlign: 'center',
         background: isMobile ? '#FAFAFA' : 'transparent',
         border: isMobile ? 'none' : `1px dashed ${T.border}`,
-        borderRadius: isMobile ? 20 : T.radiusSm,
+        borderRadius: isMobile ? 16 : T.radiusSm,
       }}
     >
-      <p style={{ margin: 0, fontSize: isMobile ? 16 : 14, fontWeight: 600, color: T.muted }}>{title}</p>
-      <p style={{ margin: '8px 0 0', fontSize: isMobile ? 14 : 13, color: T.subtle, lineHeight: 1.5 }}>{desc}</p>
+      <p style={{ margin: 0, fontSize: isMobile ? 15 : 13, fontWeight: 600, color: T.muted }}>{title}</p>
+      <p style={{ margin: '6px 0 0', fontSize: isMobile ? 13 : 12, color: T.subtle, lineHeight: 1.45 }}>{desc}</p>
     </div>
   );
 }
@@ -86,6 +72,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
   T,
   svcInp,
   btn,
+  hideCategoryBadge,
   onCommit,
   onRemove,
 }: {
@@ -95,6 +82,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
   T: ThemePalette;
   svcInp: CSSProperties;
   btn: ButtonFactory;
+  hideCategoryBadge: boolean;
   onCommit: (index: number, next: ServiceItem) => void;
   onRemove: (index: number) => void;
 }) {
@@ -137,193 +125,209 @@ const ServiceCardRow = memo(function ServiceCardRow({
 
   const variants = mapVariants(draft);
   const categoryLabel = String(draft.category ?? '').trim() || 'Без категория';
+  const inp = compactInp(svcInp);
 
   return (
     <div
       style={{
         border: `1px solid ${T.border}`,
-        borderRadius: isMobile ? 14 : 12,
-        padding: isMobile ? '12px 12px' : '12px 12px',
+        borderRadius: 8,
+        padding: '7px 8px',
         background: '#fff',
-        position: 'relative',
       }}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flushCommit();
       }}
     >
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: T.subtle, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            {categoryLabel}
-          </span>
-          <button
-            type="button"
-            aria-label="Премахни услуга"
-            onClick={() => onRemove(index)}
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 999,
-              border: 'none',
-              background: 'transparent',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: T.subtle,
-              cursor: 'pointer',
-            }}
-          >
-            <X size={14} />
-          </button>
-        </div>
-        <div
+      {!hideCategoryBadge ? (
+        <span
           style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr auto auto auto',
-            gap: 10,
-            alignItems: 'end',
+            display: 'block',
+            marginBottom: 5,
+            fontSize: 9,
+            fontWeight: 600,
+            color: T.subtle,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
           }}
         >
-          <Field label="Услуга" style={isMobile ? { gridColumn: '1 / -1' } : undefined} T={T} isMobile={isMobile}>
-            <input
-              value={draft.name}
-              onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
-              style={svcInp}
-              placeholder="Напр. Подстригване"
-            />
-          </Field>
-          <Field label="Категория" style={isMobile ? { gridColumn: '1 / -1' } : undefined} T={T} isMobile={isMobile}>
-            <input
-              value={draft.category ?? ''}
-              list="service-category-options"
-              onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
-              style={svcInp}
-              placeholder="Напр. Коса"
-            />
-          </Field>
-          <Field label="Описание" style={{ gridColumn: '1 / -1' }} T={T} isMobile={isMobile}>
-            <input
-              value={draft.description ?? ''}
-              onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
-              style={svcInp}
-              placeholder="Кратко описание на услугата"
-            />
-          </Field>
-          <Field label="Цена (€)" T={T} isMobile={isMobile}>
-            <input
-              type="number"
-              value={draft.price}
-              onChange={(e) => updateDraft((s) => ({ ...s, price: Number(e.target.value) || 0 }))}
-              style={{ ...svcInp, width: isMobile ? '100%' : 80 }}
-            />
-          </Field>
-          <Field label="Мин" T={T} isMobile={isMobile}>
-            <input
-              type="number"
-              value={draft.duration_min}
-              onChange={(e) => updateDraft((s) => ({ ...s, duration_min: Number(e.target.value) || 30 }))}
-              style={{ ...svcInp, width: isMobile ? '100%' : 70 }}
-            />
-          </Field>
-          <div style={{ gridColumn: '1 / -1', marginTop: 2 }}>
-            <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Варианти (по избор)</p>
-            <div style={{ display: 'grid', gap: 6 }}>
-              {variants.map((variant, variantIndex) => (
-                <div
-                  key={`variant-${index}-${variantIndex}`}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr 90px 90px auto' : '1fr 110px 110px auto',
-                    gap: 6,
-                    alignItems: 'center',
-                  }}
-                >
-                  <input
-                    value={variant.label}
-                    onChange={(e) =>
-                      updateDraft((serviceRow) => {
-                        const prevVariants = mapVariants(serviceRow);
-                        prevVariants[variantIndex] = { ...prevVariants[variantIndex], label: e.target.value };
-                        return { ...serviceRow, variants: prevVariants };
-                      })
-                    }
-                    style={svcInp}
-                    placeholder="Име на вариант"
-                  />
-                  <input
-                    type="number"
-                    value={variant.price}
-                    onChange={(e) =>
-                      updateDraft((serviceRow) => {
-                        const prevVariants = mapVariants(serviceRow);
-                        prevVariants[variantIndex] = {
-                          ...prevVariants[variantIndex],
-                          price: Math.max(0, Number(e.target.value) || 0),
-                        };
-                        return { ...serviceRow, variants: prevVariants };
-                      })
-                    }
-                    style={svcInp}
-                    placeholder="€"
-                  />
-                  <input
-                    type="number"
-                    value={Number(variant.duration ?? draft.duration_min ?? 30)}
-                    onChange={(e) =>
-                      updateDraft((serviceRow) => {
-                        const prevVariants = mapVariants(serviceRow);
-                        prevVariants[variantIndex] = {
-                          ...prevVariants[variantIndex],
-                          duration: Math.max(5, Number(e.target.value) || 30),
-                        };
-                        return { ...serviceRow, variants: prevVariants };
-                      })
-                    }
-                    style={svcInp}
-                    placeholder="мин"
-                  />
-                  <button
-                    type="button"
-                    style={{ ...btn('ghost'), padding: '6px 8px' }}
-                    onClick={() =>
-                      updateDraft((serviceRow) => {
-                        const nextVariants = mapVariants(serviceRow).filter((_, idx) => idx !== variantIndex);
-                        return { ...serviceRow, variants: nextVariants };
-                      })
-                    }
-                    aria-label="Премахни вариант"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              style={{ ...btn('ghost'), marginTop: 8 }}
-              onClick={() =>
-                updateDraft((serviceRow) => {
-                  const prevVariants = mapVariants(serviceRow);
-                  return {
-                    ...serviceRow,
-                    variants: [
-                      ...prevVariants,
-                      {
-                        label: '',
-                        price: Math.max(0, Number(serviceRow.price) || 0),
-                        duration: Math.max(5, Number(serviceRow.duration_min) || 30),
-                      },
-                    ],
-                  };
-                })
-              }
-            >
-              <Plus size={13} />
-              Добави вариант
-            </button>
-          </div>
-        </div>
+          {categoryLabel}
+        </span>
+      ) : null}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr 58px 52px 22px' : '1fr 68px 58px 22px',
+          gap: 6,
+          alignItems: 'center',
+        }}
+      >
+        <input
+          value={draft.name}
+          onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
+          style={inp}
+          placeholder="Услуга"
+        />
+        <input
+          type="number"
+          value={draft.price}
+          onChange={(e) => updateDraft((s) => ({ ...s, price: Number(e.target.value) || 0 }))}
+          style={inp}
+          placeholder="€"
+          aria-label="Цена в евро"
+        />
+        <input
+          type="number"
+          value={draft.duration_min}
+          onChange={(e) => updateDraft((s) => ({ ...s, duration_min: Number(e.target.value) || 30 }))}
+          style={inp}
+          placeholder="мин"
+          aria-label="Продължителност в минути"
+        />
+        <button
+          type="button"
+          aria-label="Премахни услуга"
+          onClick={() => onRemove(index)}
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            border: 'none',
+            background: 'transparent',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: T.subtle,
+            cursor: 'pointer',
+          }}
+        >
+          <X size={13} />
+        </button>
       </div>
+
+      <input
+        value={draft.category ?? ''}
+        list="service-category-options"
+        onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
+        style={{ ...inp, marginTop: 5, fontSize: 11, color: T.muted }}
+        placeholder="Категория"
+      />
+
+      <details style={{ marginTop: 6 }}>
+        <summary
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: T.muted,
+            cursor: 'pointer',
+            listStyle: 'none',
+            userSelect: 'none',
+          }}
+        >
+          Варианти{variants.length > 0 ? ` (${variants.length})` : ''}
+        </summary>
+        <div style={{ display: 'grid', gap: 5, marginTop: 6 }}>
+          {variants.map((variant, variantIndex) => (
+            <div
+              key={`variant-${index}-${variantIndex}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr 58px 52px 22px' : '1fr 68px 58px 22px',
+                gap: 5,
+                alignItems: 'center',
+              }}
+            >
+              <input
+                value={variant.label}
+                onChange={(e) =>
+                  updateDraft((serviceRow) => {
+                    const prevVariants = mapVariants(serviceRow);
+                    prevVariants[variantIndex] = { ...prevVariants[variantIndex], label: e.target.value };
+                    return { ...serviceRow, variants: prevVariants };
+                  })
+                }
+                style={inp}
+                placeholder="Вариант"
+              />
+              <input
+                type="number"
+                value={variant.price}
+                onChange={(e) =>
+                  updateDraft((serviceRow) => {
+                    const prevVariants = mapVariants(serviceRow);
+                    prevVariants[variantIndex] = {
+                      ...prevVariants[variantIndex],
+                      price: Math.max(0, Number(e.target.value) || 0),
+                    };
+                    return { ...serviceRow, variants: prevVariants };
+                  })
+                }
+                style={inp}
+                placeholder="€"
+              />
+              <input
+                type="number"
+                value={Number(variant.duration ?? draft.duration_min ?? 30)}
+                onChange={(e) =>
+                  updateDraft((serviceRow) => {
+                    const prevVariants = mapVariants(serviceRow);
+                    prevVariants[variantIndex] = {
+                      ...prevVariants[variantIndex],
+                      duration: Math.max(5, Number(e.target.value) || 30),
+                    };
+                    return { ...serviceRow, variants: prevVariants };
+                  })
+                }
+                style={inp}
+                placeholder="мин"
+              />
+              <button
+                type="button"
+                style={{ ...btn('ghost'), padding: 4, minWidth: 22, width: 22, height: 22 }}
+                onClick={() =>
+                  updateDraft((serviceRow) => {
+                    const nextVariants = mapVariants(serviceRow).filter((_, idx) => idx !== variantIndex);
+                    return { ...serviceRow, variants: nextVariants };
+                  })
+                }
+                aria-label="Премахни вариант"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            style={{
+              ...btn('sm-ghost'),
+              marginTop: variants.length ? 2 : 0,
+              padding: '4px 8px',
+              fontSize: 11,
+              alignSelf: 'start',
+            }}
+            onClick={() =>
+              updateDraft((serviceRow) => {
+                const prevVariants = mapVariants(serviceRow);
+                return {
+                  ...serviceRow,
+                  variants: [
+                    ...prevVariants,
+                    {
+                      label: '',
+                      price: Math.max(0, Number(serviceRow.price) || 0),
+                      duration: Math.max(5, Number(serviceRow.duration_min) || 30),
+                    },
+                  ],
+                };
+              })
+            }
+          >
+            <Plus size={11} />
+            Вариант
+          </button>
+        </div>
+      </details>
     </div>
   );
 });
@@ -368,6 +372,8 @@ export function ServicesEditorPanel({
     [setSite]
   );
 
+  const hideCategoryBadge = selectedAdminServiceCategory != null;
+
   if (showGlobalEmpty) {
     return (
       <EmptyState title="Няма услуги" desc="Добави първата си услуга от бутона горе." T={T} isMobile={isMobile} />
@@ -375,9 +381,20 @@ export function ServicesEditorPanel({
   }
 
   return (
-    <div style={{ display: 'grid', gap: isMobile ? 12 : 10 }}>
+    <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
       {adminServiceCategories.length > 1 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            overflowX: 'auto',
+            flexWrap: 'nowrap',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            paddingBottom: 2,
+          }}
+        >
           {adminServiceCategories.map((cat) => {
             const active = selectedAdminServiceCategory === cat.id;
             return (
@@ -390,10 +407,12 @@ export function ServicesEditorPanel({
                   border: active ? `1px solid ${T.accent}` : `1px solid ${T.border}`,
                   background: active ? '#F5F3FF' : '#fff',
                   color: active ? T.accent : T.text,
-                  padding: '6px 12px',
-                  fontSize: 12,
+                  padding: '4px 10px',
+                  fontSize: 11,
                   fontWeight: 600,
                   cursor: 'pointer',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {cat.label}
@@ -412,6 +431,7 @@ export function ServicesEditorPanel({
           T={T}
           svcInp={svcInp}
           btn={btn}
+          hideCategoryBadge={hideCategoryBadge}
           onCommit={onCommit}
           onRemove={onRemove}
         />

@@ -22,7 +22,6 @@ const T = {
   border: '#E4E4E7',
   muted: '#71717A',
   text: '#18181B',
-  accent: '#18181B',
 };
 
 type Props = {
@@ -35,16 +34,22 @@ type Props = {
   onChangeVisitorInfo: (info: SalonVisitorInfo) => void;
   onChangeAdditionalInfo: (text: string) => void;
   onChangeVenueExtras: (extras: SalonVenueExtras) => void;
+  section?: 'all' | 'faq' | 'amenities' | 'additional';
+  compact?: boolean;
 };
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label style={{ display: 'grid', gap: 5 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: T.muted, letterSpacing: '0.02em' }}>
-        {label}
-      </span>
+    <label style={{ display: 'grid', gap: 4 }}>
+      <span style={{ fontSize: 12, fontWeight: 500, color: T.text }}>{label}</span>
       {children}
     </label>
+  );
+}
+
+function SubLabel({ children }: { children: ReactNode }) {
+  return (
+    <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 500, color: T.text }}>{children}</p>
   );
 }
 
@@ -52,17 +57,19 @@ function CheckboxGrid({
   items,
   checked,
   onToggle,
+  compact,
 }: {
   items: { key: string; label: string }[];
   checked: (key: string) => boolean;
   onToggle: (key: string, value: boolean) => void;
+  compact?: boolean;
 }) {
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))',
-        gap: 10,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(180px, 100%), 1fr))',
+        gap: compact ? 6 : 8,
       }}
     >
       {items.map(({ key, label }) => (
@@ -71,21 +78,21 @@ function CheckboxGrid({
           style={{
             display: 'flex',
             alignItems: 'flex-start',
-            gap: 10,
-            padding: '10px 12px',
+            gap: 8,
+            padding: compact ? '7px 9px' : '8px 10px',
             border: `1px solid ${T.border}`,
-            borderRadius: 10,
+            borderRadius: 8,
             background: checked(key) ? '#F4F4F5' : '#fff',
             cursor: 'pointer',
-            fontSize: 13,
-            lineHeight: 1.4,
+            fontSize: 12,
+            lineHeight: 1.35,
           }}
         >
           <input
             type="checkbox"
             checked={checked(key)}
             onChange={(e) => onToggle(key, e.target.checked)}
-            style={{ marginTop: 2, accentColor: T.accent }}
+            style={{ marginTop: 1, accentColor: T.text }}
           />
           <span>{label}</span>
         </label>
@@ -102,6 +109,8 @@ export function SalonFaqVisitorFields({
   onChangeFaq,
   onChangeAdditionalInfo,
   onChangeVenueExtras,
+  section = 'all',
+  compact = false,
 }: Props) {
   function addFaq() {
     onChangeFaq([
@@ -143,172 +152,175 @@ export function SalonFaqVisitorFields({
     label: SALON_PARKING_LABELS_BG[key],
   }));
 
+  const showFaq = section === 'all' || section === 'faq';
+  const showAmenities = section === 'all' || section === 'amenities';
+  const showAdditional = section === 'all' || section === 'additional';
+
   return (
-    <div style={{ display: 'grid', gap: 28, marginTop: 20 }}>
-      <div>
-        <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 700, color: T.text }}>
-          Често задавани въпроси (FAQ)
-        </h3>
-        <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
-          Показват се на публичния сайт. Празните редове не се запазват.
-        </p>
-        <div style={{ display: 'grid', gap: 12 }}>
-          {faqItems.map((item, index) => (
-            <div
-              key={item.id}
-              style={{
-                border: `1px solid ${T.border}`,
-                borderRadius: 12,
-                padding: 12,
-                background: '#FAFAFA',
-              }}
-            >
+    <div style={{ display: 'grid', gap: compact ? 12 : 20, marginTop: section === 'all' ? 16 : 0 }}>
+      {showFaq ? (
+        <div>
+          {!compact || section === 'all' ? (
+            <SubLabel>Често задавани въпроси</SubLabel>
+          ) : null}
+          <div style={{ display: 'grid', gap: 8 }}>
+            {faqItems.map((item, index) => (
               <div
+                key={item.id}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 8,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 8,
+                  padding: compact ? 8 : 10,
+                  background: '#FAFAFA',
                 }}
               >
-                <span style={{ fontSize: 12, fontWeight: 600, color: T.muted }}>Въпрос {index + 1}</span>
-                <button
-                  type="button"
-                  onClick={() => removeFaq(item.id)}
-                  aria-label="Изтрий въпрос"
+                <div
                   style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: T.muted,
-                    cursor: 'pointer',
-                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 6,
                   }}
                 >
-                  <Trash2 size={16} />
-                </button>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: T.muted }}>Въпрос {index + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFaq(item.id)}
+                    aria-label="Изтрий въпрос"
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: T.muted,
+                      cursor: 'pointer',
+                      padding: 2,
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <input
+                  value={item.question}
+                  onChange={(e) => updateFaq(item.id, { question: e.target.value })}
+                  placeholder="Напр. Има ли паркинг?"
+                  style={{ ...inputStyle, marginBottom: 6 }}
+                />
+                <textarea
+                  value={item.answer}
+                  onChange={(e) => updateFaq(item.id, { answer: e.target.value })}
+                  placeholder="Отговор…"
+                  style={{ ...inputStyle, minHeight: compact ? 56 : 64, resize: 'vertical', lineHeight: 1.45 }}
+                />
               </div>
-              <input
-                value={item.question}
-                onChange={(e) => updateFaq(item.id, { question: e.target.value })}
-                placeholder="Напр. Има ли паркинг?"
-                style={{ ...inputStyle, marginBottom: 8 }}
-              />
-              <textarea
-                value={item.answer}
-                onChange={(e) => updateFaq(item.id, { answer: e.target.value })}
-                placeholder="Отговор за клиентите…"
-                style={{ ...inputStyle, minHeight: 72, resize: 'vertical', lineHeight: 1.55 }}
-              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addFaq}
+            style={{
+              marginTop: 8,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              border: `1px dashed ${T.border}`,
+              borderRadius: 8,
+              padding: '5px 10px',
+              background: '#fff',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              color: T.text,
+            }}
+          >
+            <Plus size={14} />
+            Добави въпрос
+          </button>
+        </div>
+      ) : null}
+
+      {showAmenities ? (
+        <div>
+          {!compact || section === 'all' ? <SubLabel>Удобства и достъп</SubLabel> : null}
+
+          <SubLabel>Удобства</SubLabel>
+          <CheckboxGrid
+            compact={compact}
+            items={amenityItems}
+            checked={(key) => venueExtras[key as SalonVenueExtraKey] === true}
+            onToggle={(key, value) => setExtra(key as SalonVenueExtraKey, value)}
+          />
+
+          <div style={{ marginTop: 10 }}>
+            <SubLabel>Паркинг / зона</SubLabel>
+            <CheckboxGrid
+              compact={compact}
+              items={parkingItems}
+              checked={(key) => venueExtras[key as SalonParkingKey] === true}
+              onToggle={(key, value) => setExtra(key as SalonParkingKey, value)}
+            />
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <Field label="Плащане">
+              <select
+                value={venueExtras.paymentPreference ?? ''}
+                onChange={(e) => setPayment(e.target.value as SalonPaymentPreference | '')}
+                style={inputStyle}
+              >
+                <option value="">— не е посочено —</option>
+                {(Object.keys(SALON_PAYMENT_LABELS_BG) as SalonPaymentPreference[]).map((key) => (
+                  <option key={key} value={key}>
+                    {SALON_PAYMENT_LABELS_BG[key]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {venueExtras.nearMetro ? (
+            <div style={{ marginTop: 8 }}>
+              <Field label="Уточнение за метро">
+                <input
+                  value={venueExtras.nearMetroDetails ?? ''}
+                  onChange={(e) =>
+                    onChangeVenueExtras({ ...venueExtras, nearMetroDetails: e.target.value || undefined })
+                  }
+                  placeholder="Напр. станция Витоша"
+                  style={inputStyle}
+                />
+              </Field>
             </div>
-          ))}
+          ) : null}
+
+          {venueExtras.convenientTransport ? (
+            <div style={{ marginTop: 8 }}>
+              <Field label="Уточнение за транспорт">
+                <input
+                  value={venueExtras.convenientTransportDetails ?? ''}
+                  onChange={(e) =>
+                    onChangeVenueExtras({
+                      ...venueExtras,
+                      convenientTransportDetails: e.target.value || undefined,
+                    })
+                  }
+                  placeholder="Напр. спирка пред салона"
+                  style={inputStyle}
+                />
+              </Field>
+            </div>
+          ) : null}
         </div>
-        <button
-          type="button"
-          onClick={addFaq}
-          style={{
-            marginTop: 10,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            border: `1px dashed ${T.border}`,
-            borderRadius: 10,
-            padding: '8px 14px',
-            background: '#fff',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: T.text,
-          }}
-        >
-          <Plus size={16} />
-          Добави въпрос
-        </button>
-      </div>
+      ) : null}
 
-      <div>
-        <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 700, color: T.text }}>
-          Удобства и достъп
-        </h3>
-        <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
-          Отбележи само това, което важи — на сайта се показват само отметнатите. Натисни „Запази“ след промяна.
-        </p>
-
-        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: T.text }}>Удобства</p>
-        <CheckboxGrid
-          items={amenityItems}
-          checked={(key) => venueExtras[key as SalonVenueExtraKey] === true}
-          onToggle={(key, value) => setExtra(key as SalonVenueExtraKey, value)}
-        />
-
-        <p style={{ margin: '16px 0 8px', fontSize: 12, fontWeight: 700, color: T.text }}>Паркинг / зона</p>
-        <CheckboxGrid
-          items={parkingItems}
-          checked={(key) => venueExtras[key as SalonParkingKey] === true}
-          onToggle={(key, value) => setExtra(key as SalonParkingKey, value)}
-        />
-
-        <div style={{ marginTop: 14 }}>
-          <Field label="Плащане">
-            <select
-              value={venueExtras.paymentPreference ?? ''}
-              onChange={(e) => setPayment(e.target.value as SalonPaymentPreference | '')}
-              style={inputStyle}
-            >
-              <option value="">— не е посочено —</option>
-              {(Object.keys(SALON_PAYMENT_LABELS_BG) as SalonPaymentPreference[]).map((key) => (
-                <option key={key} value={key}>
-                  {SALON_PAYMENT_LABELS_BG[key]}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        {venueExtras.nearMetro ? (
-          <div style={{ marginTop: 12 }}>
-            <Field label="Уточнение за метро (по желание)">
-              <input
-                value={venueExtras.nearMetroDetails ?? ''}
-                onChange={(e) =>
-                  onChangeVenueExtras({ ...venueExtras, nearMetroDetails: e.target.value || undefined })
-                }
-                placeholder="Напр. станция Витоша, 3 мин пеша"
-                style={inputStyle}
-              />
-            </Field>
-          </div>
-        ) : null}
-
-        {venueExtras.convenientTransport ? (
-          <div style={{ marginTop: 12 }}>
-            <Field label="Уточнение за транспорт (по желание)">
-              <input
-                value={venueExtras.convenientTransportDetails ?? ''}
-                onChange={(e) =>
-                  onChangeVenueExtras({
-                    ...venueExtras,
-                    convenientTransportDetails: e.target.value || undefined,
-                  })
-                }
-                placeholder="Напр. № 9, 117, спирка пред салона"
-                style={inputStyle}
-              />
-            </Field>
-          </div>
-        ) : null}
-      </div>
-
-      <Field label="Допълнителна информация за клиенти">
-        <textarea
-          value={visitorAdditionalInfo}
-          onChange={(e) => onChangeAdditionalInfo(e.target.value)}
-          placeholder="Всичко друго, което искаш клиентите да знаят преди резервация…"
-          style={{ ...inputStyle, minHeight: 100, resize: 'vertical', lineHeight: 1.6 }}
-        />
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: T.muted }}>
-          Показва се на сайта под „Работно време“, само ако е попълнено.
-        </p>
-      </Field>
+      {showAdditional ? (
+        <Field label="Допълнителна информация">
+          <textarea
+            value={visitorAdditionalInfo}
+            onChange={(e) => onChangeAdditionalInfo(e.target.value)}
+            placeholder="Информация за клиентите…"
+            style={{ ...inputStyle, minHeight: compact ? 72 : 88, resize: 'vertical', lineHeight: 1.45 }}
+          />
+        </Field>
+      ) : null}
     </div>
   );
 }
