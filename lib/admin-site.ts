@@ -199,10 +199,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     coverImageUrl: String(row.cover_image_url ?? ''),
     logoImageUrl: String(row.logo_image_url ?? ''),
     galleryImages: normalizeImageList(row.gallery_images),
-    portfolioImages: normalizePortfolioImages(
-      normalizeImageList(row.gallery_images),
-      row.portfolio_images,
-    ),
+    portfolioImages: normalizeImageList(row.portfolio_images),
     ownerName: String(row.owner_name ?? ''),
     ownerPublicRole: String(row.owner_public_role ?? ''),
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),

@@ -394,13 +394,13 @@ export function ServicesEditorPanel({
         <div
           style={{
             display: 'flex',
-            gap: 4,
+            gap: 5,
             overflowX: 'auto',
             flexWrap: 'nowrap',
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
-            paddingBottom: 1,
+            paddingBottom: 2,
             marginBottom: 2,
           }}
         >
@@ -416,10 +416,10 @@ export function ServicesEditorPanel({
                   border: active ? `1px solid ${T.text}` : `1px solid ${T.border}`,
                   background: active ? T.text : '#fff',
                   color: active ? '#fff' : T.text,
-                  padding: '2px 8px',
-                  fontSize: 10,
+                  padding: '4px 11px',
+                  fontSize: 11,
                   fontWeight: 500,
-                  lineHeight: 1.25,
+                  lineHeight: 1.3,
                   cursor: 'pointer',
                   flexShrink: 0,
                   whiteSpace: 'nowrap',

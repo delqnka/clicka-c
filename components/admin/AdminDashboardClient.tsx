@@ -2690,7 +2690,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               WebkitBackdropFilter: 'blur(20px) saturate(180%)',
               border: '1px solid rgba(255,255,255,0.72)',
               boxShadow:
-                '0 10px 40px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.85)',
+                '0 14px 50px rgba(15,23,42,0.2), 0 6px 20px rgba(15,23,42,0.14), 0 0 0 1px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)',
             }}
           >
             {TAB_BAR_TABS.map(({ id, label, Icon }) => {

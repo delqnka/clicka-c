@@ -87,6 +87,112 @@ function ymdKey(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+const STATUS_FILTER_LABELS: Record<BookingStatus, string> = {
+  pending: 'Чакащи',
+  confirmed: 'Потвърдени',
+  completed: 'Завършени',
+  cancelled: 'Отказани',
+};
+
+function BookingCard({
+  booking,
+  isMobile,
+  T,
+  updateBookingStatus,
+}: {
+  booking: BookingRecord;
+  isMobile: boolean;
+  T: ThemePalette;
+  updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+}) {
+  const cfg = STATUS_CFG[booking.status];
+
+  return (
+    <div
+      style={{
+        border: isMobile ? 'none' : `1px solid ${T.border}`,
+        borderRadius: isMobile ? 18 : T.radiusSm,
+        padding: isMobile ? '14px 16px' : '12px 14px',
+        background: T.surface,
+        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em', color: T.text }}>
+          {booking.client_name}
+        </p>
+        <p style={{ margin: '5px 0 0', fontSize: isMobile ? 14 : 13, color: T.muted, lineHeight: 1.45, fontWeight: 500 }}>
+          {booking.service_name}
+          {Number.isFinite(Number(booking.service_price)) ? ` · ${formatSalonPrice(Number(booking.service_price))}` : ''}
+        </p>
+        <p style={{ margin: '6px 0 0', fontSize: isMobile ? 15 : 14, color: '#18181B', fontWeight: 600, lineHeight: 1.4 }}>
+          {formatBgDateDMY(booking.date)} · {booking.time}
+          {typeof booking.service_duration === 'number' ? ` · ${booking.service_duration} мин` : ''}
+        </p>
+        <p style={{ margin: '4px 0 0', fontSize: isMobile ? 14 : 13, color: '#18181B', fontWeight: 500, lineHeight: 1.4 }}>
+          {booking.client_phone}
+          {booking.client_email ? (
+            <span style={{ color: T.muted, fontWeight: 400 }}>{` · ${booking.client_email}`}</span>
+          ) : null}
+        </p>
+        {booking.notes ? (
+          <p style={{ margin: '5px 0 0', fontSize: 11, color: T.subtle, fontStyle: 'italic', lineHeight: 1.4 }}>
+            {booking.notes}
+          </p>
+        ) : null}
+      </div>
+      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
+        <label
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '2px 8px',
+            borderRadius: 999,
+            border: `1px solid ${cfg.border}`,
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
+        >
+          <span
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: '50%',
+              background: cfg.dot,
+              flexShrink: 0,
+            }}
+          />
+          <select
+            value={booking.status}
+            onChange={(e) => void updateBookingStatus(booking.id, e.target.value as BookingStatus)}
+            aria-label="Статус на резервацията"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: cfg.text,
+              fontSize: 10,
+              fontWeight: 600,
+              lineHeight: 1.2,
+              padding: '2px 0',
+              margin: 0,
+              cursor: 'pointer',
+              outline: 'none',
+              WebkitAppearance: 'none',
+              appearance: 'none',
+            }}
+          >
+            <option value="pending">Чакаща</option>
+            <option value="confirmed">Потвърдена</option>
+            <option value="completed">Завършена</option>
+            <option value="cancelled">Отказана</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export function BookingsPanel({
   isMobile,
   bookings,
@@ -240,7 +346,25 @@ export function BookingsPanel({
               ))}
             </div>
           ) : null}
-          {([
+          {statusFilter !== 'all' ? (
+            visibleBookings.length > 0 ? (
+              <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+                <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 600, color: T.muted }}>
+                  {STATUS_FILTER_LABELS[statusFilter]} · {visibleBookings.length}
+                </p>
+                {visibleBookings.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isMobile={isMobile}
+                    T={T}
+                    updateBookingStatus={updateBookingStatus}
+                  />
+                ))}
+              </div>
+            ) : null
+          ) : (
+          ([
             ['upcoming', 'Предстоящи'],
             ['past', 'Минали'],
             ['completed', 'Завършени'],
@@ -253,90 +377,19 @@ export function BookingsPanel({
                 <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 700, color: T.subtle, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                   {groupLabel}
                 </p>
-                {rows.map((b) => {
-                  const cfg = STATUS_CFG[b.status];
-                  return (
-                    <div key={b.id} style={{
-                      border: isMobile ? 'none' : `1px solid ${T.border}`, borderRadius: isMobile ? 18 : T.radiusSm,
-                      padding: isMobile ? '14px 16px' : '12px 14px', background: T.surface,
-                      boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-                    }}>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>
-                          {b.client_name}
-                        </p>
-                        <p style={{ margin: '5px 0 0', fontSize: isMobile ? 14 : 13, color: T.text, lineHeight: 1.45, fontWeight: 500 }}>
-                          {b.service_name}
-                          {Number.isFinite(Number(b.service_price)) ? ` · ${formatSalonPrice(Number(b.service_price))}` : ''}
-                        </p>
-                        <p style={{ margin: '3px 0 0', fontSize: 12, color: T.muted, lineHeight: 1.45 }}>
-                          {formatBgDateDMY(b.date)} · {b.time}
-                          {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
-                        </p>
-                        <p style={{ margin: '2px 0 0', fontSize: 12, color: T.subtle }}>
-                          {b.client_phone}
-                          {b.client_email ? ` · ${b.client_email}` : ''}
-                        </p>
-                        {b.notes ? (
-                          <p style={{ margin: '5px 0 0', fontSize: 11, color: T.subtle, fontStyle: 'italic', lineHeight: 1.4 }}>
-                            {b.notes}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
-                        <label
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            border: `1px solid ${cfg.border}`,
-                            background: 'transparent',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 4,
-                              height: 4,
-                              borderRadius: '50%',
-                              background: cfg.dot,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <select
-                            value={b.status}
-                            onChange={(e) => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
-                            aria-label="Статус на резервацията"
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              color: cfg.text,
-                              fontSize: 10,
-                              fontWeight: 600,
-                              lineHeight: 1.2,
-                              padding: '2px 0',
-                              margin: 0,
-                              cursor: 'pointer',
-                              outline: 'none',
-                              WebkitAppearance: 'none',
-                              appearance: 'none',
-                            }}
-                          >
-                            <option value="pending">Чакаща</option>
-                            <option value="confirmed">Потвърдена</option>
-                            <option value="completed">Завършена</option>
-                            <option value="cancelled">Отказана</option>
-                          </select>
-                        </label>
-                      </div>
-                    </div>
-                  );
-                })}
+                {rows.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isMobile={isMobile}
+                    T={T}
+                    updateBookingStatus={updateBookingStatus}
+                  />
+                ))}
               </div>
             );
-          })}
+          })
+          )}
         </div>
       )}
     </>
