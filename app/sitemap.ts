@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
 import { sql } from '@/lib/db';
-import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { getPrimaryPublicUrl, ROOT_DOMAIN } from '@/lib/domain-routing';
 
 export const dynamic = 'force-dynamic';
@@ -24,12 +23,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     LIMIT 500
   `;
 
-  await ensureBlogSchema().catch(() => {});
+  const salonsWithBlog = await sql`
+    SELECT DISTINCT s.slug
+    FROM salon_blog_posts p
+    JOIN salons s ON CAST(s.id AS text) = p.salon_id
+    WHERE p.status = 'published'
+      AND s.is_active = true
+      AND s.site_status = 'active'
+  `.catch(() => [] as { slug: string }[]);
+
+  const blogSalonSlugs = new Set(
+    (salonsWithBlog as { slug?: string }[]).map((r) => String(r.slug ?? '')),
+  );
 
   for (const row of salons) {
     const s = row as Record<string, unknown>;
+    const slug = String(s.slug ?? '');
     const baseUrl = getPrimaryPublicUrl({
-      slug: String(s.slug ?? ''),
+      slug,
       customDomain: String(s.custom_domain ?? ''),
       domainStatus: String(s.domain_status ?? ''),
     });
@@ -39,12 +50,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.8,
     });
-    entries.push({
-      url: `${baseUrl}/blog`,
-      lastModified: s.updated_at ? new Date(String(s.updated_at)) : new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    });
+    if (blogSalonSlugs.has(slug)) {
+      entries.push({
+        url: `${baseUrl}/blog`,
+        lastModified: s.updated_at ? new Date(String(s.updated_at)) : new Date(),
+        changeFrequency: 'weekly',
+        priority: 0.65,
+      });
+    }
   }
 
   const blogPosts = await sql`
@@ -56,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       AND s.site_status = 'active'
     ORDER BY p.updated_at DESC
     LIMIT 5000
-  `;
+  `.catch(() => [] as Record<string, unknown>[]);
 
   for (const row of blogPosts) {
     const s = row as Record<string, unknown>;

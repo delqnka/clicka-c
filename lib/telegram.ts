@@ -1,4 +1,5 @@
 import { formatSalonPrice } from '@/lib/salon-currency';
+import { fetchWithRetry } from '@/lib/http-retry';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
@@ -12,13 +13,16 @@ function formatBgDateDMY(dateStr: string): string {
 async function telegramPost(method: string, body: Record<string, unknown>): Promise<void> {
   if (!BOT_TOKEN) return;
   try {
-    await fetch(`${TELEGRAM_API}/${method}`, {
+    const response = await fetchWithRetry(`${TELEGRAM_API}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  } catch {
-    // Telegram notifications are best-effort
+    if (!response.ok) {
+      console.error('[telegram]', method, response.status, await response.text().catch(() => ''));
+    }
+  } catch (err) {
+    console.error('[telegram]', method, err);
   }
 }
 

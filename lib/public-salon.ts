@@ -1,7 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
-import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 import {
   buildStaticMapUrl,
@@ -94,7 +93,7 @@ async function fetchPublicSalonPageData({
 
   let offers: unknown[] = [];
   let reviews: unknown[] = [];
-  let publishedBlogCount = 0;
+  let hasPublishedBlogPosts = false;
 
   try {
     await ensureOffersSchema();
@@ -110,15 +109,17 @@ async function fetchPublicSalonPageData({
   }
 
   try {
-    await ensureBlogSchema();
-    const countRows = await sql`
-      SELECT COUNT(*)::int AS count
-      FROM salon_blog_posts
-      WHERE salon_id = ${salonId} AND status = 'published'
+    const existsRows = await sql`
+      SELECT EXISTS (
+        SELECT 1
+        FROM salon_blog_posts
+        WHERE salon_id = ${salonId} AND status = 'published'
+        LIMIT 1
+      ) AS has_posts
     `;
-    publishedBlogCount = Number((countRows[0] as { count?: number }).count ?? 0) || 0;
+    hasPublishedBlogPosts = (existsRows[0] as { has_posts?: boolean }).has_posts === true;
   } catch {
-    publishedBlogCount = 0;
+    hasPublishedBlogPosts = false;
   }
 
   try {
@@ -170,7 +171,8 @@ async function fetchPublicSalonPageData({
     reviews,
     googleReviews,
     staticMapUrl,
-    publishedBlogCount,
+    publishedBlogCount: hasPublishedBlogPosts ? 1 : 0,
+    hasPublishedBlogPosts,
   };
 }
 

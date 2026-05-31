@@ -1,18 +1,29 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import {
+  claimOfferSlotAfterBooking,
+  deleteBookingById,
+  insertBookingIfNoOverlap,
+} from '@/lib/booking-insert';
+import { dispatchBookingNotifications } from '@/lib/booking-notifications';
+import {
+  formatLegacyDateDMY,
+  isCancelledStatus,
+  parseTimeToMinutes,
+} from '@/lib/booking-time';
 import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { offerHasSpotsLeft, offerVisibleToClient } from '@/lib/salon-offers';
 import type { SalonOfferRow } from '@/lib/salon-offers';
-import { sendBookingNotification, sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resend';
-import { sendBookingTelegram } from '@/lib/telegram';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
+import { runAfterResponse } from '@/lib/run-after-response';
 import {
   cancelBookingSmsReminders,
   scheduleBookingSmsReminders,
 } from '@/lib/sms-reminders';
+import { sendGoogleReviewInvitation } from '@/lib/resend';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
@@ -20,31 +31,6 @@ function formatBgDateDMY(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString('bg-BG');
-}
-
-function formatLegacyDateDMY(dateStr: string): string | null {
-  const d = new Date(`${dateStr}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = String(d.getFullYear());
-  return `${day}.${month}.${year}`;
-}
-
-function parseTimeToMinutes(raw: unknown): number | null {
-  const value = String(raw ?? '').trim();
-  if (!value) return null;
-  const match = value.match(/(\d{1,2}):(\d{2})/);
-  if (!match) return null;
-  const h = Number(match[1]);
-  const m = Number(match[2]);
-  if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
-}
-
-function isCancelledStatus(raw: unknown): boolean {
-  const s = String(raw ?? '').trim().toLowerCase();
-  return s === 'cancelled' || s === 'canceled' || s === 'отказана' || s === 'анулирана';
 }
 
 async function resolveSalonFromRequest(request: NextRequest) {
@@ -273,73 +259,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (bookingOfferId) {
-    const claimed = await sql`
-      UPDATE salon_offers
-      SET total_claims = total_claims + 1
-      WHERE id = ${bookingOfferId}::uuid
-        AND salon_id = ${salonId}
-        AND is_active = true
-        AND (max_claims IS NULL OR total_claims < max_claims)
-      RETURNING id
-    `;
-    if (claimed.length === 0) {
-      return NextResponse.json(
-        { error: 'Всички места по тази оферта са заети.' },
-        { status: 409 },
-      );
-    }
-  }
-
-  let bookings: { id: string }[];
+  let insertedBooking: { id: string } | null = null;
   try {
-    const requestedStartMinutes =
-      Number.parseInt(time.slice(0, 2), 10) * 60 + Number.parseInt(time.slice(3, 5), 10);
-    const requestedDurationMinutes = Math.max(5, durationValue ?? 30);
-    const requestedEndMinutes = requestedStartMinutes + requestedDurationMinutes;
-    const legacyDate = formatLegacyDateDMY(date);
-    const overlaps = await sql`
-      SELECT id, time, service_duration, status
-      FROM bookings
-      WHERE salon_id = ${salonId}
-        AND date IN (${date}, ${legacyDate ?? date})
-    `;
-    const hasOverlap = overlaps.some((row) => {
-      const r = row as Record<string, unknown>;
-      if (isCancelledStatus(r.status)) return false;
-      const start = parseTimeToMinutes(r.time);
-      if (start == null) return false;
-      const duration = Math.max(5, Number(r.service_duration ?? 30) || 30);
-      const end = start + duration;
-      return start < requestedEndMinutes && end > requestedStartMinutes;
+    insertedBooking = await insertBookingIfNoOverlap({
+      id: bookingId,
+      salonId,
+      clientName,
+      clientPhone,
+      clientEmail: normalizedClientEmail,
+      serviceName: resolvedServiceName,
+      servicePrice: priceValue,
+      serviceDuration: Math.max(5, durationValue ?? 30),
+      date,
+      time,
+      notes: normalizedNotes,
+      smsReminderConsent: hasSmsReminderConsent,
+      offerId: bookingOfferId,
     });
-    if (hasOverlap) {
-      return NextResponse.json(
-        { error: 'Този час току-що беше зает. Моля изберете друг свободен час.' },
-        { status: 409 },
-      );
-    }
-
-    bookings = (await sql`
-      INSERT INTO bookings (
-        id, salon_id, client_name, client_phone, client_email,
-        service_name, service_price, service_duration,
-        date, time, status, notes,
-        sms_reminder_consent, sms_reminder_consent_at,
-        offer_id
-      )
-      VALUES (
-        ${bookingId},
-        ${salonId},
-        ${clientName}, ${clientPhone}, ${normalizedClientEmail},
-        ${resolvedServiceName}, ${priceValue}, ${durationValue},
-        ${date}, ${time}, 'pending', ${normalizedNotes},
-        ${hasSmsReminderConsent},
-        ${hasSmsReminderConsent ? new Date().toISOString() : null},
-        ${bookingOfferId}
-      )
-      RETURNING id
-    `) as { id: string }[];
   } catch (err) {
     const dbErr = err as { code?: string } | null;
     if (dbErr?.code === '23505') {
@@ -351,15 +287,26 @@ export async function POST(request: NextRequest) {
     console.error('[bookings POST]', err);
     return NextResponse.json(
       { error: 'Резервацията не можа да бъде записана. Моля опитайте отново.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
-  if (!bookings[0]?.id) {
+  if (!insertedBooking) {
     return NextResponse.json(
-      { error: 'Резервацията не можа да бъде записана. Моля опитайте отново.' },
-      { status: 500 }
+      { error: 'Този час току-що беше зает. Моля изберете друг свободен час.' },
+      { status: 409 },
     );
+  }
+
+  if (bookingOfferId) {
+    const claimed = await claimOfferSlotAfterBooking(bookingOfferId, salonId);
+    if (!claimed) {
+      await deleteBookingById(insertedBooking.id, salonId);
+      return NextResponse.json(
+        { error: 'Всички места по тази оферта са заети.' },
+        { status: 409 },
+      );
+    }
   }
 
   const bookingDetails = {
@@ -382,39 +329,36 @@ export async function POST(request: NextRequest) {
         .join(', ') || undefined,
   };
 
-  const notifPromises: Promise<void>[] = [];
-
-  if (resolved.salon.email) {
-    notifPromises.push(sendBookingNotification(resolved.salon.email, bookingDetails));
-  }
-
-  notifPromises.push(sendBookingConfirmation(normalizedClientEmail, bookingDetails));
-
   const telegramChatId = String((resolved.salon as Record<string, unknown>).telegram_chat_id ?? '').trim();
-  if (telegramChatId) {
-    notifPromises.push(
-      sendBookingTelegram(telegramChatId, {
+
+  runAfterResponse(
+    dispatchBookingNotifications({
+      salonEmail: resolved.salon.email ? String(resolved.salon.email) : null,
+      clientEmail: normalizedClientEmail,
+      telegramChatId,
+      bookingDetails,
+      telegramDetails: {
         ...bookingDetails,
         clientEmail: normalizedClientEmail,
-      })
-    );
-  }
+      },
+    }),
+  );
 
-  await Promise.allSettled(notifPromises);
-
-  void scheduleBookingSmsReminders({
-    salonId,
-    bookingId: bookings[0].id,
-    date,
-    time,
-    smsEnabled: (resolved.salon as Record<string, unknown>).sms_enabled === true,
-    smsReminderMode: (resolved.salon as Record<string, unknown>).sms_reminder_mode,
-    smsReminderConsent: hasSmsReminderConsent,
-  }).catch((err) => console.error('[bookings POST] schedule SMS', err));
+  runAfterResponse(
+    scheduleBookingSmsReminders({
+      salonId,
+      bookingId: insertedBooking.id,
+      date,
+      time,
+      smsEnabled: (resolved.salon as Record<string, unknown>).sms_enabled === true,
+      smsReminderMode: (resolved.salon as Record<string, unknown>).sms_reminder_mode,
+      smsReminderConsent: hasSmsReminderConsent,
+    }),
+  );
 
   return NextResponse.json({
     success: true,
-    bookingId: bookings[0].id,
+    bookingId: insertedBooking.id,
     message: `Резервацията е потвърдена за ${formatBgDateDMY(date)} в ${time}. Очакваме ви!`,
   });
 }

@@ -1,7 +1,31 @@
 import { Resend } from 'resend';
 import { formatSalonPrice } from '@/lib/salon-currency';
+import { sleep } from '@/lib/http-retry';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function sendResendWithRetry(
+  payload: Parameters<Resend['emails']['send']>[0],
+  attempts = 4,
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const { error } = await resend.emails.send(payload);
+    if (!error) return;
+    lastError = error;
+    const message = String((error as { message?: string }).message ?? error).toLowerCase();
+    const retryable =
+      message.includes('rate') ||
+      message.includes('limit') ||
+      message.includes('too many') ||
+      message.includes('timeout');
+    if (!retryable || attempt === attempts - 1) {
+      throw error;
+    }
+    await sleep(500 * (attempt + 1));
+  }
+  throw lastError;
+}
 
 function formatBgDateDMY(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
@@ -65,7 +89,7 @@ export async function sendBookingNotification(
     booking.notes ? renderRow('Бележка', booking.notes) : '',
   ].join('');
 
-  await resend.emails.send({
+  await sendResendWithRetry({
     from: senderFromSalonName(booking.salonName),
     to: salonEmail,
     reply_to: booking.clientEmail || undefined,
@@ -99,7 +123,7 @@ export async function sendGoogleReviewInvitation(
   const directReviewUrl = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(googlePlaceId)}`;
   const reviewHubUrl = `${appBaseUrl}/review/google?placeid=${encodeURIComponent(googlePlaceId)}&salon=${encodeURIComponent(salonName)}${salonSlug ? `&slug=${encodeURIComponent(salonSlug)}` : ''}`;
 
-  await resend.emails.send({
+  await sendResendWithRetry({
     from: senderFromSalonName(salonName),
     to: clientEmail,
     subject: `Как беше при ${escapeHtml(salonName)}? Остави ни отзив`,
@@ -156,7 +180,7 @@ export async function sendBookingConfirmation(
     booking.notes ? renderRow('Бележка', booking.notes) : '',
   ].join('');
 
-  await resend.emails.send({
+  await sendResendWithRetry({
     from: senderFromSalonName(booking.salonName),
     to: clientEmail,
     reply_to: booking.salonEmail || undefined,

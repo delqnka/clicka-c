@@ -124,7 +124,9 @@ export type SalonPublicParityProps = {
   /** @deprecated no longer rendered — kept for caller compat */
   staticMapUrl?: string | null;
   disableStickySectionTabs?: boolean;
+  /** @deprecated use hasPublishedBlogPosts — kept for caller compat */
   publishedBlogCount?: number;
+  hasPublishedBlogPosts?: boolean;
 };
 
 function wireMediaUri(raw: string | null | undefined): string {
@@ -346,6 +348,7 @@ export default function SalonPublicParity({
   staticMapUrl,
   disableStickySectionTabs = false,
   publishedBlogCount = 0,
+  hasPublishedBlogPosts = publishedBlogCount > 0,
   children,
 }: SalonPublicParityProps & { children?: ReactNode }) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
@@ -1857,7 +1860,7 @@ export default function SalonPublicParity({
           </div>
           <div className="flex items-center justify-between gap-2">
             <nav className="flex items-center gap-0.5" aria-label="Правни документи">
-              {publishedBlogCount > 0 ? (
+              {hasPublishedBlogPosts ? (
                 <a
                   href={`${basePath}/blog`}
                   className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
