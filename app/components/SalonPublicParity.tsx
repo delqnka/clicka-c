@@ -1886,10 +1886,10 @@ export default function SalonPublicParity({
 
       {!disableStickySectionTabs ? (
         <div
-          className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm transition-[opacity,transform] duration-150 lg:hidden ${
+          className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-3 lg:hidden ${
             showStickySectionTabs
-              ? 'pointer-events-auto translate-y-0 opacity-100'
-              : 'pointer-events-none translate-y-full opacity-0'
+              ? 'pointer-events-auto visible'
+              : 'pointer-events-none invisible'
           }`}
           aria-hidden={!showStickySectionTabs}
         >
