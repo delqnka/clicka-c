@@ -3,6 +3,11 @@ import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { SALON_CURRENCY_CODE } from '@/lib/salon-currency';
 import type { PublicSalonBlogPost } from '@/lib/salon-blog';
 import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
+import {
+  BLOG_META_DESC_MAX,
+  suggestBlogMetaDescription,
+  truncateMetaText,
+} from '@/lib/blog-seo-meta';
 
 const CATEGORY_SCHEMA_MAP: Record<string, string> = {
   'Фризьорски салон': 'HairSalon',
@@ -13,7 +18,7 @@ const CATEGORY_SCHEMA_MAP: Record<string, string> = {
   'СПА': 'DaySpa',
 };
 
-const META_DESC_MAX = 160;
+const META_DESC_MAX = BLOG_META_DESC_MAX;
 
 function salonServiceNames(salon: Record<string, unknown>, limit = 3): string[] {
   const services = salon.services;
@@ -236,15 +241,9 @@ function blogPostPublicUrl(salon: Record<string, unknown>, slug: string, postSlu
 function blogPostDescription(post: PublicSalonBlogPost): string {
   const custom = post.metaDescription.trim();
   if (custom) {
-    return custom.length > META_DESC_MAX ? `${custom.slice(0, META_DESC_MAX - 1).trim()}…` : custom;
+    return truncateMetaText(custom, META_DESC_MAX);
   }
-  const excerpt = post.excerpt.trim();
-  if (excerpt) {
-    return excerpt.length > META_DESC_MAX ? `${excerpt.slice(0, META_DESC_MAX - 1).trim()}…` : excerpt;
-  }
-  const plain = post.bodyMarkdown.replace(/\s+/g, ' ').trim();
-  if (!plain) return '';
-  return plain.length > META_DESC_MAX ? `${plain.slice(0, META_DESC_MAX - 1).trim()}…` : plain;
+  return suggestBlogMetaDescription(post.excerpt, post.bodyMarkdown);
 }
 
 export function buildBlogIndexMetadata(

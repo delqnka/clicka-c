@@ -2,6 +2,10 @@
 
 import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  CLICKA_MARKETING_GRADIENT_BORDER_STYLE,
+  CLICKA_MARKETING_GRADIENT_STYLE,
+} from '@/lib/clicka-marketing-site';
 import type { SalonOfferRow } from '@/lib/salon-offers';
 import { normalizeOfferImages, offerSpotsLeft } from '@/lib/salon-offers';
 
@@ -18,6 +22,7 @@ type Props = {
   clientEmail: string;
   notes: string;
   smsReminderConsent: boolean;
+  smsEnabled?: boolean;
   termsHref: string;
   privacyHref: string;
   minDate: string;
@@ -37,8 +42,15 @@ type Props = {
   onSubmit: (e: React.FormEvent) => void;
 };
 
+const cardShadow =
+  'shadow-[0_2px_6px_rgba(0,0,0,0.14),0_10px_32px_rgba(0,0,0,0.18),0_1px_2px_rgba(0,0,0,0.1)]';
+const backButtonShadow =
+  'shadow-[0_4px_14px_rgba(0,0,0,0.22),0_14px_40px_rgba(0,0,0,0.16),0_1px_0_rgba(0,0,0,0.06)]';
+const gradientCtaShadow = 'shadow-[0_8px_28px_rgba(225,29,72,0.32)]';
+const gradientRingShadow = 'shadow-[0_2px_10px_rgba(219,39,119,0.1)]';
+
 const fieldClass =
-  'mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-white/60 bg-white/72 px-3.5 py-3 text-base text-[#111] shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_26px_rgba(0,0,0,0.05)] outline-none backdrop-blur-md transition focus:border-white/80 focus:ring-2 focus:ring-white/55';
+  `mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 text-[16px] leading-tight text-[#111] ${cardShadow} outline-none transition focus:border-[color:var(--salon-primary)]/40 focus:ring-2 focus:ring-[color:var(--salon-primary)]/12`;
 
 function wireMediaUri(raw: string): string {
   const s = raw.trim();
@@ -69,6 +81,7 @@ export function SalonOfferBookingModal({
   clientEmail,
   notes,
   smsReminderConsent,
+  smsEnabled,
   termsHref,
   privacyHref,
   minDate,
@@ -87,14 +100,13 @@ export function SalonOfferBookingModal({
   onSmsReminderConsentChange,
   onSubmit,
 }: Props) {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [imageIdx, setImageIdx] = useState(0);
 
   useEffect(() => {
-    if (open) {
-      setStep(1);
-      setImageIdx(0);
-    }
+    if (!open) return;
+    setStep(1);
+    setImageIdx(0);
   }, [open, offer?.id]);
 
   const images = useMemo(() => normalizeOfferImages(offer?.images).map(wireMediaUri), [offer?.images]);
@@ -122,21 +134,39 @@ export function SalonOfferBookingModal({
     return out;
   }, [minDate, maxDate]);
 
+  function goToStep(target: 1 | 2 | 3) {
+    if (target === 2 && !offer) return;
+    if (target === 3 && (!offer || !selectedTime)) return;
+    setStep(target);
+  }
+
+  function requestClose() {
+    if (typeof window !== 'undefined') {
+      const shouldClose = window.confirm('Сигурни ли сте, че искате да затворите резервацията?');
+      if (!shouldClose) return;
+    }
+    onClose();
+  }
+
   useEffect(() => {
     if (!open || typeof document === 'undefined') return;
     document.documentElement.style.setProperty('overflow', 'hidden');
+    document.documentElement.style.setProperty('background-color', '#ffffff');
     document.body.style.setProperty('overflow', 'hidden');
     document.body.style.setProperty('position', 'fixed');
     document.body.style.setProperty('inset', '0');
     document.body.style.setProperty('width', '100%');
+    document.body.style.setProperty('background-color', '#ffffff');
     const scrollY = window.scrollY;
     document.body.style.setProperty('top', `-${scrollY}px`);
     return () => {
       document.documentElement.style.removeProperty('overflow');
+      document.documentElement.style.removeProperty('background-color');
       document.body.style.removeProperty('overflow');
       document.body.style.removeProperty('position');
       document.body.style.removeProperty('inset');
       document.body.style.removeProperty('width');
+      document.body.style.removeProperty('background-color');
       document.body.style.removeProperty('top');
       window.scrollTo(0, scrollY);
     };
@@ -144,252 +174,378 @@ export function SalonOfferBookingModal({
 
   if (!open || !offer) return null;
 
+  const discount =
+    offer.discount != null && Number.isFinite(Number(offer.discount)) && Number(offer.discount) > 0
+      ? Number(offer.discount)
+      : null;
+
   return (
-    <div className="fixed inset-0 z-[120] overflow-hidden" role="presentation" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" aria-hidden />
+    <div className="fixed inset-0 z-[110] overflow-hidden bg-white sm:bg-transparent" role="presentation">
+      <div className="absolute inset-0 hidden bg-black/30 backdrop-blur-sm sm:block" aria-hidden />
 
       <div
         role="dialog"
         aria-modal
         aria-label={`Резервация: ${offer.title}`}
-        className="absolute inset-x-2 bottom-2 z-10 mx-auto flex max-h-[calc(100dvh-0.75rem)] w-auto max-w-none flex-col overflow-hidden rounded-[1.4rem] border border-white/35 bg-[linear-gradient(160deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] shadow-[0_-16px_48px_rgba(8,14,30,0.28)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
+        className="absolute inset-x-0 bottom-0 z-10 mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-white sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem] sm:bg-white sm:shadow-[0_25px_60px_rgba(0,0,0,0.12)]"
         onClick={(e) => e.stopPropagation()}
+        style={{ ['--salon-primary' as string]: primaryColor }}
       >
-        <div className="relative z-[1] flex shrink-0 items-center justify-between gap-3 border-b border-white/45 bg-white/38 px-4 py-3.5 backdrop-blur-xl sm:px-5">
-          <h3 className="text-lg font-semibold tracking-tight text-[#161616]">Оферта</h3>
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-black/10 sm:hidden" aria-hidden />
+
+        <div className="relative z-[1] flex shrink-0 items-center justify-between gap-2 bg-white px-4 pb-3 pt-3.5 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <h3 className="text-[17px] font-semibold tracking-tight text-black">Резервация</h3>
+            <div className="flex items-center gap-1.5">
+              {(
+                [
+                  { n: 1 as const, label: 'Оферта' },
+                  { n: 2 as const, label: 'Дата' },
+                  { n: 3 as const, label: 'Данни' },
+                ] as const
+              ).map(({ n, label }) => {
+                const active = step === n;
+                const complete = step > n;
+                const disabled = (n === 2 && !offer) || (n === 3 && (!offer || !selectedTime));
+                return (
+                  <button
+                    key={`offer-header-step-${n}`}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => goToStep(n)}
+                    className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-2.5 text-[11px] font-bold transition disabled:opacity-20 ${
+                      active || complete
+                        ? `text-white ${gradientCtaShadow}`
+                        : `bg-white text-black/50 ${cardShadow}`
+                    }`}
+                    style={active || complete ? CLICKA_MARKETING_GRADIENT_STYLE : undefined}
+                    title={label}
+                    aria-label={`Стъпка ${n}: ${label}`}
+                  >
+                    {complete && !active ? '✓' : n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <button
             type="button"
-            className="shrink-0 rounded-full border border-white/60 bg-white/55 p-2 text-black/55 shadow-sm transition hover:bg-white/75"
-            onClick={onClose}
+            className={`shrink-0 rounded-full bg-white p-2 text-black/40 transition active:bg-black/[0.03] ${cardShadow}`}
+            onClick={requestClose}
             aria-label="Затвори"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5">
-          <div className="overflow-hidden rounded-2xl border border-black/10 bg-black text-white">
-            {images.length > 0 ? (
-              <div className="relative aspect-[16/10] w-full">
-                <img
-                  src={images[imageIdx]}
-                  alt={offer.title}
-                  className="h-full w-full object-cover"
-                />
-                {images.length > 1 ? (
-                  <>
-                    <button
-                      type="button"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5"
-                      onClick={() => setImageIdx((i) => (i - 1 + images.length) % images.length)}
-                      aria-label="Предишна снимка"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5"
-                      onClick={() => setImageIdx((i) => (i + 1) % images.length)}
-                      aria-label="Следваща снимка"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ) : (
-              <div className="aspect-[16/10] w-full bg-gradient-to-br from-[#5B21B6] to-[#9333EA]" />
-            )}
-            <div className="p-4">
-              {offer.discount != null && offer.discount > 0 ? (
-                <span className="inline-block rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-black">
-                  -{offer.discount}%
-                </span>
-              ) : null}
-              <p className="mt-2 text-lg font-semibold leading-tight">{offer.title}</p>
-              {offer.description ? (
-                <p className="mt-1 text-sm text-white/85">{offer.description}</p>
-              ) : null}
-              {spotsLeft != null ? (
-                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-amber-200">
-                  Остават {spotsLeft} {spotsLeft === 1 ? 'място' : 'места'}
-                </p>
-              ) : null}
-            </div>
-          </div>
+        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5">
+          {bookingSuccess ? (
+            <p className="rounded-2xl bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-700">
+              {bookingSuccess}
+            </p>
+          ) : (
+            <form id="salon-offer-booking-form" onSubmit={onSubmit} className="min-w-0 space-y-3.5 bg-white">
+              {step === 1 ? (
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[13px] font-semibold text-black">Избрана оферта</p>
+                    {spotsLeft != null ? (
+                      <p className="text-[12px] font-medium tabular-nums text-amber-700">
+                        {spotsLeft} {spotsLeft === 1 ? 'място' : 'места'}
+                      </p>
+                    ) : null}
+                  </div>
 
-          <div className="mt-4 flex gap-2">
-            {([1, 2] as const).map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setStep(n)}
-                className={`flex-1 rounded-full border py-2 text-sm font-medium ${
-                  step === n
-                    ? 'border-[color:var(--salon-primary)] text-[color:var(--salon-primary)]'
-                    : 'border-black/10 text-black/50'
-                }`}
-                style={{ ['--salon-primary' as string]: primaryColor }}
-              >
-                {n === 1 ? 'Дата и час' : 'Данни'}
-              </button>
-            ))}
-          </div>
-
-          <form className="mt-4" onSubmit={onSubmit}>
-            {step === 1 ? (
-              <div className="space-y-4">
-                <p className="text-sm text-black/60">
-                  Продължителност: <strong>{durationMin} мин</strong>
-                  {salonName ? ` · ${salonName}` : ''}
-                </p>
-                <div>
-                  <p className="text-sm font-medium text-[#161616]">Дата</p>
-                  <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                    {dateOptions.map((d) => (
-                      <button
-                        key={d.iso}
-                        type="button"
-                        onClick={() => onDateChange(d.iso)}
-                        className={`shrink-0 rounded-2xl border px-3 py-2 text-left text-sm ${
-                          selectedDate === d.iso
-                            ? 'border-[color:var(--salon-primary)] bg-white'
-                            : 'border-black/10 bg-white/70'
-                        }`}
-                        style={{ ['--salon-primary' as string]: primaryColor }}
-                      >
-                        <span className="block text-[10px] uppercase text-black/45">{d.weekday}</span>
-                        <span className="font-semibold">{d.day}</span>
-                      </button>
-                    ))}
+                  <div className={`rounded-2xl p-px transition ${gradientRingShadow}`} style={CLICKA_MARKETING_GRADIENT_BORDER_STYLE}>
+                    <div className="overflow-hidden rounded-[15px] bg-white">
+                      {images.length > 0 ? (
+                        <div className="relative aspect-[16/10] w-full bg-black/5">
+                          <img
+                            src={images[imageIdx]}
+                            alt={offer.title}
+                            className="h-full w-full object-cover"
+                          />
+                          {images.length > 1 ? (
+                            <>
+                              <button
+                                type="button"
+                                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white"
+                                onClick={() => setImageIdx((i) => (i - 1 + images.length) % images.length)}
+                                aria-label="Предишна снимка"
+                              >
+                                <ChevronLeft className="h-5 w-5" />
+                              </button>
+                              <button
+                                type="button"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white"
+                                onClick={() => setImageIdx((i) => (i + 1) % images.length)}
+                                aria-label="Следваща снимка"
+                              >
+                                <ChevronRight className="h-5 w-5" />
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div className="px-3.5 py-3.5">
+                        {discount != null ? (
+                          <span
+                            className="inline-block rounded-full px-2 py-0.5 text-[11px] font-bold text-white"
+                            style={CLICKA_MARKETING_GRADIENT_STYLE}
+                          >
+                            -{discount}%
+                          </span>
+                        ) : null}
+                        <p className="mt-1 truncate text-[15px] font-semibold text-black">{offer.title}</p>
+                        {offer.description ? (
+                          <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-black/50">
+                            {offer.description}
+                          </p>
+                        ) : null}
+                        <p className="mt-1.5 text-[13px] tabular-nums text-black/45">
+                          {Math.max(5, durationMin || 60)} мин
+                          {salonName ? ` · ${salonName}` : ''}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                {selectedDate ? (
-                  <div>
-                    <p className="text-sm font-medium text-[#161616]">Час</p>
-                    {timeSlots === 'closed' ? (
-                      <p className="mt-2 text-sm text-red-600">Салонът не работи на тази дата.</p>
-                    ) : timeSlots && timeSlots.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {timeSlots.map((slot) => (
+              ) : null}
+
+              {step === 2 ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="text-[13px] font-semibold text-black">Дата и час</p>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className={`inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--salon-primary)] ${cardShadow} active:bg-black/[0.03]`}
+                    >
+                      {offer.title}
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-black/45">{offer.title}</p>
+
+                  <div className="min-w-0">
+                    <label className="block text-[13px] font-semibold text-black">Дата</label>
+                    <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1.5 scrollbar-none">
+                      {dateOptions.map((d) => {
+                        const active = selectedDate === d.iso;
+                        return (
                           <button
-                            key={slot}
+                            key={d.iso}
                             type="button"
-                            onClick={() => onTimeChange(slot)}
-                            className={`rounded-full border px-3 py-1.5 text-sm ${
-                              selectedTime === slot
-                                ? 'border-[color:var(--salon-primary)] font-semibold text-[color:var(--salon-primary)]'
-                                : 'border-black/10'
+                            onClick={() => onDateChange(d.iso)}
+                            className={`flex h-[4.25rem] w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-2xl text-center transition ${
+                              active
+                                ? 'text-white shadow-[0_3px_12px_rgba(0,0,0,0.15)]'
+                                : `bg-white text-black/60 ${cardShadow}`
                             }`}
-                            style={{ ['--salon-primary' as string]: primaryColor }}
+                            style={active ? { backgroundColor: '#000' } : undefined}
                           >
-                            {slot}
+                            <span className="text-[10px] font-medium uppercase leading-none tabular-nums opacity-75">
+                              {d.weekday}
+                            </span>
+                            <span className="mt-1 text-[12px] font-bold leading-tight tabular-nums">{d.day}</span>
                           </button>
-                        ))}
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[13px] font-semibold text-black">Час</label>
+                    {!selectedDate ? (
+                      <p className="mt-1.5 text-sm text-black/35">Първо изберете дата.</p>
+                    ) : timeSlots === 'closed' ? (
+                      <p className="mt-1.5 text-sm text-black/35">В този ден салонът е затворен.</p>
+                    ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
+                      <p className="mt-1.5 text-sm text-black/35">Няма свободни часове за тази оферта.</p>
+                    ) : Array.isArray(timeSlots) ? (
+                      <div className="mt-2 grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4">
+                        {timeSlots.map((t) => {
+                          const active = selectedTime === t;
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => onTimeChange(t)}
+                              className={`min-w-0 touch-manipulation rounded-xl px-2 py-2.5 text-center text-sm font-medium tabular-nums transition ${
+                                active
+                                  ? 'text-white shadow-[0_3px_12px_rgba(0,0,0,0.15)]'
+                                  : `bg-white text-black/70 ${cardShadow} active:bg-black/[0.03]`
+                              }`}
+                              style={active ? { backgroundColor: '#000' } : undefined}
+                            >
+                              {t}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
-                      <p className="mt-2 text-sm text-black/55">Няма свободни часове.</p>
+                      <p className="mt-1.5 text-sm text-black/35">Зареждане на часове…</p>
                     )}
                   </div>
-                ) : null}
-                {selectedTime && endTime ? (
-                  <p className="text-sm text-black/55">
-                    Край: <strong>{endTime}</strong>
-                  </p>
-                ) : null}
+                </div>
+              ) : null}
+
+              {step === 3 ? (
+                <div className="space-y-3.5">
+                  <p className="text-[13px] font-semibold text-black">Данни за контакт</p>
+                  <div className="min-w-0">
+                    <label className="block text-[13px] font-semibold text-black">Име</label>
+                    <input
+                      className={fieldClass}
+                      value={clientName}
+                      onChange={(e) => onClientNameChange(e.target.value)}
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[13px] font-semibold text-black">Телефон</label>
+                    <input
+                      type="tel"
+                      className={fieldClass}
+                      value={clientPhone}
+                      onChange={(e) => onClientPhoneChange(e.target.value)}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[13px] font-semibold text-black">Имейл</label>
+                    <input
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      className={fieldClass}
+                      value={clientEmail}
+                      onChange={(e) => onClientEmailChange(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[13px] font-semibold text-black">Бележки (по желание)</label>
+                    <textarea
+                      className={`${fieldClass} resize-none`}
+                      rows={2}
+                      value={notes}
+                      onChange={(e) => onNotesChange(e.target.value)}
+                    />
+                  </div>
+
+                  {smsEnabled ? (
+                    <>
+                      <label className={`flex cursor-pointer gap-3 rounded-2xl bg-white px-3.5 py-3 ${cardShadow}`}>
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--salon-primary)]"
+                          checked={smsReminderConsent}
+                          onChange={(e) => onSmsReminderConsentChange(e.target.checked)}
+                        />
+                        <span className="text-sm leading-relaxed text-black/50">
+                          Съгласявам се да получавам SMS напомняния за резервацията от{' '}
+                          <strong className="font-semibold text-black">{salonName}</strong> на посочения
+                          телефон. Прочетох{' '}
+                          <a
+                            href={termsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Общите условия
+                          </a>{' '}
+                          и{' '}
+                          <a
+                            href={privacyHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Политиката за поверителност
+                          </a>
+                          .
+                        </span>
+                      </label>
+                      <p className="text-xs leading-relaxed text-black/30">
+                        Без отметка резервацията ви остава валидна, но няма да получите SMS напомняние от салона.
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {bookingError ? (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                  {bookingError}
+                </p>
+              ) : null}
+            </form>
+          )}
+        </div>
+
+        {!bookingSuccess ? (
+          <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
+            <div className="mb-3 rounded-2xl bg-white px-3.5 py-2.5">
+              <p className="text-sm font-semibold tabular-nums text-black">
+                {Math.max(5, durationMin || 60)} мин
+                {discount != null ? ` · -${discount}%` : ''}
+              </p>
+              {selectedTime ? (
+                <p className="mt-0.5 text-xs tabular-nums text-black/45">
+                  Старт {selectedTime} · Готови около {endTime}
+                </p>
+              ) : step > 1 ? (
+                <p className="mt-0.5 truncate text-xs text-black/35">{offer.title}</p>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
+                disabled={step === 1}
+                className={`rounded-full border border-black/[0.04] bg-white py-3.5 text-[15px] font-semibold text-black/75 transition disabled:opacity-25 active:scale-[0.98] active:shadow-[0_2px_8px_rgba(0,0,0,0.14)] ${backButtonShadow}`}
+              >
+                Назад
+              </button>
+              {step < 3 ? (
                 <button
                   type="button"
-                  className="w-full rounded-full py-3 text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ background: primaryColor }}
-                  disabled={!selectedDate || !selectedTime}
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    if (step === 1 && !offer) return;
+                    if (step === 2 && !selectedTime) return;
+                    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
+                  }}
+                  disabled={step === 2 && (!selectedDate || !selectedTime)}
+                  className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                  style={CLICKA_MARKETING_GRADIENT_STYLE}
                 >
-                  Напред
+                  Продължи
                 </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-[#161616]">
-                  Име
-                  <input
-                    className={fieldClass}
-                    value={clientName}
-                    onChange={(e) => onClientNameChange(e.target.value)}
-                    required
-                  />
-                </label>
-                <label className="block text-sm font-medium text-[#161616]">
-                  Телефон
-                  <input
-                    className={fieldClass}
-                    type="tel"
-                    value={clientPhone}
-                    onChange={(e) => onClientPhoneChange(e.target.value)}
-                    required
-                  />
-                </label>
-                <label className="block text-sm font-medium text-[#161616]">
-                  Имейл
-                  <input
-                    className={fieldClass}
-                    type="email"
-                    value={clientEmail}
-                    onChange={(e) => onClientEmailChange(e.target.value)}
-                    required
-                  />
-                </label>
-                <label className="block text-sm font-medium text-[#161616]">
-                  Бележка (по избор)
-                  <textarea
-                    className={fieldClass}
-                    rows={2}
-                    value={notes}
-                    onChange={(e) => onNotesChange(e.target.value)}
-                  />
-                </label>
-                <label className="flex items-start gap-2 text-sm text-black/65">
-                  <input
-                    type="checkbox"
-                    checked={smsReminderConsent}
-                    onChange={(e) => onSmsReminderConsentChange(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <span>
-                    SMS напомняне преди часа. Виж{' '}
-                    <a href={termsHref} className="underline" target="_blank" rel="noreferrer">
-                      условия
-                    </a>{' '}
-                    и{' '}
-                    <a href={privacyHref} className="underline" target="_blank" rel="noreferrer">
-                      поверителност
-                    </a>
-                    .
-                  </span>
-                </label>
-                {bookingError ? <p className="text-sm text-red-600">{bookingError}</p> : null}
-                {bookingSuccess ? <p className="text-sm text-green-700">{bookingSuccess}</p> : null}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    className="flex-1 rounded-full border border-black/15 py-3 text-sm font-medium"
-                    onClick={() => setStep(1)}
-                  >
-                    Назад
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white disabled:opacity-60"
-                    style={{ background: primaryColor }}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Резервирай офертата
-                  </button>
-                </div>
-              </div>
-            )}
-          </form>
-        </div>
+              ) : (
+                <button
+                  type="submit"
+                  form="salon-offer-booking-form"
+                  disabled={isSubmitting || !selectedTime || !offer}
+                  className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                  style={CLICKA_MARKETING_GRADIENT_STYLE}
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                  Изпрати заявка
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

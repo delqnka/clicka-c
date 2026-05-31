@@ -3,6 +3,13 @@
 import { Camera, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { toBlogSlug } from '@/lib/blog-slug';
+import {
+  applyAutoBlogSeoMetaPatch,
+  BLOG_META_DESC_MAX,
+  BLOG_META_TITLE_MAX,
+  suggestBlogMetaDescription,
+  suggestBlogMetaTitle,
+} from '@/lib/blog-seo-meta';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
 
@@ -109,9 +116,61 @@ export function SalonBlogSection({
   onUnpublish,
 }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const metaTouchedRef = useRef<Map<string, { title?: boolean; description?: boolean }>>(new Map());
 
   function postKey(post: AdminSalonBlogPost, index: number) {
     return post.id || `draft-${index}`;
+  }
+
+  function getMetaTouched(key: string) {
+    return metaTouchedRef.current.get(key) ?? {};
+  }
+
+  function setMetaTouched(key: string, patch: { title?: boolean; description?: boolean }) {
+    metaTouchedRef.current.set(key, { ...getMetaTouched(key), ...patch });
+  }
+
+  function updatePostWithAutoMeta(index: number, patch: Partial<AdminSalonBlogPost>) {
+    const current = posts[index];
+    if (!current) return;
+    const merged = { ...current, ...patch };
+    const key = postKey(merged, index);
+    const touched = getMetaTouched(key);
+    const metaPatch = applyAutoBlogSeoMetaPatch(merged, {
+      titleTouched: touched.title,
+      descriptionTouched: touched.description,
+    });
+    onPatchPost(index, { ...patch, ...metaPatch });
+  }
+
+  function updatePost(index: number, patch: Partial<AdminSalonBlogPost>) {
+    if ('title' in patch || 'excerpt' in patch || 'bodyMarkdown' in patch) {
+      updatePostWithAutoMeta(index, patch);
+      return;
+    }
+    onPatchPost(index, patch);
+  }
+
+  function updateMetaTitle(index: number, value: string) {
+    const post = posts[index];
+    if (!post) return;
+    const key = postKey(post, index);
+    setMetaTouched(key, {
+      title: value.trim().length > 0 && value !== suggestBlogMetaTitle(post.title),
+    });
+    onPatchPost(index, { metaTitle: value });
+  }
+
+  function updateMetaDescription(index: number, value: string) {
+    const post = posts[index];
+    if (!post) return;
+    const key = postKey(post, index);
+    setMetaTouched(key, {
+      description:
+        value.trim().length > 0 &&
+        value !== suggestBlogMetaDescription(post.excerpt, post.bodyMarkdown),
+    });
+    onPatchPost(index, { metaDescription: value });
   }
 
   function isExpanded(post: AdminSalonBlogPost, index: number) {
@@ -130,10 +189,6 @@ export function SalonBlogSection({
     });
   }
 
-  function updatePost(index: number, patch: Partial<AdminSalonBlogPost>) {
-    onPatchPost(index, patch);
-  }
-
   function removePost(index: number) {
     onReplacePosts(posts.filter((_, i) => i !== index));
   }
@@ -146,9 +201,11 @@ export function SalonBlogSection({
   function onTitleBlur(index: number) {
     const post = posts[index];
     if (!post) return;
+    const patch: Partial<AdminSalonBlogPost> = {};
     if (!post.slug.trim() && post.title.trim()) {
-      updatePost(index, { slug: toBlogSlug(post.title) });
+      patch.slug = toBlogSlug(post.title);
     }
+    updatePostWithAutoMeta(index, patch);
   }
 
   const textareaStyle: CSSProperties = {
@@ -454,7 +511,7 @@ export function SalonBlogSection({
                   )}
                 </div>
 
-                <details>
+                <details open>
                   <summary style={{ fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
                     URL и SEO
                   </summary>
@@ -469,23 +526,36 @@ export function SalonBlogSection({
                       />
                     </label>
                     <label style={{ display: 'grid', gap: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Meta title</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                        Meta title
+                        <span style={{ marginLeft: 6, fontWeight: 500, color: '#9ca3af' }}>
+                          {(post.metaTitle || suggestBlogMetaTitle(post.title)).length}/{BLOG_META_TITLE_MAX}
+                        </span>
+                      </span>
                       <input
                         style={inp}
-                        value={post.metaTitle}
-                        onChange={(e) => updatePost(index, { metaTitle: e.target.value })}
+                        value={post.metaTitle || suggestBlogMetaTitle(post.title)}
+                        onChange={(e) => updateMetaTitle(index, e.target.value)}
                         placeholder={post.title || 'Заглавие за Google'}
+                        maxLength={BLOG_META_TITLE_MAX + 10}
                       />
                     </label>
                     <label style={{ display: 'grid', gap: 4 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
                         Meta description
+                        <span style={{ marginLeft: 6, fontWeight: 500, color: '#9ca3af' }}>
+                          {(post.metaDescription || suggestBlogMetaDescription(post.excerpt, post.bodyMarkdown)).length}/{BLOG_META_DESC_MAX}
+                        </span>
                       </span>
                       <textarea
                         style={{ ...inp, minHeight: 64, resize: 'vertical' }}
-                        value={post.metaDescription}
-                        onChange={(e) => updatePost(index, { metaDescription: e.target.value })}
-                        placeholder={post.excerpt || 'Описание за търсачките'}
+                        value={
+                          post.metaDescription ||
+                          suggestBlogMetaDescription(post.excerpt, post.bodyMarkdown)
+                        }
+                        onChange={(e) => updateMetaDescription(index, e.target.value)}
+                        placeholder="Кратко описание за Google (до 160 символа)"
+                        maxLength={BLOG_META_DESC_MAX + 20}
                       />
                     </label>
                   </div>

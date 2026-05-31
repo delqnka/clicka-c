@@ -2066,6 +2066,7 @@ export default function SalonPublicParity({
         clientEmail={clientEmail}
         notes={notes}
         smsReminderConsent={smsReminderConsent}
+        smsEnabled={rawSalon.sms_enabled === true}
         termsHref={`${basePath}/terms`}
         privacyHref={`${basePath}/privacy`}
         minDate={minDate}

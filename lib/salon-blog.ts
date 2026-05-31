@@ -9,6 +9,7 @@ import {
   type PublicSalonBlogPost,
   normalizeBlogPostStatus,
 } from '@/lib/salon-blog-shared';
+import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 
 export type { AdminSalonBlogPost, BlogPostStatus, PublicSalonBlogPost } from '@/lib/salon-blog-shared';
 export {
@@ -35,24 +36,25 @@ export function mapDbBlogRow(row: Record<string, unknown>): AdminSalonBlogPost {
 }
 
 export function mapAdminBlogToDb(post: AdminSalonBlogPost, salonId: string) {
-  const status = normalizeBlogPostStatus(post.status);
+  const withMeta = withAutoBlogSeoMeta(post);
+  const status = normalizeBlogPostStatus(withMeta.status);
   const publishedAt =
     status === 'published'
-      ? post.publishedAt || new Date().toISOString()
+      ? withMeta.publishedAt || new Date().toISOString()
       : null;
 
   return {
-    id: post.id || undefined,
+    id: withMeta.id || undefined,
     salon_id: salonId,
-    slug: post.slug.trim(),
-    title: post.title.trim(),
-    excerpt: post.excerpt.trim() || null,
-    body_md: post.bodyMarkdown,
-    cover_image_url: post.coverImageUrl.trim() || null,
+    slug: withMeta.slug.trim(),
+    title: withMeta.title.trim(),
+    excerpt: withMeta.excerpt.trim() || null,
+    body_md: withMeta.bodyMarkdown,
+    cover_image_url: withMeta.coverImageUrl.trim() || null,
     status,
     published_at: publishedAt,
-    meta_title: post.metaTitle.trim() || null,
-    meta_description: post.metaDescription.trim() || null,
+    meta_title: withMeta.metaTitle.trim() || null,
+    meta_description: withMeta.metaDescription.trim() || null,
   };
 }
 
