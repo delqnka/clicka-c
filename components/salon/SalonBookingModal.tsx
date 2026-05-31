@@ -572,7 +572,7 @@ export function SalonBookingModal({
                     ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
                       <p className="mt-1.5 text-sm text-black/35">Няма свободни часове за избраните услуги.</p>
                     ) : Array.isArray(timeSlots) ? (
-                      <div className="mt-2 grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4">
+                      <div className="mt-2 grid w-full max-w-full grid-cols-3 gap-2.5 sm:grid-cols-4">
                         {timeSlots.map((t) => {
                           const active = selectedTime === t;
                           return (
@@ -580,10 +580,10 @@ export function SalonBookingModal({
                               key={t}
                               type="button"
                               onClick={() => onTimeChange(t)}
-                              className={`min-w-0 touch-manipulation rounded-xl px-2 py-2.5 text-center text-sm font-medium tabular-nums transition ${
+                              className={`min-w-0 touch-manipulation rounded-2xl px-2 py-3 text-center text-[14px] font-semibold tabular-nums transition ${
                                 active
-                                  ? 'text-white shadow-[0_3px_12px_rgba(0,0,0,0.15)]'
-                                  : `bg-white text-black/70 ${cardShadow} active:bg-black/[0.03]`
+                                  ? 'text-white shadow-[0_4px_14px_rgba(0,0,0,0.18)]'
+                                  : 'border border-black/[0.06] bg-white text-black/70 shadow-[0_1px_4px_rgba(0,0,0,0.06),0_4px_12px_rgba(0,0,0,0.04)] active:bg-black/[0.03] active:shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
                               }`}
                               style={active ? { backgroundColor: '#000' } : undefined}
                             >
