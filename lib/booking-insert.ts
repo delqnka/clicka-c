@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
 
@@ -20,12 +21,13 @@ export type InsertBookingRow = {
 /** Atomically insert only when no active booking overlaps the requested time range. */
 export async function insertBookingIfNoOverlap(
   row: InsertBookingRow,
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; manageToken: string } | null> {
   const requestedStartMinutes = bookingStartMinutesFromTimeString(row.time);
   const requestedDurationMinutes = Math.max(5, row.serviceDuration || 30);
   const requestedEndMinutes = requestedStartMinutes + requestedDurationMinutes;
   const legacyDate = formatLegacyDateDMY(row.date) ?? row.date;
   const consentAt = row.smsReminderConsent ? new Date().toISOString() : null;
+  const manageToken = crypto.randomBytes(16).toString('hex');
 
   const inserted = await sql`
     INSERT INTO bookings (
@@ -33,7 +35,7 @@ export async function insertBookingIfNoOverlap(
       service_name, service_price, service_duration,
       date, time, status, notes,
       sms_reminder_consent, sms_reminder_consent_at,
-      offer_id
+      offer_id, manage_token
     )
     SELECT
       ${row.id},
@@ -50,7 +52,8 @@ export async function insertBookingIfNoOverlap(
       ${row.notes || null},
       ${row.smsReminderConsent},
       ${consentAt},
-      ${row.offerId}
+      ${row.offerId},
+      ${manageToken}
     WHERE NOT EXISTS (
       SELECT 1
       FROM bookings b
@@ -72,11 +75,12 @@ export async function insertBookingIfNoOverlap(
           ) > ${requestedStartMinutes}
         )
     )
-    RETURNING id
+    RETURNING id, manage_token
   `;
 
   if (inserted.length === 0) return null;
-  return { id: String((inserted[0] as { id: string }).id ?? row.id) };
+  const result = inserted[0] as { id: string; manage_token: string };
+  return { id: String(result.id ?? row.id), manageToken: String(result.manage_token ?? manageToken) };
 }
 
 export async function claimOfferSlotAfterBooking(

@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let insertedBooking: { id: string } | null = null;
+  let insertedBooking: { id: string; manageToken: string } | null = null;
   try {
     insertedBooking = await insertBookingIfNoOverlap({
       id: bookingId,
@@ -344,6 +344,7 @@ export async function POST(request: NextRequest) {
 
   const bookingDetails = {
     bookingId: insertedBooking.id,
+    manageToken: insertedBooking.manageToken,
     clientName,
     clientPhone,
     clientEmail: normalizedClientEmail,

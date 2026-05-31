@@ -36,6 +36,7 @@ function formatBgDateDMY(dateStr: string): string {
 
 export interface BookingDetails {
   bookingId?: string;
+  manageToken?: string;
   clientName: string;
   clientPhone: string;
   clientEmail?: string;
@@ -169,6 +170,7 @@ export async function sendBookingConfirmation(
   clientEmail: string,
   booking: BookingDetails
 ): Promise<void> {
+  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://clicka.bg').replace(/\/+$/, '');
   const formattedDate = formatBgDateDMY(booking.date);
   const calendarRow: CalendarBookingRow = {
     id: booking.bookingId || `${booking.date}-${booking.time}-${booking.clientEmail || booking.clientPhone}`,
@@ -226,9 +228,17 @@ export async function sendBookingConfirmation(
           <a href="${googleUrl}" style="color: #000; font-weight: 600;">Google Calendar</a>
           · Прикрепеният .ics файл работи с Apple Calendar и Outlook.
         </p>
+        ${booking.bookingId && booking.manageToken ? `
+        <p style="margin-top: 20px; line-height: 1.7;">
+          <a href="${appBaseUrl}/booking/manage?id=${encodeURIComponent(booking.bookingId)}&token=${encodeURIComponent(booking.manageToken)}"
+             style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
+                    border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 14px;">
+            Промени или откажи резервацията
+          </a>
+        </p>` : `
         <p style="margin-top: 16px; line-height: 1.7;">
           При нужда от промяна, отговорете директно на този имейл или се свържете със салона.
-        </p>
+        </p>`}
         <p style="margin-top: 24px; font-size: 14px; line-height: 1.7;">
           Това съобщение е изпратено автоматично от <a href="https://clicka.bg">Clicka.bg</a>.
         </p>
