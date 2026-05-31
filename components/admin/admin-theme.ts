@@ -5,7 +5,7 @@ export const ADMIN_T = {
   text: '#18181B',
   muted: '#71717A',
   subtle: '#A1A1AA',
-  accent: '#18181B',
+  accent: '#22c55e',
   radius: 12,
   radiusLg: 16,
   radiusSm: 8,

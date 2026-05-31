@@ -17,7 +17,6 @@ import {
   Tag,
   UserRound,
   Users,
-  Save,
   ExternalLink,
   LogOut,
   CheckCircle2,
@@ -1135,7 +1134,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       if (!opts?.silent) setNotice('Снимките са запазени.');
     } catch (e) {
       if (!opts?.silent) handleErr(e);
-      else setError('Снимките са качени, но не успяхме да ги запазим. Натисни дискетата.');
+      else setError('Снимките са качени, но не успяхме да ги запазим. Натисни „Запази".');
     } finally {
       setBusyKey('');
     }
@@ -2822,11 +2821,11 @@ function AdminSaveBtn({
           justifyContent: 'center',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(24,24,27,0.18)',
+          boxShadow: '0 4px 12px rgba(34,197,94,0.3)',
           transition: 'transform 150ms ease, box-shadow 150ms ease',
         }}
       >
-        {busy ? <RefreshCw size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={18} strokeWidth={2.25} />}
+        {busy ? <RefreshCw size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={20} strokeWidth={2.5} />}
       </button>
     );
   }
@@ -2851,7 +2850,7 @@ function AdminSaveBtn({
         whiteSpace: 'nowrap',
       }}
     >
-      {busy ? <RefreshCw size={14} /> : <Save size={14} strokeWidth={2.25} />}
+      {busy ? <RefreshCw size={14} /> : <Check size={14} strokeWidth={2.5} />}
       {busy ? 'Запазваме…' : label}
     </button>
   );

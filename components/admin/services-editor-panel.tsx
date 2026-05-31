@@ -142,51 +142,40 @@ const ServiceCardRow = memo(function ServiceCardRow({
     <div
       style={{
         border: `1px solid ${T.border}`,
-        borderRadius: isMobile ? 16 : 14,
-        padding: isMobile ? '16px 14px' : '14px 14px',
+        borderRadius: isMobile ? 14 : 12,
+        padding: isMobile ? '12px 12px' : '12px 12px',
         background: '#fff',
         position: 'relative',
-        boxShadow: '0 2px 8px rgba(24,24,27,0.04)',
       }}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flushCommit();
       }}
     >
-      <p
-        style={{
-          margin: '0 0 10px',
-          fontSize: 11,
-          fontWeight: 700,
-          color: T.muted,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-        }}
-      >
-        {categoryLabel}
-      </p>
-      <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 10 }}>
-        <button
-          type="button"
-          aria-label="Премахни услуга"
-          onClick={() => onRemove(index)}
-          style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            width: 26,
-            height: 26,
-            borderRadius: 999,
-            border: `1px solid ${T.border}`,
-            background: '#fff',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#111',
-            cursor: 'pointer',
-          }}
-        >
-          <X size={14} />
-        </button>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: T.subtle, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            {categoryLabel}
+          </span>
+          <button
+            type="button"
+            aria-label="Премахни услуга"
+            onClick={() => onRemove(index)}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 999,
+              border: 'none',
+              background: 'transparent',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: T.subtle,
+              cursor: 'pointer',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
         <div
           style={{
             display: 'grid',

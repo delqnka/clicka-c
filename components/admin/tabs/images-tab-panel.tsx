@@ -193,8 +193,8 @@ export function ImagesTabPanel({
       </div>
 
       <GallerySection
-        title="Снимки на салона"
-        description="Интериор и помещение — показват се в горната галерия на сайта. Без качени снимки hero секцията остава само с cover."
+        title="Галерия"
+        description="Снимки на помещението — показват се в горната част на сайта."
         uploadBtn={
           <AdminSalonVenueAddBtn
             busy={busyKey === 'upload-gallery'}
@@ -213,7 +213,7 @@ export function ImagesTabPanel({
         onUpload={handleGalleryUpload}
         onReorder={(next) => {
           setSite((p) => ({ ...p, galleryImages: next }));
-          setNotice('Редът е променен. Натисни дискетата, за да запазиш.');
+          setNotice('Редът е променен. Натисни Запази.');
         }}
         onRemove={(i) =>
           setSite((p) => {
@@ -234,8 +234,8 @@ export function ImagesTabPanel({
       />
 
       <GallerySection
-        title="Портфолио"
-        description="Работа и резултати — показват се в секция „Портфолио“ на сайта. Ако няма снимки, секцията се скрива."
+        title="Портфолио (твоята работа)"
+        description="Снимки на прически и резултати."
         uploadBtn={
           <AdminGalleryAddBtn busy={busyKey === 'upload-portfolio'} onUpload={handlePortfolioUpload} />
         }
@@ -251,7 +251,7 @@ export function ImagesTabPanel({
         onUpload={handlePortfolioUpload}
         onReorder={(next) => {
           setSite((p) => ({ ...p, portfolioImages: next }));
-          setNotice('Редът е променен. Натисни дискетата, за да запазиш.');
+          setNotice('Редът е променен. Натисни Запази.');
         }}
         onRemove={(i) =>
           setSite((p) => ({

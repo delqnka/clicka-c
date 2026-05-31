@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, ImagePlus, RefreshCw, Save, Upload } from 'lucide-react';
+import { Check, CheckCircle2, ImagePlus, RefreshCw, Upload } from 'lucide-react';
 import { useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 
@@ -180,13 +180,13 @@ export function AdminSaveBtn({
           justifyContent: 'center',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(24,24,27,0.18)',
+          boxShadow: '0 4px 12px rgba(34,197,94,0.3)',
         }}
       >
         {busy ? (
           <RefreshCw size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} />
         ) : (
-          <Save size={18} strokeWidth={2.25} />
+          <Check size={20} strokeWidth={2.5} />
         )}
       </button>
     );
@@ -212,7 +212,7 @@ export function AdminSaveBtn({
         whiteSpace: 'nowrap',
       }}
     >
-      {busy ? <RefreshCw size={14} /> : <Save size={14} strokeWidth={2.25} />}
+      {busy ? <RefreshCw size={14} /> : <Check size={14} strokeWidth={2.5} />}
       {busy ? 'Запазваме…' : label}
     </button>
   );
