@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { sql } from '@/lib/db';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendTelegramMessage, getTelegramFilePath, getTelegramFileUrl } from '@/lib/telegram';
 import {
   parseBlockFromMessage,
   parsedBlockToBookingBlock,
   formatBlockConfirmation,
 } from '@/lib/telegram-block-parser';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
+import { parseBookingsFromPhoto } from '@/lib/telegram-photo-parser';
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
 
@@ -15,6 +17,8 @@ type TelegramUpdate = {
     chat: { id: number };
     from?: { first_name?: string };
     text?: string;
+    caption?: string;
+    photo?: { file_id: string; width: number; height: number }[];
     forward_date?: number;
     forward_from?: { first_name?: string };
     forward_sender_name?: string;
@@ -76,6 +80,7 @@ async function handleBlockMessage(chatId: number, text: string): Promise<void> {
 
   const block = parsedBlockToBookingBlock(parsed);
   await addBookingBlock(salon.salonId, salon.slug, block);
+  revalidateTag(`salon-public-${salon.slug}`);
   await sendTelegramMessage(chatId, formatBlockConfirmation(parsed));
 }
 
@@ -156,6 +161,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         '<code>зает 10:00-11:30 5 юни</code>',
         '<code>зает 9:00-10:00 понеделник</code>',
         '',
+        '📸 <b>Скрийншот от Fresha/Studio24</b> — изпрати снимка на резервациите и ще ги блокирам автоматично.',
+        '',
         '📩 <b>Forward от Fresha/Studio24</b> — просто forward-ни нотификацията тук и часът ще се блокира.',
         '',
         '📅 Блокираните часове няма да са достъпни за нови резервации в Clicka.',
@@ -204,9 +211,65 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       WHERE CAST(id AS text) = ${salon.salonId}
     `;
 
+    revalidateTag(`salon-public-${salon.slug}`);
+
     const d = new Date(`${parsed.date}T12:00:00`);
     const dateStr = d.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
     await sendTelegramMessage(chatId, `🔓 Деблокиран: ${dateStr}, ${parsed.start}`);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Handle photo — parse bookings from screenshot via AI vision
+  if (message.photo && message.photo.length > 0) {
+    const salon = await findSalonByChatId(chatId);
+    if (!salon) {
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      return NextResponse.json({ ok: true });
+    }
+
+    const largest = message.photo[message.photo.length - 1];
+    const filePath = await getTelegramFilePath(largest.file_id);
+    if (!filePath) {
+      await sendTelegramMessage(chatId, '❌ Не успях да изтегля снимката. Пробвай отново.');
+      return NextResponse.json({ ok: true });
+    }
+
+    const imageUrl = getTelegramFileUrl(filePath);
+    await sendTelegramMessage(chatId, '🔍 Анализирам снимката...');
+
+    const bookings = await parseBookingsFromPhoto(imageUrl);
+    if (bookings.length === 0) {
+      await sendTelegramMessage(
+        chatId,
+        '❌ Не открих резервации в снимката. Увери се, че часовете и датите се виждат ясно.',
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    let blockedCount = 0;
+    for (const b of bookings) {
+      const block: BookingBlock = {
+        date: b.date,
+        allDay: false,
+        start: b.start,
+        end: b.end,
+        note: 'От снимка (Fresha/друго приложение)',
+      };
+      await addBookingBlock(salon.salonId, salon.slug, block);
+      blockedCount++;
+    }
+
+    revalidateTag(`salon-public-${salon.slug}`);
+
+    const lines = [`🔒 <b>Блокирани ${blockedCount} часа от снимката:</b>`, ''];
+    for (const b of bookings) {
+      const d = new Date(`${b.date}T12:00:00`);
+      const dateStr = d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'long' });
+      lines.push(`📅 ${dateStr} — ${b.start} – ${b.end}`);
+    }
+    lines.push('', '💡 Ако нещо е грешно, деблокирай с /unblock');
+
+    await sendTelegramMessage(chatId, lines.join('\n'));
     return NextResponse.json({ ok: true });
   }
 
@@ -218,7 +281,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   await sendTelegramMessage(
     chatId,
-    '💡 Forward-ни съобщение от Fresha/Studio24 или напиши напр.: <b>зает 14:00-16:00 утре</b>\n\nНатисни /help за повече.',
+    '💡 Forward-ни съобщение от Fresha/Studio24 или напиши напр.: <b>зает 14:00-16:00 утре</b>\n\n📸 Или изпрати <b>скрийншот</b> с резервациите и ще ги блокирам автоматично.\n\nНатисни /help за повече.',
   );
   return NextResponse.json({ ok: true });
 }

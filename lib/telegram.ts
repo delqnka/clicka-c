@@ -4,6 +4,26 @@ import { fetchWithRetry } from '@/lib/http-retry';
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
+export function getTelegramFileUrl(filePath: string): string {
+  return `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+}
+
+export async function getTelegramFilePath(fileId: string): Promise<string | null> {
+  if (!BOT_TOKEN) return null;
+  try {
+    const res = await fetch(`${TELEGRAM_API}/getFile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_id: fileId }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { result?: { file_path?: string } };
+    return data.result?.file_path ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function formatBgDateDMY(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
