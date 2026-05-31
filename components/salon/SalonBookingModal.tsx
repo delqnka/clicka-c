@@ -536,7 +536,7 @@ export function SalonBookingModal({
                     <label className="block text-[13px] font-semibold text-black">
                       Дата
                     </label>
-                    <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1.5 scrollbar-none">
+                    <div className="-mx-1 mt-2 flex gap-2.5 overflow-x-auto px-1 pb-1.5 scrollbar-none">
                       {dateOptions.map((d) => {
                         const active = selectedDate === d.iso;
                         return (
@@ -546,8 +546,8 @@ export function SalonBookingModal({
                             onClick={() => onDateChange(d.iso)}
                             className={`flex h-[4.25rem] w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-2xl text-center transition ${
                               active
-                                ? 'text-white shadow-[0_3px_12px_rgba(0,0,0,0.15)]'
-                                : `bg-white text-black/60 ${cardShadow}`
+                                ? 'text-white shadow-[0_4px_14px_rgba(0,0,0,0.18)]'
+                                : 'border border-black/[0.06] bg-white text-black/60 shadow-[0_1px_4px_rgba(0,0,0,0.06),0_4px_12px_rgba(0,0,0,0.04)]'
                             }`}
                             style={active ? { backgroundColor: '#000' } : undefined}
                           >
