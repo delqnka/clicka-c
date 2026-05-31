@@ -114,46 +114,41 @@ export async function PATCH(request: NextRequest) {
         ? post.publishedAt || publishedAtById.get(post.id) || mapped.published_at
         : null;
 
-    if (post.id && publishedAtById.has(post.id)) {
-      await sql`
-        UPDATE salon_blog_posts
-        SET
-          slug = ${mapped.slug},
-          title = ${mapped.title},
-          excerpt = ${mapped.excerpt},
-          body_md = ${mapped.body_md},
-          cover_image_url = ${mapped.cover_image_url},
-          status = ${mapped.status},
-          published_at = ${preservedPublishedAt},
-          meta_title = ${mapped.meta_title},
-          meta_description = ${mapped.meta_description},
-          updated_at = now()
-        WHERE id = ${post.id}::uuid AND salon_id = ${auth.salon.salonId}
-      `;
-      keepIds.push(post.id);
-    } else {
-      const inserted = await sql`
-        INSERT INTO salon_blog_posts (
-          salon_id, slug, title, excerpt, body_md, cover_image_url,
-          status, published_at, meta_title, meta_description
-        )
-        VALUES (
-          ${mapped.salon_id},
-          ${mapped.slug},
-          ${mapped.title},
-          ${mapped.excerpt},
-          ${mapped.body_md},
-          ${mapped.cover_image_url},
-          ${mapped.status},
-          ${preservedPublishedAt},
-          ${mapped.meta_title},
-          ${mapped.meta_description}
-        )
-        RETURNING id::text AS id
-      `;
-      const newId = String((inserted[0] as { id: string }).id ?? '');
-      if (newId) keepIds.push(newId);
-    }
+    const upserted = await sql`
+      INSERT INTO salon_blog_posts (
+        salon_id, slug, title, excerpt, body_md, cover_image_url,
+        status, published_at, meta_title, meta_description
+      )
+      VALUES (
+        ${mapped.salon_id},
+        ${mapped.slug},
+        ${mapped.title},
+        ${mapped.excerpt},
+        ${mapped.body_md},
+        ${mapped.cover_image_url},
+        ${mapped.status},
+        ${preservedPublishedAt},
+        ${mapped.meta_title},
+        ${mapped.meta_description}
+      )
+      ON CONFLICT (salon_id, slug)
+      DO UPDATE SET
+        title = EXCLUDED.title,
+        excerpt = EXCLUDED.excerpt,
+        body_md = EXCLUDED.body_md,
+        cover_image_url = EXCLUDED.cover_image_url,
+        status = EXCLUDED.status,
+        published_at = CASE
+          WHEN EXCLUDED.status = 'published' THEN COALESCE(salon_blog_posts.published_at, EXCLUDED.published_at)
+          ELSE NULL
+        END,
+        meta_title = EXCLUDED.meta_title,
+        meta_description = EXCLUDED.meta_description,
+        updated_at = now()
+      RETURNING id::text AS id
+    `;
+    const savedId = String((upserted[0] as { id: string }).id ?? '');
+    if (savedId) keepIds.push(savedId);
   }
 
   if (keepIds.length > 0) {

@@ -44,7 +44,8 @@ type Props = {
   busyKey: string;
   inp: CSSProperties;
   blogPreviewBase: string;
-  onChange: (posts: AdminSalonBlogPost[]) => void;
+  onPatchPost: (index: number, patch: Partial<AdminSalonBlogPost>) => AdminSalonBlogPost[];
+  onReplacePosts: (posts: AdminSalonBlogPost[]) => AdminSalonBlogPost[];
   onBlogTitleChange: (title: string) => void;
   onUploadCover: (postIndex: number, file: File | null) => void | Promise<void>;
   onSave: (posts?: AdminSalonBlogPost[]) => void | Promise<void>;
@@ -97,7 +98,8 @@ export function SalonBlogSection({
   busyKey,
   inp,
   blogPreviewBase,
-  onChange,
+  onPatchPost,
+  onReplacePosts,
   onBlogTitleChange,
   onUploadCover,
   onSave,
@@ -124,25 +126,19 @@ export function SalonBlogSection({
     });
   }
 
-  function replacePosts(next: AdminSalonBlogPost[]) {
-    onChange(next);
-    return next;
-  }
-
   function updatePost(index: number, patch: Partial<AdminSalonBlogPost>) {
-    const next = replacePosts(posts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
-    if (patch.status === 'published') {
+    const next = onPatchPost(index, patch);
+    if ('status' in patch) {
       void onSave(next);
     }
   }
 
   function removePost(index: number) {
-    onChange(posts.filter((_, i) => i !== index));
+    onReplacePosts(posts.filter((_, i) => i !== index));
   }
 
   function addPost() {
-    const next = [newEmptyBlogPost(), ...posts];
-    onChange(next);
+    onReplacePosts([newEmptyBlogPost(), ...posts]);
     setExpandedIds(new Set(['draft-0']));
   }
 

@@ -336,6 +336,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [offers, setOffers] = useState<AdminSalonOffer[]>([]);
   const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
   const [blogSectionTitle, setBlogSectionTitle] = useState('');
+  const blogPostsRef = useRef<AdminSalonBlogPost[]>([]);
+  const blogSaveChainRef = useRef(Promise.resolve());
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [smsDraftEnabled, setSmsDraftEnabled] = useState(initialSite.smsEnabled);
@@ -786,7 +788,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         if (!res.ok) throw new Error((data as { error?: string }).error || 'Грешка');
         if (cancelled) return;
         const list = (data as { posts?: AdminSalonBlogPost[] }).posts;
-        setBlogPosts(Array.isArray(list) ? list : []);
+        const loaded = Array.isArray(list) ? list : [];
+        blogPostsRef.current = loaded;
+        setBlogPosts(loaded);
         const title = (data as { blogTitle?: string }).blogTitle;
         if (typeof title === 'string') setBlogSectionTitle(title);
       } catch (e) {
@@ -1519,8 +1523,20 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     }
   }
 
-  async function saveBlogPosts(overridePosts?: AdminSalonBlogPost[]) {
-    const postsToSave = overridePosts ?? blogPosts;
+  const patchBlogPost = useCallback((index: number, patch: Partial<AdminSalonBlogPost>) => {
+    const next = blogPostsRef.current.map((p, i) => (i === index ? { ...p, ...patch } : p));
+    blogPostsRef.current = next;
+    setBlogPosts(next);
+    return next;
+  }, []);
+
+  const replaceBlogPosts = useCallback((next: AdminSalonBlogPost[]) => {
+    blogPostsRef.current = next;
+    setBlogPosts(next);
+    return next;
+  }, []);
+
+  async function saveBlogPostsInternal(postsToSave: AdminSalonBlogPost[]) {
     setError('');
     setNotice('');
     setBusyKey('blog');
@@ -1531,14 +1547,33 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         body: JSON.stringify({ posts: postsToSave, blogTitle: blogSectionTitle }),
       });
       const data = (await guardResponse(res)) as { posts?: AdminSalonBlogPost[]; blogTitle?: string };
-      if (Array.isArray(data.posts)) setBlogPosts(data.posts);
+      if (Array.isArray(data.posts)) {
+        blogPostsRef.current = data.posts;
+        setBlogPosts(data.posts);
+      }
       if (typeof data.blogTitle === 'string') setBlogSectionTitle(data.blogTitle);
-      setNotice('Блогът е запазен.');
+      const published = postsToSave.some((p) => p.status === 'published');
+      setNotice(published ? 'Статията е публикувана.' : 'Блогът е запазен.');
     } catch (e) {
       handleErr(e);
     } finally {
       setBusyKey('');
     }
+  }
+
+  function enqueueBlogSave(overridePosts?: AdminSalonBlogPost[]) {
+    if (overridePosts) {
+      blogPostsRef.current = overridePosts;
+      setBlogPosts(overridePosts);
+    }
+    blogSaveChainRef.current = blogSaveChainRef.current.catch(() => {}).then(async () => {
+      await saveBlogPostsInternal(blogPostsRef.current);
+    });
+    return blogSaveChainRef.current;
+  }
+
+  async function saveBlogPosts(overridePosts?: AdminSalonBlogPost[]) {
+    return enqueueBlogSave(overridePosts);
   }
 
   async function handleBlogCoverUpload(postIndex: number, file: File | null) {
@@ -1547,11 +1582,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     setError('');
     try {
       const url = await uploadSingleFile(file);
-      const nextPosts = blogPosts.map((p, i) =>
+      const nextPosts = blogPostsRef.current.map((p, i) =>
         i === postIndex ? { ...p, coverImageUrl: url } : p,
       );
+      blogPostsRef.current = nextPosts;
       setBlogPosts(nextPosts);
-      await saveBlogPosts(nextPosts);
+      await enqueueBlogSave();
       setNotice('Снимката е качена.');
     } catch (e) {
       handleErr(e);
@@ -2230,7 +2266,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 busyKey={busyKey}
                 inp={inp}
                 blogPreviewBase={sitePublicUrl.replace(/\/$/, '')}
-                onChange={setBlogPosts}
+                onPatchPost={patchBlogPost}
+                onReplacePosts={replaceBlogPosts}
                 onBlogTitleChange={setBlogSectionTitle}
                 onUploadCover={handleBlogCoverUpload}
                 onSave={saveBlogPosts}
