@@ -156,6 +156,7 @@ type Props = {
 };
 
 type BookingStatus = BookingRecord['status'];
+type BookingListFilter = 'all' | 'upcoming' | BookingStatus;
 type ClientSummary = {
   key: string;
   name: string;
@@ -289,7 +290,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [site, setSite]           = useState(initialSite);
   const [bookings, setBookings]   = useState(initialBookings);
   const [activeTab, setActiveTab] = useState<TabId>('site');
-  const [statusFilter, setStatusFilter] = useState<'all' | BookingStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
   const [notice, setNotice]       = useState('');
   const [busyKey, setBusyKey]     = useState('');
@@ -412,10 +413,17 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const bookingsUiActive = activeTab === 'bookings';
   const clientsUiActive = activeTab === 'clients';
   const filteredBookings = useMemo(
-    () =>
-      deferredStatusFilter === 'all'
-        ? deferredBookings
-        : deferredBookings.filter((b) => b.status === deferredStatusFilter),
+    () => {
+      if (deferredStatusFilter === 'all') return deferredBookings;
+      if (deferredStatusFilter === 'upcoming') {
+        return deferredBookings.filter((b) => {
+          const status = String(b.status ?? '').trim().toLowerCase();
+          if (status === 'cancelled' || status === 'completed') return false;
+          return !bookingSlotIsPastSimple(String(b.date ?? ''), String(b.time ?? ''));
+        });
+      }
+      return deferredBookings.filter((b) => b.status === deferredStatusFilter);
+    },
     [deferredBookings, deferredStatusFilter]
   );
   const adminServiceCategories = useMemo(() => {
@@ -2533,10 +2541,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                     {bookings.length} общо
                   </span>
                   {!isMobile ? (
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'all' | BookingStatus)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as BookingListFilter)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
                       <option value="all">Всички</option>
+                      <option value="upcoming">Предстоящи</option>
                       <option value="pending">Чакащи</option>
-                      <option value="confirmed">Потвърдени</option>
                       <option value="completed">Завършени</option>
                       <option value="cancelled">Отказани</option>
                     </select>

@@ -6,6 +6,7 @@ import { formatSalonPrice } from '@/lib/salon-currency';
 
 type BookingStatus = BookingRecord['status'];
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
+export type BookingListFilter = 'all' | 'upcoming' | BookingStatus;
 
 type ThemePalette = {
   text: string;
@@ -43,8 +44,8 @@ type ExternalCalendarEventRow = {
 type BookingsPanelProps = {
   isMobile: boolean;
   bookings: BookingRecord[];
-  statusFilter: 'all' | BookingStatus;
-  setStatusFilter: (status: 'all' | BookingStatus) => void;
+  statusFilter: BookingListFilter;
+  setStatusFilter: (status: BookingListFilter) => void;
   calendarMonthLabel: string;
   calendarMeta: { year: number; month: number; daysInMonth: number; mondayFirstOffset: number };
   bookingsCountByDate: Map<string, number>;
@@ -87,12 +88,17 @@ function ymdKey(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-const STATUS_FILTER_LABELS: Record<BookingStatus, string> = {
-  pending: 'Чакащи',
-  confirmed: 'Потвърдени',
-  completed: 'Завършени',
-  cancelled: 'Отказани',
-};
+function isUpcomingBooking(booking: BookingRecord): boolean {
+  const status = String(booking.status ?? '').trim().toLowerCase();
+  if (status === 'cancelled' || status === 'completed') return false;
+  return !bookingSlotIsPastSimple(String(booking.date ?? ''), String(booking.time ?? ''));
+}
+
+function bookingFilterCount(bookings: BookingRecord[], filter: BookingListFilter): number {
+  if (filter === 'all') return bookings.length;
+  if (filter === 'upcoming') return bookings.filter(isUpcomingBooking).length;
+  return bookings.filter((b) => b.status === filter).length;
+}
 
 function BookingCard({
   booking,
@@ -217,9 +223,9 @@ export function BookingsPanel({
     <>
       {isMobile && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
-          {([['all', 'Всички'], ['pending', 'Чакащи'], ['confirmed', 'Потвърдени'], ['completed', 'Завършени'], ['cancelled', 'Отказани']] as const).map(([val, lbl]) => {
+          {([['all', 'Всички'], ['upcoming', 'Предстоящи'], ['pending', 'Чакащи'], ['completed', 'Завършени'], ['cancelled', 'Отказани']] as const).map(([val, lbl]) => {
             const isActive = statusFilter === val;
-            const count = val === 'all' ? bookings.length : bookings.filter(b => b.status === val).length;
+            const count = bookingFilterCount(bookings, val);
             return (
               <button
                 key={val}
@@ -346,31 +352,17 @@ export function BookingsPanel({
               ))}
             </div>
           ) : null}
-          {statusFilter !== 'all' ? (
-            visibleBookings.length > 0 ? (
-              <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
-                <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 600, color: T.muted }}>
-                  {STATUS_FILTER_LABELS[statusFilter]} · {visibleBookings.length}
-                </p>
-                {visibleBookings.map((b) => (
-                  <BookingCard
-                    key={b.id}
-                    booking={b}
-                    isMobile={isMobile}
-                    T={T}
-                    updateBookingStatus={updateBookingStatus}
-                  />
-                ))}
-              </div>
-            ) : null
-          ) : (
-          ([
-            ['upcoming', 'Предстоящи'],
-            ['past', 'Минали'],
-            ['completed', 'Завършени'],
-            ['cancelled', 'Отказани'],
-          ] as const).map(([groupKey, groupLabel]) => {
-            const rows = groupedVisibleBookings[groupKey];
+          {(
+            (statusFilter === 'upcoming'
+              ? [['upcoming', 'Предстоящи']]
+              : [
+                  ['upcoming', 'Предстоящи'],
+                  ['past', 'Минали'],
+                  ['completed', 'Завършени'],
+                  ['cancelled', 'Отказани'],
+                ]) as const
+          ).map(([groupKey, groupLabel]) => {
+            const rows = groupedVisibleBookings[groupKey as BookingGroupKey];
             if (rows.length === 0) return null;
             return (
               <div key={groupKey} style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
@@ -388,8 +380,7 @@ export function BookingsPanel({
                 ))}
               </div>
             );
-          })
-          )}
+          })}
         </div>
       )}
     </>
