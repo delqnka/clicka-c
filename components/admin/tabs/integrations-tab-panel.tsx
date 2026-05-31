@@ -100,23 +100,102 @@ export function IntegrationsTabPanel({
     <AdminSection title="Интеграции" desc="Telegram, календар и Google отзиви.">
       <div style={{ display: 'grid', gap: 10 }}>
         <AdminInfoCard
-          title="Календар"
+          title="Блокирай часове от Fresha / Booksy / iCloud"
           status={
-            calendarStatus.externalIcsUrl || calendarStatus.feedUrl ? 'connected' : 'pending'
+            calendarStatus.externalIcsUrl ? 'connected' : 'pending'
           }
         >
-          <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-            Синхронизирай резервациите с телефона си и блокирай часове от други системи (Fresha, Booksy и др.)
-          </p>
-
-          {calendarStatus.feedUrl ? (
-            <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+          {calendarStatus.externalIcsUrl ? (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
+                Синхронизацията е активна
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.55 }}>
+                Заетите часове от външния ти календар автоматично се блокират за нови резервации.
+              </p>
+              <input
+                style={{ ...inp, fontSize: 13 }}
+                value={externalIcsDraft}
+                onChange={(e) => setExternalIcsDraft(e.target.value)}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  style={btn('primary')}
+                  disabled={busyKey === 'calendar-ics-save'}
+                  onClick={() => void onSaveExternalIcsUrl(externalIcsDraft)}
+                >
+                  {busyKey === 'calendar-ics-save' ? 'Запазване…' : 'Обнови линка'}
+                </button>
+                <button
+                  type="button"
+                  style={btn('danger')}
+                  disabled={busyKey === 'calendar-ics-save'}
+                  onClick={() => {
+                    setExternalIcsDraft('');
+                    void onSaveExternalIcsUrl('');
+                  }}
+                >
+                  Премахни
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
+                Ако ползваш Fresha, Booksy или друга система — постави линк към календара и заетите часове ще се блокират автоматично.
+              </p>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
-                Виж резервациите в телефона си
+                Как да взема линка:
               </p>
-              <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
-                Копирай линка и го добави в Google Calendar (From URL) или iPhone (Абонаментен календар).
-              </p>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ background: '#F4F4F5', borderRadius: 8, padding: '10px 12px' }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>iPhone (iOS Календар)</p>
+                  <ol style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.8 }}>
+                    <li>Отвори приложение <strong>Календар</strong></li>
+                    <li>Натисни <strong>„Календари"</strong> долу</li>
+                    <li>Натисни <strong>ⓘ</strong> до календара с резервациите</li>
+                    <li>Включи <strong>„Публичен календар"</strong></li>
+                    <li>Натисни <strong>„Сподели линк"</strong> → Копирай</li>
+                  </ol>
+                </div>
+                <div style={{ background: '#F4F4F5', borderRadius: 8, padding: '10px 12px' }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>Google Calendar</p>
+                  <ol style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.8 }}>
+                    <li>Отвори <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.accent }}>calendar.google.com/settings</a></li>
+                    <li>Избери календара отляво</li>
+                    <li>Намери <strong>„Таен адрес в iCal формат"</strong></li>
+                    <li>Копирай линка</li>
+                  </ol>
+                </div>
+              </div>
+              <input
+                style={{ ...inp, fontSize: 13 }}
+                value={externalIcsDraft}
+                onChange={(e) => setExternalIcsDraft(e.target.value)}
+                placeholder="Постави линк тук (webcal://… или https://…)"
+              />
+              <button
+                type="button"
+                style={btn('primary')}
+                disabled={busyKey === 'calendar-ics-save' || !externalIcsDraft.trim()}
+                onClick={() => void onSaveExternalIcsUrl(externalIcsDraft)}
+              >
+                {busyKey === 'calendar-ics-save' ? 'Запазване…' : 'Свържи календара'}
+              </button>
+            </div>
+          )}
+        </AdminInfoCard>
+
+        <AdminInfoCard
+          title="Резервации в телефона"
+          status={calendarStatus.feedUrl ? 'connected' : 'pending'}
+        >
+          <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
+            Виж Clicka резервациите директно в календара на телефона си.
+          </p>
+          {calendarStatus.feedUrl ? (
+            <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
               <button
                 type="button"
                 onClick={() => {
@@ -154,45 +233,15 @@ export function IntegrationsTabPanel({
                   <Copy size={15} style={{ color: ADMIN_T.muted, flexShrink: 0 }} />
                 )}
               </button>
+              <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
+                Копирай линка → Google Calendar: „From URL" / iPhone: „Абонаментен календар"
+              </p>
             </div>
           ) : (
             <p style={{ margin: '8px 0 0', fontSize: 12, color: ADMIN_T.subtle }}>
               {calendarStatus.loading ? 'Генерираме линк…' : 'Линкът се зарежда…'}
             </p>
           )}
-
-          <div style={{ marginTop: 14, display: 'grid', gap: 6 }}>
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
-              Блокирай часове от друг календар (Fresha, Booksy, iCloud)
-            </p>
-            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
-              Постави ICS линк — заетите часове ще се блокират автоматично за нови резервации.
-            </p>
-            <details style={{ marginBottom: 2 }}>
-              <summary style={{ fontSize: 12, color: ADMIN_T.accent, cursor: 'pointer', fontWeight: 500 }}>
-                Откъде да взема линка?
-              </summary>
-              <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.7 }}>
-                <li><strong>iCloud:</strong> Отвори <a href="https://www.icloud.com/calendar" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.accent }}>icloud.com/calendar</a> → иконка за споделяне до календара → Публичен календар → копирай линка</li>
-                <li><strong>Google:</strong> <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.accent }}>calendar.google.com</a> → Настройки → избери календар → Таен адрес в iCal формат</li>
-                <li><strong>Fresha:</strong> Calendar → Setup → Share/Export → Copy ICS link</li>
-              </ul>
-            </details>
-            <input
-              style={{ ...inp, fontSize: 13 }}
-              value={externalIcsDraft}
-              onChange={(e) => setExternalIcsDraft(e.target.value)}
-              placeholder="webcal://… или https://…/calendar.ics"
-            />
-            <button
-              type="button"
-              style={btn('primary')}
-              disabled={busyKey === 'calendar-ics-save'}
-              onClick={() => void onSaveExternalIcsUrl(externalIcsDraft)}
-            >
-              {busyKey === 'calendar-ics-save' ? 'Запазване…' : 'Запази и синхронизирай'}
-            </button>
-          </div>
 
           {calendarStatus.googleConfigured ? (
             <details style={{ marginTop: 14 }}>
@@ -203,7 +252,7 @@ export function IntegrationsTabPanel({
                 <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.55 }}>
                   {calendarStatus.googleConnected
                     ? 'OAuth връзката е активна.'
-                    : 'Не е задължително — ICS линковете по-горе покриват повечето случаи.'}
+                    : 'Не е задължително — линкът по-горе покрива повечето случаи.'}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {calendarStatus.googleConnected ? (
@@ -235,15 +284,6 @@ export function IntegrationsTabPanel({
               </div>
             </details>
           ) : null}
-
-          <button
-            type="button"
-            style={{ ...btn('sm-ghost'), marginTop: 10 }}
-            disabled={calendarStatus.loading}
-            onClick={() => void loadCalendarStatus()}
-          >
-            {calendarStatus.loading ? 'Проверяваме…' : 'Обнови статуса'}
-          </button>
         </AdminInfoCard>
 
         <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'}>
