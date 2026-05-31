@@ -1,7 +1,7 @@
 'use client';
 
-import { Calendar, Check, Copy, RefreshCw } from 'lucide-react';
-import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { Check, Copy, RefreshCw } from 'lucide-react';
+import { type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { GOOGLE_PLACE_ID_FINDER_URL } from '@/components/admin/admin-constants';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
@@ -90,200 +90,33 @@ export function IntegrationsTabPanel({
   onResyncGoogleCalendar: () => void | Promise<void>;
   onSaveExternalIcsUrl: (url: string) => void | Promise<void>;
 }) {
-  const [externalIcsDraft, setExternalIcsDraft] = useState(calendarStatus.externalIcsUrl || '');
-
-  useEffect(() => {
-    setExternalIcsDraft(calendarStatus.externalIcsUrl || '');
-  }, [calendarStatus.externalIcsUrl]);
-
   return (
     <AdminSection title="Интеграции" desc="Telegram, календар и Google отзиви.">
       <div style={{ display: 'grid', gap: 10 }}>
         <AdminInfoCard
-          title="Блокирай часове от Fresha / Booksy / iCloud"
-          status={
-            calendarStatus.externalIcsUrl ? 'connected' : 'pending'
-          }
+          title="Блокирай часове от Fresha / Booksy / Studio24"
+          status={site.telegramChatId ? 'connected' : 'pending'}
         >
-          {calendarStatus.externalIcsUrl ? (
-            <div style={{ display: 'grid', gap: 8 }}>
+          {site.telegramChatId ? (
+            <div style={{ display: 'grid', gap: 6 }}>
               <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
-                Синхронизацията е активна
+                Telegram ботът е свързан
               </p>
-              <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.55 }}>
-                Заетите часове от външния ти календар автоматично се блокират за нови резервации.
-              </p>
-              <input
-                style={{ ...inp, fontSize: 13 }}
-                value={externalIcsDraft}
-                onChange={(e) => setExternalIcsDraft(e.target.value)}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="button"
-                  style={btn('primary')}
-                  disabled={busyKey === 'calendar-ics-save'}
-                  onClick={() => void onSaveExternalIcsUrl(externalIcsDraft)}
-                >
-                  {busyKey === 'calendar-ics-save' ? 'Запазване…' : 'Обнови линка'}
-                </button>
-                <button
-                  type="button"
-                  style={btn('danger')}
-                  disabled={busyKey === 'calendar-ics-save'}
-                  onClick={() => {
-                    setExternalIcsDraft('');
-                    void onSaveExternalIcsUrl('');
-                  }}
-                >
-                  Премахни
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
               <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-                Ако ползваш Fresha, Booksy или друга система — постави линк към календара и заетите часове ще се блокират автоматично.
+                Когато получиш нотификация от Fresha, Studio24 или друга система — просто я forward-ни на Clicka бота в Telegram. Часът ще се блокира автоматично.
               </p>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
-                Как да взема линка:
-              </p>
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ background: '#F4F4F5', borderRadius: 8, padding: '10px 12px' }}>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>iPhone (iOS Календар)</p>
-                  <ol style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.8 }}>
-                    <li>Отвори приложение <strong>Календар</strong></li>
-                    <li>Натисни <strong>„Календари"</strong> долу</li>
-                    <li>Натисни <strong>ⓘ</strong> до календара с резервациите</li>
-                    <li>Включи <strong>„Публичен календар"</strong></li>
-                    <li>Натисни <strong>„Сподели линк"</strong> → Копирай</li>
-                  </ol>
-                </div>
-                <div style={{ background: '#F4F4F5', borderRadius: 8, padding: '10px 12px' }}>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>Google Calendar</p>
-                  <ol style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.8 }}>
-                    <li>Отвори <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.accent }}>calendar.google.com/settings</a></li>
-                    <li>Избери календара отляво</li>
-                    <li>Намери <strong>„Таен адрес в iCal формат"</strong></li>
-                    <li>Копирай линка</li>
-                  </ol>
-                </div>
+              <div style={{ background: '#F4F4F5', borderRadius: 8, padding: '10px 12px', marginTop: 2 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>Или напиши директно:</p>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: ADMIN_T.muted, fontFamily: 'monospace' }}>
+                  зает 14:00-16:00 утре
+                </p>
               </div>
-              <input
-                style={{ ...inp, fontSize: 13 }}
-                value={externalIcsDraft}
-                onChange={(e) => setExternalIcsDraft(e.target.value)}
-                placeholder="Постави линк тук (webcal://… или https://…)"
-              />
-              <button
-                type="button"
-                style={btn('primary')}
-                disabled={busyKey === 'calendar-ics-save' || !externalIcsDraft.trim()}
-                onClick={() => void onSaveExternalIcsUrl(externalIcsDraft)}
-              >
-                {busyKey === 'calendar-ics-save' ? 'Запазване…' : 'Свържи календара'}
-              </button>
-            </div>
-          )}
-        </AdminInfoCard>
-
-        <AdminInfoCard
-          title="Резервации в телефона"
-          status={calendarStatus.feedUrl ? 'connected' : 'pending'}
-        >
-          <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-            Виж Clicka резервациите директно в календара на телефона си.
-          </p>
-          {calendarStatus.feedUrl ? (
-            <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(calendarStatus.feedUrl).catch(() => null);
-                  setBusyKey('copied-cal-feed');
-                  setTimeout(() => setBusyKey((k) => (k === 'copied-cal-feed' ? '' : k)), 2000);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: ADMIN_T.radiusSm,
-                  background: '#F4F4F5',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <code
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    fontFamily: 'monospace',
-                    wordBreak: 'break-all',
-                    paddingRight: 8,
-                  }}
-                >
-                  {calendarStatus.feedUrl}
-                </code>
-                {busyKey === 'copied-cal-feed' ? (
-                  <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
-                ) : (
-                  <Copy size={15} style={{ color: ADMIN_T.muted, flexShrink: 0 }} />
-                )}
-              </button>
-              <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
-                Копирай линка → Google Calendar: „From URL" / iPhone: „Абонаментен календар"
-              </p>
             </div>
           ) : (
-            <p style={{ margin: '8px 0 0', fontSize: 12, color: ADMIN_T.subtle }}>
-              {calendarStatus.loading ? 'Генерираме линк…' : 'Линкът се зарежда…'}
+            <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
+              Свържи Telegram бота (по-горе) и ще можеш да блокираш часове с forward на съобщения от Fresha, Studio24 и др.
             </p>
           )}
-
-          {calendarStatus.googleConfigured ? (
-            <details style={{ marginTop: 14 }}>
-              <summary style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.subtle, cursor: 'pointer' }}>
-                Google OAuth (по избор)
-              </summary>
-              <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-                <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.55 }}>
-                  {calendarStatus.googleConnected
-                    ? 'OAuth връзката е активна.'
-                    : 'Не е задължително — линкът по-горе покрива повечето случаи.'}
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {calendarStatus.googleConnected ? (
-                    <>
-                      <button
-                        type="button"
-                        style={btn('sm-ghost')}
-                        disabled={busyKey === 'calendar-resync'}
-                        onClick={() => void onResyncGoogleCalendar()}
-                      >
-                        {busyKey === 'calendar-resync' ? 'Синхронизираме…' : 'Синхронизирай отново'}
-                      </button>
-                      <button
-                        type="button"
-                        style={btn('danger')}
-                        disabled={busyKey === 'calendar-disconnect'}
-                        onClick={() => void onDisconnectGoogleCalendar()}
-                      >
-                        {busyKey === 'calendar-disconnect' ? 'Премахваме…' : 'Премахни OAuth'}
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" style={btn('sm-ghost')} onClick={onConnectGoogleCalendar}>
-                      <Calendar size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
-                      Свържи Google OAuth
-                    </button>
-                  )}
-                </div>
-              </div>
-            </details>
-          ) : null}
         </AdminInfoCard>
 
         <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'}>
