@@ -128,6 +128,45 @@ export function normalizeImageList(raw: unknown): string[] {
     .filter(Boolean);
 }
 
+/** Avoid wiping legacy portfolio when admin uploads into an empty portfolio tab. */
+export function mergePortfolioImageSave(
+  incoming: string[],
+  existingPortfolio: string[],
+  gallery: string[],
+): string[] {
+  const next = normalizeImageList(incoming);
+  const existing = normalizeImageList(existingPortfolio);
+  const salonGallery = normalizeImageList(gallery);
+
+  if (next.length === 0) return existing;
+
+  const wasGalleryDuplicate =
+    existing.length > 0 &&
+    existing.length === salonGallery.length &&
+    existing.every((url, index) => url === salonGallery[index]);
+
+  if (wasGalleryDuplicate && salonGallery.length > next.length) {
+    return [...new Set([...salonGallery, ...next])];
+  }
+
+  if (
+    existing.length === 0 &&
+    salonGallery.length > 0 &&
+    next.length > 0 &&
+    next.length < salonGallery.length &&
+    !next.every((url) => salonGallery.includes(url))
+  ) {
+    return [...new Set([...salonGallery, ...next])];
+  }
+
+  const missingFromGallery = salonGallery.filter((url) => !next.includes(url));
+  if (missingFromGallery.length > 0 && next.length < salonGallery.length) {
+    return [...new Set([...salonGallery, ...next])];
+  }
+
+  return next;
+}
+
 /** Legacy rows stored the same URLs in gallery + portfolio — keep salon photos in gallery only. */
 export function normalizePortfolioImages(gallery: string[], portfolioRaw: unknown): string[] {
   const portfolio = normalizeImageList(portfolioRaw);

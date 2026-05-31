@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
-import { loadAdminSiteDataBySlug, normalizeImageList } from '@/lib/admin-site';
+import { loadAdminSiteDataBySlug, mergePortfolioImageSave, normalizeImageList } from '@/lib/admin-site';
 import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
 
 export async function GET(request: NextRequest) {
@@ -50,9 +50,13 @@ export async function PATCH(request: NextRequest) {
       : current.ownerPublicPhotoUrl;
   const galleryImages =
     body.galleryImages !== undefined ? normalizeImageList(body.galleryImages) : current.galleryImages;
-  const portfolioImages =
+  const portfolioImagesRaw =
     body.portfolioImages !== undefined
       ? normalizeImageList(body.portfolioImages)
+      : current.portfolioImages;
+  const portfolioImages =
+    body.portfolioImages !== undefined
+      ? mergePortfolioImageSave(portfolioImagesRaw, current.portfolioImages, galleryImages)
       : current.portfolioImages;
   const normalizedCoverImageUrl =
     coverImageUrl || galleryImages[0] || logoImageUrl || current.coverImageUrl || current.logoImageUrl;

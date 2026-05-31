@@ -288,6 +288,8 @@ const T = {
 /* ═══════════════════════════════════════════════════════ */
 export default function AdminDashboardClient({ slug, ownerEmail, initialSite, initialBookings }: Props) {
   const [site, setSite]           = useState(initialSite);
+  const siteRef = useRef(site);
+  siteRef.current = site;
   const [bookings, setBookings]   = useState(initialBookings);
   const [activeTab, setActiveTab] = useState<TabId>('site');
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
@@ -1386,7 +1388,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     const setPending = target === 'gallery' ? setGalleryPending : setPortfolioPending;
     const setProgress = target === 'gallery' ? setGalleryUploadProgress : setPortfolioUploadProgress;
     const label = target === 'gallery' ? 'салона' : 'портфолиото';
-    const stableBefore = site[listKey].filter((u) => u && !u.startsWith('blob:'));
+
+    const snapshot = siteRef.current;
+    const stableBefore =
+      target === 'portfolio'
+        ? (() => {
+            const portfolio = snapshot.portfolioImages.filter((u) => u && !u.startsWith('blob:'));
+            if (portfolio.length > 0) return portfolio;
+            return snapshot.galleryImages.filter((u) => u && !u.startsWith('blob:'));
+          })()
+        : snapshot[listKey].filter((u) => u && !u.startsWith('blob:'));
 
     const previews = images.map((file) => ({
       file,
@@ -1449,16 +1460,17 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       });
 
       const finalList = [...stableBefore, ...uploadedUrls];
+      const latest = siteRef.current;
+      const galleryStable = latest.galleryImages.filter((u) => u && !u.startsWith('blob:'));
       const persistPayload = {
         coverImageUrl:
-          target === 'gallery' && (!site.coverImageUrl || site.coverImageUrl.startsWith('blob:'))
-            ? (finalList[0] ?? site.coverImageUrl)
-            : site.coverImageUrl,
-        logoImageUrl: site.logoImageUrl,
-        galleryImages: target === 'gallery' ? finalList : site.galleryImages.filter((u) => !u.startsWith('blob:')),
-        portfolioImages:
-          target === 'portfolio' ? finalList : site.portfolioImages.filter((u) => !u.startsWith('blob:')),
-        ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
+          target === 'gallery' && (!latest.coverImageUrl || latest.coverImageUrl.startsWith('blob:'))
+            ? (finalList[0] ?? latest.coverImageUrl)
+            : latest.coverImageUrl,
+        logoImageUrl: latest.logoImageUrl,
+        galleryImages: target === 'gallery' ? finalList : galleryStable,
+        portfolioImages: target === 'portfolio' ? finalList : latest.portfolioImages.filter((u) => !u.startsWith('blob:')),
+        ownerPublicPhotoUrl: latest.ownerPublicPhotoUrl,
       };
 
       setSite((p) => ({

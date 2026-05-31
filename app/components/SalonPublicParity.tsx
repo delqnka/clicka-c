@@ -554,7 +554,15 @@ export default function SalonPublicParity({
     return uris;
   }, [cover, salonGalleryPhotos, isValidImageUri]);
 
-  const portfolioDisplay = portfolioPhotos;
+  const portfolioDisplay = useMemo(() => {
+    if (portfolioPhotos.length === 0) return salonGalleryPhotos;
+    const inPortfolio = new Set(portfolioPhotos);
+    const missingFromGallery = salonGalleryPhotos.filter((url) => !inPortfolio.has(url));
+    if (missingFromGallery.length > 0 && portfolioPhotos.length < salonGalleryPhotos.length) {
+      return [...portfolioPhotos, ...missingFromGallery];
+    }
+    return portfolioPhotos;
+  }, [portfolioPhotos, salonGalleryPhotos]);
 
   const servicesWithImages = useMemo(
     () =>
