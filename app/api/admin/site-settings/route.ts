@@ -13,8 +13,6 @@ import {
   serializeSalonVenueExtras,
   type SalonVenueExtras,
 } from '@/lib/salon-venue-extras';
-import { resolveGooglePlaceId, probeGoogleReviewsForPlace } from '@/lib/google-place-server';
-import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
 
 export async function GET(request: NextRequest) {
@@ -137,41 +135,6 @@ export async function PATCH(request: NextRequest) {
     WHERE slug = ${auth.salon.slug}
   `;
 
-  let reviewsFetched = 0;
-  let reviewsError: string | null = null;
-  const shouldRefreshGoogleReviews =
-    Object.prototype.hasOwnProperty.call(body, 'googleMapsUrl') ||
-    Object.prototype.hasOwnProperty.call(body, 'googlePlaceId');
-
-  if (shouldRefreshGoogleReviews) {
-    const placeId = await resolveGooglePlaceId({
-      explicitPlaceId: next.googlePlaceId,
-      mapsUrl: next.googleMapsUrl,
-    });
-    if (placeId) {
-      try {
-        await ensureGoogleReviewsSchema();
-        const probe = await probeGoogleReviewsForPlace(placeId);
-        if (probe.reviews.length > 0) {
-          await sql`
-            UPDATE salons
-            SET
-              google_reviews_cache = ${JSON.stringify(probe.reviews)}::jsonb,
-              google_reviews_rating = ${Number.isFinite(Number(probe.overallRating)) ? Number(probe.overallRating) : null},
-              google_reviews_count = ${Number.isFinite(Number(probe.totalReviews)) ? Number(probe.totalReviews) : null},
-              google_reviews_fetched_at = now()
-            WHERE slug = ${auth.salon.slug}
-          `;
-          reviewsFetched = probe.reviews.length;
-        } else {
-          reviewsError = probe.reason ?? 'no_reviews';
-        }
-      } catch {
-        reviewsError = 'fetch_error';
-      }
-    }
-  }
-
   const site = await loadAdminSiteDataBySlug(auth.salon.slug);
 
   revalidateSalonPublicCache({
@@ -179,5 +142,5 @@ export async function PATCH(request: NextRequest) {
     customDomain: auth.salon.customDomain,
   });
 
-  return NextResponse.json({ success: true, site, reviewsFetched, reviewsError });
+  return NextResponse.json({ success: true, site });
 }

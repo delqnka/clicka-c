@@ -25,8 +25,9 @@ type Props = {
   pendingUrls?: ReadonlySet<string>;
   btnSmGhost: BtnStyle;
   onReorder: (images: string[]) => void;
-  onSetCover: (url: string) => void;
+  onSetCover?: (url: string) => void;
   onRemove: (index: number) => void;
+  enableSetCover?: boolean;
 };
 
 export function GalleryReorderGrid({
@@ -38,6 +39,7 @@ export function GalleryReorderGrid({
   onReorder,
   onSetCover,
   onRemove,
+  enableSetCover = true,
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -245,6 +247,7 @@ export function GalleryReorderGrid({
                 justifyContent: 'center',
               }}
             >
+              {enableSetCover && onSetCover ? (
               <button
                 type="button"
                 aria-label={coverImageUrl === url ? 'Начална снимка' : 'Задай за cover'}
@@ -277,6 +280,7 @@ export function GalleryReorderGrid({
                   'Cover'
                 )}
               </button>
+              ) : null}
               <button
                 type="button"
                 style={{

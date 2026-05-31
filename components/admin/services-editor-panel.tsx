@@ -207,6 +207,14 @@ const ServiceCardRow = memo(function ServiceCardRow({
       </div>
 
       <input
+        value={draft.description ?? ''}
+        onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
+        style={{ ...inp, marginTop: 5 }}
+        placeholder="Описание на услугата"
+        aria-label="Описание на услугата"
+      />
+
+      <input
         value={draft.category ?? ''}
         list="service-category-options"
         onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
@@ -386,13 +394,14 @@ export function ServicesEditorPanel({
         <div
           style={{
             display: 'flex',
-            gap: 6,
+            gap: 4,
             overflowX: 'auto',
             flexWrap: 'nowrap',
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
-            paddingBottom: 2,
+            paddingBottom: 1,
+            marginBottom: 2,
           }}
         >
           {adminServiceCategories.map((cat) => {
@@ -404,12 +413,13 @@ export function ServicesEditorPanel({
                 onClick={() => setSelectedAdminServiceCategory(cat.id)}
                 style={{
                   borderRadius: 999,
-                  border: active ? `1px solid ${T.accent}` : `1px solid ${T.border}`,
-                  background: active ? '#F5F3FF' : '#fff',
-                  color: active ? T.accent : T.text,
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontWeight: 600,
+                  border: active ? `1px solid ${T.text}` : `1px solid ${T.border}`,
+                  background: active ? T.text : '#fff',
+                  color: active ? '#fff' : T.text,
+                  padding: '2px 8px',
+                  fontSize: 10,
+                  fontWeight: 500,
+                  lineHeight: 1.25,
                   cursor: 'pointer',
                   flexShrink: 0,
                   whiteSpace: 'nowrap',

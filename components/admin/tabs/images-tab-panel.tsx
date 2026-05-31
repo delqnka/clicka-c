@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { CSSProperties, Dispatch, SetStateAction } from 'react';
+import { useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
 import { AdminSalonVenueAddBtn } from '@/components/admin/admin-salon-venue-add-btn';
 import { ADMIN_T } from '@/components/admin/admin-theme';
@@ -13,9 +13,64 @@ const GalleryReorderGrid = dynamic(
   { ssr: false }
 );
 
-function GallerySection({
-  title,
-  description,
+const IMAGE_SECTIONS = [
+  { id: 'logo', label: 'Лого' },
+  { id: 'cover', label: 'Cover' },
+  { id: 'portfolio', label: 'Портфолио' },
+] as const;
+
+type ImageSectionId = (typeof IMAGE_SECTIONS)[number]['id'];
+
+function SectionPills({
+  section,
+  onChange,
+}: {
+  section: ImageSectionId;
+  onChange: (id: ImageSectionId) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 6,
+        overflowX: 'auto',
+        flexWrap: 'nowrap',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        marginBottom: 12,
+        paddingBottom: 2,
+      }}
+    >
+      {IMAGE_SECTIONS.map(({ id, label }) => {
+        const active = section === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            style={{
+              borderRadius: 999,
+              border: active ? `1px solid ${ADMIN_T.text}` : `1px solid ${ADMIN_T.border}`,
+              background: active ? ADMIN_T.text : '#fff',
+              color: active ? '#fff' : ADMIN_T.text,
+              padding: '5px 11px',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function GalleryGrid({
   uploadBtn,
   images,
   coverImageUrl,
@@ -25,15 +80,13 @@ function GallerySection({
   uploadProgress,
   btn,
   setSite,
-  setNotice,
   onUpload,
   onReorder,
   onRemove,
   emptyHint,
+  showSetCover = false,
 }: {
-  title: string;
-  description: string;
-  uploadBtn: React.ReactNode;
+  uploadBtn: ReactNode;
   images: string[];
   coverImageUrl: string;
   isMobile: boolean;
@@ -42,49 +95,31 @@ function GallerySection({
   uploadProgress: { done: number; total: number } | null;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
-  setNotice: (msg: string) => void;
   onUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
   onReorder: (next: string[]) => void;
   onRemove: (index: number) => void;
   emptyHint: string;
+  showSetCover?: boolean;
 }) {
   return (
-    <div
-      style={{
-        marginTop: isMobile ? 28 : 24,
-        paddingTop: isMobile ? 20 : 18,
-        borderTop: `1px solid ${ADMIN_T.border}`,
-      }}
-    >
+    <div>
       <div
         style={{
           display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 12,
-          marginBottom: 14,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          marginBottom: 10,
         }}
       >
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 700, color: ADMIN_T.text }}>
-            {title}
-          </p>
-          {description ? <p style={{ margin: '6px 0 0', fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.55 }}>{description}</p> : null}
-        </div>
         {uploadBtn}
       </div>
 
       <AdminField
-        label={
-          images.length > 0
-            ? isMobile
-              ? `Качени · ${images.length}`
-              : `Качени снимки (${images.length})`
-            : 'Качи снимки'
-        }
+        compact
+        label={images.length > 0 ? `Качени · ${images.length}` : 'Качи снимки'}
       >
         {uploadProgress ? (
-          <p style={{ margin: '0 0 10px', fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.45 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.4 }}>
             Качваме {uploadProgress.done}/{uploadProgress.total}…
           </p>
         ) : null}
@@ -97,7 +132,8 @@ function GallerySection({
               pendingUrls={pendingUrls}
               btnSmGhost={btn('sm-ghost')}
               onReorder={onReorder}
-              onSetCover={(url) => setSite((p) => ({ ...p, coverImageUrl: url }))}
+              onSetCover={showSetCover ? (url) => setSite((p) => ({ ...p, coverImageUrl: url })) : undefined}
+              enableSetCover={showSetCover}
               onRemove={onRemove}
             />
           ) : (
@@ -114,14 +150,12 @@ export function ImagesTabPanel({
   setSite,
   setNotice,
   isMobile,
-  inp,
   btn,
   busyKey,
   galleryPending,
   portfolioPending,
   galleryUploadProgress,
   portfolioUploadProgress,
-  existingServiceCategories,
   saveImages,
   handleCoverUpload,
   handleLogoUpload,
@@ -146,41 +180,26 @@ export function ImagesTabPanel({
   handleGalleryUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
   handlePortfolioUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
 }) {
+  const [section, setSection] = useState<ImageSectionId>('cover');
+
   return (
     <AdminSection
       title="Снимки"
-      compact={isMobile}
+      compact
       action={
         <AdminSaveBtn
-          label="Запази снимките"
+          label="Запази"
           busy={busyKey === 'images' || busyKey === 'images-auto'}
           mobile={isMobile}
+          green
+          compact
           onClick={() => void saveImages()}
         />
       }
     >
-      <datalist id="service-category-options">
-        {existingServiceCategories.map((category) => (
-          <option key={category} value={category} />
-        ))}
-      </datalist>
+      <SectionPills section={section} onChange={setSection} />
 
-      <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>Брандинг</p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
-          gap: isMobile ? 20 : 12,
-        }}
-      >
-        <AdminImageAssetField
-          label="Cover (горна снимка)"
-          uploadLabel="Качи cover"
-          busy={busyKey === 'upload-cover'}
-          mobile={isMobile}
-          imageUrl={site.coverImageUrl}
-          onUpload={(files) => void handleCoverUpload(files?.[0] ?? null)}
-        />
+      {section === 'logo' ? (
         <AdminImageAssetField
           label="Лого"
           uploadLabel="Качи лого"
@@ -190,81 +209,79 @@ export function ImagesTabPanel({
           roundPreview
           onUpload={(files) => void handleLogoUpload(files?.[0] ?? null)}
         />
-      </div>
+      ) : null}
 
-      <GallerySection
-        title="Снимки на салона"
-        description=""
-        uploadBtn={
-          <AdminSalonVenueAddBtn
-            busy={busyKey === 'upload-gallery'}
-            onUpload={handleGalleryUpload}
+      {section === 'cover' ? (
+        <div style={{ display: 'grid', gap: 14 }}>
+          <AdminImageAssetField
+            label="Cover (горна снимка)"
+            uploadLabel="Качи cover"
+            busy={busyKey === 'upload-cover'}
+            mobile={isMobile}
+            imageUrl={site.coverImageUrl}
+            onUpload={(files) => void handleCoverUpload(files?.[0] ?? null)}
           />
-        }
-        images={site.galleryImages}
-        coverImageUrl={site.coverImageUrl}
-        isMobile={isMobile}
-        busyKey={busyKey === 'upload-gallery' ? busyKey : ''}
-        pendingUrls={galleryPending}
-        uploadProgress={galleryUploadProgress}
-        btn={btn}
-        setSite={setSite}
-        setNotice={setNotice}
-        onUpload={handleGalleryUpload}
-        onReorder={(next) => {
-          setSite((p) => ({ ...p, galleryImages: next }));
-          setNotice('Редът е променен. Натисни Запази.');
-        }}
-        onRemove={(i) =>
-          setSite((p) => {
-            const removed = p.galleryImages[i];
-            const galleryImages = p.galleryImages.filter((_, j) => j !== i);
-            return {
-              ...p,
-              galleryImages,
-              coverImageUrl: p.coverImageUrl === removed ? (galleryImages[0] ?? '') : p.coverImageUrl,
-            };
-          })
-        }
-        emptyHint={
-          isMobile
-            ? 'Натисни + за да добавиш снимки на салона'
-            : 'Натисни + или плъзни файлове тук.'
-        }
-      />
+          <GalleryGrid
+            showSetCover
+            uploadBtn={
+              <AdminSalonVenueAddBtn busy={busyKey === 'upload-gallery'} onUpload={handleGalleryUpload} />
+            }
+            images={site.galleryImages}
+            coverImageUrl={site.coverImageUrl}
+            isMobile={isMobile}
+            busyKey={busyKey === 'upload-gallery' ? busyKey : ''}
+            pendingUrls={galleryPending}
+            uploadProgress={galleryUploadProgress}
+            btn={btn}
+            setSite={setSite}
+            onUpload={handleGalleryUpload}
+            onReorder={(next) => {
+              setSite((p) => ({ ...p, galleryImages: next }));
+              setNotice('Редът е променен. Натисни Запази.');
+            }}
+            onRemove={(i) =>
+              setSite((p) => {
+                const removed = p.galleryImages[i];
+                const galleryImages = p.galleryImages.filter((_, j) => j !== i);
+                return {
+                  ...p,
+                  galleryImages,
+                  coverImageUrl: p.coverImageUrl === removed ? (galleryImages[0] ?? '') : p.coverImageUrl,
+                };
+              })
+            }
+            emptyHint={isMobile ? 'Натисни + за снимки в hero галерията' : 'Натисни + или плъзни файлове тук.'}
+          />
+        </div>
+      ) : null}
 
-      <GallerySection
-        title="Снимки на работата ти"
-        description=""
-        uploadBtn={
-          <AdminGalleryAddBtn busy={busyKey === 'upload-portfolio'} onUpload={handlePortfolioUpload} />
-        }
-        images={site.portfolioImages}
-        coverImageUrl={site.coverImageUrl}
-        isMobile={isMobile}
-        busyKey={busyKey === 'upload-portfolio' ? busyKey : ''}
-        pendingUrls={portfolioPending}
-        uploadProgress={portfolioUploadProgress}
-        btn={btn}
-        setSite={setSite}
-        setNotice={setNotice}
-        onUpload={handlePortfolioUpload}
-        onReorder={(next) => {
-          setSite((p) => ({ ...p, portfolioImages: next }));
-          setNotice('Редът е променен. Натисни Запази.');
-        }}
-        onRemove={(i) =>
-          setSite((p) => ({
-            ...p,
-            portfolioImages: p.portfolioImages.filter((_, j) => j !== i),
-          }))
-        }
-        emptyHint={
-          isMobile
-            ? 'Натисни + за да добавиш снимки на прически и резултати'
-            : 'Натисни + или плъзни файлове тук.'
-        }
-      />
+      {section === 'portfolio' ? (
+        <GalleryGrid
+          uploadBtn={
+            <AdminGalleryAddBtn busy={busyKey === 'upload-portfolio'} onUpload={handlePortfolioUpload} />
+          }
+          images={site.portfolioImages}
+          coverImageUrl={site.coverImageUrl}
+          isMobile={isMobile}
+          busyKey={busyKey === 'upload-portfolio' ? busyKey : ''}
+          pendingUrls={portfolioPending}
+          uploadProgress={portfolioUploadProgress}
+          btn={btn}
+          setSite={setSite}
+          onUpload={handlePortfolioUpload}
+          onReorder={(next) => {
+            setSite((p) => ({ ...p, portfolioImages: next }));
+            setNotice('Редът е променен. Натисни Запази.');
+          }}
+          onRemove={(i) =>
+            setSite((p) => ({
+              ...p,
+              portfolioImages: p.portfolioImages.filter((_, j) => j !== i),
+            }))
+          }
+          emptyHint={isMobile ? 'Натисни + за снимки в портфолиото' : 'Натисни + или плъзни файлове тук.'}
+        />
+      ) : null}
     </AdminSection>
   );
 }
@@ -273,14 +290,14 @@ function GalleryEmptyHint({ isMobile, text }: { isMobile: boolean; text: string 
   return (
     <div
       style={{
-        padding: isMobile ? '40px 20px' : '28px 16px',
+        padding: isMobile ? '32px 16px' : '24px 14px',
         textAlign: 'center',
         border: isMobile ? 'none' : `1.5px dashed ${ADMIN_T.border}`,
-        borderRadius: isMobile ? 20 : 14,
+        borderRadius: isMobile ? 16 : 12,
         background: isMobile ? '#FAFAFA' : 'transparent',
         color: ADMIN_T.muted,
-        fontSize: isMobile ? 14 : 13,
-        lineHeight: 1.5,
+        fontSize: isMobile ? 13 : 12,
+        lineHeight: 1.45,
       }}
     >
       {text}

@@ -63,11 +63,11 @@ type BookingsPanelProps = {
 
 const CALENDAR_DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 
-const STATUS_CFG: Record<BookingStatus, { label: string; bg: string; text: string; dot: string }> = {
-  pending: { label: 'Чакаща', bg: '#FFF7ED', text: '#9A3412', dot: '#FB923C' },
-  confirmed: { label: 'Потвърдена', bg: '#ECFDF5', text: '#065F46', dot: '#10B981' },
-  completed: { label: 'Завършена', bg: '#EEF2FF', text: '#3730A3', dot: '#6366F1' },
-  cancelled: { label: 'Отказана', bg: '#FEF2F2', text: '#991B1B', dot: '#EF4444' },
+const STATUS_CFG: Record<BookingStatus, { label: string; text: string; dot: string; border: string }> = {
+  pending: { label: 'Чакаща', text: '#C2410C', dot: '#FB923C', border: 'rgba(251,146,60,0.45)' },
+  confirmed: { label: 'Потвърдена', text: '#047857', dot: '#10B981', border: 'rgba(16,185,129,0.4)' },
+  completed: { label: 'Завършена', text: '#059669', dot: '#10B981', border: 'rgba(16,185,129,0.55)' },
+  cancelled: { label: 'Отказана', text: '#DC2626', dot: '#EF4444', border: 'rgba(239,68,68,0.4)' },
 };
 
 function formatBgDateDMY(dateStr: string) {
@@ -258,45 +258,78 @@ export function BookingsPanel({
                   return (
                     <div key={b.id} style={{
                       border: isMobile ? 'none' : `1px solid ${T.border}`, borderRadius: isMobile ? 18 : T.radiusSm,
-                      padding: isMobile ? '16px 18px' : '14px 16px', background: T.surface,
+                      padding: isMobile ? '14px 16px' : '12px 14px', background: T.surface,
                       boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{b.client_name}</span>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, background: cfg.bg, color: cfg.text, fontSize: 11, fontWeight: 600 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-                              {cfg.label}
-                            </span>
-                          </div>
-                          <p style={{ margin: 0, fontSize: isMobile ? 14 : 13, color: T.text, lineHeight: 1.5, fontWeight: 500 }}>
-                            {b.service_name}
-                            {Number.isFinite(Number(b.service_price)) ? ` · ${formatSalonPrice(Number(b.service_price))}` : ''}
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>
+                          {b.client_name}
+                        </p>
+                        <p style={{ margin: '5px 0 0', fontSize: isMobile ? 14 : 13, color: T.text, lineHeight: 1.45, fontWeight: 500 }}>
+                          {b.service_name}
+                          {Number.isFinite(Number(b.service_price)) ? ` · ${formatSalonPrice(Number(b.service_price))}` : ''}
+                        </p>
+                        <p style={{ margin: '3px 0 0', fontSize: 12, color: T.muted, lineHeight: 1.45 }}>
+                          {formatBgDateDMY(b.date)} · {b.time}
+                          {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
+                        </p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: T.subtle }}>
+                          {b.client_phone}
+                          {b.client_email ? ` · ${b.client_email}` : ''}
+                        </p>
+                        {b.notes ? (
+                          <p style={{ margin: '5px 0 0', fontSize: 11, color: T.subtle, fontStyle: 'italic', lineHeight: 1.4 }}>
+                            {b.notes}
                           </p>
-                          <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
-                            {formatBgDateDMY(b.date)} · {b.time}
-                            {typeof b.service_duration === 'number' ? ` · ${b.service_duration} мин` : ''}
-                          </p>
-                          <p style={{ margin: '2px 0 0', fontSize: 13, color: T.subtle }}>
-                            {b.client_phone}
-                            {b.client_email ? ` · ${b.client_email}` : ''}
-                          </p>
-                          {b.notes && <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle, fontStyle: 'italic' }}>{b.notes}</p>}
-                        </div>
-                        <select
-                          value={b.status}
-                          onChange={e => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
+                        ) : null}
+                      </div>
+                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
+                        <label
                           style={{
-                            ...inp, width: isMobile ? '100%' : 'auto', cursor: 'pointer', flexShrink: 0,
-                            marginTop: isMobile ? 8 : 0, background: isMobile ? '#F4F4F5' : T.surface, textAlign: 'center',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            border: `1px solid ${cfg.border}`,
+                            background: 'transparent',
+                            cursor: 'pointer',
                           }}
                         >
-                          <option value="pending">Чакаща</option>
-                          <option value="confirmed">Потвърдена</option>
-                          <option value="completed">Завършена</option>
-                          <option value="cancelled">Отказана</option>
-                        </select>
+                          <span
+                            style={{
+                              width: 4,
+                              height: 4,
+                              borderRadius: '50%',
+                              background: cfg.dot,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <select
+                            value={b.status}
+                            onChange={(e) => void updateBookingStatus(b.id, e.target.value as BookingStatus)}
+                            aria-label="Статус на резервацията"
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              color: cfg.text,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              lineHeight: 1.2,
+                              padding: '2px 0',
+                              margin: 0,
+                              cursor: 'pointer',
+                              outline: 'none',
+                              WebkitAppearance: 'none',
+                              appearance: 'none',
+                            }}
+                          >
+                            <option value="pending">Чакаща</option>
+                            <option value="confirmed">Потвърдена</option>
+                            <option value="completed">Завършена</option>
+                            <option value="cancelled">Отказана</option>
+                          </select>
+                        </label>
                       </div>
                     </div>
                   );

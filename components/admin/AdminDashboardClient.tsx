@@ -1061,20 +1061,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           venueExtras: site.venueExtras,
         }),
       });
-      const data = await guardResponse(res) as {
-        site: AdminSitePayload;
-        reviewsFetched?: number;
-        reviewsError?: string | null;
-      };
+      const data = await guardResponse(res) as { site: AdminSitePayload };
       setSite(data.site);
-      if (data.reviewsFetched && data.reviewsFetched > 0) {
-        setNotice(`Информацията е запазена. ${data.reviewsFetched} Google ревюта са заредени на сайта!`);
-        setReviewsFetch({ loading: false, result: { success: true, count: data.reviewsFetched } });
-      } else if (data.reviewsError) {
-        setNotice('Информацията е запазена. Ревютата не бяха намерени — опитай бутона "Извлечи Google ревютата".');
-      } else {
-        setNotice('Информацията е запазена.');
-      }
+      setNotice('Информацията е запазена.');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -2733,15 +2722,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: 44,
-                      height: 32,
+                      width: active ? 36 : 30,
+                      height: active ? 36 : 30,
                       borderRadius: 999,
-                      background: active ? 'rgba(124,58,237,0.14)' : 'transparent',
-                      color: active ? '#7C3AED' : '#18181B',
-                      transition: 'background 180ms ease, color 180ms ease, transform 180ms ease',
+                      background: active ? ICON_GRADIENT : 'transparent',
+                      color: active ? '#fff' : '#18181B',
+                      boxShadow: active ? '0 8px 20px rgba(124,58,237,0.35)' : 'none',
+                      transition: 'all 180ms ease',
                     }}
                   >
-                    <Icon size={22} strokeWidth={active ? 2.25 : 1.85} />
+                    <Icon size={active ? 22 : 20} strokeWidth={active ? 2.25 : 1.85} />
                   </div>
                   <span
                     style={{
