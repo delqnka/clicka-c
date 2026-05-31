@@ -28,6 +28,7 @@ import {
   scheduleBookingSmsReminders,
 } from '@/lib/sms-reminders';
 import { sendGoogleReviewInvitation } from '@/lib/resend';
+import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
         AND date IN (${date}, ${legacyDate ?? date})
       ORDER BY time ASC
     `;
-    const occupied = occupiedRows
+    const occupied: { time: string; duration: number }[] = occupiedRows
       .filter((r) => !isCancelledStatus((r as Record<string, unknown>).status))
       .map((r) => {
         const row = r as Record<string, unknown>;
@@ -95,6 +96,17 @@ export async function GET(request: NextRequest) {
         };
       })
       .filter((x): x is { time: string; duration: number } => x != null);
+
+    const externalEvents = await loadExternalCalendarEventsForRange(salonId, date, date).catch(() => []);
+    for (const ev of externalEvents) {
+      if (ev.allDay) continue;
+      const startMins = parseTimeToMinutes(ev.startTime);
+      const endMins = parseTimeToMinutes(ev.endTime);
+      if (startMins == null || endMins == null) continue;
+      const duration = Math.max(5, endMins - startMins);
+      occupied.push({ time: ev.startTime, duration });
+    }
+
     return NextResponse.json({ occupied });
   }
 
@@ -261,6 +273,23 @@ export async function POST(request: NextRequest) {
       { error: 'Избраният час е блокиран. Моля изберете друг свободен час.' },
       { status: 400 }
     );
+  }
+
+  const externalEvents = await loadExternalCalendarEventsForRange(salonId, date, date).catch(() => []);
+  const bookingDuration = durationValue ?? 30;
+  const bookingStart = parseTimeToMinutes(time) ?? 0;
+  const bookingEnd = bookingStart + bookingDuration;
+  for (const ev of externalEvents) {
+    if (ev.allDay) continue;
+    const evStart = parseTimeToMinutes(ev.startTime);
+    const evEnd = parseTimeToMinutes(ev.endTime);
+    if (evStart == null || evEnd == null) continue;
+    if (bookingStart < evEnd && bookingEnd > evStart) {
+      return NextResponse.json(
+        { error: 'Този час е зает от друг ангажимент. Моля изберете друг свободен час.' },
+        { status: 409 },
+      );
+    }
   }
 
   let insertedBooking: { id: string } | null = null;

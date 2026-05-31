@@ -106,19 +106,16 @@ export function IntegrationsTabPanel({
           }
         >
           <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-            Работи <strong>без Google Cloud</strong> и без OAuth ключове — само календарни линкове (ICS),
-            както ColorTrack чете телефона, но през web.
+            Синхронизирай резервациите с телефона си и блокирай часове от други системи (Fresha, Booksy и др.)
           </p>
 
           {calendarStatus.feedUrl ? (
             <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
-                1. Clicka → Google / iPhone / Outlook (резервациите в твоя календар)
+                Виж резервациите в телефона си
               </p>
               <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
-                Google Calendar: calendar.google.com → Other calendars → + → From URL → paste линка.
-                <br />
-                iPhone: Настройки → Календар → Акаунти → Добави абонаментен календар.
+                Копирай линка и го добави в Google Calendar (From URL) или iPhone (Абонаментен календар).
               </p>
               <button
                 type="button"
@@ -166,17 +163,26 @@ export function IntegrationsTabPanel({
 
           <div style={{ marginTop: 14, display: 'grid', gap: 6 }}>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
-              2. Твоят календар → Clicka (Booksy, Fresha, iPhone — виж ги в Резервации)
+              Блокирай часове от друг календар (Fresha, Booksy, iCloud)
             </p>
             <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
-              iPhone/iCloud: Календар → име на календар → ⓘ → Абонирай се → Copy Link → paste тук.
-              Ако ползваш Google на телефона, синхронизирай го с iCloud или paste Google ICS export линк.
+              Постави ICS линк — заетите часове ще се блокират автоматично за нови резервации.
             </p>
+            <details style={{ marginBottom: 2 }}>
+              <summary style={{ fontSize: 12, color: ADMIN_T.accent, cursor: 'pointer', fontWeight: 500 }}>
+                Откъде да взема линка?
+              </summary>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.7 }}>
+                <li><strong>iCloud:</strong> Отвори <a href="https://www.icloud.com/calendar" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.accent }}>icloud.com/calendar</a> → иконка за споделяне до календара → Публичен календар → копирай линка</li>
+                <li><strong>Google:</strong> <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.accent }}>calendar.google.com</a> → Настройки → избери календар → Таен адрес в iCal формат</li>
+                <li><strong>Fresha:</strong> Calendar → Setup → Share/Export → Copy ICS link</li>
+              </ul>
+            </details>
             <input
               style={{ ...inp, fontSize: 13 }}
               value={externalIcsDraft}
               onChange={(e) => setExternalIcsDraft(e.target.value)}
-              placeholder="webcal://… или https://…calendar.ics"
+              placeholder="webcal://… или https://…/calendar.ics"
             />
             <button
               type="button"
@@ -191,13 +197,13 @@ export function IntegrationsTabPanel({
           {calendarStatus.googleConfigured ? (
             <details style={{ marginTop: 14 }}>
               <summary style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.subtle, cursor: 'pointer' }}>
-                По избор: автоматичен Google OAuth (изисква Google Cloud на платформата)
+                Google OAuth (по избор)
               </summary>
               <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
                 <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.55 }}>
                   {calendarStatus.googleConnected
-                    ? 'OAuth връзката е активна. Можеш да я махнеш — ICS линковете по-горе работят и без нея.'
-                    : 'Не е задължително. Повечето салони ползват само ICS линковете по-горе.'}
+                    ? 'OAuth връзката е активна.'
+                    : 'Не е задължително — ICS линковете по-горе покриват повечето случаи.'}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {calendarStatus.googleConnected ? (
