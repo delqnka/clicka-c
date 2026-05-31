@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { SALON_CURRENCY_CODE } from '@/lib/salon-currency';
 import type { PublicSalonBlogPost } from '@/lib/salon-blog';
-import { resolveBlogSectionTitle } from '@/lib/salon-blog';
+import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
 
 const CATEGORY_SCHEMA_MAP: Record<string, string> = {
   'Фризьорски салон': 'HairSalon',

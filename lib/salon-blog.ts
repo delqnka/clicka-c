@@ -1,39 +1,21 @@
+import 'server-only';
+
 import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
 import { renderBlogMarkdown } from '@/lib/blog-markdown';
 import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
+import {
+  type AdminSalonBlogPost,
+  type PublicSalonBlogPost,
+  normalizeBlogPostStatus,
+} from '@/lib/salon-blog-shared';
 
-export const DEFAULT_BLOG_SECTION_TITLE = 'Блог';
-
-export function resolveBlogSectionTitle(raw: unknown): string {
-  const title = String(raw ?? '').trim();
-  return title || DEFAULT_BLOG_SECTION_TITLE;
-}
-
-export type BlogPostStatus = 'draft' | 'published';
-
-export type AdminSalonBlogPost = {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  bodyMarkdown: string;
-  coverImageUrl: string;
-  status: BlogPostStatus;
-  publishedAt: string | null;
-  metaTitle: string;
-  metaDescription: string;
-  createdAt: string | null;
-  updatedAt: string | null;
-};
-
-export type PublicSalonBlogPost = AdminSalonBlogPost & {
-  bodyHtml: string;
-};
-
-function normalizeStatus(raw: unknown): BlogPostStatus {
-  return String(raw ?? '').trim().toLowerCase() === 'published' ? 'published' : 'draft';
-}
+export type { AdminSalonBlogPost, BlogPostStatus, PublicSalonBlogPost } from '@/lib/salon-blog-shared';
+export {
+  DEFAULT_BLOG_SECTION_TITLE,
+  newEmptyBlogPost,
+  resolveBlogSectionTitle,
+} from '@/lib/salon-blog-shared';
 
 export function mapDbBlogRow(row: Record<string, unknown>): AdminSalonBlogPost {
   return {
@@ -43,7 +25,7 @@ export function mapDbBlogRow(row: Record<string, unknown>): AdminSalonBlogPost {
     excerpt: String(row.excerpt ?? '').trim(),
     bodyMarkdown: String(row.body_md ?? ''),
     coverImageUrl: String(row.cover_image_url ?? '').trim(),
-    status: normalizeStatus(row.status),
+    status: normalizeBlogPostStatus(row.status),
     publishedAt: row.published_at ? String(row.published_at) : null,
     metaTitle: String(row.meta_title ?? '').trim(),
     metaDescription: String(row.meta_description ?? '').trim(),
@@ -53,7 +35,7 @@ export function mapDbBlogRow(row: Record<string, unknown>): AdminSalonBlogPost {
 }
 
 export function mapAdminBlogToDb(post: AdminSalonBlogPost, salonId: string) {
-  const status = normalizeStatus(post.status);
+  const status = normalizeBlogPostStatus(post.status);
   const publishedAt =
     status === 'published'
       ? post.publishedAt || new Date().toISOString()
@@ -71,23 +53,6 @@ export function mapAdminBlogToDb(post: AdminSalonBlogPost, salonId: string) {
     published_at: publishedAt,
     meta_title: post.metaTitle.trim() || null,
     meta_description: post.metaDescription.trim() || null,
-  };
-}
-
-export function newEmptyBlogPost(): AdminSalonBlogPost {
-  return {
-    id: '',
-    title: '',
-    slug: '',
-    excerpt: '',
-    bodyMarkdown: '',
-    coverImageUrl: '',
-    status: 'draft',
-    publishedAt: null,
-    metaTitle: '',
-    metaDescription: '',
-    createdAt: null,
-    updatedAt: null,
   };
 }
 

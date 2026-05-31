@@ -1,5 +1,5 @@
 import { publicImageUrl } from '@/lib/public-image-url';
-import type { PublicSalonBlogPost } from '@/lib/salon-blog';
+import type { PublicSalonBlogPost } from '@/lib/salon-blog-shared';
 
 type Props = {
   salonName: string;

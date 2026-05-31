@@ -5,17 +5,19 @@ import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
 import {
+  newEmptyBlogPost,
+  normalizeBlogPostStatus,
+  type AdminSalonBlogPost,
+  type BlogPostStatus,
+} from '@/lib/salon-blog-shared';
+import {
   loadAdminBlogPosts,
   loadSalonBlogTitle,
   mapAdminBlogToDb,
-  newEmptyBlogPost,
-  resolveBlogSectionTitle,
-  type AdminSalonBlogPost,
-  type BlogPostStatus,
 } from '@/lib/salon-blog';
 
 function normalizeStatus(raw: unknown): BlogPostStatus {
-  return String(raw ?? '').trim().toLowerCase() === 'published' ? 'published' : 'draft';
+  return normalizeBlogPostStatus(raw);
 }
 
 function normalizePostsInput(raw: unknown): AdminSalonBlogPost[] {

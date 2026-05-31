@@ -40,7 +40,7 @@ import {
   offerSpotsLeft,
   type SalonOfferRow,
 } from '@/lib/salon-offers';
-import { resolveBlogSectionTitle } from '@/lib/salon-blog';
+import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
 import { formatDistanceFromUserToSalon, getDistanceKm } from '@/lib/geo';
 import {
   DAY_LABELS_BG,

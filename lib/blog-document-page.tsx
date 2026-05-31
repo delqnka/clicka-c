@@ -4,7 +4,7 @@ import { BlogPostView } from '@/components/salon/blog-post-view';
 import { BlogIndexView } from '@/components/salon/blog-index-view';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { getPublicSalonPageData } from '@/lib/public-salon';
-import { resolveBlogSectionTitle } from '@/lib/salon-blog';
+import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
 import { buildBlogPostingJsonLd } from '@/lib/seo';
 import {
   getBlogPostBySlugForSalon,

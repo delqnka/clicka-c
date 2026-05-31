@@ -45,7 +45,7 @@ import {
 } from '@/components/admin/lazy-admin-tabs';
 import { AdminPriceListScanBtn, PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
-import type { AdminSalonBlogPost } from '@/lib/salon-blog';
+import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';

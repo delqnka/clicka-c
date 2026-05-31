@@ -3,8 +3,8 @@
 import { Camera, Plus, Trash2 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { toBlogSlug } from '@/lib/blog-slug';
-import type { AdminSalonBlogPost, BlogPostStatus } from '@/lib/salon-blog';
-import { newEmptyBlogPost } from '@/lib/salon-blog';
+import type { AdminSalonBlogPost, BlogPostStatus } from '@/lib/salon-blog-shared';
+import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
 
 const GRADIENT_PRIMARY: CSSProperties = {
   display: 'inline-flex',
