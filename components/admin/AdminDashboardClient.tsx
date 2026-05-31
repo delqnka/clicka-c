@@ -1519,7 +1519,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     }
   }
 
-  async function saveBlogPosts() {
+  async function saveBlogPosts(overridePosts?: AdminSalonBlogPost[]) {
+    const postsToSave = overridePosts ?? blogPosts;
     setError('');
     setNotice('');
     setBusyKey('blog');
@@ -1527,7 +1528,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posts: blogPosts, blogTitle: blogSectionTitle }),
+        body: JSON.stringify({ posts: postsToSave, blogTitle: blogSectionTitle }),
       });
       const data = (await guardResponse(res)) as { posts?: AdminSalonBlogPost[]; blogTitle?: string };
       if (Array.isArray(data.posts)) setBlogPosts(data.posts);
@@ -1546,10 +1547,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     setError('');
     try {
       const url = await uploadSingleFile(file);
-      setBlogPosts((prev) =>
-        prev.map((p, i) => (i === postIndex ? { ...p, coverImageUrl: url } : p)),
+      const nextPosts = blogPosts.map((p, i) =>
+        i === postIndex ? { ...p, coverImageUrl: url } : p,
       );
-      setNotice('Корица е качена.');
+      setBlogPosts(nextPosts);
+      await saveBlogPosts(nextPosts);
+      setNotice('Снимката е качена.');
     } catch (e) {
       handleErr(e);
     } finally {
@@ -2219,11 +2222,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           )}
 
           {activeTab === 'blog' && (
-            <Section
-              title="Блог"
-              desc="Публикувайте статии за по-добро SEO — съвети, нови услуги, сезонни грижи. Без ограничение на броя."
-              compact={isMobile}
-            >
+            <Section title="Блог" compact={isMobile}>
               <SalonBlogSection
                 posts={blogPosts}
                 blogTitle={blogSectionTitle}

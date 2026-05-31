@@ -1241,6 +1241,14 @@ export default function SalonPublicParity({
                   </button>
                 );
               })}
+              {hasPublishedBlogPosts ? (
+                <a
+                  href={`${basePath}/blog`}
+                  className="relative shrink-0 whitespace-nowrap border-b-2 border-transparent px-0 py-2 text-[15px] font-medium text-[#404040] hover:text-[#1a1a1a]"
+                >
+                  {blogSectionTitle}
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1347,6 +1355,14 @@ export default function SalonPublicParity({
                     </button>
                   );
                 })}
+                {hasPublishedBlogPosts ? (
+                  <a
+                    href={`${basePath}/blog`}
+                    className="relative shrink-0 whitespace-nowrap border-b-2 border-transparent px-0 py-3 text-[15px] font-medium text-[#404040] hover:text-[#1a1a1a]"
+                  >
+                    {blogSectionTitle}
+                  </a>
+                ) : null}
               </div>
             </div>
 

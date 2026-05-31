@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
+import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 import {
@@ -109,6 +110,7 @@ async function fetchPublicSalonPageData({
   }
 
   try {
+    await ensureBlogSchema();
     const existsRows = await sql`
       SELECT EXISTS (
         SELECT 1
