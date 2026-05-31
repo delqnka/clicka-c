@@ -185,7 +185,13 @@ export async function getPublicSalonPageData({
   slug?: string | null;
   host?: string | null;
 }) {
-  const cacheKey = String(slug ?? '').trim() || extractHostname(host) || 'unknown';
+  const resolvedSlug = String(slug ?? '').trim();
+  let cacheKey = resolvedSlug;
+
+  if (!cacheKey) {
+    const lookup = await resolvePublicSalonBySlugOrHost({ slug, host });
+    cacheKey = lookup?.slug || extractHostname(host) || 'unknown';
+  }
 
   return unstable_cache(
     () => fetchPublicSalonPageData({ slug, host }),

@@ -317,7 +317,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     externalIcsUrl: '',
   });
   const [externalCalendarByDate, setExternalCalendarByDate] = useState<Map<string, number>>(new Map());
-  const [externalCalendarEvents, setExternalCalendarEvents] = useState<
+  const [allExternalEvents, setAllExternalEvents] = useState<
     Array<{ id: string; title: string; date: string; startTime: string; endTime: string; source: string }>
   >([]);
   const [calendarCursor, setCalendarCursor] = useState(() => {
@@ -325,6 +325,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
+  const externalCalendarEvents = useMemo(
+    () => (selectedCalendarDate ? allExternalEvents.filter((ev) => ev.date === selectedCalendarDate) : []),
+    [allExternalEvents, selectedCalendarDate],
+  );
   const [domainInput, setDomainInput] = useState(initialSite.customDomain);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
@@ -745,12 +749,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       map.set(ev.date, (map.get(ev.date) ?? 0) + 1);
     }
     setExternalCalendarByDate(map);
-    if (selectedCalendarDate) {
-      setExternalCalendarEvents(events.filter((ev) => ev.date === selectedCalendarDate));
-    } else {
-      setExternalCalendarEvents([]);
-    }
-  }, [calendarCursor, slug, selectedCalendarDate, site.bookingBlocks]);
+    setAllExternalEvents(events);
+  }, [calendarCursor, slug, site.bookingBlocks]);
 
   useEffect(() => {
     if (activeTab !== 'bookings') return;
@@ -766,27 +766,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     loadExternalCalendarOverlay,
   ]);
 
-  useEffect(() => {
-    if (!selectedCalendarDate) {
-      setExternalCalendarEvents([]);
-      return;
-    }
-    void (async () => {
-      try {
-        const res = await fetch(
-          `/api/admin/calendar/events?slug=${encodeURIComponent(slug)}&date=${encodeURIComponent(selectedCalendarDate)}`,
-          { cache: 'no-store' },
-        );
-        const data = (await readJson(res)) as {
-          events?: Array<{ id: string; title: string; date: string; startTime: string; endTime: string; source: string }>;
-        };
-        if (!res.ok) return;
-        setExternalCalendarEvents(Array.isArray(data.events) ? data.events : []);
-      } catch {
-        setExternalCalendarEvents([]);
-      }
-    })();
-  }, [selectedCalendarDate, slug]);
 
   const connectGoogleCalendar = useCallback(() => {
     window.location.href = `/api/admin/calendar/google/connect?slug=${encodeURIComponent(slug)}`;
