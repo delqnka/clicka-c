@@ -204,7 +204,7 @@ export function BookingsPanel({
         ) : null}
         {externalCalendarByDate.size > 0 ? (
           <p style={{ margin: '8px 2px 0', fontSize: 11, color: T.subtle }}>
-            Оранжеви дни = събития от Google/iCloud календар (като ColorTrack).
+            Оранжеви дни = блокирани часове (Telegram / външен календар).
           </p>
         ) : null}
       </div>
@@ -222,7 +222,7 @@ export function BookingsPanel({
           }}
         >
           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#9A3412' }}>
-            От външен календар ({externalCalendarEvents.length})
+            Блокирани часове ({externalCalendarEvents.length})
           </p>
           {externalCalendarEvents.map((ev) => (
             <div

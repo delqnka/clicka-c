@@ -714,6 +714,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     const lastDay = new Date(year, month + 1, 0).getDate();
     const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
+    let icsEvents: Array<{ id: string; title: string; date: string; startTime: string; endTime: string; source: string }> = [];
     try {
       const res = await fetch(
         `/api/admin/calendar/events?slug=${encodeURIComponent(slug)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
@@ -722,32 +723,46 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       const data = (await readJson(res)) as {
         events?: Array<{ id: string; title: string; date: string; startTime: string; endTime: string; source: string }>;
       };
-      if (!res.ok) return;
-      const events = Array.isArray(data.events) ? data.events : [];
-      const map = new Map<string, number>();
-      for (const ev of events) {
-        map.set(ev.date, (map.get(ev.date) ?? 0) + 1);
+      if (res.ok) {
+        icsEvents = Array.isArray(data.events) ? data.events : [];
       }
-      setExternalCalendarByDate(map);
-      if (selectedCalendarDate) {
-        setExternalCalendarEvents(events.filter((ev) => ev.date === selectedCalendarDate));
-      } else {
-        setExternalCalendarEvents([]);
-      }
-    } catch {
-      setExternalCalendarByDate(new Map());
+    } catch { /* ignore */ }
+
+    const blockEvents = (site.bookingBlocks ?? [])
+      .filter((b) => !b.allDay && b.date >= from && b.date <= to && b.start && b.end)
+      .map((b) => ({
+        id: `block-${b.date}-${b.start}`,
+        title: b.note || 'Блокиран час',
+        date: b.date,
+        startTime: b.start!,
+        endTime: b.end!,
+        source: 'block',
+      }));
+
+    const events = [...icsEvents, ...blockEvents];
+    const map = new Map<string, number>();
+    for (const ev of events) {
+      map.set(ev.date, (map.get(ev.date) ?? 0) + 1);
+    }
+    setExternalCalendarByDate(map);
+    if (selectedCalendarDate) {
+      setExternalCalendarEvents(events.filter((ev) => ev.date === selectedCalendarDate));
+    } else {
       setExternalCalendarEvents([]);
     }
-  }, [calendarCursor, slug, selectedCalendarDate]);
+  }, [calendarCursor, slug, selectedCalendarDate, site.bookingBlocks]);
 
   useEffect(() => {
     if (activeTab !== 'bookings') return;
-    if (!calendarIntegrationStatus.externalIcsUrl && !calendarIntegrationStatus.googleConnected) return;
+    const hasExternal = calendarIntegrationStatus.externalIcsUrl || calendarIntegrationStatus.googleConnected;
+    const hasBlocks = (site.bookingBlocks ?? []).length > 0;
+    if (!hasExternal && !hasBlocks) return;
     void loadExternalCalendarOverlay();
   }, [
     activeTab,
     calendarIntegrationStatus.externalIcsUrl,
     calendarIntegrationStatus.googleConnected,
+    site.bookingBlocks,
     loadExternalCalendarOverlay,
   ]);
 

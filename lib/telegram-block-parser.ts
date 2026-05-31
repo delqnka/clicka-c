@@ -56,21 +56,23 @@ function addMinutes(time: string, mins: number): string {
 function resolveDate(text: string): string | null {
   const lower = text.toLowerCase().trim();
   const today = todaySofia();
+  const words = new Set(lower.split(/[\s,;.!?]+/));
+  const has = (w: string) => words.has(w) || lower.includes(w);
 
-  if (lower === 'днес' || lower === 'today') return formatYmd(today);
-  if (lower === 'утре' || lower === 'tomorrow') {
+  if (has('днес') || has('today')) return formatYmd(today);
+  if (has('утре') || has('tomorrow')) {
     const d = new Date(today);
     d.setDate(d.getDate() + 1);
     return formatYmd(d);
   }
-  if (lower === 'вдругиден') {
+  if (has('вдругиден')) {
     const d = new Date(today);
     d.setDate(d.getDate() + 2);
     return formatYmd(d);
   }
 
   for (const [name, dow] of Object.entries(BG_WEEKDAYS)) {
-    if (lower === name) {
+    if (has(name)) {
       const d = new Date(today);
       const diff = (dow - d.getDay() + 7) % 7 || 7;
       d.setDate(d.getDate() + diff);
