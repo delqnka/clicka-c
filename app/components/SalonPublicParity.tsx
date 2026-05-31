@@ -162,6 +162,12 @@ function TikTokIcon({ className }: { className?: string }) {
   );
 }
 
+const SOCIAL_BRAND_STYLES: Record<string, { color?: string; background?: string }> = {
+  Instagram: { background: 'radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)' },
+  Facebook: { color: '#1877F2' },
+  TikTok: { color: '#00f2ea' },
+};
+
 function SalonFooterSocialLink({
   href,
   label,
@@ -171,13 +177,15 @@ function SalonFooterSocialLink({
   label: string;
   children: ReactNode;
 }) {
+  const brand = SOCIAL_BRAND_STYLES[label];
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-white/12 text-white shadow-[0_4px_14px_rgba(0,0,0,0.2)] backdrop-blur-sm transition hover:scale-105 hover:bg-white/22 sm:h-9 sm:w-9"
+      className="flex h-7 w-7 items-center justify-center rounded-full transition hover:scale-110 hover:opacity-80"
+      style={{ color: brand?.color, background: brand?.background }}
     >
       {children}
     </a>
@@ -1722,6 +1730,16 @@ export default function SalonPublicParity({
                     aria-label="Отвори локацията в Google Maps"
                     className="absolute inset-0"
                   />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="flex flex-col items-center">
+                      <span className="rounded-md bg-[#1a1a1a] px-2.5 py-1 text-xs font-semibold text-white shadow-lg">
+                        {name}
+                      </span>
+                      <svg width="14" height="20" viewBox="0 0 14 20" fill="none" className="drop-shadow-md" aria-hidden>
+                        <path d="M7 0C3.13 0 0 3.13 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#1a1a1a" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
                 <a
                   href={mapsHref!}
@@ -1813,24 +1831,18 @@ export default function SalonPublicParity({
       </main>
 
       <footer
-        className="w-full border-t border-white/10 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="mt-20 w-full border-t border-white/10 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         style={{
-          background: `linear-gradient(
-            165deg,
-            color-mix(in srgb, ${primary} 52%, #1a1428) 0%,
-            color-mix(in srgb, ${primary} 28%, #14121c) 38%,
-            #0e1018 72%,
-            #06070c 100%
-          )`,
+          background: `linear-gradient(135deg, color-mix(in srgb, ${primary} 22%, #1a1a2e) 0%, #0f0f1a 50%, color-mix(in srgb, ${primary} 10%, #0a0a14) 100%)`,
         }}
       >
-        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col items-center gap-1.5 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-2">
-          <div className="order-1 flex max-w-full flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <p className="max-w-full break-words text-center text-[11px] font-medium leading-snug text-white/80 sm:text-left">
+        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col gap-1.5 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="min-w-0 truncate text-[11px] font-medium text-white/55">
               {name}
             </p>
             {footerSocial.length > 0 ? (
-              <div className="flex max-w-full items-center justify-center gap-2 sm:justify-start" aria-label="Социални мрежи">
+              <div className="flex shrink-0 items-center gap-1.5" aria-label="Социални мрежи">
                 {footerSocial.map((item) => (
                   <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
                     {item.node}
@@ -1839,41 +1851,36 @@ export default function SalonPublicParity({
               </div>
             ) : null}
           </div>
-
-          <nav
-            className="order-2 flex max-w-full flex-wrap items-center justify-center gap-x-1 gap-y-1 sm:justify-start"
-            aria-label="Правни документи"
-          >
-            <a
-              href={`${basePath}/terms`}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
-            >
-              Условия
-            </a>
-            <a
-              href={`${basePath}/privacy`}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
-            >
-              Поверителност
-            </a>
-            <a
-              href={`${basePath}/cookies`}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[11px] font-medium text-white/55 transition-colors hover:text-white/85"
-            >
-              Бисквитки
-            </a>
-          </nav>
-
-          <p className="order-3 w-full text-center text-[11px] leading-snug text-white/50">
+          <div className="flex items-center justify-between gap-2">
+            <nav className="flex items-center gap-0.5" aria-label="Правни документи">
+              <a
+                href={`${basePath}/terms`}
+                className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+              >
+                Условия
+              </a>
+              <a
+                href={`${basePath}/privacy`}
+                className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+              >
+                Поверителност
+              </a>
+              <a
+                href={`${basePath}/cookies`}
+                className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+              >
+                Бисквитки
+              </a>
+            </nav>
             <a
               href="https://clicka.bg"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-white/55 transition-colors hover:text-white/80"
+              className="text-[9px] text-white/25 transition-colors hover:text-white/50"
             >
               Clicka.bg
             </a>
-          </p>
+          </div>
         </div>
       </footer>
 
