@@ -325,7 +325,11 @@ export function SalonOfferBookingModal({
                     </button>
                   </div>
 
-                  <p className="text-sm text-black/45">{offer.title}</p>
+                  {offer.title ? (
+                    <p className="text-sm text-black/45">
+                      {offer.title}
+                    </p>
+                  ) : null}
 
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">Дата</label>
@@ -496,7 +500,7 @@ export function SalonOfferBookingModal({
           <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
             <div className="mb-3 rounded-2xl bg-white px-3.5 py-2.5">
               <p className="text-sm font-semibold tabular-nums text-black">
-                {Math.max(5, durationMin || 60)} мин
+                Общо: {Math.max(5, durationMin || 60)} мин
                 {discount != null ? ` · -${discount}%` : ''}
               </p>
               {selectedTime ? (
