@@ -40,6 +40,7 @@ import {
   offerSpotsLeft,
   type SalonOfferRow,
 } from '@/lib/salon-offers';
+import { resolveBlogSectionTitle } from '@/lib/salon-blog';
 import { formatDistanceFromUserToSalon, getDistanceKm } from '@/lib/geo';
 import {
   DAY_LABELS_BG,
@@ -123,6 +124,7 @@ export type SalonPublicParityProps = {
   /** @deprecated no longer rendered — kept for caller compat */
   staticMapUrl?: string | null;
   disableStickySectionTabs?: boolean;
+  publishedBlogCount?: number;
 };
 
 function wireMediaUri(raw: string | null | undefined): string {
@@ -343,6 +345,7 @@ export default function SalonPublicParity({
   tabParam: tabParamProp,
   staticMapUrl,
   disableStickySectionTabs = false,
+  publishedBlogCount = 0,
   children,
 }: SalonPublicParityProps & { children?: ReactNode }) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
@@ -363,6 +366,7 @@ export default function SalonPublicParity({
 
   const salonId = String(rawSalon.id ?? '').trim();
   const name = String(rawSalon.name ?? 'Салон');
+  const blogSectionTitle = resolveBlogSectionTitle(rawSalon.blog_title);
   const category = String(rawSalon.category ?? '').trim();
   const description = String(rawSalon.about ?? '').trim();
   const faqItems = useMemo(
@@ -1853,6 +1857,14 @@ export default function SalonPublicParity({
           </div>
           <div className="flex items-center justify-between gap-2">
             <nav className="flex items-center gap-0.5" aria-label="Правни документи">
+              {publishedBlogCount > 0 ? (
+                <a
+                  href={`${basePath}/blog`}
+                  className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+                >
+                  {blogSectionTitle}
+                </a>
+              ) : null}
               <a
                 href={`${basePath}/terms`}
                 className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { SALON_CURRENCY_CODE } from '@/lib/salon-currency';
+import type { PublicSalonBlogPost } from '@/lib/salon-blog';
+import { resolveBlogSectionTitle } from '@/lib/salon-blog';
 
 const CATEGORY_SCHEMA_MAP: Record<string, string> = {
   'Фризьорски салон': 'HairSalon',
@@ -217,4 +219,140 @@ export function buildSalonJsonLd(salon: Record<string, unknown>, slug: string) {
   }
 
   return jsonLd;
+}
+
+function salonPublicBaseUrl(salon: Record<string, unknown>, slug: string): string {
+  return getPrimaryPublicUrl({
+    slug,
+    customDomain: String(salon.custom_domain ?? ''),
+    domainStatus: String(salon.domain_status ?? ''),
+  });
+}
+
+function blogPostPublicUrl(salon: Record<string, unknown>, slug: string, postSlug: string): string {
+  return `${salonPublicBaseUrl(salon, slug)}/blog/${encodeURIComponent(postSlug)}`;
+}
+
+function blogPostDescription(post: PublicSalonBlogPost): string {
+  const custom = post.metaDescription.trim();
+  if (custom) {
+    return custom.length > META_DESC_MAX ? `${custom.slice(0, META_DESC_MAX - 1).trim()}…` : custom;
+  }
+  const excerpt = post.excerpt.trim();
+  if (excerpt) {
+    return excerpt.length > META_DESC_MAX ? `${excerpt.slice(0, META_DESC_MAX - 1).trim()}…` : excerpt;
+  }
+  const plain = post.bodyMarkdown.replace(/\s+/g, ' ').trim();
+  if (!plain) return '';
+  return plain.length > META_DESC_MAX ? `${plain.slice(0, META_DESC_MAX - 1).trim()}…` : plain;
+}
+
+export function buildBlogIndexMetadata(
+  salon: Record<string, unknown>,
+  slug: string,
+): Metadata {
+  const salonName = String(salon.name ?? '').trim() || 'Салон';
+  const city = String(salon.city ?? '').trim();
+  const sectionTitle = resolveBlogSectionTitle(salon.blog_title);
+  const title = city
+    ? `${sectionTitle} — ${salonName}, ${city}`
+    : `${sectionTitle} — ${salonName}`;
+  const description = city
+    ? `${sectionTitle} от ${salonName} в ${city}. Полезна информация за грижа и услуги.`
+    : `${sectionTitle} от ${salonName}. Полезна информация за грижа и услуги.`;
+  const canonicalUrl = `${salonPublicBaseUrl(salon, slug)}/blog`;
+  const coverImage = String(salon.cover_image_url ?? '').trim();
+
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: salonName,
+      type: 'website',
+      locale: 'bg_BG',
+      ...(coverImage ? { images: [{ url: coverImage, width: 1200, height: 630, alt: salonName }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(coverImage ? { images: [coverImage] } : {}),
+    },
+    robots: { index: true, follow: true },
+  };
+}
+
+export function buildBlogPostMetadata(
+  post: PublicSalonBlogPost,
+  salon: Record<string, unknown>,
+  slug: string,
+): Metadata {
+  const salonName = String(salon.name ?? '').trim() || 'Салон';
+  const title = post.metaTitle.trim() || post.title.trim() || 'Статия';
+  const fullTitle = title.includes(salonName) ? title : `${title} — ${salonName}`;
+  const description = blogPostDescription(post);
+  const canonicalUrl = blogPostPublicUrl(salon, slug, post.slug);
+  const coverImage = post.coverImageUrl.trim() || String(salon.cover_image_url ?? '').trim();
+
+  return {
+    title: fullTitle,
+    description,
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title: fullTitle,
+      description,
+      url: canonicalUrl,
+      siteName: salonName,
+      type: 'article',
+      locale: 'bg_BG',
+      ...(post.publishedAt ? { publishedTime: post.publishedAt } : {}),
+      ...(post.updatedAt ? { modifiedTime: post.updatedAt } : {}),
+      ...(coverImage ? { images: [{ url: coverImage, width: 1200, height: 630, alt: title }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: fullTitle,
+      description,
+      ...(coverImage ? { images: [coverImage] } : {}),
+    },
+    robots: { index: true, follow: true },
+  };
+}
+
+export function buildBlogPostingJsonLd(
+  post: PublicSalonBlogPost,
+  salon: Record<string, unknown>,
+  slug: string,
+) {
+  const salonName = String(salon.name ?? '').trim() || 'Салон';
+  const url = blogPostPublicUrl(salon, slug, post.slug);
+  const description = blogPostDescription(post);
+  const coverImage = post.coverImageUrl.trim() || String(salon.cover_image_url ?? '').trim();
+  const logoImage = String(salon.logo_image_url ?? '').trim();
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    ...(description ? { description } : {}),
+    url,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+    ...(post.updatedAt ? { dateModified: post.updatedAt } : {}),
+    ...(coverImage ? { image: [coverImage] } : {}),
+    author: {
+      '@type': 'Organization',
+      name: salonName,
+      ...(logoImage ? { logo: logoImage } : {}),
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: salonName,
+      ...(logoImage ? { logo: { '@type': 'ImageObject', url: logoImage } } : {}),
+    },
+  };
 }

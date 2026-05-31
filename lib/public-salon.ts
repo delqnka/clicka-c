@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
+import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
 import {
   buildStaticMapUrl,
@@ -93,6 +94,7 @@ async function fetchPublicSalonPageData({
 
   let offers: unknown[] = [];
   let reviews: unknown[] = [];
+  let publishedBlogCount = 0;
 
   try {
     await ensureOffersSchema();
@@ -105,6 +107,18 @@ async function fetchPublicSalonPageData({
     `;
   } catch {
     offers = [];
+  }
+
+  try {
+    await ensureBlogSchema();
+    const countRows = await sql`
+      SELECT COUNT(*)::int AS count
+      FROM salon_blog_posts
+      WHERE salon_id = ${salonId} AND status = 'published'
+    `;
+    publishedBlogCount = Number((countRows[0] as { count?: number }).count ?? 0) || 0;
+  } catch {
+    publishedBlogCount = 0;
   }
 
   try {
@@ -156,6 +170,7 @@ async function fetchPublicSalonPageData({
     reviews,
     googleReviews,
     staticMapUrl,
+    publishedBlogCount,
   };
 }
 

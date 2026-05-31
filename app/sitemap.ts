@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { sql } from '@/lib/db';
+import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { getPrimaryPublicUrl, ROOT_DOMAIN } from '@/lib/domain-routing';
 
 export const dynamic = 'force-dynamic';
@@ -23,17 +24,54 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     LIMIT 500
   `;
 
+  await ensureBlogSchema().catch(() => {});
+
   for (const row of salons) {
     const s = row as Record<string, unknown>;
+    const baseUrl = getPrimaryPublicUrl({
+      slug: String(s.slug ?? ''),
+      customDomain: String(s.custom_domain ?? ''),
+      domainStatus: String(s.domain_status ?? ''),
+    });
     entries.push({
-      url: getPrimaryPublicUrl({
-        slug: String(s.slug ?? ''),
-        customDomain: String(s.custom_domain ?? ''),
-        domainStatus: String(s.domain_status ?? ''),
-      }),
+      url: baseUrl,
       lastModified: s.updated_at ? new Date(String(s.updated_at)) : new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
+    });
+    entries.push({
+      url: `${baseUrl}/blog`,
+      lastModified: s.updated_at ? new Date(String(s.updated_at)) : new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.65,
+    });
+  }
+
+  const blogPosts = await sql`
+    SELECT s.slug, s.custom_domain, s.domain_status, p.slug AS post_slug, p.updated_at
+    FROM salon_blog_posts p
+    JOIN salons s ON CAST(s.id AS text) = p.salon_id
+    WHERE p.status = 'published'
+      AND s.is_active = true
+      AND s.site_status = 'active'
+    ORDER BY p.updated_at DESC
+    LIMIT 5000
+  `;
+
+  for (const row of blogPosts) {
+    const s = row as Record<string, unknown>;
+    const postSlug = String(s.post_slug ?? '').trim();
+    if (!postSlug) continue;
+    const baseUrl = getPrimaryPublicUrl({
+      slug: String(s.slug ?? ''),
+      customDomain: String(s.custom_domain ?? ''),
+      domainStatus: String(s.domain_status ?? ''),
+    });
+    entries.push({
+      url: `${baseUrl}/blog/${encodeURIComponent(postSlug)}`,
+      lastModified: s.updated_at ? new Date(String(s.updated_at)) : new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.55,
     });
   }
 

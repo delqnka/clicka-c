@@ -44,6 +44,7 @@ export function SalonPublicPageView({ pageData, highlightReviewId, tabParam }: P
         highlightReviewId={highlightReviewId ?? null}
         tabParam={tabParam ?? null}
         staticMapUrl={pageData.staticMapUrl}
+        publishedBlogCount={pageData.publishedBlogCount}
       >
         {lcp ? <SalonHeroLcp src={lcp.src} alt={lcp.alt} /> : null}
       </SalonPublicParity>

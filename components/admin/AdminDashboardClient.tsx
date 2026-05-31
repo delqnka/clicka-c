@@ -12,6 +12,7 @@ import {
   Globe,
   Image as ImageIcon,
   ImagePlus,
+  Newspaper,
   Scissors,
   Tag,
   UserRound,
@@ -44,6 +45,7 @@ import {
 } from '@/components/admin/lazy-admin-tabs';
 import { AdminPriceListScanBtn, PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
+import type { AdminSalonBlogPost } from '@/lib/salon-blog';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
@@ -73,6 +75,10 @@ const DomainPurchaseSection = dynamic(
 );
 const SalonOffersSection = dynamic(
   () => import('@/components/admin/SalonOffersSection').then((m) => m.SalonOffersSection),
+  { ssr: false }
+);
+const SalonBlogSection = dynamic(
+  () => import('@/components/admin/SalonBlogSection').then((m) => m.SalonBlogSection),
   { ssr: false }
 );
 const BookingsPanel = dynamic(
@@ -109,6 +115,7 @@ const TABS = [
   { id: 'specialist',    label: 'Специалист',     Icon: UserRound },
   { id: 'services',      label: 'Услуги',         Icon: Scissors },
   { id: 'offers',        label: 'Оферти',         Icon: Tag },
+  { id: 'blog',          label: 'Блог',           Icon: Newspaper },
   { id: 'hours',         label: 'Работно време',  Icon: Clock3 },
   { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
   { id: 'clients',       label: 'Клиенти',        Icon: Users },
@@ -131,6 +138,7 @@ const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
   hours:      ['#56CCF2', '#2F80ED'],
   clients:    ['#2DD4BF', '#0D9488'],
   offers:     ['#F97316', '#EF4444'],
+  blog:       ['#38BDF8', '#6366F1'],
   domain:     ['#80FF72', '#7EE8FA'],
   integrations: ['#6366F1', '#8B5CF6'],
   sms:        ['#22C55E', '#14B8A6'],
@@ -326,6 +334,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     variants: [] as { label: string; price: number; duration_min: number }[],
   });
   const [offers, setOffers] = useState<AdminSalonOffer[]>([]);
+  const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
+  const [blogSectionTitle, setBlogSectionTitle] = useState('');
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [smsDraftEnabled, setSmsDraftEnabled] = useState(initialSite.smsEnabled);
@@ -756,6 +766,29 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         if (cancelled) return;
         const list = (data as { offers?: AdminSalonOffer[] }).offers;
         setOffers(Array.isArray(list) ? list : []);
+      } catch (e) {
+        if (!cancelled) handleErr(e);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, slug]);
+
+  useEffect(() => {
+    if (activeTab !== 'blog') return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`);
+        const data = await readJson(res);
+        if (!res.ok) throw new Error((data as { error?: string }).error || 'Грешка');
+        if (cancelled) return;
+        const list = (data as { posts?: AdminSalonBlogPost[] }).posts;
+        setBlogPosts(Array.isArray(list) ? list : []);
+        const title = (data as { blogTitle?: string }).blogTitle;
+        if (typeof title === 'string') setBlogSectionTitle(title);
       } catch (e) {
         if (!cancelled) handleErr(e);
       }
@@ -1486,6 +1519,44 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     }
   }
 
+  async function saveBlogPosts() {
+    setError('');
+    setNotice('');
+    setBusyKey('blog');
+    try {
+      const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ posts: blogPosts, blogTitle: blogSectionTitle }),
+      });
+      const data = (await guardResponse(res)) as { posts?: AdminSalonBlogPost[]; blogTitle?: string };
+      if (Array.isArray(data.posts)) setBlogPosts(data.posts);
+      if (typeof data.blogTitle === 'string') setBlogSectionTitle(data.blogTitle);
+      setNotice('Блогът е запазен.');
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }
+
+  async function handleBlogCoverUpload(postIndex: number, file: File | null) {
+    if (!file) return;
+    setBusyKey(`upload-blog-${postIndex}`);
+    setError('');
+    try {
+      const url = await uploadSingleFile(file);
+      setBlogPosts((prev) =>
+        prev.map((p, i) => (i === postIndex ? { ...p, coverImageUrl: url } : p)),
+      );
+      setNotice('Корица е качена.');
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }
+
   async function handleOfferImagesUpload(offerIndex: number, files: FileList | null) {
     if (!files?.length) return;
     setBusyKey(`upload-offer-${offerIndex}`);
@@ -2143,6 +2214,27 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 onChange={setOffers}
                 onUploadImages={handleOfferImagesUpload}
                 onSave={saveOffers}
+              />
+            </Section>
+          )}
+
+          {activeTab === 'blog' && (
+            <Section
+              title="Блог"
+              desc="Публикувайте статии за по-добро SEO — съвети, нови услуги, сезонни грижи. Без ограничение на броя."
+              compact={isMobile}
+            >
+              <SalonBlogSection
+                posts={blogPosts}
+                blogTitle={blogSectionTitle}
+                isMobile={isMobile}
+                busyKey={busyKey}
+                inp={inp}
+                blogPreviewBase={sitePublicUrl.replace(/\/$/, '')}
+                onChange={setBlogPosts}
+                onBlogTitleChange={setBlogSectionTitle}
+                onUploadCover={handleBlogCoverUpload}
+                onSave={saveBlogPosts}
               />
             </Section>
           )}
