@@ -325,6 +325,24 @@ export async function POST(request: NextRequest) {
   }
 
   if (!insertedBooking) {
+    const legacyDate = formatLegacyDateDMY(date);
+    const conflicting = await sql`
+      SELECT id, date, time, service_duration, status, client_name
+      FROM bookings
+      WHERE salon_id = ${salonId}
+        AND date IN (${date}, ${legacyDate ?? date})
+        AND lower(trim(coalesce(status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
+      ORDER BY time
+    `;
+    console.error('[bookings POST] overlap rejection', {
+      requestedDate: date,
+      requestedTime: time,
+      requestedDuration: durationValue ?? 30,
+      salonId,
+      conflictingBookings: conflicting.map((r: Record<string, unknown>) => ({
+        id: r.id, date: r.date, time: r.time, duration: r.service_duration, status: r.status,
+      })),
+    });
     return NextResponse.json(
       { error: 'Този час току-що беше зает. Моля изберете друг свободен час.' },
       { status: 409 },
