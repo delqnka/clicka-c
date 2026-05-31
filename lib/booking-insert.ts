@@ -49,7 +49,7 @@ export async function insertBookingIfNoOverlap(
       ${row.date},
       ${row.time},
       'pending',
-      ${row.notes || null},
+      ${row.notes || ''},
       ${row.smsReminderConsent},
       ${consentAt},
       ${row.offerId},
