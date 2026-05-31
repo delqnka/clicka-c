@@ -209,49 +209,37 @@ export function BookingsPanel({
         ) : null}
       </div>
 
-      {selectedCalendarDate && externalCalendarEvents.length > 0 ? (
-        <div
-          style={{
-            marginBottom: 14,
-            border: `1px solid ${T.border}`,
-            borderRadius: 14,
-            background: '#FFFBEB',
-            padding: '12px 14px',
-            display: 'grid',
-            gap: 8,
-          }}
-        >
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#9A3412' }}>
-            Блокирани часове ({externalCalendarEvents.length})
-          </p>
-          {externalCalendarEvents.map((ev) => (
-            <div
-              key={ev.id}
-              style={{
-                borderRadius: 10,
-                background: '#fff',
-                border: '1px solid #FDE68A',
-                padding: '8px 10px',
-                fontSize: 13,
-              }}
-            >
-              <strong>{ev.title}</strong>
-              <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>
-                {ev.startTime}
-                {ev.endTime && ev.endTime !== ev.startTime ? ` – ${ev.endTime}` : ''}
-                {ev.source === 'google' ? ' · Google' : ' · iCloud/ICS'}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {visibleBookings.length === 0 ? (
+      {visibleBookings.length === 0 && externalCalendarEvents.length === 0 ? (
         <div style={{ border: `1px dashed ${T.border}`, borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
           Няма резервации за избраните филтри.
         </div>
       ) : (
         <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
+          {selectedCalendarDate && externalCalendarEvents.length > 0 ? (
+            <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+              {externalCalendarEvents.map((ev) => (
+                <div key={ev.id} style={{
+                  border: isMobile ? 'none' : `1px solid #FDE68A`, borderRadius: isMobile ? 18 : T.radiusSm,
+                  padding: isMobile ? '16px 18px' : '14px 16px', background: '#FFFBEB',
+                  boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: isMobile ? 16 : 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{ev.title}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 600 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#F59E0B', flexShrink: 0 }} />
+                        Външна резервация
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
+                      {ev.startTime}{ev.endTime && ev.endTime !== ev.startTime ? ` – ${ev.endTime}` : ''}
+                      {ev.source === 'block' ? ' · Telegram' : ev.source === 'google' ? ' · Google' : ' · Календар'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {([
             ['upcoming', 'Предстоящи'],
             ['past', 'Минали'],
