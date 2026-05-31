@@ -8,6 +8,7 @@ import {
 } from '@/lib/clicka-marketing-site';
 import type { SalonOfferRow } from '@/lib/salon-offers';
 import { normalizeOfferImages, offerSpotsLeft } from '@/lib/salon-offers';
+import { BookingSuccessView } from '@/components/salon/BookingSuccessView';
 
 type Props = {
   open: boolean;
@@ -31,6 +32,7 @@ type Props = {
   isSubmitting: boolean;
   bookingError: string;
   bookingSuccess: string;
+  bookingSuccessDetails?: { serviceName: string; dateLabel: string; time: string } | null;
   onClose: () => void;
   onDateChange: (date: string) => void;
   onTimeChange: (time: string) => void;
@@ -90,6 +92,7 @@ export function SalonOfferBookingModal({
   isSubmitting,
   bookingError,
   bookingSuccess,
+  bookingSuccessDetails,
   onClose,
   onDateChange,
   onTimeChange,
@@ -240,9 +243,19 @@ export function SalonOfferBookingModal({
 
         <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5">
           {bookingSuccess ? (
-            <p className="rounded-2xl bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-700">
-              {bookingSuccess}
-            </p>
+            bookingSuccessDetails ? (
+              <BookingSuccessView
+                serviceName={bookingSuccessDetails.serviceName}
+                dateLabel={bookingSuccessDetails.dateLabel}
+                time={bookingSuccessDetails.time}
+                salonName={salonName}
+                onClose={onClose}
+              />
+            ) : (
+              <p className="rounded-2xl bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-700">
+                {bookingSuccess}
+              </p>
+            )
           ) : (
             <form id="salon-offer-booking-form" onSubmit={onSubmit} className="min-w-0 space-y-3.5 bg-white">
               {step === 1 ? (
@@ -496,7 +509,7 @@ export function SalonOfferBookingModal({
           )}
         </div>
 
-        {!bookingSuccess ? (
+        {!bookingSuccess && !bookingSuccessDetails ? (
           <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
             <div className="mb-3 rounded-2xl bg-white px-3.5 py-2.5">
               <p className="text-sm font-semibold tabular-nums text-black">

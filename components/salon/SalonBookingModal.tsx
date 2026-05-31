@@ -14,6 +14,7 @@ import {
 } from '@/lib/booking-modal-catalog';
 import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-service-categories';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
+import { BookingSuccessView } from '@/components/salon/BookingSuccessView';
 
 export type BookingServiceOption = {
   id: string;
@@ -53,6 +54,7 @@ type SalonBookingModalProps = {
   isSubmitting: boolean;
   bookingError: string;
   bookingSuccess: string;
+  bookingSuccessDetails?: { serviceName: string; dateLabel: string; time: string } | null;
   onClose: () => void;
   onToggleService: (idx: number) => void;
   onDateChange: (date: string) => void;
@@ -119,6 +121,7 @@ export function SalonBookingModal({
   isSubmitting,
   bookingError,
   bookingSuccess,
+  bookingSuccessDetails,
   onClose,
   onToggleService,
   onDateChange,
@@ -313,9 +316,19 @@ export function SalonBookingModal({
 
         <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5">
           {bookingSuccess ? (
-            <p className="rounded-2xl bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-700">
-              {bookingSuccess}
-            </p>
+            bookingSuccessDetails ? (
+              <BookingSuccessView
+                serviceName={bookingSuccessDetails.serviceName}
+                dateLabel={bookingSuccessDetails.dateLabel}
+                time={bookingSuccessDetails.time}
+                salonName={salonName}
+                onClose={onClose}
+              />
+            ) : (
+              <p className="rounded-2xl bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-700">
+                {bookingSuccess}
+              </p>
+            )
           ) : (
             <form id="salon-booking-form" onSubmit={onSubmit} className="min-w-0 space-y-3.5 bg-white">
               {step === 1 ? (
@@ -698,7 +711,7 @@ export function SalonBookingModal({
           )}
         </div>
 
-        {!bookingSuccess ? (
+        {!bookingSuccess && !bookingSuccessDetails ? (
           <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
             {hasServices ? (
               <div className="mb-3 rounded-2xl bg-white px-3.5 py-2.5">

@@ -505,6 +505,11 @@ export default function SalonPublicParity({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
+  const [bookingSuccessDetails, setBookingSuccessDetails] = useState<{
+    serviceName: string;
+    dateLabel: string;
+    time: string;
+  } | null>(null);
 
   const isValidImageUri = useCallback((uri: string | null | undefined) => uri != null && String(uri).trim().length > 0, []);
 
@@ -889,6 +894,7 @@ export default function SalonPublicParity({
 
   function closeBookingModal() {
     setBookingOpen(false);
+    setBookingSuccessDetails(null);
   }
 
   function openOfferBooking(offer: SalonOfferRow) {
@@ -896,6 +902,7 @@ export default function SalonPublicParity({
     setSelectedOffer(offer);
     setBookingError('');
     setBookingSuccess('');
+    setBookingSuccessDetails(null);
     setSelectedDate('');
     setSelectedTime('');
     setClientName('');
@@ -909,6 +916,7 @@ export default function SalonPublicParity({
   function closeOfferBooking() {
     setOfferBookingOpen(false);
     setSelectedOffer(null);
+    setBookingSuccessDetails(null);
   }
 
   const offerDurationMin = Math.max(15, Number(selectedOffer?.duration_min ?? 60) || 60);
@@ -1110,6 +1118,7 @@ export default function SalonPublicParity({
         month: 'long',
       });
       markDateSlotOccupied(selectedDate, selectedTime, combinedDuration);
+      setBookingSuccessDetails({ serviceName: combinedServiceName, dateLabel, time: selectedTime });
       setBookingSuccess(`${combinedServiceName} — ${dateLabel} в ${selectedTime} ч.`);
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
@@ -1157,6 +1166,7 @@ export default function SalonPublicParity({
         month: 'long',
       });
       markDateSlotOccupied(selectedDate, selectedTime, offerDurationMin);
+      setBookingSuccessDetails({ serviceName: selectedOffer.title, dateLabel, time: selectedTime });
       setBookingSuccess(
         json.message || `${selectedOffer.title} — ${dateLabel} в ${selectedTime} ч.`,
       );
@@ -2030,6 +2040,7 @@ export default function SalonPublicParity({
         isSubmitting={isSubmitting}
         bookingError={bookingError}
         bookingSuccess={bookingSuccess}
+        bookingSuccessDetails={bookingSuccessDetails}
         onClose={closeBookingModal}
         onToggleService={(idx) => {
           setBookingServiceIdxs((prev) => {
@@ -2075,6 +2086,7 @@ export default function SalonPublicParity({
         isSubmitting={isSubmitting}
         bookingError={bookingError}
         bookingSuccess={bookingSuccess}
+        bookingSuccessDetails={bookingSuccessDetails}
         onClose={closeOfferBooking}
         onDateChange={(date) => {
           setSelectedDate(date);
