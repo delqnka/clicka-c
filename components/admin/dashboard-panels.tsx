@@ -100,6 +100,17 @@ function bookingFilterCount(bookings: BookingRecord[], filter: BookingListFilter
   return bookings.filter((b) => b.status === filter).length;
 }
 
+const ALL_BOOKING_GROUPS: ReadonlyArray<readonly [BookingGroupKey, string]> = [
+  ['upcoming', 'Предстоящи'],
+  ['past', 'Минали'],
+  ['completed', 'Завършени'],
+  ['cancelled', 'Отказани'],
+];
+
+const UPCOMING_BOOKING_GROUPS: ReadonlyArray<readonly [BookingGroupKey, string]> = [
+  ['upcoming', 'Предстоящи'],
+];
+
 function BookingCard({
   booking,
   isMobile,
@@ -219,6 +230,8 @@ export function BookingsPanel({
   btn,
   T,
 }: BookingsPanelProps) {
+  const bookingGroups = statusFilter === 'upcoming' ? UPCOMING_BOOKING_GROUPS : ALL_BOOKING_GROUPS;
+
   return (
     <>
       {isMobile && (
@@ -352,17 +365,8 @@ export function BookingsPanel({
               ))}
             </div>
           ) : null}
-          {(
-            (statusFilter === 'upcoming'
-              ? [['upcoming', 'Предстоящи']]
-              : [
-                  ['upcoming', 'Предстоящи'],
-                  ['past', 'Минали'],
-                  ['completed', 'Завършени'],
-                  ['cancelled', 'Отказани'],
-                ]) as const
-          ).map(([groupKey, groupLabel]) => {
-            const rows = groupedVisibleBookings[groupKey as BookingGroupKey];
+          {bookingGroups.map(([groupKey, groupLabel]) => {
+            const rows = groupedVisibleBookings[groupKey];
             if (rows.length === 0) return null;
             return (
               <div key={groupKey} style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
