@@ -31,6 +31,15 @@ type ClientSummary = {
   lastVisit: string;
 };
 
+type ExternalCalendarEventRow = {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  source: string;
+};
+
 type BookingsPanelProps = {
   isMobile: boolean;
   bookings: BookingRecord[];
@@ -39,6 +48,8 @@ type BookingsPanelProps = {
   calendarMonthLabel: string;
   calendarMeta: { year: number; month: number; daysInMonth: number; mondayFirstOffset: number };
   bookingsCountByDate: Map<string, number>;
+  externalCalendarByDate: Map<string, number>;
+  externalCalendarEvents: ExternalCalendarEventRow[];
   selectedCalendarDate: string | null;
   setSelectedCalendarDate: (next: string | null) => void;
   setCalendarCursor: (next: (prev: Date) => Date) => void;
@@ -84,6 +95,8 @@ export function BookingsPanel({
   calendarMonthLabel,
   calendarMeta,
   bookingsCountByDate,
+  externalCalendarByDate,
+  externalCalendarEvents,
   selectedCalendarDate,
   setSelectedCalendarDate,
   setCalendarCursor,
@@ -151,21 +164,32 @@ export function BookingsPanel({
             const day = i + 1;
             const key = ymdKey(calendarMeta.year, calendarMeta.month, day);
             const count = bookingsCountByDate.get(key) ?? 0;
+            const externalCount = externalCalendarByDate.get(key) ?? 0;
             const active = selectedCalendarDate === key;
+            const hasClicka = count > 0;
+            const hasExternal = externalCount > 0;
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => setSelectedCalendarDate(active ? null : key)}
                 style={{
-                  border: 'none', borderRadius: 12, minHeight: 42,
-                  background: active ? T.accent : count > 0 ? '#4F46E5' : '#F4F4F5',
-                  color: active || count > 0 ? '#fff' : T.text, fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', padding: '6px 4px',
+                  border: hasExternal && !hasClicka ? '2px solid #FB923C' : 'none',
+                  borderRadius: 12,
+                  minHeight: 42,
+                  background: active ? T.accent : hasClicka ? '#4F46E5' : hasExternal ? '#FFF7ED' : '#F4F4F5',
+                  color: active || hasClicka ? '#fff' : hasExternal ? '#9A3412' : T.text,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '6px 4px',
                 }}
               >
                 <div>{day}</div>
-                {count > 0 ? <div style={{ fontSize: 10, opacity: 0.85 }}>{count}</div> : null}
+                {hasClicka ? <div style={{ fontSize: 10, opacity: 0.85 }}>{count}</div> : null}
+                {!hasClicka && hasExternal ? (
+                  <div style={{ fontSize: 10, opacity: 0.85 }}>•</div>
+                ) : null}
               </button>
             );
           })}
@@ -178,7 +202,49 @@ export function BookingsPanel({
             </button>
           </p>
         ) : null}
+        {externalCalendarByDate.size > 0 ? (
+          <p style={{ margin: '8px 2px 0', fontSize: 11, color: T.subtle }}>
+            Оранжеви дни = събития от Google/iCloud календар (като ColorTrack).
+          </p>
+        ) : null}
       </div>
+
+      {selectedCalendarDate && externalCalendarEvents.length > 0 ? (
+        <div
+          style={{
+            marginBottom: 14,
+            border: `1px solid ${T.border}`,
+            borderRadius: 14,
+            background: '#FFFBEB',
+            padding: '12px 14px',
+            display: 'grid',
+            gap: 8,
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#9A3412' }}>
+            От външен календар ({externalCalendarEvents.length})
+          </p>
+          {externalCalendarEvents.map((ev) => (
+            <div
+              key={ev.id}
+              style={{
+                borderRadius: 10,
+                background: '#fff',
+                border: '1px solid #FDE68A',
+                padding: '8px 10px',
+                fontSize: 13,
+              }}
+            >
+              <strong>{ev.title}</strong>
+              <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>
+                {ev.startTime}
+                {ev.endTime && ev.endTime !== ev.startTime ? ` – ${ev.endTime}` : ''}
+                {ev.source === 'google' ? ' · Google' : ' · iCloud/ICS'}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {visibleBookings.length === 0 ? (
         <div style={{ border: `1px dashed ${T.border}`, borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>

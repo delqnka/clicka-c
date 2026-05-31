@@ -1,11 +1,20 @@
 'use client';
 
-import { Check, Copy, RefreshCw } from 'lucide-react';
-import type { CSSProperties, Dispatch, SetStateAction } from 'react';
+import { Calendar, Check, Copy, RefreshCw } from 'lucide-react';
+import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { GOOGLE_PLACE_ID_FINDER_URL } from '@/components/admin/admin-constants';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
+
+type CalendarStatus = {
+  loading: boolean;
+  googleConnected: boolean;
+  googleConfigured: boolean;
+  feedUrl: string;
+  webcalUrl: string;
+  externalIcsUrl: string;
+};
 
 type GoogleReviewsStatus = {
   loading: boolean;
@@ -49,6 +58,12 @@ export function IntegrationsTabPanel({
   googleBizResults,
   googleBizMessage,
   searchGoogleBusinesses,
+  calendarStatus,
+  loadCalendarStatus,
+  onConnectGoogleCalendar,
+  onDisconnectGoogleCalendar,
+  onResyncGoogleCalendar,
+  onSaveExternalIcsUrl,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -68,10 +83,163 @@ export function IntegrationsTabPanel({
   googleBizResults: GoogleBusinessCandidate[];
   googleBizMessage: string;
   searchGoogleBusinesses: () => void | Promise<void>;
+  calendarStatus: CalendarStatus;
+  loadCalendarStatus: () => void | Promise<void>;
+  onConnectGoogleCalendar: () => void;
+  onDisconnectGoogleCalendar: () => void | Promise<void>;
+  onResyncGoogleCalendar: () => void | Promise<void>;
+  onSaveExternalIcsUrl: (url: string) => void | Promise<void>;
 }) {
+  const [externalIcsDraft, setExternalIcsDraft] = useState(calendarStatus.externalIcsUrl || '');
+
+  useEffect(() => {
+    setExternalIcsDraft(calendarStatus.externalIcsUrl || '');
+  }, [calendarStatus.externalIcsUrl]);
+
   return (
-    <AdminSection title="Интеграции" desc="Telegram известия и Google отзиви на сайта.">
+    <AdminSection title="Интеграции" desc="Telegram, календар и Google отзиви.">
       <div style={{ display: 'grid', gap: 10 }}>
+        <AdminInfoCard
+          title="Календар"
+          status={
+            calendarStatus.externalIcsUrl || calendarStatus.feedUrl ? 'connected' : 'pending'
+          }
+        >
+          <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
+            Работи <strong>без Google Cloud</strong> и без OAuth ключове — само календарни линкове (ICS),
+            както ColorTrack чете телефона, но през web.
+          </p>
+
+          {calendarStatus.feedUrl ? (
+            <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
+                1. Clicka → Google / iPhone / Outlook (резервациите в твоя календар)
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
+                Google Calendar: calendar.google.com → Other calendars → + → From URL → paste линка.
+                <br />
+                iPhone: Настройки → Календар → Акаунти → Добави абонаментен календар.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(calendarStatus.feedUrl).catch(() => null);
+                  setBusyKey('copied-cal-feed');
+                  setTimeout(() => setBusyKey((k) => (k === 'copied-cal-feed' ? '' : k)), 2000);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: ADMIN_T.radiusSm,
+                  background: '#F4F4F5',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <code
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: 'monospace',
+                    wordBreak: 'break-all',
+                    paddingRight: 8,
+                  }}
+                >
+                  {calendarStatus.feedUrl}
+                </code>
+                {busyKey === 'copied-cal-feed' ? (
+                  <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
+                ) : (
+                  <Copy size={15} style={{ color: ADMIN_T.muted, flexShrink: 0 }} />
+                )}
+              </button>
+            </div>
+          ) : (
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: ADMIN_T.subtle }}>
+              {calendarStatus.loading ? 'Генерираме линк…' : 'Линкът се зарежда…'}
+            </p>
+          )}
+
+          <div style={{ marginTop: 14, display: 'grid', gap: 6 }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
+              2. Твоят календар → Clicka (Booksy, Fresha, iPhone — виж ги в Резервации)
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.55 }}>
+              iPhone/iCloud: Календар → име на календар → ⓘ → Абонирай се → Copy Link → paste тук.
+              Ако ползваш Google на телефона, синхронизирай го с iCloud или paste Google ICS export линк.
+            </p>
+            <input
+              style={{ ...inp, fontSize: 13 }}
+              value={externalIcsDraft}
+              onChange={(e) => setExternalIcsDraft(e.target.value)}
+              placeholder="webcal://… или https://…calendar.ics"
+            />
+            <button
+              type="button"
+              style={btn('primary')}
+              disabled={busyKey === 'calendar-ics-save'}
+              onClick={() => void onSaveExternalIcsUrl(externalIcsDraft)}
+            >
+              {busyKey === 'calendar-ics-save' ? 'Запазване…' : 'Запази и синхронизирай'}
+            </button>
+          </div>
+
+          {calendarStatus.googleConfigured ? (
+            <details style={{ marginTop: 14 }}>
+              <summary style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.subtle, cursor: 'pointer' }}>
+                По избор: автоматичен Google OAuth (изисква Google Cloud на платформата)
+              </summary>
+              <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.55 }}>
+                  {calendarStatus.googleConnected
+                    ? 'OAuth връзката е активна. Можеш да я махнеш — ICS линковете по-горе работят и без нея.'
+                    : 'Не е задължително. Повечето салони ползват само ICS линковете по-горе.'}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {calendarStatus.googleConnected ? (
+                    <>
+                      <button
+                        type="button"
+                        style={btn('sm-ghost')}
+                        disabled={busyKey === 'calendar-resync'}
+                        onClick={() => void onResyncGoogleCalendar()}
+                      >
+                        {busyKey === 'calendar-resync' ? 'Синхронизираме…' : 'Синхронизирай отново'}
+                      </button>
+                      <button
+                        type="button"
+                        style={btn('danger')}
+                        disabled={busyKey === 'calendar-disconnect'}
+                        onClick={() => void onDisconnectGoogleCalendar()}
+                      >
+                        {busyKey === 'calendar-disconnect' ? 'Премахваме…' : 'Премахни OAuth'}
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" style={btn('sm-ghost')} onClick={onConnectGoogleCalendar}>
+                      <Calendar size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
+                      Свържи Google OAuth
+                    </button>
+                  )}
+                </div>
+              </div>
+            </details>
+          ) : null}
+
+          <button
+            type="button"
+            style={{ ...btn('sm-ghost'), marginTop: 10 }}
+            disabled={calendarStatus.loading}
+            onClick={() => void loadCalendarStatus()}
+          >
+            {calendarStatus.loading ? 'Проверяваме…' : 'Обнови статуса'}
+          </button>
+        </AdminInfoCard>
+
         <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'}>
           {site.telegramChatId ? (
             <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>

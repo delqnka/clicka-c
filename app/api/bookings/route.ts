@@ -20,6 +20,10 @@ import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { runAfterResponse } from '@/lib/run-after-response';
 import {
+  loadBookingForCalendarSync,
+  syncBookingToGoogleCalendar,
+} from '@/lib/calendar-sync';
+import {
   cancelBookingSmsReminders,
   scheduleBookingSmsReminders,
 } from '@/lib/sms-reminders';
@@ -310,6 +314,7 @@ export async function POST(request: NextRequest) {
   }
 
   const bookingDetails = {
+    bookingId: insertedBooking.id,
     clientName,
     clientPhone,
     clientEmail: normalizedClientEmail,
@@ -354,6 +359,24 @@ export async function POST(request: NextRequest) {
       smsReminderMode: (resolved.salon as Record<string, unknown>).sms_reminder_mode,
       smsReminderConsent: hasSmsReminderConsent,
     }),
+  );
+
+  runAfterResponse(
+    syncBookingToGoogleCalendar({
+      id: insertedBooking.id,
+      salonId,
+      salonName: String(resolved.salon.name ?? ''),
+      clientName,
+      clientPhone,
+      clientEmail: normalizedClientEmail,
+      serviceName: resolvedServiceName,
+      serviceDuration: durationValue,
+      date,
+      time,
+      status: 'pending',
+      notes: normalizedNotes || null,
+      googleCalendarEventId: null,
+    }).catch((err) => console.error('[bookings POST] calendar sync', err)),
   );
 
   return NextResponse.json({
@@ -405,7 +428,8 @@ export async function PATCH(request: NextRequest) {
     SET status = ${status},
         completed_at = CASE WHEN ${status} = 'completed' THEN now() ELSE completed_at END
     WHERE id = ${bookingId} AND salon_id = ${salonId}
-    RETURNING id, client_email, client_name, service_name
+    RETURNING id, client_email, client_name, service_name, client_phone,
+              service_duration, date, time, notes, google_calendar_event_id, status
   `;
 
   if (updated.length === 0) {
@@ -417,6 +441,12 @@ export async function PATCH(request: NextRequest) {
       console.error('[bookings PATCH] cancel SMS', err),
     );
   }
+
+  runAfterResponse(
+    loadBookingForCalendarSync(bookingId, salonId)
+      .then((booking) => (booking ? syncBookingToGoogleCalendar(booking) : null))
+      .catch((err) => console.error('[bookings PATCH] calendar sync', err)),
+  );
 
   const reviewInvite = {
     attempted: false,

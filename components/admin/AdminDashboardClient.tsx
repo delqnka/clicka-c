@@ -308,6 +308,18 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [googleBizLoading, setGoogleBizLoading] = useState(false);
   const [googleBizResults, setGoogleBizResults] = useState<GoogleBusinessCandidate[]>([]);
   const [googleBizMessage, setGoogleBizMessage] = useState('');
+  const [calendarIntegrationStatus, setCalendarIntegrationStatus] = useState({
+    loading: false,
+    googleConnected: false,
+    googleConfigured: false,
+    feedUrl: '',
+    webcalUrl: '',
+    externalIcsUrl: '',
+  });
+  const [externalCalendarByDate, setExternalCalendarByDate] = useState<Map<string, number>>(new Map());
+  const [externalCalendarEvents, setExternalCalendarEvents] = useState<
+    Array<{ id: string; title: string; date: string; startTime: string; endTime: string; source: string }>
+  >([]);
   const [calendarCursor, setCalendarCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -646,10 +658,163 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     [hasGoogleReviewsCandidate, site.googleMapsUrl, site.googlePlaceId, slug],
   );
 
+  const loadCalendarIntegrationStatus = useCallback(async () => {
+    setCalendarIntegrationStatus((prev) => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch(`/api/admin/calendar/status?slug=${encodeURIComponent(slug)}`, {
+        cache: 'no-store',
+      });
+      const data = (await readJson(res)) as {
+        googleConnected?: boolean;
+        googleConfigured?: boolean;
+        feedUrl?: string;
+        webcalUrl?: string;
+        externalIcsUrl?: string;
+      };
+      if (!res.ok) throw new Error('status_failed');
+      setCalendarIntegrationStatus({
+        loading: false,
+        googleConnected: data.googleConnected === true,
+        googleConfigured: data.googleConfigured === true,
+        feedUrl: String(data.feedUrl ?? ''),
+        webcalUrl: String(data.webcalUrl ?? ''),
+        externalIcsUrl: String(data.externalIcsUrl ?? ''),
+      });
+    } catch {
+      setCalendarIntegrationStatus((prev) => ({ ...prev, loading: false }));
+    }
+  }, [slug]);
+
+  const saveExternalIcsUrl = useCallback(
+    async (url: string) => {
+      setBusyKey('calendar-ics-save');
+      setError('');
+      try {
+        const res = await fetch(`/api/admin/calendar/status?slug=${encodeURIComponent(slug)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ externalIcsUrl: url }),
+        });
+        await guardResponse(res);
+        setNotice('Календарният линк е запазен.');
+        await loadCalendarIntegrationStatus();
+      } catch (e) {
+        handleErr(e);
+      } finally {
+        setBusyKey('');
+      }
+    },
+    [slug, loadCalendarIntegrationStatus],
+  );
+
+  const loadExternalCalendarOverlay = useCallback(async () => {
+    const year = calendarCursor.getFullYear();
+    const month = calendarCursor.getMonth();
+    const from = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    try {
+      const res = await fetch(
+        `/api/admin/calendar/events?slug=${encodeURIComponent(slug)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        { cache: 'no-store' },
+      );
+      const data = (await readJson(res)) as {
+        events?: Array<{ id: string; title: string; date: string; startTime: string; endTime: string; source: string }>;
+      };
+      if (!res.ok) return;
+      const events = Array.isArray(data.events) ? data.events : [];
+      const map = new Map<string, number>();
+      for (const ev of events) {
+        map.set(ev.date, (map.get(ev.date) ?? 0) + 1);
+      }
+      setExternalCalendarByDate(map);
+      if (selectedCalendarDate) {
+        setExternalCalendarEvents(events.filter((ev) => ev.date === selectedCalendarDate));
+      } else {
+        setExternalCalendarEvents([]);
+      }
+    } catch {
+      setExternalCalendarByDate(new Map());
+      setExternalCalendarEvents([]);
+    }
+  }, [calendarCursor, slug, selectedCalendarDate]);
+
+  useEffect(() => {
+    if (activeTab !== 'bookings') return;
+    if (!calendarIntegrationStatus.externalIcsUrl && !calendarIntegrationStatus.googleConnected) return;
+    void loadExternalCalendarOverlay();
+  }, [
+    activeTab,
+    calendarIntegrationStatus.externalIcsUrl,
+    calendarIntegrationStatus.googleConnected,
+    loadExternalCalendarOverlay,
+  ]);
+
+  useEffect(() => {
+    if (!selectedCalendarDate) {
+      setExternalCalendarEvents([]);
+      return;
+    }
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/calendar/events?slug=${encodeURIComponent(slug)}&date=${encodeURIComponent(selectedCalendarDate)}`,
+          { cache: 'no-store' },
+        );
+        const data = (await readJson(res)) as {
+          events?: Array<{ id: string; title: string; date: string; startTime: string; endTime: string; source: string }>;
+        };
+        if (!res.ok) return;
+        setExternalCalendarEvents(Array.isArray(data.events) ? data.events : []);
+      } catch {
+        setExternalCalendarEvents([]);
+      }
+    })();
+  }, [selectedCalendarDate, slug]);
+
+  const connectGoogleCalendar = useCallback(() => {
+    window.location.href = `/api/admin/calendar/google/connect?slug=${encodeURIComponent(slug)}`;
+  }, [slug]);
+
+  const disconnectGoogleCalendar = useCallback(async () => {
+    setBusyKey('calendar-disconnect');
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/calendar/google?slug=${encodeURIComponent(slug)}`, {
+        method: 'POST',
+      });
+      await guardResponse(res);
+      setNotice('Google Calendar връзката е премахната.');
+      await loadCalendarIntegrationStatus();
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }, [slug, loadCalendarIntegrationStatus]);
+
+  const resyncGoogleCalendar = useCallback(async () => {
+    setBusyKey('calendar-resync');
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/calendar/google?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+      });
+      await guardResponse(res);
+      setNotice('Синхронизацията с Google Calendar започна.');
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }, [slug]);
+
   useEffect(() => {
     if (activeTab !== 'integrations') return;
     void loadGoogleReviewsStatus();
-  }, [activeTab, loadGoogleReviewsStatus]);
+    void loadCalendarIntegrationStatus();
+  }, [activeTab, loadGoogleReviewsStatus, loadCalendarIntegrationStatus]);
 
   const fetchGoogleReviews = useCallback(async (overrides?: { placeId?: string; mapsUrl?: string }) => {
     const placeId = String(overrides?.placeId ?? site.googlePlaceId).trim();
@@ -740,6 +905,16 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') === 'notifications') {
       setActiveTab(params.get('smsPurchase') ? 'sms' : 'integrations');
+    }
+    if (params.get('calendar') === 'connected') {
+      setActiveTab('integrations');
+      setNotice('Google Calendar е свързан. Резервациите се синхронизират автоматично.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (params.get('calendar') === 'error') {
+      setActiveTab('integrations');
+      setError('Google Calendar не беше свързан. Опитайте отново.');
+      window.history.replaceState({}, '', window.location.pathname);
     }
     if (params.get('smsPurchase') === 'success') {
       setActiveTab('sms');
@@ -2391,6 +2566,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 calendarMonthLabel={calendarMonthLabel}
                 calendarMeta={calendarMeta}
                 bookingsCountByDate={bookingsCountByDate}
+                externalCalendarByDate={externalCalendarByDate}
+                externalCalendarEvents={externalCalendarEvents}
                 selectedCalendarDate={selectedCalendarDate}
                 setSelectedCalendarDate={setSelectedCalendarDate}
                 setCalendarCursor={setCalendarCursor}
@@ -2471,6 +2648,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               googleBizResults={googleBizResults}
               googleBizMessage={googleBizMessage}
               searchGoogleBusinesses={searchGoogleBusinesses}
+              calendarStatus={calendarIntegrationStatus}
+              loadCalendarStatus={loadCalendarIntegrationStatus}
+              onConnectGoogleCalendar={connectGoogleCalendar}
+              onDisconnectGoogleCalendar={disconnectGoogleCalendar}
+              onResyncGoogleCalendar={resyncGoogleCalendar}
+              onSaveExternalIcsUrl={saveExternalIcsUrl}
             />
           ) : null}
 

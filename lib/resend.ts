@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { buildBookingCalendarLinks, type CalendarBookingRow } from '@/lib/calendar-ics';
 import { formatSalonPrice } from '@/lib/salon-currency';
 import { sleep } from '@/lib/http-retry';
 
@@ -34,6 +35,7 @@ function formatBgDateDMY(dateStr: string): string {
 }
 
 export interface BookingDetails {
+  bookingId?: string;
   clientName: string;
   clientPhone: string;
   clientEmail?: string;
@@ -168,6 +170,24 @@ export async function sendBookingConfirmation(
   booking: BookingDetails
 ): Promise<void> {
   const formattedDate = formatBgDateDMY(booking.date);
+  const calendarRow: CalendarBookingRow = {
+    id: booking.bookingId || `${booking.date}-${booking.time}-${booking.clientEmail || booking.clientPhone}`,
+    client_name: booking.clientName,
+    client_phone: booking.clientPhone,
+    client_email: booking.clientEmail,
+    service_name: booking.serviceName,
+    service_duration: booking.serviceDuration,
+    date: booking.date,
+    time: booking.time,
+    status: 'pending',
+    notes: booking.notes,
+  };
+  const { googleUrl, icsContent } = buildBookingCalendarLinks(
+    calendarRow,
+    booking.salonName,
+    booking.salonAddress,
+  );
+
   const clientRows = [
     renderRow('Име', booking.clientName),
     renderRow('Услуга', booking.serviceName),
@@ -185,6 +205,12 @@ export async function sendBookingConfirmation(
     to: clientEmail,
     reply_to: booking.salonEmail || undefined,
     subject: `Резервация в ${booking.salonName} – ${formattedDate} ${booking.time}`,
+    attachments: [
+      {
+        filename: 'reservacia-clicka.ics',
+        content: Buffer.from(icsContent).toString('base64'),
+      },
+    ],
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="margin: 0 0 16px; color: #000;">Получихме вашата резервация</h2>
@@ -195,6 +221,11 @@ export async function sendBookingConfirmation(
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
           ${clientRows}
         </table>
+        <p style="margin-top: 20px; line-height: 1.7; font-weight: 600;">Добави в календара:</p>
+        <p style="margin: 8px 0 0; line-height: 1.7;">
+          <a href="${googleUrl}" style="color: #000; font-weight: 600;">Google Calendar</a>
+          · Прикрепеният .ics файл работи с Apple Calendar и Outlook.
+        </p>
         <p style="margin-top: 16px; line-height: 1.7;">
           При нужда от промяна, отговорете директно на този имейл или се свържете със салона.
         </p>
