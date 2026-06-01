@@ -109,8 +109,9 @@ const ServiceCardRow = memo(function ServiceCardRow({
   const draftRef = useRef(draft);
   draftRef.current = draft;
 
+  // Only sync from parent when there's no pending local edit in flight
   useEffect(() => {
-    setDraft(svc);
+    if (!commitTimer.current) setDraft(svc);
   }, [svc]);
 
   const flushCommit = useCallback(() => {
@@ -273,7 +274,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   outline: 'none',
                   boxShadow: 'none',
                   padding: '0',
-                  fontSize: 22,
+                  fontSize: 28,
                 }}
                 aria-label="Цена в евро"
               />
@@ -317,7 +318,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   outline: 'none',
                   boxShadow: 'none',
                   padding: '0',
-                  fontSize: 22,
+                  fontSize: 28,
                 }}
                 aria-label="Продължителност в минути"
               />
@@ -326,20 +327,8 @@ const ServiceCardRow = memo(function ServiceCardRow({
           </div>
         </div>
 
-        {/* Description */}
-        <div style={{ marginBottom: 8 }}>
-          <FieldLabel>Описание</FieldLabel>
-          <input
-            value={draft.description ?? ''}
-            onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
-            style={{ ...fieldInp, color: '#444' }}
-            placeholder="Кратко описание на услугата (по избор)"
-            aria-label="Описание на услугата"
-          />
-        </div>
-
         {/* Category */}
-        <div style={{ marginBottom: 6 }}>
+        <div style={{ marginBottom: 8 }}>
           <FieldLabel>Категория</FieldLabel>
           <input
             value={draft.category ?? ''}
@@ -354,6 +343,18 @@ const ServiceCardRow = memo(function ServiceCardRow({
               <option key={opt} value={opt} />
             ))}
           </datalist>
+        </div>
+
+        {/* Description */}
+        <div style={{ marginBottom: 6 }}>
+          <FieldLabel>Описание</FieldLabel>
+          <input
+            value={draft.description ?? ''}
+            onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
+            style={{ ...fieldInp, color: '#444' }}
+            placeholder="Кратко описание на услугата (по избор)"
+            aria-label="Описание на услугата"
+          />
         </div>
 
         {/* Variants */}
