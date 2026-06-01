@@ -89,6 +89,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
   svcInp,
   btn,
   hideCategoryBadge,
+  categoryOptions,
   onCommit,
   onRemove,
 }: {
@@ -99,6 +100,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
   svcInp: CSSProperties;
   btn: ButtonFactory;
   hideCategoryBadge: boolean;
+  categoryOptions: string[];
   onCommit: (index: number, next: ServiceItem) => void;
   onRemove: (index: number) => void;
 }) {
@@ -341,12 +343,17 @@ const ServiceCardRow = memo(function ServiceCardRow({
           <FieldLabel>Категория</FieldLabel>
           <input
             value={draft.category ?? ''}
-            list="service-category-options"
+            list={`cat-options-${index}`}
             onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
             style={{ ...fieldInp, color: '#444' }}
-            placeholder="Напр. Коса, Маникюр, Грим…"
+            placeholder="Избери или напиши нова…"
             aria-label="Категория на услугата"
           />
+          <datalist id={`cat-options-${index}`}>
+            {categoryOptions.map((opt) => (
+              <option key={opt} value={opt} />
+            ))}
+          </datalist>
         </div>
 
         {/* Variants */}
@@ -524,6 +531,10 @@ export function ServicesEditorPanel({
 
   const hideCategoryBadge = selectedAdminServiceCategory != null;
 
+  const categoryOptions = adminServiceCategories
+    .map((c) => c.label)
+    .filter((l) => l && l !== 'Всички');
+
   if (showGlobalEmpty) {
     return (
       <EmptyState title="Няма услуги" desc="Добави първата си услуга от бутона горе." T={T} isMobile={isMobile} />
@@ -586,6 +597,7 @@ export function ServicesEditorPanel({
           svcInp={svcInp}
           btn={btn}
           hideCategoryBadge={hideCategoryBadge}
+          categoryOptions={categoryOptions}
           onCommit={onCommit}
           onRemove={onRemove}
         />
