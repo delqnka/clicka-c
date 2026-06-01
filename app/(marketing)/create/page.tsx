@@ -237,9 +237,19 @@ function CreatePageContent() {
               className="font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-600"
               onClick={e => e.stopPropagation()}
             >
-              условията и правилата
+              Общите условия
             </a>{' '}
-            на CLicka.bg
+            и{' '}
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-600"
+              onClick={e => e.stopPropagation()}
+            >
+              Политиката за поверителност
+            </a>{' '}
+            на Clicka.bg
           </span>
         </label>
 
