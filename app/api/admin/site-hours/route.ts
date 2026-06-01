@@ -3,7 +3,7 @@ import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug, normalizeWorkingHours } from '@/lib/admin-site';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
-import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
+import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -53,16 +53,14 @@ export async function PATCH(request: NextRequest) {
     WHERE slug = ${auth.salon.slug}
   `;
 
-  const site = await loadAdminSiteDataBySlug(auth.salon.slug);
-
-  revalidateSalonPublicCache({
+  deferRevalidateSalonPublicCache({
     slug: auth.salon.slug,
     customDomain: auth.salon.customDomain,
   });
 
   return NextResponse.json({
     success: true,
-    workingHours: site?.workingHours,
-    bookingBlocks: site?.bookingBlocks ?? [],
+    workingHours,
+    bookingBlocks,
   });
 }

@@ -1087,8 +1087,8 @@ export default function AdminDashboardClient({
           venueExtras: site.venueExtras,
         }),
       });
-      const data = await guardResponse(res) as { site: AdminSitePayload };
-      setSite(data.site);
+      const data = await guardResponse(res) as { site: Partial<AdminSitePayload> };
+      setSite((prev) => ({ ...prev, ...data.site }));
       setNotice('Информацията е запазена.');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
@@ -1105,8 +1105,8 @@ export default function AdminDashboardClient({
           ownerPublicBio: site.ownerPublicBio,
         }),
       });
-      const data = await guardResponse(res);
-      setSite(data.site as AdminSitePayload);
+      const data = await guardResponse(res) as { site: Partial<AdminSitePayload> };
+      setSite((prev) => ({ ...prev, ...data.site }));
       setNotice('Профилът е запазен.');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
@@ -1144,8 +1144,8 @@ export default function AdminDashboardClient({
           ownerPublicPhotoUrl: payload.ownerPublicPhotoUrl,
         }),
       });
-      const data = await guardResponse(res);
-      setSite(data.site as AdminSitePayload);
+      const data = await guardResponse(res) as { site: Partial<AdminSitePayload> };
+      setSite((prev) => ({ ...prev, ...data.site }));
       if (!opts?.silent) setNotice('Снимките са запазени.');
     } catch (e) {
       if (!opts?.silent) handleErr(e);
@@ -1375,7 +1375,7 @@ export default function AdminDashboardClient({
         }),
       });
       const data = await guardResponse(res);
-      setSite(data.site as AdminSitePayload);
+      setSite((prev) => ({ ...prev, ...(data.site as Partial<AdminSitePayload>) }));
       setNotice('Снимката е запазена.');
     } catch (e) {
       handleErr(e);

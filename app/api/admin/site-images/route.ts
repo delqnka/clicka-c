@@ -1,26 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
-import { loadAdminSiteDataBySlug, mergePortfolioImageSave, normalizeImageList } from '@/lib/admin-site';
-import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
+import {
+  loadAdminImageFieldsBySlug,
+  mergePortfolioImageSave,
+  normalizeImageList,
+} from '@/lib/admin-site';
+import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  const site = await loadAdminSiteDataBySlug(auth.salon.slug);
-  if (!site) {
+  const images = await loadAdminImageFieldsBySlug(auth.salon.slug);
+  if (!images) {
     return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
   }
 
-  return NextResponse.json({
-    coverImageUrl: site.coverImageUrl,
-    logoImageUrl: site.logoImageUrl,
-    galleryImages: site.galleryImages,
-    portfolioImages: site.portfolioImages,
-    ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
-  });
+  return NextResponse.json(images);
 }
 
 export async function PATCH(request: NextRequest) {
@@ -28,7 +26,7 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  const current = await loadAdminSiteDataBySlug(auth.salon.slug);
+  const current = await loadAdminImageFieldsBySlug(auth.salon.slug);
   if (!current) {
     return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
   }
@@ -75,12 +73,19 @@ export async function PATCH(request: NextRequest) {
     WHERE slug = ${auth.salon.slug}
   `;
 
-  const site = await loadAdminSiteDataBySlug(auth.salon.slug);
-
-  revalidateSalonPublicCache({
+  deferRevalidateSalonPublicCache({
     slug: auth.salon.slug,
     customDomain: auth.salon.customDomain,
   });
 
-  return NextResponse.json({ success: true, site });
+  return NextResponse.json({
+    success: true,
+    site: {
+      coverImageUrl: normalizedCoverImageUrl,
+      logoImageUrl: normalizedLogoImageUrl,
+      galleryImages,
+      portfolioImages,
+      ownerPublicPhotoUrl,
+    },
+  });
 }

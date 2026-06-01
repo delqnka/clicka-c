@@ -50,6 +50,34 @@ After `npm run build`, inspect the route table in the terminal output for `/admi
 
 **Cache invalidation (May 2026):** `revalidateSalonPublicCache()` on publish, site-settings PATCH, site-images PATCH — tags `salon-public-{slug}`, subdomain host, custom domain.
 
+## Admin save slowness audit (Jun 2026)
+
+### Root causes (before fix)
+
+| Issue | Impact |
+|--------|--------|
+| `loadAdminSiteDataBySlug()` on every save (often **twice**) | Full salon row + large JSON (`services`, `gallery_images`, `portfolio_images`) parsed twice per click |
+| `ALTER TABLE … ADD COLUMN IF NOT EXISTS` on hot path | Extra Neon round-trip on **every** load/save |
+| `ensureSmsSchema()` awaited inside load | DDL batch on cold start, coupled to reads |
+| Services auto-`UPDATE` on read when JSON shape differs | Hidden write on every full load |
+| `resolveAdminGate` always queried primary owner | +1 DB query on every authenticated API call |
+| `revalidateSalonPublicCache()` **before** HTTP response | Blocks response on many `revalidatePath` / `revalidateTag` calls |
+
+### Fixes applied
+
+- Schema migrations moved into `ensureAdminAuthSchema()` (once per instance).
+- Auth: session checked **before** `getPrimaryOwnerForSalon` when cookie present.
+- PATCH routes return only changed fields; client merges into `site` state (no full reload).
+- Images PATCH uses `loadAdminImageFieldsBySlug()` (5 columns only).
+- Public cache invalidation deferred via `deferRevalidateSalonPublicCache()` + `runAfterResponse`.
+
+### Still heavier (expected)
+
+- **Blog save**: N upserts + delete orphans (unchanged; already defers revalidate).
+- **Image upload**: client WebP prep + R2 upload before PATCH.
+- **Domain connect**: external DNS/Vercel API.
+- **Google Calendar / reviews**: third-party APIs.
+
 **Measure a live salon:**
 
 ```bash

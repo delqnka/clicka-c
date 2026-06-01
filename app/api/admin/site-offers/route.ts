@@ -9,7 +9,7 @@ import {
   normalizeOfferImages,
   type AdminSalonOffer,
 } from '@/lib/salon-offers';
-import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
+import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 function normalizeOffersInput(raw: unknown): AdminSalonOffer[] {
   if (!Array.isArray(raw)) return [];
@@ -160,7 +160,7 @@ export async function PATCH(request: NextRequest) {
     ORDER BY created_at DESC
   `;
 
-  revalidateSalonPublicCache({
+  deferRevalidateSalonPublicCache({
     slug: auth.salon.slug,
     customDomain: auth.salon.customDomain,
   });

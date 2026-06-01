@@ -13,7 +13,7 @@ import {
   serializeSalonVenueExtras,
   type SalonVenueExtras,
 } from '@/lib/salon-venue-extras';
-import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
+import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -33,11 +33,6 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  const current = await loadAdminSiteDataBySlug(auth.salon.slug);
-  if (!current) {
-    return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
-  }
-
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -46,67 +41,56 @@ export async function PATCH(request: NextRequest) {
   }
 
   const next = {
-    name: typeof body.name === 'string' ? body.name.trim() : current.name,
-    category: typeof body.category === 'string' ? body.category.trim() : current.category,
-    phone: typeof body.phone === 'string' ? body.phone.trim() : current.phone,
-    city: typeof body.city === 'string' ? body.city.trim() : current.city,
-    address: typeof body.address === 'string' ? body.address.trim() : current.address,
-    about: typeof body.about === 'string' ? body.about.trim() : current.about,
-    instagram: typeof body.instagram === 'string' ? body.instagram.trim() : current.instagram,
-    facebook: typeof body.facebook === 'string' ? body.facebook.trim() : current.facebook,
-    tiktok: typeof body.tiktok === 'string' ? body.tiktok.trim() : current.tiktok,
-    googleMapsUrl:
-      typeof body.googleMapsUrl === 'string' ? body.googleMapsUrl.trim() : current.googleMapsUrl,
-    googlePlaceId:
-      typeof body.googlePlaceId === 'string' ? body.googlePlaceId.trim() : current.googlePlaceId,
+    name: typeof body.name === 'string' ? body.name.trim() : '',
+    category: typeof body.category === 'string' ? body.category.trim() : '',
+    phone: typeof body.phone === 'string' ? body.phone.trim() : '',
+    city: typeof body.city === 'string' ? body.city.trim() : '',
+    address: typeof body.address === 'string' ? body.address.trim() : '',
+    about: typeof body.about === 'string' ? body.about.trim() : '',
+    instagram: typeof body.instagram === 'string' ? body.instagram.trim() : '',
+    facebook: typeof body.facebook === 'string' ? body.facebook.trim() : '',
+    tiktok: typeof body.tiktok === 'string' ? body.tiktok.trim() : '',
+    googleMapsUrl: typeof body.googleMapsUrl === 'string' ? body.googleMapsUrl.trim() : '',
+    googlePlaceId: typeof body.googlePlaceId === 'string' ? body.googlePlaceId.trim() : '',
     latitude:
       body.latitude === null
         ? null
         : typeof body.latitude === 'number' && Number.isFinite(body.latitude)
           ? body.latitude
-          : current.latitude,
+          : null,
     longitude:
       body.longitude === null
         ? null
         : typeof body.longitude === 'number' && Number.isFinite(body.longitude)
           ? body.longitude
-          : current.longitude,
-    ownerName: typeof body.ownerName === 'string' ? body.ownerName.trim() : current.ownerName,
-    ownerPublicRole:
-      typeof body.ownerPublicRole === 'string'
-        ? body.ownerPublicRole.trim()
-        : current.ownerPublicRole,
+          : null,
+    ownerName: typeof body.ownerName === 'string' ? body.ownerName.trim() : '',
+    ownerPublicRole: typeof body.ownerPublicRole === 'string' ? body.ownerPublicRole.trim() : '',
     ownerPublicPhotoUrl:
-      typeof body.ownerPublicPhotoUrl === 'string'
-        ? body.ownerPublicPhotoUrl.trim()
-        : current.ownerPublicPhotoUrl,
-    ownerPublicBio:
-      typeof body.ownerPublicBio === 'string'
-        ? body.ownerPublicBio.trim()
-        : current.ownerPublicBio,
-    faqItems: Array.isArray(body.faqItems)
-      ? normalizeSalonFaqItems(body.faqItems)
-      : current.faqItems,
+      typeof body.ownerPublicPhotoUrl === 'string' ? body.ownerPublicPhotoUrl.trim() : '',
+    ownerPublicBio: typeof body.ownerPublicBio === 'string' ? body.ownerPublicBio.trim() : '',
+    faqItems: Array.isArray(body.faqItems) ? normalizeSalonFaqItems(body.faqItems) : [],
     visitorInfo:
       body.visitorInfo && typeof body.visitorInfo === 'object'
         ? normalizeSalonVisitorInfo(body.visitorInfo)
-        : current.visitorInfo,
+        : normalizeSalonVisitorInfo(null),
     visitorAdditionalInfo:
       typeof body.visitorAdditionalInfo === 'string'
         ? normalizeVisitorAdditionalInfo(body.visitorAdditionalInfo)
-        : current.visitorAdditionalInfo,
+        : '',
     venueExtras:
       body.venueExtras && typeof body.venueExtras === 'object'
         ? serializeSalonVenueExtras(body.venueExtras as SalonVenueExtras)
-        : current.venueExtras,
+        : mergeLegacyVisitorIntoVenueExtras(
+            parseSalonVenueExtras(null),
+            normalizeSalonVisitorInfo(body.visitorInfo),
+          ),
   };
 
   if (!next.name) {
     return NextResponse.json({ error: 'Името на салона е задължително.' }, { status: 400 });
   }
 
-  await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
-  await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb`;
   await sql`
     UPDATE salons
     SET
@@ -135,12 +119,35 @@ export async function PATCH(request: NextRequest) {
     WHERE slug = ${auth.salon.slug}
   `;
 
-  const site = await loadAdminSiteDataBySlug(auth.salon.slug);
-
-  revalidateSalonPublicCache({
+  deferRevalidateSalonPublicCache({
     slug: auth.salon.slug,
     customDomain: auth.salon.customDomain,
   });
 
-  return NextResponse.json({ success: true, site });
+  return NextResponse.json({
+    success: true,
+    site: {
+      name: next.name,
+      category: next.category,
+      phone: next.phone,
+      city: next.city,
+      address: next.address,
+      about: next.about || `${next.name} предлага онлайн резервации през собствен сайт.`,
+      instagram: next.instagram,
+      facebook: next.facebook,
+      tiktok: next.tiktok,
+      googleMapsUrl: next.googleMapsUrl,
+      googlePlaceId: next.googlePlaceId,
+      latitude: next.latitude,
+      longitude: next.longitude,
+      ownerName: next.ownerName,
+      ownerPublicRole: next.ownerPublicRole,
+      ownerPublicPhotoUrl: next.ownerPublicPhotoUrl,
+      ownerPublicBio: next.ownerPublicBio,
+      faqItems: next.faqItems,
+      visitorInfo: next.visitorInfo,
+      visitorAdditionalInfo: next.visitorAdditionalInfo,
+      venueExtras: next.venueExtras,
+    },
+  });
 }

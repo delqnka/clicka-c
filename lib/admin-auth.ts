@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
 import {
   ROOT_DOMAIN,
   extractHostname,
@@ -155,6 +156,9 @@ export async function ensureAdminAuthSchema() {
         ON salons ((lower(custom_domain)))
         WHERE custom_domain IS NOT NULL
       `;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb`;
+      await ensureSmsSchema();
     })();
   }
 
@@ -387,17 +391,15 @@ export async function resolveAdminGate({
   const salon = await resolveSalonBySlugOrHost({ slug, host, includeInactive: true });
   if (!salon) return { kind: 'missing-salon' };
 
+  if (sessionId) {
+    const session = await getAdminSessionByCookieValue(sessionId, salon.slug);
+    if (session) {
+      return { kind: 'authorized', salon, session };
+    }
+  }
+
   const owner = await getPrimaryOwnerForSalon(salon.salonId);
-  if (!sessionId) {
-    return owner ? { kind: 'sign-in', salon } : { kind: 'claim', salon };
-  }
-
-  const session = await getAdminSessionByCookieValue(sessionId, salon.slug);
-  if (!session) {
-    return owner ? { kind: 'sign-in', salon } : { kind: 'claim', salon };
-  }
-
-  return { kind: 'authorized', salon, session };
+  return owner ? { kind: 'sign-in', salon } : { kind: 'claim', salon };
 }
 
 export async function requireAdminRequestAccess(

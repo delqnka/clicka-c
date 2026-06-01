@@ -18,7 +18,6 @@ import {
 } from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { normalizeSmsReminderMode, type SmsReminderMode } from '@/lib/sms-shared';
-import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
 
 export { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 
@@ -182,10 +181,30 @@ export function normalizePortfolioImages(gallery: string[], portfolioRaw: unknow
   return portfolio;
 }
 
-export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
-  await ensureSmsSchema().catch(() => {});
-  await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
+export type AdminImageFields = Pick<
+  AdminSitePayload,
+  'coverImageUrl' | 'logoImageUrl' | 'galleryImages' | 'portfolioImages' | 'ownerPublicPhotoUrl'
+>;
 
+export async function loadAdminImageFieldsBySlug(slug: string): Promise<AdminImageFields | null> {
+  const rows = await sql`
+    SELECT cover_image_url, logo_image_url, gallery_images, portfolio_images, owner_public_photo_url
+    FROM salons
+    WHERE slug = ${slug}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const row = rows[0] as Record<string, unknown>;
+  return {
+    coverImageUrl: String(row.cover_image_url ?? ''),
+    logoImageUrl: String(row.logo_image_url ?? ''),
+    galleryImages: normalizeImageList(row.gallery_images),
+    portfolioImages: normalizeImageList(row.portfolio_images),
+    ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),
+  };
+}
+
+export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
   const rows = await sql`
     SELECT
       slug, name, category, phone, email, city, address, about,
@@ -211,15 +230,6 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     const code = crypto.randomBytes(4).toString('hex').toUpperCase();
     await sql`UPDATE salons SET onboarding_code = ${code} WHERE slug = ${slug}`;
     row.onboarding_code = code;
-  }
-
-  if (JSON.stringify(row.services ?? null) !== JSON.stringify(normalizedServices)) {
-    await sql`
-      UPDATE salons
-      SET services = ${JSON.stringify(normalizedServices)}::jsonb,
-          updated_at = now()
-      WHERE slug = ${slug}
-    `;
   }
 
   return {
