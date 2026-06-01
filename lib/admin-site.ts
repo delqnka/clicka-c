@@ -128,6 +128,20 @@ export function normalizeImageList(raw: unknown): string[] {
     .filter(Boolean);
 }
 
+export function mergeUniqueImageLists(...lists: string[][]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const list of lists) {
+    for (const raw of list) {
+      const url = String(raw ?? '').trim();
+      if (!url || url.startsWith('blob:') || seen.has(url)) continue;
+      seen.add(url);
+      out.push(url);
+    }
+  }
+  return out;
+}
+
 /** Avoid wiping legacy portfolio when admin uploads into an empty portfolio tab. */
 export function mergePortfolioImageSave(
   incoming: string[],

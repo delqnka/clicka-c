@@ -18,3 +18,18 @@ export const adminGrid2: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
   gap: 12,
 };
+
+export const ADMIN_COMPACT_SAVE_BTN: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 8,
+  border: 'none',
+  color: '#fff',
+  background: '#16A34A',
+  padding: '6px 14px',
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+};

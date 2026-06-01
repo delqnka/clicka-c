@@ -3,10 +3,10 @@
 import dynamic from 'next/dynamic';
 import { useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
-import { AdminSalonVenueAddBtn } from '@/components/admin/admin-salon-venue-add-btn';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminGalleryDropZone, AdminImageAssetField, AdminSaveBtn, AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
+import { mergeUniqueImageLists } from '@/lib/admin-site';
 
 const GalleryReorderGrid = dynamic(
   () => import('@/components/admin/gallery-reorder-grid').then((m) => m.GalleryReorderGrid),
@@ -85,6 +85,7 @@ function GalleryGrid({
   onRemove,
   emptyHint,
   showSetCover = false,
+  uploadedLabel = 'Качени',
 }: {
   uploadBtn: ReactNode;
   images: string[];
@@ -100,6 +101,7 @@ function GalleryGrid({
   onRemove: (index: number) => void;
   emptyHint: string;
   showSetCover?: boolean;
+  uploadedLabel?: string;
 }) {
   return (
     <div>
@@ -116,7 +118,7 @@ function GalleryGrid({
 
       <AdminField
         compact
-        label={images.length > 0 ? `Качени · ${images.length}` : 'Качи снимки'}
+        label={images.length > 0 ? `${uploadedLabel} · ${images.length}` : 'Качи снимки'}
       >
         {uploadProgress ? (
           <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.4 }}>
@@ -152,14 +154,11 @@ export function ImagesTabPanel({
   isMobile,
   btn,
   busyKey,
-  galleryPending,
   portfolioPending,
-  galleryUploadProgress,
   portfolioUploadProgress,
   saveImages,
   handleCoverUpload,
   handleLogoUpload,
-  handleGalleryUpload,
   handlePortfolioUpload,
 }: {
   site: AdminSitePayload;
@@ -169,18 +168,24 @@ export function ImagesTabPanel({
   inp: CSSProperties;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   busyKey: string;
-  galleryPending: Set<string>;
   portfolioPending: Set<string>;
-  galleryUploadProgress: { done: number; total: number } | null;
   portfolioUploadProgress: { done: number; total: number } | null;
   existingServiceCategories: string[];
   saveImages: () => void | Promise<void>;
   handleCoverUpload: (file: File | null) => void | Promise<void>;
   handleLogoUpload: (file: File | null) => void | Promise<void>;
-  handleGalleryUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
   handlePortfolioUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
 }) {
-  const [section, setSection] = useState<ImageSectionId>('cover');
+  const [section, setSection] = useState<ImageSectionId>('portfolio');
+  const uploadedImages = mergeUniqueImageLists(site.portfolioImages, site.galleryImages);
+
+  const syncUploadedImages = (next: string[]) => {
+    setSite((p) => ({
+      ...p,
+      portfolioImages: next,
+      galleryImages: next,
+    }));
+  };
 
   return (
     <AdminSection
@@ -212,55 +217,24 @@ export function ImagesTabPanel({
       ) : null}
 
       {section === 'cover' ? (
-        <div style={{ display: 'grid', gap: 14 }}>
-          <AdminImageAssetField
-            label="Cover (горна снимка)"
-            uploadLabel="Качи cover"
-            busy={busyKey === 'upload-cover'}
-            mobile={isMobile}
-            imageUrl={site.coverImageUrl}
-            onUpload={(files) => void handleCoverUpload(files?.[0] ?? null)}
-          />
-          <GalleryGrid
-            showSetCover
-            uploadBtn={
-              <AdminSalonVenueAddBtn busy={busyKey === 'upload-gallery'} onUpload={handleGalleryUpload} />
-            }
-            images={site.galleryImages}
-            coverImageUrl={site.coverImageUrl}
-            isMobile={isMobile}
-            busyKey={busyKey === 'upload-gallery' ? busyKey : ''}
-            pendingUrls={galleryPending}
-            uploadProgress={galleryUploadProgress}
-            btn={btn}
-            setSite={setSite}
-            onUpload={handleGalleryUpload}
-            onReorder={(next) => {
-              setSite((p) => ({ ...p, galleryImages: next }));
-              setNotice('Редът е променен. Натисни Запази.');
-            }}
-            onRemove={(i) =>
-              setSite((p) => {
-                const removed = p.galleryImages[i];
-                const galleryImages = p.galleryImages.filter((_, j) => j !== i);
-                return {
-                  ...p,
-                  galleryImages,
-                  coverImageUrl: p.coverImageUrl === removed ? (galleryImages[0] ?? '') : p.coverImageUrl,
-                };
-              })
-            }
-            emptyHint={isMobile ? 'Натисни + за снимки в hero галерията' : 'Натисни + или плъзни файлове тук.'}
-          />
-        </div>
+        <AdminImageAssetField
+          label="Cover (горна снимка)"
+          uploadLabel="Качи cover"
+          busy={busyKey === 'upload-cover'}
+          mobile={isMobile}
+          imageUrl={site.coverImageUrl}
+          onUpload={(files) => void handleCoverUpload(files?.[0] ?? null)}
+        />
       ) : null}
 
       {section === 'portfolio' ? (
         <GalleryGrid
+          showSetCover
+          uploadedLabel="Качени снимки"
           uploadBtn={
             <AdminGalleryAddBtn busy={busyKey === 'upload-portfolio'} onUpload={handlePortfolioUpload} />
           }
-          images={site.portfolioImages}
+          images={uploadedImages}
           coverImageUrl={site.coverImageUrl}
           isMobile={isMobile}
           busyKey={busyKey === 'upload-portfolio' ? busyKey : ''}
@@ -270,14 +244,21 @@ export function ImagesTabPanel({
           setSite={setSite}
           onUpload={handlePortfolioUpload}
           onReorder={(next) => {
-            setSite((p) => ({ ...p, portfolioImages: next }));
+            syncUploadedImages(next);
             setNotice('Редът е променен. Натисни Запази.');
           }}
           onRemove={(i) =>
-            setSite((p) => ({
-              ...p,
-              portfolioImages: p.portfolioImages.filter((_, j) => j !== i),
-            }))
+            setSite((p) => {
+              const merged = mergeUniqueImageLists(p.portfolioImages, p.galleryImages);
+              const removed = merged[i];
+              const next = merged.filter((_, j) => j !== i);
+              return {
+                ...p,
+                portfolioImages: next,
+                galleryImages: next,
+                coverImageUrl: p.coverImageUrl === removed ? (next[0] ?? '') : p.coverImageUrl,
+              };
+            })
           }
           emptyHint={isMobile ? 'Натисни + за снимки в портфолиото' : 'Натисни + или плъзни файлове тук.'}
         />

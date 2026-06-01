@@ -30,6 +30,7 @@ import {
   Check,
   Menu,
   X,
+  KeyRound,
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,6 +38,7 @@ import {
   LazyHoursTabPanel,
   LazyImagesTabPanel,
   LazyIntegrationsTabPanel,
+  LazyAccountTabPanel,
   LazyLegalTabPanel,
   LazySiteTabPanel,
   LazySmsTabPanel,
@@ -48,6 +50,7 @@ import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
+import { mergeUniqueImageLists } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
@@ -124,6 +127,7 @@ const TABS = [
   { id: 'integrations', label: 'Интеграции',     Icon: Plug },
   { id: 'sms',          label: 'SMS',            Icon: MessageSquare },
   { id: 'legal',         label: 'Правни',         Icon: FileText },
+  { id: 'account',       label: 'Профил',         Icon: KeyRound },
 ] as const;
 
 const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings']);
@@ -132,6 +136,49 @@ const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
 
 const ICON_GRADIENT = 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)';
 const PWA_HOME_STORAGE_KEY = (slug: string) => `admin-pwa-homescreen:${slug}`;
+
+function getPwaInstallGuide(ua: string): { title: string; note: string; steps: string[] } {
+  const isIos = /iphone|ipad|ipod/i.test(ua);
+  if (!isIos) {
+    return {
+      title: 'Добави на началния екран',
+      note: '',
+      steps: ['От менюто на браузъра (⋮) избери „Инсталирай приложение“ или „Добави на началния екран“.'],
+    };
+  }
+  if (/crios/i.test(ua)) {
+    return {
+      title: 'Добави в Chrome (iPhone)',
+      note: 'Apple не позволява на Chrome да инсталира с един бутон — добавянето е ръчно, както по-долу.',
+      steps: [
+        'Натисни ⋯ (трите точки) долу вдясно в Chrome',
+        'Избери „Share“ / „Сподели“',
+        'Плъзни надолу и натисни „Add to Home Screen“ / „Добави на началния екран“',
+        'Потвърди с „Add“ / „Добави“',
+      ],
+    };
+  }
+  if (/fxios/i.test(ua)) {
+    return {
+      title: 'Добави в Firefox (iPhone)',
+      note: 'На iPhone инсталацията е само ръчна през менюто на браузъра.',
+      steps: [
+        'Натисни менюто (≡) в Firefox',
+        'Избери „Share“ / „Сподели“',
+        '„Add to Home Screen“ / „Добави на началния екран“',
+      ],
+    };
+  }
+  return {
+    title: 'Добави в Safari',
+    note: 'На iPhone автоматична инсталация работи само през Safari.',
+    steps: [
+      'Натисни Share (□↑) долу в средата на екрана',
+      'Избери „Добави на началния екран“',
+      'Потвърди с „Добави“',
+    ],
+  };
+}
 
 const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
   images:     ['#FF9966', '#FF5E62'],
@@ -144,6 +191,7 @@ const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
   integrations: ['#6366F1', '#8B5CF6'],
   sms:        ['#22C55E', '#14B8A6'],
   legal:      ['#ffa9c6', '#f434e2'],
+  account:    ['#94A3B8', '#475569'],
 };
 
 type TabId = (typeof TABS)[number]['id'];
@@ -343,6 +391,8 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
+  const [pwaInstallOpen, setPwaInstallOpen] = useState(false);
+  const [blogActiveIndex, setBlogActiveIndex] = useState(0);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [selectedAdminServiceCategory, setSelectedAdminServiceCategory] = useState<string | null>(null);
   const [newServiceDraft, setNewServiceDraft] = useState({
@@ -591,6 +641,11 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     window.addEventListener('appinstalled', onInstalled);
     return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled); };
   }, [slug]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    void navigator.serviceWorker.register('/sw-admin.js', { scope: '/' }).catch(() => { /* ignore */ });
+  }, []);
 
   useEffect(() => {
     if (!isMobile || !navOpen || typeof document === 'undefined') return;
@@ -1140,11 +1195,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
   }
 
   async function saveImages() {
+    const merged = mergeUniqueImageLists(site.portfolioImages, site.galleryImages);
     await persistImages({
       coverImageUrl: site.coverImageUrl,
       logoImageUrl: site.logoImageUrl,
-      galleryImages: site.galleryImages,
-      portfolioImages: site.portfolioImages,
+      galleryImages: merged,
+      portfolioImages: merged,
       ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
     });
   }
@@ -1390,14 +1446,14 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     const label = target === 'gallery' ? 'салона' : 'портфолиото';
 
     const snapshot = siteRef.current;
+    const filterStable = (urls: string[]) => urls.filter((u) => u && !u.startsWith('blob:'));
     const stableBefore =
       target === 'portfolio'
-        ? (() => {
-            const portfolio = snapshot.portfolioImages.filter((u) => u && !u.startsWith('blob:'));
-            if (portfolio.length > 0) return portfolio;
-            return snapshot.galleryImages.filter((u) => u && !u.startsWith('blob:'));
-          })()
-        : snapshot[listKey].filter((u) => u && !u.startsWith('blob:'));
+        ? mergeUniqueImageLists(
+            filterStable(snapshot.portfolioImages),
+            filterStable(snapshot.galleryImages),
+          )
+        : filterStable(snapshot[listKey]);
 
     const previews = images.map((file) => ({
       file,
@@ -1411,11 +1467,19 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       return next;
     });
     setSite((p) => {
-      const stable = p[listKey].filter((u) => !u.startsWith('blob:'));
+      const stable =
+        target === 'portfolio'
+          ? mergeUniqueImageLists(
+              filterStable(p.portfolioImages),
+              filterStable(p.galleryImages),
+            )
+          : p[listKey].filter((u) => !u.startsWith('blob:'));
       const nextList = [...stable, ...blobUrls];
       return {
         ...p,
-        [listKey]: nextList,
+        ...(target === 'portfolio'
+          ? { portfolioImages: nextList, galleryImages: nextList }
+          : { [listKey]: nextList }),
         ...(target === 'gallery' && (!p.coverImageUrl || p.coverImageUrl.startsWith('blob:'))
           ? { coverImageUrl: nextList[0] ?? '' }
           : {}),
@@ -1434,18 +1498,39 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         try {
           const url = await uploadSingleFile(file);
           uploadedUrls.push(url);
-          setSite((p) => ({
-            ...p,
-            [listKey]: p[listKey].map((u) => (u === blob ? url : u)),
-            ...(target === 'gallery' && (!p.coverImageUrl || p.coverImageUrl === blob)
-              ? { coverImageUrl: url }
-              : {}),
-          }));
+          setSite((p) => {
+            const current =
+              target === 'portfolio'
+                ? mergeUniqueImageLists(
+                    filterStable(p.portfolioImages),
+                    filterStable(p.galleryImages),
+                  )
+                : p[listKey];
+            const nextList = current.map((u) => (u === blob ? url : u));
+            return {
+              ...p,
+              ...(target === 'portfolio'
+                ? { portfolioImages: nextList, galleryImages: nextList }
+                : { [listKey]: nextList }),
+              ...(target === 'gallery' && (!p.coverImageUrl || p.coverImageUrl === blob)
+                ? { coverImageUrl: url }
+                : {}),
+            };
+          });
         } catch (e) {
-          setSite((p) => ({
-            ...p,
-            [listKey]: p[listKey].filter((u) => u !== blob),
-          }));
+          setSite((p) => {
+            const current =
+              target === 'portfolio'
+                ? mergeUniqueImageLists(
+                    filterStable(p.portfolioImages),
+                    filterStable(p.galleryImages),
+                  )
+                : p[listKey];
+            const nextList = current.filter((u) => u !== blob);
+            return target === 'portfolio'
+              ? { ...p, portfolioImages: nextList, galleryImages: nextList }
+              : { ...p, [listKey]: nextList };
+          });
           throw e;
         } finally {
           URL.revokeObjectURL(blob);
@@ -1461,21 +1546,25 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
       const finalList = [...stableBefore, ...uploadedUrls];
       const latest = siteRef.current;
-      const galleryStable = latest.galleryImages.filter((u) => u && !u.startsWith('blob:'));
       const persistPayload = {
         coverImageUrl:
           target === 'gallery' && (!latest.coverImageUrl || latest.coverImageUrl.startsWith('blob:'))
             ? (finalList[0] ?? latest.coverImageUrl)
             : latest.coverImageUrl,
         logoImageUrl: latest.logoImageUrl,
-        galleryImages: target === 'gallery' ? finalList : galleryStable,
-        portfolioImages: target === 'portfolio' ? finalList : latest.portfolioImages.filter((u) => !u.startsWith('blob:')),
+        galleryImages: target === 'portfolio' || target === 'gallery' ? finalList : filterStable(latest.galleryImages),
+        portfolioImages:
+          target === 'portfolio' || target === 'gallery'
+            ? finalList
+            : filterStable(latest.portfolioImages),
         ownerPublicPhotoUrl: latest.ownerPublicPhotoUrl,
       };
 
       setSite((p) => ({
         ...p,
-        [listKey]: finalList,
+        ...(target === 'portfolio'
+          ? { portfolioImages: finalList, galleryImages: finalList }
+          : { [listKey]: finalList }),
         ...(target === 'gallery'
           ? {
               coverImageUrl:
@@ -1587,25 +1676,24 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     if (pwaOnHomeScreen) return;
     setError('');
     const ua = window.navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(ua)) {
-      setNotice('На iPhone: Share → „Добави на началния екран“.');
-      return;
-    }
+    const isIos = /iphone|ipad|ipod/.test(ua);
     const ev = installPromptEvent;
-    if (!ev) {
-      setNotice('От менюто на браузъра избери „Инсталирай“ или „Добави на началния екран“.');
+    if (ev && !isIos) {
+      void ev
+        .prompt()
+        .then(() => ev.userChoice)
+        .then((r) => {
+          if (r.outcome !== 'accepted') return;
+          markPwaOnHomeScreen();
+          setPwaInstallOpen(false);
+          setNavOpen(false);
+          setNotice('Приложението се добавя на екрана.');
+          setInstallPromptEvent(null);
+        })
+        .catch(() => setPwaInstallOpen(true));
       return;
     }
-    void ev
-      .prompt()
-      .then(() => ev.userChoice)
-      .then((r) => {
-        if (r.outcome !== 'accepted') return;
-        markPwaOnHomeScreen();
-        setNotice('Приложението се добавя на екрана.');
-        setInstallPromptEvent(null);
-      })
-      .catch(() => setNotice('Неуспешна инсталация. Опитай отново.'));
+    setPwaInstallOpen(true);
   }
 
   const onSheetDragStart = useCallback((clientY: number) => {
@@ -2184,6 +2272,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             >
               {NAVBAR_TABS.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
+                const [gFrom, gTo] = NAVBAR_GRADIENTS[id] ?? ['#a955ff', '#ea51ff'];
                 return (
                   <button
                     key={id}
@@ -2197,13 +2286,17 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       gap: 5,
                       padding: '8px 6px',
                       borderRadius: 12,
-                      border: `1px solid ${active ? T.accent : '#E4E4E7'}`,
-                      background: active ? '#F0FDF4' : '#fff',
-                      color: active ? T.accent : T.text,
+                      border: active ? 'none' : `1px solid ${T.border}`,
+                      background: active
+                        ? `linear-gradient(135deg, ${gFrom}, ${gTo})`
+                        : '#fff',
+                      color: active ? '#fff' : T.text,
                       cursor: 'pointer',
                       minHeight: 68,
                       WebkitTapHighlightColor: 'transparent',
-                      boxShadow: active ? `0 2px 8px rgba(34,197,94,0.15)` : '0 1px 3px rgba(0,0,0,0.05)',
+                      boxShadow: active
+                        ? `0 4px 14px ${gFrom}45`
+                        : '0 1px 3px rgba(0,0,0,0.05)',
                     }}
                   >
                     <div
@@ -2211,13 +2304,19 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         width: 28,
                         height: 28,
                         borderRadius: 8,
-                        background: active ? T.accent : '#F4F4F5',
+                        background: active
+                          ? 'rgba(255,255,255,0.22)'
+                          : `linear-gradient(135deg, ${gFrom}22, ${gTo}22)`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Icon size={15} strokeWidth={active ? 2.2 : 1.8} style={{ color: active ? '#fff' : '#52525B' }} />
+                      <Icon
+                        size={15}
+                        strokeWidth={active ? 2.2 : 1.8}
+                        style={{ color: active ? '#fff' : gFrom }}
+                      />
                     </div>
                     <span
                       style={{
@@ -2226,7 +2325,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         letterSpacing: '-0.01em',
                         textAlign: 'center',
                         lineHeight: 1.2,
-                        color: active ? T.accent : T.muted,
+                        color: active ? '#fff' : T.muted,
                       }}
                     >
                       {label}
@@ -2315,6 +2414,157 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
         </>
       )}
 
+      {pwaInstallOpen && (() => {
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        const guide = getPwaInstallGuide(ua);
+        const isIos = /iphone|ipad|ipod/i.test(ua);
+        const canNativeInstall = Boolean(installPromptEvent) && !isIos;
+        return (
+          <>
+            <button
+              type="button"
+              aria-label="Затвори"
+              onClick={() => setPwaInstallOpen(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 70,
+                margin: 0,
+                padding: 0,
+                border: 'none',
+                background: 'rgba(0,0,0,0.4)',
+                cursor: 'pointer',
+              }}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={guide.title}
+              style={{
+                position: 'fixed',
+                left: 16,
+                right: 16,
+                bottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
+                zIndex: 71,
+                background: '#fff',
+                borderRadius: 16,
+                padding: '20px 18px',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
+                maxHeight: 'min(85dvh, 520px)',
+                overflowY: 'auto',
+              }}
+            >
+              <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>
+                {guide.title}
+              </h3>
+              {guide.note ? (
+                <p style={{ margin: '0 0 12px', fontSize: 13, color: '#92400E', lineHeight: 1.45, background: '#FFFBEB', padding: '10px 12px', borderRadius: 10 }}>
+                  {guide.note}
+                </p>
+              ) : null}
+              <ol
+                style={{
+                  margin: '0 0 16px',
+                  paddingLeft: 20,
+                  fontSize: 14,
+                  color: T.text,
+                  lineHeight: 1.55,
+                }}
+              >
+                {guide.steps.map((step) => (
+                  <li key={step} style={{ marginBottom: 6 }}>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              {canNativeInstall ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ev = installPromptEvent;
+                    if (!ev) return;
+                    void ev
+                      .prompt()
+                      .then(() => ev.userChoice)
+                      .then((r) => {
+                        if (r.outcome !== 'accepted') return;
+                        markPwaOnHomeScreen();
+                        setPwaInstallOpen(false);
+                        setNavOpen(false);
+                        setNotice('Приложението се добавя на екрана.');
+                        setInstallPromptEvent(null);
+                      });
+                  }}
+                  style={{
+                    display: 'flex',
+                    width: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    border: 'none',
+                    background: ICON_GRADIENT,
+                    color: '#fff',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Plus size={18} /> Инсталирай сега
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  markPwaOnHomeScreen();
+                  setPwaInstallOpen(false);
+                  setNavOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  border: 'none',
+                  background: '#16A34A',
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginBottom: 8,
+                }}
+              >
+                Готово — добавих го
+              </button>
+              <button
+                type="button"
+                onClick={() => setPwaInstallOpen(false)}
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '10px 16px',
+                  borderRadius: 12,
+                  border: `1px solid ${T.border}`,
+                  background: '#fff',
+                  color: T.text,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Затвори
+              </button>
+            </div>
+          </>
+        );
+      })()}
+
       {/* ── Body layout ───────────────────────────────── */}
       <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
 
@@ -2391,15 +2641,12 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               inp={inp}
               btn={btn}
               busyKey={busyKey}
-              galleryPending={galleryPending}
               portfolioPending={portfolioPending}
-              galleryUploadProgress={galleryUploadProgress}
               portfolioUploadProgress={portfolioUploadProgress}
               existingServiceCategories={existingServiceCategories}
               saveImages={saveImages}
               handleCoverUpload={handleCoverUpload}
               handleLogoUpload={handleLogoUpload}
-              handleGalleryUpload={handleGalleryUpload}
               handlePortfolioUpload={handlePortfolioUpload}
             />
           ) : null}
@@ -2409,7 +2656,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               site={site}
               setSite={setSite}
               inp={inp}
-              btn={btn}
               busyKey={busyKey}
               saveSpecialist={saveSpecialist}
               onOwnerPhotoUpload={(file) => void handleOwnerPhotoUpload(file)}
@@ -2503,7 +2749,36 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           )}
 
           {activeTab === 'blog' && (
-            <Section title="Блог" compact={isMobile}>
+            <Section
+              title="Блог"
+              compact={isMobile}
+              action={
+                blogPosts.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => void saveBlogDraft(blogActiveIndex)}
+                    disabled={busyKey === 'blog'}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 8,
+                      border: 'none',
+                      color: '#fff',
+                      background: '#16A34A',
+                      padding: '6px 14px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: busyKey === 'blog' ? 'wait' : 'pointer',
+                      opacity: busyKey === 'blog' ? 0.7 : 1,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {busyKey === 'blog' ? 'Запазване…' : 'Запази'}
+                  </button>
+                ) : undefined
+              }
+            >
               <SalonBlogSection
                 posts={blogPosts}
                 blogTitle={blogSectionTitle}
@@ -2515,9 +2790,9 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 onReplacePosts={replaceBlogPosts}
                 onBlogTitleChange={setBlogSectionTitle}
                 onUploadCover={handleBlogCoverUpload}
-                onSave={saveBlogDraft}
                 onPublish={publishBlogPost}
                 onUnpublish={unpublishBlogPost}
+                onActiveIndexChange={setBlogActiveIndex}
               />
             </Section>
           )}
@@ -2632,6 +2907,10 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
               publicSiteHost={publicSiteHost}
               legalDocLinks={legalDocLinks}
             />
+          ) : null}
+
+          {activeTab === 'account' ? (
+            <LazyAccountTabPanel slug={slug} inp={inp} />
           ) : null}
 
           {activeTab === 'integrations' ? (

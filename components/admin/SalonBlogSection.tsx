@@ -22,21 +22,6 @@ const GRADIENT_PRIMARY: CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-const SAVE_GREEN: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 10,
-  border: 'none',
-  color: '#fff',
-  background: '#16A34A',
-  padding: '8px 16px',
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
-
 type Props = {
   posts: AdminSalonBlogPost[];
   blogTitle: string;
@@ -48,9 +33,9 @@ type Props = {
   onReplacePosts: (posts: AdminSalonBlogPost[]) => AdminSalonBlogPost[];
   onBlogTitleChange: (title: string) => void;
   onUploadCover: (postIndex: number, file: File | null) => void | Promise<void>;
-  onSave: (index: number) => void | Promise<void>;
   onPublish: (index: number) => void | Promise<void>;
   onUnpublish: (index: number) => void | Promise<void>;
+  onActiveIndexChange?: (index: number) => void;
 };
 
 function formatDate(iso: string | null): string {
@@ -71,18 +56,24 @@ export function SalonBlogSection({
   onReplacePosts,
   onBlogTitleChange,
   onUploadCover,
-  onSave,
   onPublish,
   onUnpublish,
+  onActiveIndexChange,
 }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const saving = busyKey === 'blog';
 
   useEffect(() => {
     if (activeIndex >= posts.length) {
-      setActiveIndex(Math.max(0, posts.length - 1));
+      const next = Math.max(0, posts.length - 1);
+      setActiveIndex(next);
+      onActiveIndexChange?.(next);
     }
-  }, [activeIndex, posts.length]);
+  }, [activeIndex, posts.length, onActiveIndexChange]);
+
+  useEffect(() => {
+    onActiveIndexChange?.(activeIndex);
+  }, [activeIndex, onActiveIndexChange]);
 
   const post = posts[activeIndex];
   const previewUrl =
@@ -94,14 +85,23 @@ export function SalonBlogSection({
     onPatchPost(index, patch);
   }
 
+  function selectPost(index: number) {
+    setActiveIndex(index);
+    onActiveIndexChange?.(index);
+  }
+
   function addPost() {
     onReplacePosts([newEmptyBlogPost(), ...posts]);
-    setActiveIndex(0);
+    selectPost(0);
   }
 
   function removePost(index: number) {
     onReplacePosts(posts.filter((_, i) => i !== index));
-    setActiveIndex((i) => Math.max(0, Math.min(i, posts.length - 2)));
+    setActiveIndex((i) => {
+      const next = Math.max(0, Math.min(i, posts.length - 2));
+      onActiveIndexChange?.(next);
+      return next;
+    });
   }
 
   function onTitleBlur(index: number) {
@@ -174,7 +174,7 @@ export function SalonBlogSection({
                 <button
                   key={item.id || `draft-${index}`}
                   type="button"
-                  onClick={() => setActiveIndex(index)}
+                  onClick={() => selectPost(index)}
                   style={{
                     flexShrink: 0,
                     borderRadius: 10,
@@ -349,15 +349,6 @@ export function SalonBlogSection({
                   </span>
                 )}
 
-                <button
-                  type="button"
-                  style={SAVE_GREEN}
-                  disabled={saving}
-                  onClick={() => void onSave(activeIndex)}
-                >
-                  {saving ? 'Запазване…' : 'Запази'}
-                </button>
-
                 {post.status !== 'published' ? (
                   <button
                     type="button"
@@ -371,11 +362,17 @@ export function SalonBlogSection({
                   <button
                     type="button"
                     style={{
-                      ...SAVE_GREEN,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 10,
                       background: '#fff',
                       color: '#374151',
                       border: '1px solid #d1d5db',
-                      boxShadow: 'none',
+                      padding: '8px 16px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
                     }}
                     disabled={saving}
                     onClick={() => void onUnpublish(activeIndex)}

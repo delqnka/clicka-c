@@ -2,7 +2,7 @@
 
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { ImagePlus, RefreshCw, UserRound } from 'lucide-react';
-import { adminGrid2, ADMIN_T } from '@/components/admin/admin-theme';
+import { adminGrid2, ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
 
@@ -92,7 +92,6 @@ export function SpecialistTabPanel({
   site,
   setSite,
   inp,
-  btn,
   busyKey,
   saveSpecialist,
   onOwnerPhotoUpload,
@@ -100,7 +99,6 @@ export function SpecialistTabPanel({
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
   inp: CSSProperties;
-  btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   busyKey: string;
   saveSpecialist: () => void;
   onOwnerPhotoUpload: (file: File | null) => void;
@@ -108,13 +106,28 @@ export function SpecialistTabPanel({
   return (
     <AdminSection
       title="Специалист"
-      desc='Захранва секцията „Вашият специалист" в сайта.'
       action={
-        <button type="button" onClick={saveSpecialist} style={btn('primary')} disabled={busyKey === 'specialist'}>
-          {busyKey === 'specialist' ? 'Запазваме…' : 'Запази профила'}
+        <button
+          type="button"
+          onClick={saveSpecialist}
+          style={{
+            ...ADMIN_COMPACT_SAVE_BTN,
+            opacity: busyKey === 'specialist' ? 0.7 : 1,
+            cursor: busyKey === 'specialist' ? 'wait' : 'pointer',
+          }}
+          disabled={busyKey === 'specialist'}
+        >
+          {busyKey === 'specialist' ? 'Запазване…' : 'Запази'}
         </button>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <SpecialistPhotoUpload
+          photoUrl={site.ownerPublicPhotoUrl}
+          busy={busyKey === 'upload-owner'}
+          onUpload={onOwnerPhotoUpload}
+        />
+      </div>
       <div style={adminGrid2}>
         <AdminField label="Име">
           <input value={site.ownerName} onChange={(e) => setSite((p) => ({ ...p, ownerName: e.target.value }))} style={inp} />
@@ -134,15 +147,6 @@ export function SpecialistTabPanel({
             onChange={(e) => setSite((p) => ({ ...p, ownerPublicBio: e.target.value }))}
             style={{ ...inp, minHeight: 96, resize: 'vertical' }}
             placeholder="Кратко представяне на специалиста..."
-          />
-        </AdminField>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <AdminField label="Снимка">
-          <SpecialistPhotoUpload
-            photoUrl={site.ownerPublicPhotoUrl}
-            busy={busyKey === 'upload-owner'}
-            onUpload={onOwnerPhotoUpload}
           />
         </AdminField>
       </div>
