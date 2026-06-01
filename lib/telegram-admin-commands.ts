@@ -411,7 +411,234 @@ export async function handleAdminCommand(
     return true;
   }
 
-  return false;
+  // ── AI fallback — free natural language ──────────────────────────────────
+  return await handleWithAI(chatId, text, salon);
+}
+
+// ─── AI natural language fallback ────────────────────────────────────────────
+
+type AIIntent =
+  | { action: 'bookings_day'; date: string }
+  | { action: 'next_client' }
+  | { action: 'revenue_week' }
+  | { action: 'revenue_month' }
+  | { action: 'revenue_client'; client_name: string }
+  | { action: 'client_count' }
+  | { action: 'top_services' }
+  | { action: 'list_services' }
+  | { action: 'pending_bookings' }
+  | { action: 'add_service'; name: string; duration_min: number; price_lv: number }
+  | { action: 'update_price'; service_name: string; price_lv: number }
+  | { action: 'delete_service'; service_name: string }
+  | { action: 'day_off'; date: string }
+  | { action: 'day_hours'; day_key: string; open: string; close: string }
+  | { action: 'day_closed'; day_key: string }
+  | { action: 'work_until'; close_time: string }
+  | { action: 'update_phone'; phone: string }
+  | { action: 'update_instagram'; handle: string }
+  | { action: 'update_bio'; bio: string }
+  | { action: 'confirm_booking'; client_name: string }
+  | { action: 'cancel_booking'; date: string; time: string }
+  | { action: 'remind_tomorrow' }
+  | { action: 'unknown' };
+
+async function handleWithAI(chatId: number, text: string, salon: SalonRef): Promise<boolean> {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey) return false;
+
+  const today = new Date();
+  const todayStr = todayISO();
+  const tomorrowStr = offsetDayISO(1);
+
+  const systemPrompt = `Ти си асистент на собственик на салон за красота. Получаваш съобщение на български и трябва да определиш намерението.
+
+Днес е ${today.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
+Днешна дата (ISO): ${todayStr}
+Утрешна дата (ISO): ${tomorrowStr}
+
+Върни САМО валиден JSON обект с поле "action" и допълнителни полета според действието:
+
+Справки:
+- { "action": "bookings_day", "date": "YYYY-MM-DD" } — резервации за конкретен ден
+- { "action": "next_client" } — следващ клиент
+- { "action": "revenue_week" } — оборот тази седмица
+- { "action": "revenue_month" } — оборот този месец
+- { "action": "revenue_client", "client_name": "Мария Иванова" } — оборот от конкретен клиент
+- { "action": "client_count" } — брой клиенти
+- { "action": "top_services" } — най-популярни услуги
+- { "action": "list_services" } — списък услуги
+- { "action": "pending_bookings" } — незатвърдени резервации
+
+Управление на услуги:
+- { "action": "add_service", "name": "...", "duration_min": 45, "price_lv": 60 }
+- { "action": "update_price", "service_name": "...", "price_lv": 35 }
+- { "action": "delete_service", "service_name": "..." }
+
+Работно време:
+- { "action": "day_off", "date": "YYYY-MM-DD" } — почивен ден
+- { "action": "day_hours", "day_key": "monday", "open": "09:00", "close": "18:00" }
+- { "action": "day_closed", "day_key": "sunday" }
+- { "action": "work_until", "close_time": "19:00" }
+
+Резервации:
+- { "action": "confirm_booking", "client_name": "..." }
+- { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
+- { "action": "remind_tomorrow" }
+
+Профил:
+- { "action": "update_phone", "phone": "0888123456" }
+- { "action": "update_instagram", "handle": "mysalon" }
+- { "action": "update_bio", "bio": "..." }
+
+Ако не можеш да определиш намерението: { "action": "unknown" }
+
+Само JSON, без обяснения.`;
+
+  let intent: AIIntent = { action: 'unknown' };
+
+  try {
+    const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: openRouterHeaders(),
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-preview',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text },
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) return false;
+
+    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+    const raw = (data.choices?.[0]?.message?.content ?? '').trim();
+    const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
+    intent = JSON.parse(jsonStr) as AIIntent;
+  } catch {
+    return false;
+  }
+
+  switch (intent.action) {
+    case 'bookings_day':
+      await handleBookingsForDay(chatId, salon, intent.date, intent.date === todayStr ? 'днес' : intent.date === tomorrowStr ? 'утре' : intent.date);
+      return true;
+    case 'next_client':
+      await handleNextClient(chatId, salon);
+      return true;
+    case 'revenue_week':
+      await handleRevenue(chatId, salon, 'week');
+      return true;
+    case 'revenue_month':
+      await handleRevenue(chatId, salon, 'month');
+      return true;
+    case 'revenue_client':
+      await handleClientRevenue(chatId, salon, intent.client_name);
+      return true;
+    case 'client_count':
+      await handleClientCountMonth(chatId, salon);
+      return true;
+    case 'top_services':
+      await handleTopServices(chatId, salon);
+      return true;
+    case 'list_services': {
+      const services = await getSalonServices(salon.salonId);
+      if (services.length === 0) {
+        await sendTelegramMessage(chatId, 'ℹ️ Все още няма добавени услуги.');
+      } else {
+        const lines = [`✂️ <b>Услуги (${services.length}):</b>`, ''];
+        let cat = '';
+        for (const s of services) {
+          if (s.category && s.category !== cat) { cat = s.category; lines.push(`\n<b>${cat}</b>`); }
+          lines.push(`• ${s.name} — ${s.duration_min} мин — ${s.price} €`);
+        }
+        await sendTelegramMessage(chatId, lines.join('\n'));
+      }
+      return true;
+    }
+    case 'pending_bookings':
+      await handlePendingBookings(chatId, salon);
+      return true;
+    case 'add_service': {
+      const services = await getSalonServices(salon.salonId);
+      if (services.some((s) => s.name.toLowerCase() === intent.name.toLowerCase())) {
+        await sendTelegramMessage(chatId, `⚠️ Услугата <b>${intent.name}</b> вече съществува.`);
+        return true;
+      }
+      services.push({ name: intent.name, price: lvToEur(intent.price_lv), duration_min: intent.duration_min });
+      await saveSalonServices(salon.salonId, salon.slug, services);
+      await sendTelegramMessage(chatId, `✅ Добавена: <b>${intent.name}</b> — ${intent.duration_min} мин — ${lvToEur(intent.price_lv)} €`);
+      return true;
+    }
+    case 'update_price': {
+      const services = await getSalonServices(salon.salonId);
+      const idx = findServiceIndex(services, intent.service_name);
+      if (idx === -1) {
+        await sendTelegramMessage(chatId, `❌ Не намерих услуга <b>${intent.service_name}</b>.`);
+        return true;
+      }
+      services[idx]!.price = lvToEur(intent.price_lv);
+      await saveSalonServices(salon.salonId, salon.slug, services);
+      await sendTelegramMessage(chatId, `✅ Цената на <b>${services[idx]!.name}</b> е <b>${lvToEur(intent.price_lv)} €</b>`);
+      return true;
+    }
+    case 'delete_service': {
+      const services = await getSalonServices(salon.salonId);
+      const idx = findServiceIndex(services, intent.service_name);
+      if (idx === -1) {
+        await sendTelegramMessage(chatId, `❌ Не намерих услуга <b>${intent.service_name}</b>.`);
+        return true;
+      }
+      const name = services[idx]!.name;
+      services.splice(idx, 1);
+      await saveSalonServices(salon.salonId, salon.slug, services);
+      await sendTelegramMessage(chatId, `🗑 Услугата <b>${name}</b> е изтрита.`);
+      return true;
+    }
+    case 'day_off':
+      await blockAllDay(salon.salonId, salon.slug, intent.date);
+      await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без резервации.`);
+      return true;
+    case 'day_hours':
+      await updateSingleDayHours(salon.salonId, salon.slug, intent.day_key, { open: intent.open, close: intent.close });
+      await sendTelegramMessage(chatId, `✅ <b>${intent.day_key}</b>: ${intent.open} – ${intent.close}`);
+      return true;
+    case 'day_closed':
+      await updateSingleDayHours(salon.salonId, salon.slug, intent.day_key, null);
+      await sendTelegramMessage(chatId, `✅ <b>${intent.day_key}</b> е маркиран като затворен.`);
+      return true;
+    case 'work_until':
+      await updateWorkingHoursClose(salon.salonId, salon.slug, intent.close_time);
+      await sendTelegramMessage(chatId, `✅ Работното ви време е актуализирано до <b>${intent.close_time}</b>`);
+      return true;
+    case 'update_phone':
+      await sql`UPDATE salons SET phone = ${intent.phone}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ Телефонът е обновен: <b>${intent.phone}</b>`);
+      return true;
+    case 'update_instagram':
+      await sql`UPDATE salons SET instagram_username = ${intent.handle}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ Instagram: <b>@${intent.handle}</b>`);
+      return true;
+    case 'update_bio':
+      await sql`UPDATE salons SET about = ${intent.bio}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ Описанието е обновено.`);
+      return true;
+    case 'confirm_booking':
+      await handleConfirmBooking(chatId, salon, intent.client_name);
+      return true;
+    case 'cancel_booking':
+      await handleCancelBooking(chatId, salon, intent.date, intent.time);
+      return true;
+    case 'remind_tomorrow':
+      await handleRemindTomorrow(chatId, salon);
+      return true;
+    default:
+      return false;
+  }
 }
 
 // ─── Price list photo ─────────────────────────────────────────────────────────
