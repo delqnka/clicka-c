@@ -46,11 +46,14 @@ import {
 } from '@/components/admin/lazy-admin-tabs';
 import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
+import { newEmptyOffer } from '@/lib/salon-offers';
+import { SalonOffersSection } from '@/components/admin/SalonOffersSection';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { mergeUniqueImageLists } from '@/lib/admin-image-utils';
+import { ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
@@ -75,10 +78,6 @@ import {
 
 const DomainPurchaseSection = dynamic(
   () => import('@/components/admin/DomainPurchaseSection'),
-  { ssr: false }
-);
-const SalonOffersSection = dynamic(
-  () => import('@/components/admin/SalonOffersSection').then((m) => m.SalonOffersSection),
   { ssr: false }
 );
 const SalonBlogSection = dynamic(
@@ -201,6 +200,7 @@ type Props = {
   ownerEmail: string;
   initialSite: AdminSitePayload;
   initialBookings: BookingRecord[];
+  initialOffers?: AdminSalonOffer[];
 };
 
 type BookingStatus = BookingRecord['status'];
@@ -334,7 +334,13 @@ const T = {
 } as const;
 
 /* ═══════════════════════════════════════════════════════ */
-export default function AdminDashboardClient({ slug, ownerEmail, initialSite, initialBookings }: Props) {
+export default function AdminDashboardClient({
+  slug,
+  ownerEmail,
+  initialSite,
+  initialBookings,
+  initialOffers = [],
+}: Props) {
   const [site, setSite]           = useState(initialSite);
   const siteRef = useRef(site);
   siteRef.current = site;
@@ -403,7 +409,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
     duration_min: 30,
     variants: [] as { label: string; price: number; duration_min: number }[],
   });
-  const [offers, setOffers] = useState<AdminSalonOffer[]>([]);
+  const [offers, setOffers] = useState<AdminSalonOffer[]>(initialOffers);
   const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
   const [blogSectionTitle, setBlogSectionTitle] = useState('');
   const blogPostsRef = useRef<AdminSalonBlogPost[]>([]);
@@ -1003,27 +1009,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
       document.documentElement.style.overflow = prevHtmlOverflow;
     };
   }, [serviceModalOpen]);
-
-  useEffect(() => {
-    if (activeTab !== 'offers') return;
-    let cancelled = false;
-    const run = async () => {
-      try {
-        const res = await fetch(`/api/admin/site-offers?slug=${encodeURIComponent(slug)}`);
-        const data = await readJson(res);
-        if (!res.ok) throw new Error((data as { error?: string }).error || 'Грешка');
-        if (cancelled) return;
-        const list = (data as { offers?: AdminSalonOffer[] }).offers;
-        setOffers(Array.isArray(list) ? list : []);
-      } catch (e) {
-        if (!cancelled) handleErr(e);
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab, slug]);
 
   useEffect(() => {
     if (activeTab !== 'blog') return;
@@ -2283,7 +2268,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
             >
               {NAVBAR_TABS.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
-                const [gFrom, gTo] = NAVBAR_GRADIENTS[id] ?? ['#a955ff', '#ea51ff'];
+                const [gFrom] = NAVBAR_GRADIENTS[id] ?? ['#a955ff', '#ea51ff'];
                 return (
                   <button
                     key={id}
@@ -2294,41 +2279,23 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 5,
-                      padding: '8px 6px',
+                      gap: 4,
+                      padding: '10px 6px',
                       borderRadius: 12,
-                      border: active ? 'none' : `1px solid ${T.border}`,
-                      background: active
-                        ? `linear-gradient(135deg, ${gFrom}, ${gTo})`
-                        : '#fff',
-                      color: active ? '#fff' : T.text,
+                      border: active ? `1.5px solid ${gFrom}` : `1px solid ${T.border}`,
+                      background: '#fff',
+                      color: T.text,
                       cursor: 'pointer',
-                      minHeight: 68,
+                      minHeight: 64,
                       WebkitTapHighlightColor: 'transparent',
-                      boxShadow: active
-                        ? `0 4px 14px ${gFrom}45`
-                        : '0 1px 3px rgba(0,0,0,0.05)',
+                      boxShadow: active ? `0 2px 8px ${gFrom}22` : 'none',
                     }}
                   >
-                    <div
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 8,
-                        background: active
-                          ? 'rgba(255,255,255,0.22)'
-                          : `linear-gradient(135deg, ${gFrom}22, ${gTo}22)`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Icon
-                        size={15}
-                        strokeWidth={active ? 2.2 : 1.8}
-                        style={{ color: active ? '#fff' : gFrom }}
-                      />
-                    </div>
+                    <Icon
+                      size={20}
+                      strokeWidth={active ? 2.25 : 1.75}
+                      style={{ color: active ? gFrom : '#52525B' }}
+                    />
                     <span
                       style={{
                         fontSize: 11,
@@ -2336,7 +2303,7 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                         letterSpacing: '-0.01em',
                         textAlign: 'center',
                         lineHeight: 1.2,
-                        color: active ? '#fff' : T.muted,
+                        color: active ? gFrom : T.muted,
                       }}
                     >
                       {label}
@@ -2744,8 +2711,44 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
           {activeTab === 'offers' && (
             <Section
               title="Оферти"
-              desc="Специални промоции на сайта — снимки, описание, лимит на резервации и отделен модал за записване."
               compact={isMobile}
+              action={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => setOffers((prev) => [newEmptyOffer(), ...prev])}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      borderRadius: 8,
+                      border: 'none',
+                      color: '#fff',
+                      background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <Plus size={14} strokeWidth={2.25} />
+                    Добави
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void saveOffers()}
+                    disabled={busyKey === 'offers'}
+                    style={{
+                      ...ADMIN_COMPACT_SAVE_BTN,
+                      opacity: busyKey === 'offers' ? 0.7 : 1,
+                      cursor: busyKey === 'offers' ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {busyKey === 'offers' ? 'Запазване…' : 'Запази'}
+                  </button>
+                </div>
+              }
             >
               <SalonOffersSection
                 offers={offers}
@@ -2754,7 +2757,6 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
                 inp={inp}
                 onChange={setOffers}
                 onUploadImages={handleOfferImagesUpload}
-                onSave={saveOffers}
               />
             </Section>
           )}

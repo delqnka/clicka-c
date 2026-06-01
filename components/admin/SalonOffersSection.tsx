@@ -1,40 +1,9 @@
 'use client';
 
-import { Camera, Plus, Trash2, X } from 'lucide-react';
+import { Camera, Trash2, X } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
-import { newEmptyOffer, offerSpotsLeft } from '@/lib/salon-offers';
-
-const GRADIENT_PRIMARY: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  borderRadius: 10,
-  border: 'none',
-  color: '#fff',
-  background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
-  boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
-  padding: '9px 16px',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
-
-const SAVE_GREEN: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 10,
-  border: 'none',
-  color: '#fff',
-  background: '#16A34A',
-  padding: '7px 14px',
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
+import { offerSpotsLeft } from '@/lib/salon-offers';
 
 function dateInputValue(iso: string | null): string {
   if (!iso) return '';
@@ -61,7 +30,6 @@ type Props = {
   inp: CSSProperties;
   onChange: (offers: AdminSalonOffer[]) => void;
   onUploadImages: (offerIndex: number, files: FileList | null) => void | Promise<void>;
-  onSave: () => void | Promise<void>;
 };
 
 export function SalonOffersSection({
@@ -71,7 +39,6 @@ export function SalonOffersSection({
   inp,
   onChange,
   onUploadImages,
-  onSave,
 }: Props) {
   const [durationDrafts, setDurationDrafts] = useState<Record<number, string>>({});
 
@@ -108,35 +75,10 @@ export function SalonOffersSection({
     onChange(offers.filter((_, i) => i !== index));
   }
 
-  function addOffer() {
-    onChange([newEmptyOffer(), ...offers]);
-  }
-
   return (
     <div style={{ display: 'grid', gap: isMobile ? 14 : 12 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <button type="button" style={GRADIENT_PRIMARY} onClick={addOffer}>
-          <Plus size={15} strokeWidth={2.25} />
-          Добави оферта
-        </button>
-        <button
-          type="button"
-          style={{
-            ...SAVE_GREEN,
-            opacity: busyKey === 'offers' ? 0.65 : 1,
-            cursor: busyKey === 'offers' ? 'wait' : 'pointer',
-          }}
-          disabled={busyKey === 'offers'}
-          onClick={() => void onSave()}
-        >
-          {busyKey === 'offers' ? 'Запазваме…' : 'Запази'}
-        </button>
-      </div>
-
       {offers.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 14, color: '#71717A' }}>
-          Няма оферти. Натисни „Добави оферта“ — ще се показват на сайта с отделен модал за резервация.
-        </p>
+        <p style={{ margin: 0, fontSize: 14, color: '#71717A' }}>Няма оферти.</p>
       ) : null}
 
       {offers.map((offer, i) => {

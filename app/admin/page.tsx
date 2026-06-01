@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 import { ADMIN_COOKIE_NAME, resolveAdminGate } from '@/lib/admin-auth';
 import { getHostAwareSalonPath } from '@/lib/domain-routing';
+import { loadAdminOffersBySalonId } from '@/lib/admin-offers-load';
 import { loadAdminSiteDataBySlug, loadBookingsBySalonId } from '@/lib/admin-site';
 
 export const dynamic = 'force-dynamic';
@@ -40,9 +41,10 @@ export default async function AdminEntryPage() {
     );
   }
 
-  const [site, bookings] = await Promise.all([
+  const [site, bookings, initialOffers] = await Promise.all([
     loadAdminSiteDataBySlug(gate.salon.slug),
     loadBookingsBySalonId(gate.salon.salonId, 200),
+    loadAdminOffersBySalonId(gate.salon.salonId),
   ]);
 
   if (!site) notFound();
@@ -53,6 +55,7 @@ export default async function AdminEntryPage() {
       ownerEmail={gate.session.ownerEmail}
       initialSite={site}
       initialBookings={bookings}
+      initialOffers={initialOffers}
     />
   );
 }
