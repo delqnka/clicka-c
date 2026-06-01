@@ -19,7 +19,7 @@ import {
 // ─── Regex patterns ─────────────────────────────────────────────────────────
 
 const ADD_SERVICE_RE =
-  /^(?:добав[ии]|add)\s+услуг[аa][:：]?\s+(.+?)(?:\s*[—\-–]\s*(\d+)\s*мин(?:\.|ути)?)?(?:\s*[—\-–]\s*(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев)?)?$/i;
+  /^(?:добав[ии]|add)\s+(?:ми\s+)?(?:нова\s+)?услуг[аa][:：]?\s+(.+)/i;
 
 const UPDATE_PRICE_RE =
   /^(?:промен[ии]|смен[ии])\s+цен(?:ата|а)\s+на\s+(.+?)\s+на\s+(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев)?$/i;
@@ -194,9 +194,36 @@ export async function handleAdminCommand(
   // ── Add service ──────────────────────────────────────────────────────────
   const addMatch = text.match(ADD_SERVICE_RE);
   if (addMatch) {
-    const rawName = addMatch[1]!.trim();
-    const duration = addMatch[2] ? Math.max(5, parseInt(addMatch[2], 10)) : 30;
-    const price = addMatch[3] ? lvToEur(parseFloat(addMatch[3].replace(',', '.'))) : 0;
+    const rawFull = addMatch[1]!.trim();
+
+    // Parse duration: "— 45 мин" OR "за 4 часа" OR "за 45 мин"
+    let duration = 30;
+    const dashMinMatch = rawFull.match(/[—\-–]\s*(\d+)\s*мин/i);
+    const forHoursMatch = rawFull.match(/за\s+(\d+(?:[.,]\d+)?)\s*часа?/i);
+    const forMinMatch = rawFull.match(/за\s+(\d+)\s*мин/i);
+    if (dashMinMatch) duration = Math.max(5, parseInt(dashMinMatch[1]!, 10));
+    else if (forHoursMatch) duration = Math.max(5, Math.round(parseFloat(forHoursMatch[1]!.replace(',', '.')) * 60));
+    else if (forMinMatch) duration = Math.max(5, parseInt(forMinMatch[1]!, 10));
+
+    // Parse price: "— 60 лв/€" OR "за 250 евро/лв/€"
+    let price = 0;
+    const dashPriceMatch = rawFull.match(/[—\-–]\s*(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев)/i);
+    const forPriceMatch = rawFull.match(/за\s+(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев|евро)/i);
+    if (dashPriceMatch) price = lvToEur(parseFloat(dashPriceMatch[1]!.replace(',', '.')));
+    else if (forPriceMatch) {
+      const val = parseFloat(forPriceMatch[1]!.replace(',', '.'));
+      const unit = forPriceMatch[0]!.toLowerCase();
+      price = /€|eur|евро/.test(unit) ? Math.round(val) : lvToEur(val);
+    }
+
+    // Extract clean service name (strip price/duration suffixes)
+    const rawName = rawFull
+      .replace(/\s*[—\-–]\s*\d+\s*мин[^\s]*/gi, '')
+      .replace(/\s*[—\-–]\s*\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев)/gi, '')
+      .replace(/\s+за\s+\d+(?:[.,]\d+)?\s*(?:часа?|мин[^\s]*)/gi, '')
+      .replace(/\s+за\s+\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев|евро)/gi, '')
+      .trim();
+
     const services = await getSalonServices(salon.salonId);
     if (services.some((s) => s.name.toLowerCase() === rawName.toLowerCase())) {
       await sendTelegramMessage(chatId, `⚠️ Услугата <b>${rawName}</b> вече съществува.\nЗа да промениш цената: <code>Промени цената на ${rawName} на ${price} лв</code>`);
