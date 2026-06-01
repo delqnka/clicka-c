@@ -118,7 +118,7 @@ export function SalonBlogSection({
   return (
     <div style={{ display: 'grid', gap: isMobile ? 16 : 14 }}>
       <label style={{ display: 'grid', gap: 4 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>
           Име на секцията на сайта
         </span>
         <input
@@ -206,7 +206,7 @@ export function SalonBlogSection({
               }}
             >
               <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Заглавие</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Заглавие</span>
                 <input
                   style={inp}
                   value={post.title}
@@ -217,7 +217,7 @@ export function SalonBlogSection({
               </label>
 
               <div style={{ display: 'grid', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Снимка на корицата</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Снимка на корицата</span>
                 <div
                   style={{
                     display: 'grid',
@@ -276,7 +276,7 @@ export function SalonBlogSection({
               </div>
 
               <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Текст на статията</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Текст на статията</span>
                 <textarea
                   style={textareaStyle}
                   value={post.bodyMarkdown}
@@ -286,7 +286,7 @@ export function SalonBlogSection({
               </label>
 
               <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>
                   Кратко описание <span style={{ fontWeight: 400, color: '#9ca3af' }}>(по избор)</span>
                 </span>
                 <textarea
@@ -400,11 +400,11 @@ export function SalonBlogSection({
               </div>
 
               <details>
-                <summary style={{ fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+                <summary style={{ fontSize: 13, fontWeight: 600, color: '#18181B', cursor: 'pointer' }}>
                   URL адрес (по избор)
                 </summary>
                 <label style={{ display: 'grid', gap: 4, marginTop: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Slug</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Slug</span>
                   <input
                     style={inp}
                     value={post.slug}

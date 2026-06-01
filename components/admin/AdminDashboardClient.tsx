@@ -47,10 +47,12 @@ import { AccountTabPanel } from '@/components/admin/tabs/account-tab-panel';
 import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer } from '@/lib/salon-offers';
-import { SalonOffersSection } from '@/components/admin/SalonOffersSection';
+import {
+  LazySalonOffersSection,
+  LazySalonBlogSection,
+} from '@/components/admin/lazy-admin-tabs';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
-import { SalonBlogSection } from '@/components/admin/SalonBlogSection';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
@@ -183,10 +185,7 @@ type Props = {
   slug: string;
   ownerEmail: string;
   initialSite: AdminSitePayload;
-  initialBookings: BookingRecord[];
   initialOffers?: AdminSalonOffer[];
-  initialBlogPosts?: AdminSalonBlogPost[];
-  initialBlogTitle?: string;
   initialAccount?: { loginEmail: string; hasPassword: boolean; pendingEmail?: string | null };
 };
 
@@ -325,16 +324,14 @@ export default function AdminDashboardClient({
   slug,
   ownerEmail,
   initialSite,
-  initialBookings,
   initialOffers = [],
-  initialBlogPosts = [],
-  initialBlogTitle = '',
   initialAccount,
 }: Props) {
   const [site, setSite]           = useState(initialSite);
   const siteRef = useRef(site);
   siteRef.current = site;
-  const [bookings, setBookings]   = useState(initialBookings);
+  const [bookings, setBookings]   = useState<BookingRecord[]>([]);
+  const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('site');
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
@@ -400,9 +397,10 @@ export default function AdminDashboardClient({
     variants: [] as { label: string; price: number; duration_min: number }[],
   });
   const [offers, setOffers] = useState<AdminSalonOffer[]>(initialOffers);
-  const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>(initialBlogPosts);
-  const [blogSectionTitle, setBlogSectionTitle] = useState(initialBlogTitle);
-  const blogPostsRef = useRef<AdminSalonBlogPost[]>(initialBlogPosts);
+  const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
+  const [blogSectionTitle, setBlogSectionTitle] = useState('');
+  const [blogLoaded, setBlogLoaded] = useState(false);
+  const blogPostsRef = useRef<AdminSalonBlogPost[]>([]);
   const blogSaveBusyRef = useRef(false);
   const blogSaveAgainRef = useRef(false);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
@@ -880,6 +878,51 @@ export default function AdminDashboardClient({
     void loadGoogleReviewsStatus();
     void loadCalendarIntegrationStatus();
   }, [activeTab, loadGoogleReviewsStatus, loadCalendarIntegrationStatus]);
+
+  useEffect(() => {
+    if (activeTab !== 'bookings' && activeTab !== 'clients') return;
+    if (bookingsLoaded) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}&limit=200`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const data = (await readJson(res)) as { bookings?: BookingRecord[] };
+        if (cancelled) return;
+        if (Array.isArray(data.bookings)) {
+          setBookings(data.bookings);
+          setBookingsLoaded(true);
+        }
+      } catch { /* ignore — user can refresh */ }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [activeTab, bookingsLoaded, slug]);
+
+  useEffect(() => {
+    if (activeTab !== 'blog') return;
+    if (blogLoaded) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const data = (await readJson(res)) as { posts?: AdminSalonBlogPost[]; blogTitle?: string };
+        if (cancelled) return;
+        const posts = Array.isArray(data.posts) ? data.posts : [];
+        blogPostsRef.current = posts;
+        setBlogPosts(posts);
+        if (typeof data.blogTitle === 'string') setBlogSectionTitle(data.blogTitle);
+        setBlogLoaded(true);
+      } catch { /* ignore */ }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [activeTab, blogLoaded, slug]);
 
   const fetchGoogleReviews = useCallback(async (overrides?: { placeId?: string; mapsUrl?: string }) => {
     const placeId = String(overrides?.placeId ?? site.googlePlaceId).trim();
@@ -2723,7 +2766,7 @@ export default function AdminDashboardClient({
                 </div>
               }
             >
-              <SalonOffersSection
+              <LazySalonOffersSection
                 offers={offers}
                 isMobile={isMobile}
                 busyKey={busyKey}
@@ -2783,7 +2826,7 @@ export default function AdminDashboardClient({
                 </div>
               }
             >
-              <SalonBlogSection
+              <LazySalonBlogSection
                 posts={blogPosts}
                 blogTitle={blogSectionTitle}
                 isMobile={isMobile}
@@ -3041,7 +3084,7 @@ export default function AdminDashboardClient({
                       fontSize: 10,
                       fontWeight: active ? 700 : 500,
                       letterSpacing: '-0.01em',
-                      color: active ? '#7C3AED' : '#52525B',
+                      color: active ? '#7C3AED' : '#18181B',
                       lineHeight: 1,
                     }}
                   >

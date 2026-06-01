@@ -69,7 +69,7 @@ export function AddressAutocompleteField({
 
   return (
     <label style={{ display: 'grid', gap: 5 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A', letterSpacing: '0.02em' }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B', letterSpacing: '0.02em' }}>
         {label}
       </span>
       <input

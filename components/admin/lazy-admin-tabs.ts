@@ -1,5 +1,13 @@
 import dynamic from 'next/dynamic';
 
+export const LazySalonOffersSection = dynamic(
+  () => import('@/components/admin/SalonOffersSection').then((m) => m.SalonOffersSection),
+  { ssr: false }
+);
+export const LazySalonBlogSection = dynamic(
+  () => import('@/components/admin/SalonBlogSection').then((m) => m.SalonBlogSection),
+  { ssr: false }
+);
 export const LazySiteTabPanel = dynamic(
   () => import('@/components/admin/tabs/site-tab-panel').then((m) => m.SiteTabPanel),
   { ssr: false }

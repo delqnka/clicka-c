@@ -119,7 +119,7 @@ export function SalonOffersSection({
 
             <div style={{ display: 'grid', gap: 10, paddingRight: 32 }}>
               <label style={{ display: 'grid', gap: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Заглавие</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Заглавие</span>
                 <input
                   style={inp}
                   value={offer.title}
@@ -128,7 +128,7 @@ export function SalonOffersSection({
                 />
               </label>
               <label style={{ display: 'grid', gap: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Описание</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Описание</span>
                 <textarea
                   style={{ ...inp, minHeight: 72, resize: 'vertical' }}
                   value={offer.description}
@@ -146,7 +146,7 @@ export function SalonOffersSection({
                 }}
               >
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Валидна от</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Валидна от</span>
                   <input
                     type="date"
                     style={inp}
@@ -157,7 +157,7 @@ export function SalonOffersSection({
                   />
                 </label>
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Валидна до</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Валидна до</span>
                   <input
                     type="date"
                     style={inp}
@@ -193,7 +193,7 @@ export function SalonOffersSection({
                 }}
               >
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Отстъпка %</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Отстъпка %</span>
                   <input
                     type="number"
                     style={inp}
@@ -206,7 +206,7 @@ export function SalonOffersSection({
                   />
                 </label>
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Макс. резервации</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Макс. резервации</span>
                   <input
                     type="number"
                     min={1}
@@ -221,7 +221,7 @@ export function SalonOffersSection({
                   />
                 </label>
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Продължителност</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Продължителност</span>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -244,7 +244,7 @@ export function SalonOffersSection({
               ) : null}
 
               <div style={{ display: 'grid', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#71717A' }}>Снимки</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Снимки</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {offer.images.map((url, imgIdx) => (
                     <div

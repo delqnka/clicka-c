@@ -4,9 +4,8 @@ import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 import { ADMIN_COOKIE_NAME, resolveAdminGate } from '@/lib/admin-auth';
 import { getHostAwareSalonPath } from '@/lib/domain-routing';
 import { loadAdminAccountInfo } from '@/lib/admin-account-load';
-import { loadAdminBlogDataBySalonId } from '@/lib/admin-blog-load';
 import { loadAdminOffersBySalonId } from '@/lib/admin-offers-load';
-import { loadAdminSiteDataBySlug, loadBookingsBySalonId } from '@/lib/admin-site';
+import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,11 +42,9 @@ export default async function AdminEntryPage() {
     );
   }
 
-  const [site, bookings, initialOffers, initialBlog, initialAccount] = await Promise.all([
+  const [site, initialOffers, initialAccount] = await Promise.all([
     loadAdminSiteDataBySlug(gate.salon.slug),
-    loadBookingsBySalonId(gate.salon.salonId, 200),
     loadAdminOffersBySalonId(gate.salon.salonId),
-    loadAdminBlogDataBySalonId(gate.salon.salonId),
     loadAdminAccountInfo(gate.session.ownerId),
   ]);
 
@@ -58,10 +55,7 @@ export default async function AdminEntryPage() {
       slug={gate.salon.slug}
       ownerEmail={gate.session.ownerEmail}
       initialSite={site}
-      initialBookings={bookings}
       initialOffers={initialOffers}
-      initialBlogPosts={initialBlog.posts}
-      initialBlogTitle={initialBlog.blogTitle}
       initialAccount={{
         loginEmail: gate.session.ownerEmail,
         hasPassword: initialAccount.hasPassword,
@@ -70,4 +64,3 @@ export default async function AdminEntryPage() {
     />
   );
 }
-
