@@ -187,7 +187,7 @@ type Props = {
   initialOffers?: AdminSalonOffer[];
   initialBlogPosts?: AdminSalonBlogPost[];
   initialBlogTitle?: string;
-  initialAccount?: { loginEmail: string; hasPassword: boolean };
+  initialAccount?: { loginEmail: string; hasPassword: boolean; pendingEmail?: string | null };
 };
 
 type BookingStatus = BookingRecord['status'];

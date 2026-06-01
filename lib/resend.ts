@@ -75,6 +75,119 @@ function renderRow(label: string, value: string) {
   `;
 }
 
+export async function sendPasswordChangedNotification(email: string): Promise<void> {
+  await sendResendWithRetry({
+    from: 'Clicka.bg <noreply@clicka.bg>',
+    to: email,
+    subject: 'Паролата ви беше сменена — Clicka.bg',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #000; margin: 0 0 16px;">Паролата ви беше сменена</h2>
+        <p style="line-height: 1.7;">
+          Паролата за вашия акаунт в <strong>Clicka.bg</strong> беше успешно сменена.
+        </p>
+        <p style="line-height: 1.7;">
+          Ако <strong>не сте направили тази промяна</strong>, незабавно се свържете с нас на
+          <a href="mailto:support@clicka.bg">support@clicka.bg</a>.
+        </p>
+        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
+          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+        </p>
+      </div>
+    `,
+  });
+}
+
+export async function sendEmailChangeRequestNotification(
+  oldEmail: string,
+  newEmail: string,
+): Promise<void> {
+  await sendResendWithRetry({
+    from: 'Clicka.bg <noreply@clicka.bg>',
+    to: oldEmail,
+    subject: 'Заявка за смяна на имейл — Clicka.bg',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #000; margin: 0 0 16px;">Заявена смяна на имейл за вход</h2>
+        <p style="line-height: 1.7;">
+          Получихме заявка за смяна на имейла за вход към акаунта ви в <strong>Clicka.bg</strong>.
+        </p>
+        <p style="line-height: 1.7;">
+          Новият имейл е: <strong>${escapeHtml(newEmail)}</strong>
+        </p>
+        <p style="line-height: 1.7;">
+          Изпратихме верификационен линк на новия имейл адрес.
+          <strong>Имейлът ви няма да се смени, докато не потвърдите от новия адрес.</strong>
+        </p>
+        <p style="line-height: 1.7;">
+          Ако <strong>не сте направили тази заявка</strong>, незабавно се свържете с нас на
+          <a href="mailto:support@clicka.bg">support@clicka.bg</a>.
+        </p>
+        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
+          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+        </p>
+      </div>
+    `,
+  });
+}
+
+export async function sendEmailVerificationRequest(
+  newEmail: string,
+  verifyUrl: string,
+): Promise<void> {
+  await sendResendWithRetry({
+    from: 'Clicka.bg <noreply@clicka.bg>',
+    to: newEmail,
+    subject: 'Потвърдете новия си имейл — Clicka.bg',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #000; margin: 0 0 16px;">Потвърдете новия си имейл</h2>
+        <p style="line-height: 1.7;">
+          Натиснете бутона по-долу, за да потвърдите този имейл като нов адрес за вход в
+          <strong>Clicka.bg</strong>.
+        </p>
+        <p style="margin: 24px 0;">
+          <a href="${verifyUrl}"
+             style="display:inline-block;background:#000;color:#fff;text-decoration:none;
+                    padding:13px 22px;border-radius:999px;font-weight:700;font-size:15px;">
+            Потвърди имейл →
+          </a>
+        </p>
+        <p style="font-size: 13px; color: #999; line-height: 1.5;">
+          Линкът е валиден <strong>30 минути</strong>.
+          Ако не сте поискали тази смяна, игнорирайте имейла — текущият ви имейл остава непроменен.
+        </p>
+        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
+          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+        </p>
+      </div>
+    `,
+  });
+}
+
+export async function sendEmailChangedConfirmation(newEmail: string): Promise<void> {
+  await sendResendWithRetry({
+    from: 'Clicka.bg <noreply@clicka.bg>',
+    to: newEmail,
+    subject: 'Имейлът ви беше сменен — Clicka.bg',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #000; margin: 0 0 16px;">Имейлът ви беше успешно сменен</h2>
+        <p style="line-height: 1.7;">
+          Имейлът за вход в <strong>Clicka.bg</strong> беше сменен на <strong>${escapeHtml(newEmail)}</strong>.
+        </p>
+        <p style="line-height: 1.7;">
+          Ако <strong>не сте направили тази промяна</strong>, незабавно се свържете с нас на
+          <a href="mailto:support@clicka.bg">support@clicka.bg</a>.
+        </p>
+        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
+          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendBookingNotification(
   salonEmail: string,
   booking: BookingDetails

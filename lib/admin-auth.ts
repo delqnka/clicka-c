@@ -158,6 +158,9 @@ export async function ensureAdminAuthSchema() {
       `;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email text`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_token_hash text`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_expires_at timestamptz`;
       await ensureSmsSchema();
     })();
   }

@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 import { ADMIN_COOKIE_NAME, resolveAdminGate } from '@/lib/admin-auth';
 import { getHostAwareSalonPath } from '@/lib/domain-routing';
-import { loadAdminAccountHasPassword } from '@/lib/admin-account-load';
+import { loadAdminAccountInfo } from '@/lib/admin-account-load';
 import { loadAdminBlogDataBySalonId } from '@/lib/admin-blog-load';
 import { loadAdminOffersBySalonId } from '@/lib/admin-offers-load';
 import { loadAdminSiteDataBySlug, loadBookingsBySalonId } from '@/lib/admin-site';
@@ -43,12 +43,12 @@ export default async function AdminEntryPage() {
     );
   }
 
-  const [site, bookings, initialOffers, initialBlog, initialHasPassword] = await Promise.all([
+  const [site, bookings, initialOffers, initialBlog, initialAccount] = await Promise.all([
     loadAdminSiteDataBySlug(gate.salon.slug),
     loadBookingsBySalonId(gate.salon.salonId, 200),
     loadAdminOffersBySalonId(gate.salon.salonId),
     loadAdminBlogDataBySalonId(gate.salon.salonId),
-    loadAdminAccountHasPassword(gate.session.ownerId),
+    loadAdminAccountInfo(gate.session.ownerId),
   ]);
 
   if (!site) notFound();
@@ -64,7 +64,8 @@ export default async function AdminEntryPage() {
       initialBlogTitle={initialBlog.blogTitle}
       initialAccount={{
         loginEmail: gate.session.ownerEmail,
-        hasPassword: initialHasPassword,
+        hasPassword: initialAccount.hasPassword,
+        pendingEmail: initialAccount.pendingEmail,
       }}
     />
   );

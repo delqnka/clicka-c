@@ -7,6 +7,7 @@ import { AdminField } from '@/components/admin/admin-ui';
 type AccountInfo = {
   loginEmail: string;
   hasPassword: boolean;
+  pendingEmail?: string | null;
 };
 
 type SubTab = 'email' | 'password';
@@ -58,10 +59,14 @@ export function AccountTabPanel({
           currentPassword: emailForm.currentPassword,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; loginEmail?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; loginEmail?: string; pendingEmail?: string };
       if (!res.ok) throw new Error(data.error || 'Грешка при смяна на имейла');
-      const nextEmail = data.loginEmail ?? emailForm.newEmail.trim();
-      setInfo((p) => ({ ...p, loginEmail: nextEmail }));
+      if (data.pendingEmail) {
+        setInfo((p) => ({ ...p, pendingEmail: data.pendingEmail }));
+      } else {
+        const nextEmail = data.loginEmail ?? emailForm.newEmail.trim();
+        setInfo((p) => ({ ...p, loginEmail: nextEmail, pendingEmail: null }));
+      }
       setEmailForm({ newEmail: '', currentPassword: '' });
       setNotice(data.message ?? 'Имейлът е сменен.');
     } catch (err) {
@@ -121,6 +126,12 @@ export function AccountTabPanel({
 
   return (
     <div style={{ display: 'grid', gap: 10 }}>
+      {info.pendingEmail ? (
+        <p style={{ margin: 0, fontSize: 13, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', padding: '8px 10px', borderRadius: 8, lineHeight: 1.5 }}>
+          ⏳ Очаква потвърждение: <strong>{info.pendingEmail}</strong><br />
+          Проверете новия имейл и натиснете линка за потвърждение. Текущият имейл остава активен.
+        </p>
+      ) : null}
       {notice ? (
         <p style={{ margin: 0, fontSize: 13, color: '#065F46', background: '#ECFDF5', padding: '8px 10px', borderRadius: 8 }}>
           {notice}

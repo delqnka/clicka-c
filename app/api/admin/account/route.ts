@@ -1,11 +1,19 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import {
   hashPassword,
   normalizeEmail,
   requireAdminRequestAccess,
+  sha256,
   verifyPassword,
 } from '@/lib/admin-auth';
+import { getPlatformSiteOrigin } from '@/lib/domain-routing';
+import {
+  sendEmailChangeRequestNotification,
+  sendEmailVerificationRequest,
+  sendPasswordChangedNotification,
+} from '@/lib/resend';
 
 async function getOwnerPasswordHash(ownerId: string): Promise<string> {
   const rows = await sql`
@@ -20,9 +28,16 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const passwordHash = await getOwnerPasswordHash(auth.session.ownerId);
+
+  const rows = await sql`
+    SELECT pending_email FROM site_owners WHERE id = ${auth.session.ownerId} LIMIT 1
+  `;
+  const pendingEmail = String((rows[0] as Record<string, unknown> | undefined)?.pending_email ?? '') || null;
+
   return NextResponse.json({
     loginEmail: auth.session.ownerEmail,
     hasPassword: Boolean(passwordHash),
+    pendingEmail,
   });
 }
 
@@ -48,7 +63,7 @@ export async function PATCH(request: NextRequest) {
   const passwordHash = await getOwnerPasswordHash(auth.session.ownerId);
   if (!passwordHash) {
     return NextResponse.json(
-      { error: 'Паролата не е зададена. Използвайте „Забравена парола?“ на страницата за вход.' },
+      { error: 'Паролата не е зададена. Използвайте „Забравена парола?" на страницата за вход.' },
       { status: 400 },
     );
   }
@@ -74,6 +89,13 @@ export async function PATCH(request: NextRequest) {
       UPDATE site_owners SET password_hash = ${hashed}, updated_at = now()
       WHERE id = ${auth.session.ownerId}
     `;
+
+    // Notify owner that password was changed
+    try {
+      await sendPasswordChangedNotification(auth.session.ownerEmail);
+    } catch {
+      // non-fatal — password is already changed
+    }
 
     return NextResponse.json({ success: true, message: 'Паролата е сменена.' });
   }
@@ -101,16 +123,38 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Този имейл вече се използва от друг акаунт' }, { status: 409 });
     }
 
+    // Store pending email with verification token (30 min expiry)
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = sha256(token);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
     await sql`
       UPDATE site_owners
-      SET email = ${newEmail}, email_norm = ${newEmail}, updated_at = now()
+      SET pending_email = ${newEmail},
+          pending_email_token_hash = ${tokenHash},
+          pending_email_expires_at = ${expiresAt.toISOString()},
+          updated_at = now()
       WHERE id = ${auth.session.ownerId}
     `;
 
+    const salonSlug = slug ?? auth.session.ownerId;
+    const base = getPlatformSiteOrigin(salonSlug);
+    const verifyUrl = `${base}/api/admin/verify-email?token=${encodeURIComponent(token)}&owner=${encodeURIComponent(auth.session.ownerId)}`;
+
+    // Send verification link to new email + notification to old email
+    try {
+      await Promise.all([
+        sendEmailVerificationRequest(newEmail, verifyUrl),
+        sendEmailChangeRequestNotification(auth.session.ownerEmail, newEmail),
+      ]);
+    } catch {
+      // non-fatal — pending email is saved, user can retry
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Имейлът за вход е сменен.',
-      loginEmail: newEmail,
+      message: `Изпратихме верификационен линк на ${newEmail}. Имейлът ви ще се смени след потвърждение.`,
+      pendingEmail: newEmail,
     });
   }
 
