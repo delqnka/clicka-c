@@ -482,6 +482,7 @@ export default function SalonPublicParity({
   }, []);
   const [showStickySectionTabs, setShowStickySectionTabs] = useState(false);
   const [selectedServiceCategory, setSelectedServiceCategory] = useState<string | null>(null);
+  const [serviceSort, setServiceSort] = useState<'default' | 'price_asc' | 'price_desc' | 'duration_asc'>('default');
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
   const [variantDropdownOpenForServiceId, setVariantDropdownOpenForServiceId] = useState<string | null>(null);
   const [servicesExpanded, setServicesExpanded] = useState(false);
@@ -780,7 +781,13 @@ export default function SalonPublicParity({
     return servicesWithImages.filter((s) => serviceMatchesCategory(s, selectedServiceCategory));
   }, [servicesWithImages, selectedServiceCategory]);
 
-  const displayListRaw = servicesFilteredByCategory;
+  const displayListRaw = useMemo(() => {
+    const list = [...servicesFilteredByCategory];
+    if (serviceSort === 'price_asc') list.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    else if (serviceSort === 'price_desc') list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    else if (serviceSort === 'duration_asc') list.sort((a, b) => (a.duration ?? 0) - (b.duration ?? 0));
+    return list;
+  }, [servicesFilteredByCategory, serviceSort]);
   const showAllServices = servicesExpanded || displayListRaw.length <= 5;
   const displayServices = showAllServices ? displayListRaw : displayListRaw.slice(0, 5);
 
@@ -1459,7 +1466,20 @@ export default function SalonPublicParity({
                 sectionRefs.current.services = el;
               }}
             >
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">Услуги</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold text-[#1a1a1a]">Услуги</h2>
+                <select
+                  value={serviceSort}
+                  onChange={(e) => setServiceSort(e.target.value as typeof serviceSort)}
+                  className="rounded-full border border-black/15 bg-white px-3 py-1 text-xs font-medium text-[#1a1a1a] shadow-sm outline-none transition hover:border-black/30"
+                  aria-label="Сортиране на услуги"
+                >
+                  <option value="default">По подразбиране</option>
+                  <option value="price_asc">Цена: ниска → висока</option>
+                  <option value="price_desc">Цена: висока → ниска</option>
+                  <option value="duration_asc">Продължителност</option>
+                </select>
+              </div>
               {serviceCategories.length > 1 ? (
                 <div className="mt-3">
                   <SalonServiceCategoryTabs
