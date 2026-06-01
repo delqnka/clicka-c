@@ -19,7 +19,7 @@ import {
 // ─── Regex patterns ─────────────────────────────────────────────────────────
 
 const ADD_SERVICE_RE =
-  /^(?:добав[ии]|add)\s+(?:ми\s+)?(?:нова\s+)?услуг[аa][:：]?\s+(.+)/i;
+  /^(?:добав(?:[ии]|яне\s+на|ете(?:\s+ми)?)|add)\s+(?:ми\s+)?(?:нова\s+)?услуг[аa][:：]?\s+(.+)/i;
 
 const UPDATE_PRICE_RE =
   /^(?:промен[ии]|смен[ии])\s+цен(?:ата|а)\s+на\s+(.+?)\s+на\s+(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев)?$/i;
@@ -231,7 +231,7 @@ export async function handleAdminCommand(
     }
     services.push({ name: rawName, price, duration_min: duration });
     await saveSalonServices(salon.salonId, salon.slug, services);
-    await sendTelegramMessage(chatId, `✅ Добавена услуга:\n<b>${rawName}</b> — ${duration} мин — ${price} €`);
+    await sendTelegramMessage(chatId, `✅ Добавена услуга в <b>${salon.name}</b>:\n<b>${rawName}</b> — ${duration} мин — ${price} €`);
     return true;
   }
 
@@ -504,7 +504,7 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
 ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 Върни САМО валиден JSON обект. Ако съобщението изисква конкретно действие — върни action. За всичко останало (въпроси, разговор, съвети, съдържание, формули, мотивация) — върни { "action": "chat", "reply": "отговорът ти тук" }.
 
-ВАЖНО: Никога не казвай "не мога" или "нямам такава команда". Винаги отговаряй полезно.
+КРИТИЧНО ВАЖНО: Никога не слагай потвърждение за извършено действие в "chat" reply. Ако потребителят иска да добави/промени/изтрие нещо, ЗАДЪЛЖИТЕЛНО върни съответния action обект — никога { "action": "chat", "reply": "✅ Добавих..." }. Chat е САМО за разговор и въпроси, не за действия.
 
 Действия:
 - { "action": "bookings_day", "date": "YYYY-MM-DD" }
@@ -745,6 +745,11 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       return true;
     case 'chat':
       if (intent.reply) {
+        // Guard: if AI hallucinated a success message for a write action, fall through so the
+        // user gets the "not understood" hint instead of a fake confirmation.
+        const looksLikeFakeAction = /добав[ии]|запис[ао]|обнов[ии]|промен[ии]|изтр[ии]|запаз[ии]/i.test(intent.reply)
+          && /✅|успешно|добавена|добавен/i.test(intent.reply);
+        if (looksLikeFakeAction) return false;
         await sendTelegramMessage(chatId, intent.reply);
         return true;
       }
