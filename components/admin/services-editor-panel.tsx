@@ -372,6 +372,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
               padding: '4px 0',
             }}
           >
+            <Plus size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
             Варианти{variants.length > 0 ? ` (${variants.length})` : ''}
           </summary>
           <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
