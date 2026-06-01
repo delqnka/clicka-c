@@ -19,8 +19,14 @@ const PLAN_NAMES: Record<string, string> = {
   studio: 'СТУДИО — неограничени специалисти',
 };
 
+interface BillingInfo {
+  companyName: string;
+  eik: string;
+  vatNumber: string | null;
+}
+
 export async function POST(request: NextRequest) {
-  let body: { planType: string; smsAddon?: boolean };
+  let body: { planType: string; smsAddon?: boolean; billingInfo?: BillingInfo };
 
   try {
     body = await request.json();
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
   }
 
-  const { planType, smsAddon } = body;
+  const { planType, smsAddon, billingInfo } = body;
 
   if (!PLAN_PRICES[planType]) {
     return NextResponse.json({ error: 'Невалиден план' }, { status: 400 });
@@ -52,9 +58,15 @@ export async function POST(request: NextRequest) {
           },
         },
       ],
+      billing_address_collection: billingInfo ? 'required' : 'auto',
       metadata: {
         planType,
         smsAddon: smsAddon ? '1' : '0',
+        ...(billingInfo && {
+          invoiceCompanyName: billingInfo.companyName,
+          invoiceEik: billingInfo.eik,
+          invoiceVat: billingInfo.vatNumber ?? '',
+        }),
       },
       success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/create`,

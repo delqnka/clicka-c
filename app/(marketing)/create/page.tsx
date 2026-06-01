@@ -38,17 +38,37 @@ function CreatePageContent() {
   const [error, setError]               = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPlanPicker, setShowPlanPicker] = useState(!planParam);
+  const [wantsInvoice, setWantsInvoice] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [eik, setEik] = useState('');
+  const [vatNumber, setVatNumber] = useState('');
 
   async function handlePay() {
     if (!planId) { setError('Избери план.'); return; }
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
+    if (wantsInvoice) {
+      if (!companyName.trim()) { setError('Въведи наименование на фирмата.'); return; }
+      if (!/^\d{9}$/.test(eik.trim())) { setError('ЕИК трябва да е точно 9 цифри.'); return; }
+      if (vatNumber.trim() && !/^BG\d{9,10}$/i.test(vatNumber.trim())) {
+        setError('ДДС номерът трябва да е във формат BG123456789.'); return;
+      }
+    }
     setIsSubmitting(true);
     setError('');
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planType: planId }),
+        body: JSON.stringify({
+          planType: planId,
+          ...(wantsInvoice && {
+            billingInfo: {
+              companyName: companyName.trim(),
+              eik: eik.trim(),
+              vatNumber: vatNumber.trim() || null,
+            },
+          }),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
@@ -66,7 +86,47 @@ function CreatePageContent() {
   const selectedPlan = PLANS.find(p => p.id === planId);
 
   return (
-    <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ fontFamily: "var(--font-body, 'Inter', system-ui, sans-serif)" }}>
+    <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}>
+      <style>{`
+        .cp-grad-text {
+          background: linear-gradient(135deg, #e11d48, #db2777, #a855f7);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .cp-grad-bg {
+          background: linear-gradient(135deg, #e11d48, #db2777, #a855f7);
+          border-color: #e11d48 !important;
+        }
+        .cp-card {
+          box-shadow: 0 4px 14px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .cp-card-selected {
+          border-color: #e11d48 !important;
+          box-shadow: 0 0 0 1.5px #e11d48, 0 6px 24px rgba(225,29,72,0.18), 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .cp-card-popular {
+          border-color: rgba(219,39,119,0.35) !important;
+        }
+        .cp-input-focus:focus {
+          border-color: #db2777 !important;
+          box-shadow: 0 0 0 3px rgba(219,39,119,0.12) !important;
+          outline: none;
+        }
+        @media (max-width: 639px) {
+          .cp-sticky-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(255,255,255,0.96);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border);
+            padding: 12px 16px 20px;
+            z-index: 40;
+          }
+          .cp-sticky-spacer { height: 88px; }
+        }
+      `}</style>
       {/* NAV */}
       <nav
         className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[var(--border)] px-[clamp(16px,5vw,60px)]"
@@ -82,7 +142,7 @@ function CreatePageContent() {
       </nav>
 
       {/* CONTENT */}
-      <div className="mx-auto max-w-[680px] px-5 pb-24 pt-10">
+      <div className="mx-auto max-w-[680px] px-4 pb-6 pt-7 sm:px-5 sm:pb-24 sm:pt-10">
 
         {/* ── Pre-selected plan summary (when coming from homepage) ── */}
         {!showPlanPicker && selectedPlan && (
@@ -98,7 +158,7 @@ function CreatePageContent() {
             </p>
 
             {/* Selected plan card */}
-            <div className="rounded-2xl border-2 border-rose-500 bg-[var(--card)] p-6 shadow-[0_0_0_1px_#f43f5e,0_8px_32px_rgba(244,63,94,0.12)]">
+            <div className="cp-card cp-card-selected rounded-2xl border-2 bg-[var(--card)] p-5 sm:p-6">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[19px] font-extrabold tracking-[-0.02em] text-[var(--foreground)]">{selectedPlan.name}</p>
@@ -122,7 +182,7 @@ function CreatePageContent() {
             <button
               type="button"
               onClick={() => setShowPlanPicker(true)}
-              className="mt-3 text-[13px] font-semibold text-rose-500 transition-colors hover:text-rose-600"
+              className="cp-grad-text mt-3 text-[13px] font-semibold transition-opacity hover:opacity-75"
             >
               Промени плана →
             </button>
@@ -151,18 +211,18 @@ function CreatePageContent() {
                     key={p.id}
                     type="button"
                     onClick={() => setPlanId(p.id)}
-                    className={`relative rounded-2xl border-[1.5px] bg-[var(--card)] p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] ${
+                    className={`cp-card relative rounded-2xl border-[1.5px] bg-[var(--card)] p-5 text-left transition-all duration-200 active:scale-[0.99] sm:p-6 ${
                       isSelected
-                        ? 'border-rose-500 shadow-[0_0_0_1px_#f43f5e,0_8px_32px_rgba(244,63,94,0.18)]'
+                        ? 'cp-card-selected'
                         : p.popular
-                          ? 'border-rose-300'
+                          ? 'cp-card-popular border-[var(--border)]'
                           : 'border-[var(--border)]'
                     }`}
                     role="radio"
                     aria-checked={isSelected}
                   >
                     {p.popular && (
-                      <span className="absolute -top-3 right-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-1 text-[10px] font-bold uppercase tracking-[.08em] text-white">
+                      <span className="cp-grad-bg absolute -top-3 right-5 rounded-full px-4 py-1 text-[10px] font-bold uppercase tracking-[.08em] text-white">
                         Най-популярен
                       </span>
                     )}
@@ -172,7 +232,7 @@ function CreatePageContent() {
                         <span
                           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
                             isSelected
-                              ? 'border-rose-500 bg-rose-500'
+                              ? 'cp-grad-bg'
                               : 'border-[var(--border)] bg-[var(--card)]'
                           }`}
                         >
@@ -210,7 +270,7 @@ function CreatePageContent() {
           <span
             className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] transition-all ${
               termsAccepted
-                ? 'border-rose-500 bg-rose-500'
+                ? 'cp-grad-bg'
                 : 'border-[var(--border)] bg-[var(--card)]'
             }`}
             onClick={() => setTermsAccepted(v => !v)}
@@ -234,7 +294,7 @@ function CreatePageContent() {
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-600"
+              className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75"
               onClick={e => e.stopPropagation()}
             >
               Общите условия
@@ -244,7 +304,7 @@ function CreatePageContent() {
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-600"
+              className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75"
               onClick={e => e.stopPropagation()}
             >
               Политиката за поверителност
@@ -252,6 +312,80 @@ function CreatePageContent() {
             на Clicka.bg
           </span>
         </label>
+
+        {/* ── Invoice section ── */}
+        <div className="mt-5">
+          <label className="flex cursor-pointer items-center gap-3">
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] transition-all ${
+                wantsInvoice
+                  ? 'cp-grad-bg'
+                  : 'border-[var(--border)] bg-[var(--card)]'
+              }`}
+              onClick={() => setWantsInvoice(v => !v)}
+              role="checkbox"
+              aria-checked={wantsInvoice}
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setWantsInvoice(v => !v); } }}
+            >
+              {wantsInvoice && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
+            <span className="text-[13px] font-semibold text-[var(--foreground)]" onClick={() => setWantsInvoice(v => !v)}>
+              Искам фактура на фирма
+            </span>
+          </label>
+
+          {wantsInvoice && (
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <div>
+                <label className="mb-1.5 block text-[12px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                  Фирма / Търговско наименование <span className="cp-grad-text">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  placeholder="ПРИМЕРНА ФИРМА ЕООД"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none cp-input-focus transition-all"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                    ЕИК <span className="cp-grad-text">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={eik}
+                    onChange={e => setEik(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                    placeholder="123456789"
+                    maxLength={9}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none cp-input-focus transition-all font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                    ДДС номер <span className="text-[var(--muted-foreground)] normal-case font-normal">(по желание)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={vatNumber}
+                    onChange={e => setVatNumber(e.target.value.toUpperCase())}
+                    placeholder="BG123456789"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none cp-input-focus transition-all font-mono"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-[var(--muted-foreground)]">
+                Адресът за фактуриране ще бъде попълнен на следващата стъпка при плащането.
+              </p>
+            </div>
+          )}
+        </div>
 
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
@@ -270,32 +404,35 @@ function CreatePageContent() {
           </p>
         </div>
 
-        {/* Pay button */}
-        <div className="mt-6">
+        {/* Sticky spacer — mobile only */}
+        <div className="cp-sticky-spacer" aria-hidden />
+
+        {/* Pay button — sticky on mobile, inline on desktop */}
+        <div className="cp-sticky-bar mt-6">
           <ButtonColorful
             label={isSubmitting ? 'Пренасочване към Stripe…' : `Плати ${selectedPlan?.price ?? 399} € →`}
             onClick={handlePay}
             disabled={isSubmitting || !planId || !termsAccepted}
-            className="h-12 w-full rounded-full text-[15px] font-bold"
+            className="h-14 w-full rounded-full text-[16px] font-bold sm:h-12 sm:text-[15px]"
           />
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-4 sm:gap-5">
+            {['0% комисионна', 'Сигурно плащане', 'Готов веднага'].map(t => (
+              <span key={t} className="flex items-center gap-1.5 text-[11px] text-[var(--muted-foreground)] sm:text-[12px]">
+                <IconCheck color="#22C55E" />
+                {t}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-center text-[12px] text-[var(--muted-foreground)]">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mr-1 inline align-middle" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            Сигурно плащане чрез{' '}
+            <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2">
+              Stripe
+            </a>. Можеш да смениш плана по всяко време.
+          </p>
         </div>
-
-        {/* Trust badges */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-5">
-          {['0% комисионна', 'Сигурно плащане', 'Готов за 15 мин'].map(t => (
-            <span key={t} className="flex items-center gap-1.5 text-[12px] text-[var(--muted-foreground)]">
-              <IconCheck color="#22C55E" />
-              {t}
-            </span>
-          ))}
-        </div>
-
-        <p className="mt-5 text-center text-[13px] text-[var(--muted-foreground)]">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mr-1 inline align-middle" aria-hidden="true">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          Сигурно плащане чрез Stripe. Можеш да смениш плана по всяко време.
-        </p>
       </div>
     </div>
   );
@@ -305,7 +442,7 @@ function CreatePageFallback() {
   return (
     <div
       className="flex min-h-dvh items-center justify-center bg-[var(--background)] text-[var(--muted-foreground)]"
-      style={{ fontFamily: "var(--font-body, 'Inter', system-ui, sans-serif)" }}
+      style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}
     >
       Зареждане…
     </div>

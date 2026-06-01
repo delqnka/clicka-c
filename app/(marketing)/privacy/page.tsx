@@ -12,7 +12,7 @@ export default function PrivacyPage() {
         maxWidth: 780,
         margin: '0 auto',
         padding: '48px 24px 80px',
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
         color: '#1a1a1a',
         lineHeight: 1.7,
       }}

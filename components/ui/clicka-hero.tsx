@@ -1,4 +1,6 @@
 import { ButtonColorful } from '@/components/ui/button-colorful';
+import { LiveSalonCount } from '@/components/ui/live-salon-count';
+import { LiveSalonCities } from '@/components/ui/live-salon-cities';
 import {
   formatSalonCitiesTrustLine,
   getMarketingActivityMock,
@@ -13,7 +15,6 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
   const activity = activityProp ?? getMarketingActivityMock();
   const { settingUpNow, salonCities } = activity;
   const citiesTrustLine = formatSalonCitiesTrustLine(salonCities);
-  const liveNow = Math.max(4, settingUpNow);
 
   return (
     <section
@@ -33,12 +34,14 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
           <p className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--muted-foreground)] sm:text-xs">
             <span className="hero-live-dot h-1.5 w-1.5 shrink-0 rounded-full" aria-hidden />
             <span>
-              <span className="font-semibold tabular-nums text-[var(--foreground)]">{liveNow}</span>{' '}
+              <LiveSalonCount />{' '}
               салона настройват сайт сега
             </span>
           </p>
 
-          <p className="text-center text-[10px] text-[var(--muted-foreground)] sm:text-[11px]">{citiesTrustLine}</p>
+          <p className="text-center text-[10px] text-[var(--muted-foreground)] sm:text-[11px]">
+            <LiveSalonCities fallback={citiesTrustLine} />
+          </p>
         </div>
 
         <h1
@@ -49,11 +52,11 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
         </h1>
 
         <p className="mb-3 text-center text-[clamp(1rem,2.8vw,1.3rem)] font-medium leading-snug text-[var(--foreground)]">
-          Готов за <span className="font-extrabold tabular-nums">15</span> минути.
+          Готов <span className="font-extrabold">ВЕДНАГА</span>.
           {' '}Твоят бранд с <span className="font-extrabold text-[var(--primary)]">0%</span> комисионна.
         </p>
 
-        <p className="mb-8 text-center text-[clamp(0.875rem,2vw,1rem)] text-[var(--muted-foreground)]">
+        <p className="mb-8 text-center text-[clamp(0.875rem,2vw,1rem)] font-semibold" style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
           от 0,82 € на ден. Без скрити такси.
         </p>
 

@@ -127,14 +127,14 @@ const CSS = `
   .hp-section-nav-wrap {
     display: flex;
     gap: clamp(16px, 4vw, 28px);
-    padding: 12px clamp(12px, 4vw, 60px);
+    padding: 14px clamp(12px, 4vw, 60px);
     min-width: max-content;
   }
   .hp-section-link {
     display: inline-block;
-    padding: 0;
-    font-size: 13px;
-    font-weight: 200;
+    padding: 4px 0;
+    font-size: 15px;
+    font-weight: 300;
     color: var(--muted-foreground);
     background: none;
     border: none;
@@ -153,6 +153,9 @@ const CSS = `
     text-decoration-color: #ec4899;
     text-underline-offset: 4px;
     text-decoration-thickness: 2px;
+  }
+  @media (min-width: 640px) {
+    .hp-section-link { font-size: 13px; }
   }
 
   .hp-price-card {
@@ -465,7 +468,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             label="Създай своя сайт"
             className="h-14 rounded-full px-12 text-[17px] font-bold"
           />
-          <p style={{ marginTop: 20, fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 52%, transparent)' }}>
+          <p style={{ marginTop: 20, fontSize: 13, fontWeight: 600, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             от 0.82 € на ден. 0% комисионна. Без скрити такси.
           </p>
         </div>
@@ -473,15 +476,6 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
 
       </main>
 
-      {/* ── FOOTER ────────────────────────────────────── */}
-      <footer style={{ background: 'var(--hp-cta-bg)', borderTop: '1px solid color-mix(in srgb, var(--hp-cta-fg) 12%, transparent)', padding: 'clamp(28px,4vw,44px) clamp(20px,5vw,60px)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <ClickaLogo size="footer" variant="on-dark" href={null} />
-          <p suppressHydrationWarning style={{ fontSize: 13, fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 52%, transparent)', margin: 0 }}>
-            © {new Date().getFullYear()} clicka.bg
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

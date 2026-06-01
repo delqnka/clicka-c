@@ -65,7 +65,7 @@
 
 .hp .clicka-hero h1,
 .hp .clicka-hero h2 {
-  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-family: var(--font-client-manrope, 'Manrope', system-ui, sans-serif);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;

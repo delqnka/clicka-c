@@ -69,7 +69,7 @@ export function SiteHeader() {
                   key={l.href}
                   href={l.href}
                   onClick={close}
-                  className="rounded-lg px-2 py-2.5 text-sm text-white/80"
+                  className="rounded-lg px-3 py-4 text-base text-white/80"
                 >
                   {l.label}
                 </Link>
@@ -77,7 +77,7 @@ export function SiteHeader() {
               <Link
                 href="/create"
                 onClick={close}
-                className="mt-2 inline-flex h-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm font-medium text-white/90"
+                className="mt-2 inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-base font-medium text-white/90"
               >
                 Започни сега
               </Link>

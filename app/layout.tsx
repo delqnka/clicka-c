@@ -43,7 +43,7 @@ const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-client-manrope',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['200', '300', '400', '500', '600', '700', '800'],
   preload: true,
   adjustFontFallback: true,
 });
@@ -65,7 +65,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'clicka.bg — Собствен сайт с резервации за твоя салон',
+  title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
   description:
     'Собствен сайт с онлайн резервации за твоя бранд, готов за по-малко от 15 минути. 0% комисионна.',
 };

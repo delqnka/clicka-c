@@ -1,5 +1,15 @@
 /** Client-safe constants and copy — no DB imports. */
 
+const BG_CITIES_POOL = [
+  'София', 'Пловдив', 'Варна', 'Бургас', 'Стара Загора',
+  'Русе', 'Плевен', 'Велико Търново',
+];
+
+export function pickRandomCities(count = 3): string[] {
+  const shuffled = [...BG_CITIES_POOL].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
 /** Временни showcase стойности за маркетинг (не от базата). */
 export const MARKETING_ACTIVITY_MOCK = {
   startedThisMonth: 27,
@@ -39,7 +49,7 @@ export function getMarketingActivityMock(): MarketingActivity {
     startedThisMonth: MARKETING_ACTIVITY_MOCK.startedThisMonth,
     settingUpNow: MARKETING_ACTIVITY_MOCK.settingUpNow,
     activeSalons: MARKETING_ACTIVITY_MOCK.activeSalons,
-    salonCities: [...MARKETING_ACTIVITY_MOCK.salonCities],
+    salonCities: pickRandomCities(),
   };
 }
 
