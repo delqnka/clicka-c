@@ -70,13 +70,13 @@ const NEXT_CLIENT_RE =
   /^(?:кой\s+е\s+)?следващ(?:ият|ия|ото)?\s+(?:ми\s+)?клиент\b/i;
 
 const REVENUE_THIS_WEEK_RE =
-  /^(?:какъв\s+е\s+)?(?:приход(?:ът|а)|оборот(?:ът|а))(?:\s+ми)?\s+(?:тази\s+)?(?:седмица|week)\b/i;
+  /^(?:приход|оборот).*седмиц/i;
 
 const REVENUE_THIS_MONTH_RE =
-  /^(?:какъв\s+е\s+)?(?:приход(?:ът|а)|оборот(?:ът|а))(?:\s+ми)?\s+(?:този\s+)?(?:месец|month)\b/i;
+  /^(?:приход|оборот).*(?:месец|month)/i;
 
 const REVENUE_CLIENT_RE =
-  /^(?:оборот|приход)\s+(?:от\s+(?:клиент\s+)?)?(.+)$/i;
+  /^(?:оборот|приход)[^\s]*\s+(?:от\s+(?:клиент\s+)?)?(.+)$/i;
 
 const CLIENT_COUNT_MONTH_RE =
   /^колко\s+клиент(?:а|и)\s+(?:имах\s+)?(?:този\s+)?(?:месец|month)\b/i;
@@ -750,7 +750,13 @@ async function handleClientRevenue(chatId: number, salon: SalonRef, clientName: 
       COALESCE(SUM(service_price), 0)::numeric AS revenue,
       MIN(date) AS first_visit,
       MAX(date) AS last_visit,
-      mode() WITHIN GROUP (ORDER BY service_name) AS top_service
+      (
+        SELECT service_name FROM bookings b2
+        WHERE CAST(b2.salon_id AS text) = ${salon.salonId}
+          AND lower(b2.client_name) LIKE ${`%${clientName.toLowerCase()}%`}
+          AND b2.status NOT IN ('cancelled')
+        GROUP BY service_name ORDER BY COUNT(*) DESC LIMIT 1
+      ) AS top_service
     FROM bookings
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
