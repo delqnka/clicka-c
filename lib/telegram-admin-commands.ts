@@ -216,8 +216,14 @@ export async function handleAdminCommand(
       price = /€|eur|евро/.test(unit) ? Math.round(val) : lvToEur(val);
     }
 
-    // Extract clean service name (strip price/duration suffixes)
+    // Parse category: "категория: X" OR "— X" as last dash segment if not price/duration
+    let category: string | undefined;
+    const catMatch = rawFull.match(/(?:категория|cat)[:：]\s*(.+?)(?:\s*[—\-–]|$)/i);
+    if (catMatch) category = catMatch[1]!.trim();
+
+    // Extract clean service name (strip price/duration/category suffixes)
     const rawName = rawFull
+      .replace(/\s*(?:категория|cat)[:：]\s*.+$/i, '')
       .replace(/\s*[—\-–]\s*\d+\s*мин[^\s]*/gi, '')
       .replace(/\s*[—\-–]\s*\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев)/gi, '')
       .replace(/\s+за\s+\d+(?:[.,]\d+)?\s*(?:часа?|мин[^\s]*)/gi, '')
@@ -229,9 +235,10 @@ export async function handleAdminCommand(
       await sendTelegramMessage(chatId, `⚠️ Услугата <b>${rawName}</b> вече съществува.\nЗа да промениш цената: <code>Промени цената на ${rawName} на ${price} €</code>`);
       return true;
     }
-    services.push({ name: rawName, price, duration_min: duration });
+    services.push({ name: rawName, price, duration_min: duration, ...(category ? { category } : {}) });
     await saveSalonServices(salon.salonId, salon.slug, services);
-    await sendTelegramMessage(chatId, `✅ Добавена услуга в <b>${salon.name}</b>:\n<b>${rawName}</b> — ${duration} мин — ${price} €`);
+    const catInfo = category ? ` (${category})` : '';
+    await sendTelegramMessage(chatId, `✅ Добавена услуга в <b>${salon.name}</b>:\n<b>${rawName}</b>${catInfo} — ${duration} мин — ${price} €`);
     return true;
   }
 
@@ -464,7 +471,7 @@ type AIIntent =
   | { action: 'list_services' }
   | { action: 'pending_bookings' }
   | { action: 'complete_booking'; client_name: string }
-  | { action: 'add_service'; name: string; duration_min: number; price_eur: number }
+  | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string }
   | { action: 'update_price'; service_name: string; price_eur: number }
   | { action: 'delete_service'; service_name: string }
   | { action: 'day_off'; date: string }
@@ -527,7 +534,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
-- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30 }  ← цената ВИНАГИ в евро (€), не в лева
+- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "Колористика" }  ← цената ВИНАГИ в евро (€); category е незадължително
 - { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← цената ВИНАГИ в евро (€)
 - { "action": "delete_service", "service_name": "..." }
 - { "action": "day_off", "date": "YYYY-MM-DD" }
@@ -624,9 +631,10 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
         await sendTelegramMessage(chatId, `⚠️ Услугата <b>${intent.name}</b> вече съществува.`);
         return true;
       }
-      services.push({ name: intent.name, price: Math.round(intent.price_eur), duration_min: intent.duration_min });
+      services.push({ name: intent.name, price: Math.round(intent.price_eur), duration_min: intent.duration_min, ...(intent.category ? { category: intent.category } : {}) });
       await saveSalonServices(salon.salonId, salon.slug, services);
-      await sendTelegramMessage(chatId, `✅ Добавена в <b>${salon.name}</b>:\n<b>${intent.name}</b> — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`);
+      const catLine = intent.category ? ` (${intent.category})` : '';
+      await sendTelegramMessage(chatId, `✅ Добавена в <b>${salon.name}</b>:\n<b>${intent.name}</b>${catLine} — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`);
       return true;
     }
     case 'update_price': {
