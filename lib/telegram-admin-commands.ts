@@ -731,30 +731,29 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 
 async function loadSalonContext(salonId: string): Promise<string> {
   try {
-    const [salonRows, bookingRows, revenueRows] = await Promise.all([
-      sql`
-        SELECT name, category, city, about, services, working_hours
-        FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1
-      `,
-      sql`
-        SELECT client_name, service_name, start_time, end_time, date, status, service_price
-        FROM bookings
-        WHERE CAST(salon_id AS text) = ${salonId}
-          AND date >= ${todayISO()}
-          AND status NOT IN ('cancelled')
-        ORDER BY date, start_time
-        LIMIT 10
-      `,
-      sql`
-        SELECT
-          COALESCE(SUM(service_price), 0)::numeric AS month_revenue,
-          COUNT(*)::int AS month_bookings
-        FROM bookings
-        WHERE CAST(salon_id AS text) = ${salonId}
-          AND date >= ${`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`}
-          AND status NOT IN ('cancelled')
-      `,
-    ]);
+    // Sequential queries to avoid exhausting Neon's concurrent connection limit.
+    const salonRows = await sql`
+      SELECT name, category, city, about, services, working_hours
+      FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1
+    `;
+    const bookingRows = await sql`
+      SELECT client_name, service_name, start_time, end_time, date, status, service_price
+      FROM bookings
+      WHERE CAST(salon_id AS text) = ${salonId}
+        AND date >= ${todayISO()}
+        AND status NOT IN ('cancelled')
+      ORDER BY date, start_time
+      LIMIT 10
+    `;
+    const revenueRows = await sql`
+      SELECT
+        COALESCE(SUM(service_price), 0)::numeric AS month_revenue,
+        COUNT(*)::int AS month_bookings
+      FROM bookings
+      WHERE CAST(salon_id AS text) = ${salonId}
+        AND date >= ${`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`}
+        AND status NOT IN ('cancelled')
+    `;
 
     const salon = salonRows[0] as Record<string, unknown> | undefined;
     if (!salon) return '';
