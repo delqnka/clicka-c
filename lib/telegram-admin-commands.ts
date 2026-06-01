@@ -499,6 +499,7 @@ type AIIntent =
   | { action: 'list_services' }
   | { action: 'pending_bookings' }
   | { action: 'complete_booking'; client_name: string }
+  | { action: 'sort_services'; by: 'price_asc' | 'price_desc' | 'duration_asc' | 'name_asc' }
   | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string }
   | { action: 'update_price'; service_name: string; price_eur: number }
   | { action: 'update_category'; service_name: string; category: string }
@@ -563,6 +564,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
+- { "action": "sort_services", "by": "price_asc" }  ← by може да е: price_asc, price_desc, duration_asc, name_asc
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "Колористика" }  ← цената ВИНАГИ в евро (€); category е незадължително
 - { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← цената ВИНАГИ в евро (€)
 - { "action": "update_category", "service_name": "...", "category": "Колористика" }  ← смяна/добавяне на категория на услуга
@@ -661,6 +663,20 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
     case 'pending_bookings':
       await handlePendingBookings(chatId, salon);
       return true;
+    case 'sort_services': {
+      const services = await getSalonServices(salon.salonId);
+      const sorted = [...services];
+      if (intent.by === 'price_asc') sorted.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+      else if (intent.by === 'price_desc') sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+      else if (intent.by === 'duration_asc') sorted.sort((a, b) => (a.duration_min ?? 0) - (b.duration_min ?? 0));
+      else if (intent.by === 'name_asc') sorted.sort((a, b) => a.name.localeCompare(b.name, 'bg'));
+      await saveSalonServices(salon.salonId, salon.slug, sorted);
+      const labelMap = { price_asc: 'цена (ниска → висока)', price_desc: 'цена (висока → ниска)', duration_asc: 'продължителност', name_asc: 'азбучен ред' };
+      const sortReply = `✅ Услугите са наредени по <b>${labelMap[intent.by]}</b>`;
+      await appendHistory(chatId, 'assistant', sortReply);
+      await sendTelegramMessage(chatId, sortReply);
+      return true;
+    }
     case 'add_service': {
       const services = await getSalonServices(salon.salonId);
       const existingIdx = services.findIndex((s) => s.name.toLowerCase() === intent.name.toLowerCase());
