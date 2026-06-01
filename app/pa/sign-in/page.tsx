@@ -33,7 +33,7 @@ export default function PlatformAdminSignIn() {
   }
 
   return (
-    <div className="min-h-dvh bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
@@ -67,7 +67,7 @@ export default function PlatformAdminSignIn() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoFocus
                 required
-                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl bg-gray-50
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl bg-white
                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
                            placeholder:text-gray-300 min-h-[48px]"
               />
@@ -87,7 +87,7 @@ export default function PlatformAdminSignIn() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pr-11 text-sm border border-gray-200 rounded-xl bg-gray-50
+                  className="w-full px-4 py-3 pr-11 text-sm border border-gray-200 rounded-xl bg-white
                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
                              placeholder:text-gray-300 min-h-[48px]"
                 />

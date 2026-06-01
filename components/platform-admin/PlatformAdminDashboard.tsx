@@ -223,7 +223,7 @@ export default function PlatformAdminDashboard({
   ];
 
   return (
-    <div className="min-h-dvh bg-gray-50 font-sans text-gray-900">
+    <div className="min-h-dvh bg-white font-sans text-gray-900">
 
       {/* ── Header ───────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
@@ -317,7 +317,7 @@ export default function PlatformAdminDashboard({
                     placeholder="Търси салон, имейл…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-gray-50 border border-gray-200
+                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200
                                rounded-xl focus:outline-none focus:ring-2 focus:border-transparent"
                     style={{ '--tw-ring-color': '#6366f1' } as React.CSSProperties}
                   />
@@ -325,7 +325,7 @@ export default function PlatformAdminDashboard({
                 <select
                   value={filterActive}
                   onChange={(e) => setFilterActive(e.target.value as typeof filterActive)}
-                  className="px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl
+                  className="px-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl
                              focus:outline-none cursor-pointer min-h-[44px]"
                 >
                   <option value="all">Всички</option>
@@ -353,7 +353,7 @@ export default function PlatformAdminDashboard({
                       <button
                         onClick={() => setExpandedSalon(isExpanded ? null : salon.salon_id)}
                         className="w-full flex items-center gap-3 px-4 py-3.5 text-left
-                                   hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                                   hover:bg-white transition-colors duration-150 cursor-pointer"
                         aria-expanded={isExpanded}
                       >
                         {/* Avatar */}
