@@ -28,7 +28,3 @@ export const LazyLegalTabPanel = dynamic(
   () => import('@/components/admin/tabs/legal-tab-panel').then((m) => m.LegalTabPanel),
   { ssr: false }
 );
-export const LazyAccountTabPanel = dynamic(
-  () => import('@/components/admin/tabs/account-tab-panel').then((m) => m.AccountTabPanel),
-  { ssr: false }
-);

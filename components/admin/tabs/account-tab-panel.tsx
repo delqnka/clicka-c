@@ -1,23 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
-import { ADMIN_T } from '@/components/admin/admin-theme';
-import { AdminField, AdminSection } from '@/components/admin/admin-ui';
+import { useState, type CSSProperties, type FormEvent } from 'react';
+import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
+import { AdminField } from '@/components/admin/admin-ui';
 
 type AccountInfo = {
   loginEmail: string;
   hasPassword: boolean;
 };
 
+type SubTab = 'email' | 'password';
+
+const compactInp = (inp: CSSProperties): CSSProperties => ({
+  ...inp,
+  minHeight: 36,
+  padding: '8px 10px',
+  fontSize: 14,
+});
+
 export function AccountTabPanel({
   slug,
   inp,
+  initialAccount,
 }: {
   slug: string;
   inp: CSSProperties;
+  initialAccount: AccountInfo;
 }) {
-  const [info, setInfo] = useState<AccountInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [info, setInfo] = useState<AccountInfo>(initialAccount);
+  const [subTab, setSubTab] = useState<SubTab>('email');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
@@ -29,25 +40,7 @@ export function AccountTabPanel({
   });
   const [busy, setBusy] = useState<'email' | 'password' | 'reset' | null>(null);
 
-  const loadAccount = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/admin/account?slug=${encodeURIComponent(slug)}`);
-      const data = (await res.json().catch(() => ({}))) as AccountInfo & { error?: string };
-      if (!res.ok) throw new Error(data.error || 'Неуспешно зареждане');
-      setInfo({ loginEmail: data.loginEmail, hasPassword: data.hasPassword });
-      setEmailForm((p) => ({ ...p, newEmail: '' }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Грешка');
-    } finally {
-      setLoading(false);
-    }
-  }, [slug]);
-
-  useEffect(() => {
-    void loadAccount();
-  }, [loadAccount]);
+  const fieldInp = compactInp(inp);
 
   async function submitEmail(e: FormEvent) {
     e.preventDefault();
@@ -60,13 +53,15 @@ export function AccountTabPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'email',
+          currentEmail: info.loginEmail,
           newEmail: emailForm.newEmail,
           currentPassword: emailForm.currentPassword,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; loginEmail?: string };
       if (!res.ok) throw new Error(data.error || 'Грешка при смяна на имейла');
-      if (data.loginEmail) setInfo((p) => (p ? { ...p, loginEmail: data.loginEmail! } : p));
+      const nextEmail = data.loginEmail ?? emailForm.newEmail.trim();
+      setInfo((p) => ({ ...p, loginEmail: nextEmail }));
       setEmailForm({ newEmail: '', currentPassword: '' });
       setNotice(data.message ?? 'Имейлът е сменен.');
     } catch (err) {
@@ -94,6 +89,7 @@ export function AccountTabPanel({
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
       if (!res.ok) throw new Error(data.error || 'Грешка при смяна на паролата');
+      setInfo((p) => ({ ...p, hasPassword: true }));
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setNotice(data.message ?? 'Паролата е сменена.');
     } catch (err) {
@@ -104,7 +100,6 @@ export function AccountTabPanel({
   }
 
   async function sendResetLink() {
-    if (!info?.loginEmail) return;
     setNotice('');
     setError('');
     setBusy('reset');
@@ -116,7 +111,7 @@ export function AccountTabPanel({
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || 'Грешка');
-      setNotice(`Изпратихме линк за нова парола на ${info.loginEmail}.`);
+      setNotice(`Линк изпратен на ${info.loginEmail}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Грешка');
     } finally {
@@ -124,157 +119,177 @@ export function AccountTabPanel({
     }
   }
 
-  const saveBtn: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    border: 'none',
-    color: '#fff',
-    background: '#16A34A',
-    padding: '6px 14px',
-    fontSize: 12,
-    fontWeight: 600,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  };
-
-  if (loading) {
-    return <p style={{ margin: 0, fontSize: 14, color: ADMIN_T.muted }}>Зареждаме…</p>;
-  }
-
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
+    <div style={{ display: 'grid', gap: 10 }}>
       {notice ? (
-        <p style={{ margin: 0, fontSize: 14, color: '#065F46', background: '#ECFDF5', padding: '10px 12px', borderRadius: 10 }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#065F46', background: '#ECFDF5', padding: '8px 10px', borderRadius: 8 }}>
           {notice}
         </p>
       ) : null}
       {error ? (
-        <p style={{ margin: 0, fontSize: 14, color: '#991B1B', background: '#FEF2F2', padding: '10px 12px', borderRadius: 10 }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#991B1B', background: '#FEF2F2', padding: '8px 10px', borderRadius: 8 }}>
           {error}
         </p>
       ) : null}
 
-      <AdminSection title="Вход в панела" desc="Това са данните за вход в админ панела — различни от имейла на салона в секция „Сайт“.">
-        <AdminField label="Текущ имейл за вход">
-          <input value={info?.loginEmail ?? ''} readOnly style={{ ...inp, color: ADMIN_T.muted, cursor: 'default' }} />
-        </AdminField>
-        {!info?.hasPassword ? (
-          <p style={{ margin: '12px 0 0', fontSize: 13, color: '#92400E', lineHeight: 1.5 }}>
-            Паролата още не е зададена.{' '}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {(['email', 'password'] as const).map((tab) => {
+          const active = subTab === tab;
+          const label = tab === 'email' ? 'Имейл' : 'Парола';
+          return (
             <button
+              key={tab}
               type="button"
-              onClick={() => void sendResetLink()}
-              disabled={busy === 'reset'}
-              style={{ border: 'none', background: 'none', padding: 0, color: ADMIN_T.accent, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => setSubTab(tab)}
+              style={{
+                flex: 1,
+                borderRadius: 8,
+                border: active ? '1.5px solid #18181B' : `1px solid ${ADMIN_T.border}`,
+                background: '#fff',
+                padding: '6px 10px',
+                fontSize: 12,
+                fontWeight: active ? 600 : 500,
+                color: '#18181B',
+                cursor: 'pointer',
+              }}
             >
-              Изпрати линк за задаване
+              {label}
             </button>
-          </p>
-        ) : null}
-      </AdminSection>
+          );
+        })}
+      </div>
 
-      <AdminSection title="Смени имейла за вход">
-        <form onSubmit={(e) => void submitEmail(e)} style={{ display: 'grid', gap: 12 }}>
-          <AdminField label="Нов имейл">
+      {subTab === 'email' ? (
+        <form onSubmit={(e) => void submitEmail(e)} style={{ display: 'grid', gap: 8 }}>
+          <AdminField label="Текущ имейл" compact>
+            <input
+              type="email"
+              value={info.loginEmail}
+              readOnly
+              style={{ ...fieldInp, color: ADMIN_T.muted, cursor: 'default', background: '#FAFAFA' }}
+            />
+          </AdminField>
+          <AdminField label="Нов имейл" compact>
             <input
               type="email"
               autoComplete="email"
               value={emailForm.newEmail}
               onChange={(e) => setEmailForm((p) => ({ ...p, newEmail: e.target.value }))}
-              style={inp}
+              style={fieldInp}
               placeholder="nov@example.com"
               required
             />
           </AdminField>
-          <AdminField label="Текуща парола">
+          <AdminField label="Парола за потвърждение" compact>
             <input
               type="password"
               autoComplete="current-password"
               value={emailForm.currentPassword}
               onChange={(e) => setEmailForm((p) => ({ ...p, currentPassword: e.target.value }))}
-              style={inp}
+              style={fieldInp}
               required
             />
           </AdminField>
-          <div>
-            <button
-              type="submit"
-              disabled={busy === 'email'}
-              style={{ ...saveBtn, opacity: busy === 'email' ? 0.7 : 1, cursor: busy === 'email' ? 'wait' : 'pointer' }}
-            >
-              {busy === 'email' ? 'Запазваме…' : 'Запази имейла'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={busy === 'email'}
+            style={{
+              ...ADMIN_COMPACT_SAVE_BTN,
+              justifySelf: 'start',
+              opacity: busy === 'email' ? 0.7 : 1,
+              cursor: busy === 'email' ? 'wait' : 'pointer',
+            }}
+          >
+            {busy === 'email' ? 'Запазване…' : 'Запази имейла'}
+          </button>
         </form>
-      </AdminSection>
-
-      <AdminSection title="Смени паролата">
-        <form onSubmit={(e) => void submitPassword(e)} style={{ display: 'grid', gap: 12 }}>
-          <AdminField label="Текуща парола">
+      ) : (
+        <form onSubmit={(e) => void submitPassword(e)} style={{ display: 'grid', gap: 8 }}>
+          {!info.hasPassword ? (
+            <p style={{ margin: 0, fontSize: 12, color: '#92400E' }}>
+              Няма зададена парола.{' '}
+              <button
+                type="button"
+                onClick={() => void sendResetLink()}
+                disabled={busy === 'reset'}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  padding: 0,
+                  color: ADMIN_T.accent,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontSize: 12,
+                }}
+              >
+                Изпрати линк
+              </button>
+            </p>
+          ) : null}
+          <AdminField label="Текуща парола" compact>
             <input
               type="password"
               autoComplete="current-password"
               value={passwordForm.currentPassword}
               onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
-              style={inp}
+              style={fieldInp}
               required
             />
           </AdminField>
-          <AdminField label="Нова парола">
+          <AdminField label="Нова парола" compact>
             <input
               type="password"
               autoComplete="new-password"
               value={passwordForm.newPassword}
               onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
-              style={inp}
+              style={fieldInp}
               minLength={8}
               required
             />
           </AdminField>
-          <AdminField label="Потвърди новата парола">
+          <AdminField label="Потвърди парола" compact>
             <input
               type="password"
               autoComplete="new-password"
               value={passwordForm.confirmPassword}
               onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-              style={inp}
+              style={fieldInp}
               minLength={8}
               required
             />
           </AdminField>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
             <button
               type="submit"
               disabled={busy === 'password'}
-              style={{ ...saveBtn, opacity: busy === 'password' ? 0.7 : 1, cursor: busy === 'password' ? 'wait' : 'pointer' }}
+              style={{
+                ...ADMIN_COMPACT_SAVE_BTN,
+                opacity: busy === 'password' ? 0.7 : 1,
+                cursor: busy === 'password' ? 'wait' : 'pointer',
+              }}
             >
-              {busy === 'password' ? 'Запазваме…' : 'Запази паролата'}
+              {busy === 'password' ? 'Запазване…' : 'Запази паролата'}
             </button>
             <button
               type="button"
               onClick={() => void sendResetLink()}
-              disabled={busy === 'reset' || !info?.loginEmail}
+              disabled={busy === 'reset'}
               style={{
                 border: 'none',
                 background: 'none',
                 padding: 0,
-                fontSize: 13,
+                fontSize: 12,
                 color: ADMIN_T.muted,
                 textDecoration: 'underline',
                 cursor: busy === 'reset' ? 'wait' : 'pointer',
               }}
             >
-              {busy === 'reset' ? 'Изпращаме…' : 'Забравена парола? Изпрати линк'}
+              {busy === 'reset' ? 'Изпращаме…' : 'Забравена парола?'}
             </button>
           </div>
         </form>
-      </AdminSection>
-
-      <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.subtle, lineHeight: 1.5 }}>
-        Имейлът в секция „Сайт“ е за контакт на публичната страница. За изход от панела използвай бутона „Изход“ в горния ред.
-      </p>
+      )}
     </div>
   );
 }

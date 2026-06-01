@@ -85,6 +85,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     const currentNorm = normalizeEmail(auth.session.ownerEmail);
+    const submittedCurrent = normalizeEmail(String(body.currentEmail ?? ''));
+    if (submittedCurrent && submittedCurrent !== currentNorm) {
+      return NextResponse.json({ error: 'Текущият имейл не съвпада. Презаредете страницата.' }, { status: 400 });
+    }
+
     if (newEmail === currentNorm) {
       return NextResponse.json({ error: 'Това е текущият имейл за вход' }, { status: 400 });
     }

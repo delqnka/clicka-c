@@ -38,12 +38,12 @@ import {
   LazyHoursTabPanel,
   LazyImagesTabPanel,
   LazyIntegrationsTabPanel,
-  LazyAccountTabPanel,
   LazyLegalTabPanel,
   LazySiteTabPanel,
   LazySmsTabPanel,
   LazySpecialistTabPanel,
 } from '@/components/admin/lazy-admin-tabs';
+import { AccountTabPanel } from '@/components/admin/tabs/account-tab-panel';
 import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer } from '@/lib/salon-offers';
@@ -177,20 +177,6 @@ function getPwaInstallGuide(ua: string): { title: string; note: string; steps: s
   };
 }
 
-const NAVBAR_GRADIENTS: Record<string, [string, string]> = {
-  images:     ['#FF9966', '#FF5E62'],
-  specialist: ['#a955ff', '#ea51ff'],
-  hours:      ['#56CCF2', '#2F80ED'],
-  clients:    ['#2DD4BF', '#0D9488'],
-  offers:     ['#F97316', '#EF4444'],
-  blog:       ['#38BDF8', '#6366F1'],
-  domain:     ['#80FF72', '#7EE8FA'],
-  integrations: ['#6366F1', '#8B5CF6'],
-  sms:        ['#22C55E', '#14B8A6'],
-  legal:      ['#ffa9c6', '#f434e2'],
-  account:    ['#94A3B8', '#475569'],
-};
-
 type TabId = (typeof TABS)[number]['id'];
 
 type Props = {
@@ -201,6 +187,7 @@ type Props = {
   initialOffers?: AdminSalonOffer[];
   initialBlogPosts?: AdminSalonBlogPost[];
   initialBlogTitle?: string;
+  initialAccount?: { loginEmail: string; hasPassword: boolean };
 };
 
 type BookingStatus = BookingRecord['status'];
@@ -342,6 +329,7 @@ export default function AdminDashboardClient({
   initialOffers = [],
   initialBlogPosts = [],
   initialBlogTitle = '',
+  initialAccount,
 }: Props) {
   const [site, setSite]           = useState(initialSite);
   const siteRef = useRef(site);
@@ -2245,7 +2233,6 @@ export default function AdminDashboardClient({
             >
               {NAVBAR_TABS.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
-                const [gFrom] = NAVBAR_GRADIENTS[id] ?? ['#a955ff', '#ea51ff'];
                 return (
                   <button
                     key={id}
@@ -2256,23 +2243,32 @@ export default function AdminDashboardClient({
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 4,
-                      padding: '10px 6px',
+                      gap: 5,
+                      padding: '8px 6px',
                       borderRadius: 12,
-                      border: active ? `1.5px solid ${gFrom}` : `1px solid ${T.border}`,
+                      border: `1px solid ${T.border}`,
                       background: '#fff',
-                      color: T.text,
                       cursor: 'pointer',
                       minHeight: 64,
                       WebkitTapHighlightColor: 'transparent',
-                      boxShadow: active ? `0 2px 8px ${gFrom}22` : 'none',
                     }}
                   >
-                    <Icon
-                      size={20}
-                      strokeWidth={active ? 2.25 : 1.75}
-                      style={{ color: active ? gFrom : '#52525B' }}
-                    />
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: active ? 32 : 28,
+                        height: active ? 32 : 28,
+                        borderRadius: 999,
+                        background: active ? ICON_GRADIENT : 'transparent',
+                        color: active ? '#fff' : '#18181B',
+                        boxShadow: active ? '0 6px 16px rgba(124,58,237,0.28)' : 'none',
+                        transition: 'all 180ms ease',
+                      }}
+                    >
+                      <Icon size={active ? 20 : 18} strokeWidth={active ? 2.25 : 1.75} />
+                    </div>
                     <span
                       style={{
                         fontSize: 11,
@@ -2280,7 +2276,7 @@ export default function AdminDashboardClient({
                         letterSpacing: '-0.01em',
                         textAlign: 'center',
                         lineHeight: 1.2,
-                        color: active ? gFrom : T.muted,
+                        color: '#18181B',
                       }}
                     >
                       {label}
@@ -2917,8 +2913,8 @@ export default function AdminDashboardClient({
             />
           ) : null}
 
-          {activeTab === 'account' ? (
-            <LazyAccountTabPanel slug={slug} inp={inp} />
+          {activeTab === 'account' && initialAccount ? (
+            <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} />
           ) : null}
 
           {activeTab === 'integrations' ? (

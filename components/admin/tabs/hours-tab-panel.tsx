@@ -35,6 +35,17 @@ export function HoursTabPanel({
     padding: isMobile ? '6px 4px' : '6px 8px',
     fontSize: isMobile ? 13 : 14,
     textAlign: 'center',
+    background: '#fff',
+    ...extra,
+  });
+
+  const blockInp = (extra?: CSSProperties): CSSProperties => ({
+    ...inp,
+    minWidth: 0,
+    minHeight: isMobile ? 32 : 34,
+    padding: isMobile ? '5px 6px' : '5px 8px',
+    fontSize: isMobile ? 12 : 13,
+    background: '#fff',
     ...extra,
   });
 
@@ -58,12 +69,46 @@ export function HoursTabPanel({
             padding: '8px 10px',
             border: `1px solid ${ADMIN_T.border}`,
             borderRadius: 10,
-            background: ADMIN_T.surface,
-            opacity: d.closed ? 0.55 : 1,
+            background: '#fff',
+            opacity: d.closed ? 0.6 : 1,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: d.closed ? 0 : 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{day.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {d.closed ? (
+              <span style={{ flex: 1, fontSize: 13, color: ADMIN_T.muted }}>Почивен ден</span>
+            ) : (
+              <>
+                <input
+                  type="time"
+                  value={d.open}
+                  onChange={(e) =>
+                    setSite((p) => ({
+                      ...p,
+                      workingHours: {
+                        ...p.workingHours,
+                        [dayKey]: { ...p.workingHours[dayKey], open: e.target.value },
+                      },
+                    }))
+                  }
+                  style={timeInp({ flex: 1 })}
+                />
+                <span style={{ color: ADMIN_T.muted, fontSize: 12, flexShrink: 0 }}>–</span>
+                <input
+                  type="time"
+                  value={d.close}
+                  onChange={(e) =>
+                    setSite((p) => ({
+                      ...p,
+                      workingHours: {
+                        ...p.workingHours,
+                        [dayKey]: { ...p.workingHours[dayKey], close: e.target.value },
+                      },
+                    }))
+                  }
+                  style={timeInp({ flex: 1 })}
+                />
+              </>
+            )}
             <button
               type="button"
               aria-label={d.closed ? 'Отвори' : 'Затвори'}
@@ -80,8 +125,8 @@ export function HoursTabPanel({
                 width: 36,
                 height: 20,
                 borderRadius: 10,
-                border: 'none',
-                background: d.closed ? '#E5E7EB' : ADMIN_T.accent,
+                border: d.closed ? `1px solid ${ADMIN_T.border}` : 'none',
+                background: d.closed ? '#fff' : ADMIN_T.accent,
                 position: 'relative',
                 cursor: 'pointer',
                 flexShrink: 0,
@@ -93,50 +138,15 @@ export function HoursTabPanel({
                   height: 16,
                   borderRadius: 8,
                   background: '#fff',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  boxShadow: d.closed ? 'none' : '0 1px 2px rgba(0,0,0,0.2)',
                   position: 'absolute',
-                  top: 2,
-                  left: d.closed ? 2 : 18,
+                  top: d.closed ? 1 : 2,
+                  left: d.closed ? 1 : 18,
                   transition: 'left 200ms ease',
                 }}
               />
             </button>
           </div>
-          {d.closed ? (
-            <span style={{ fontSize: 12, color: ADMIN_T.subtle }}>Почивен ден</span>
-          ) : (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input
-                type="time"
-                value={d.open}
-                onChange={(e) =>
-                  setSite((p) => ({
-                    ...p,
-                    workingHours: {
-                      ...p.workingHours,
-                      [dayKey]: { ...p.workingHours[dayKey], open: e.target.value },
-                    },
-                  }))
-                }
-                style={timeInp({ flex: 1 })}
-              />
-              <span style={{ color: ADMIN_T.muted, fontSize: 11, flexShrink: 0 }}>–</span>
-              <input
-                type="time"
-                value={d.close}
-                onChange={(e) =>
-                  setSite((p) => ({
-                    ...p,
-                    workingHours: {
-                      ...p.workingHours,
-                      [dayKey]: { ...p.workingHours[dayKey], close: e.target.value },
-                    },
-                  }))
-                }
-                style={timeInp({ flex: 1 })}
-              />
-            </div>
-          )}
         </div>
       );
     }
@@ -148,7 +158,7 @@ export function HoursTabPanel({
           padding: '8px 12px',
           border: `1px solid ${ADMIN_T.border}`,
           borderRadius: ADMIN_T.radiusSm,
-          background: ADMIN_T.surface,
+          background: '#fff',
           opacity: d.closed ? 0.5 : 1,
         }}
       >
@@ -293,9 +303,9 @@ export function HoursTabPanel({
                     flexShrink: 0,
                     borderRadius: 8,
                     border: selected ? `1.5px solid ${ADMIN_T.accent}` : `1px solid ${ADMIN_T.border}`,
-                    background: selected ? '#F0FDF4' : '#fff',
-                    padding: '4px 9px',
-                    fontSize: 11,
+                    background: '#fff',
+                    padding: '6px 12px',
+                    fontSize: 12,
                     fontWeight: selected ? 600 : 500,
                     color: closed ? ADMIN_T.subtle : ADMIN_T.text,
                     cursor: 'pointer',
@@ -315,29 +325,32 @@ export function HoursTabPanel({
         </div>
       )}
 
-      <div style={{ marginTop: isMobile ? 12 : 14 }}>
-        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>
-          Изключения (блокирани дни и часове)
+      <div style={{ marginTop: isMobile ? 10 : 12 }}>
+        <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>
+          Блокирани дни и часове
         </p>
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gap: 6 }}>
           {site.bookingBlocks.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted }}>Няма блокирани дни.</p>
+            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>Няма блокирани дни.</p>
           ) : null}
           {site.bookingBlocks.map((block, i) => (
             <div
               key={`${block.date}-${block.start ?? 'allday'}-${i}`}
               style={{
                 border: `1px solid ${ADMIN_T.border}`,
-                borderRadius: isMobile ? 12 : ADMIN_T.radiusSm,
-                padding: isMobile ? '10px' : '8px 10px',
-                background: ADMIN_T.surface,
+                borderRadius: 8,
+                padding: isMobile ? '6px 8px' : '6px 10px',
+                background: '#fff',
               }}
             >
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr 1fr' : '150px 100px 100px auto',
-                  gap: 8,
+                  display: 'flex',
+                  flexWrap: 'nowrap',
+                  alignItems: 'center',
+                  gap: 5,
+                  overflowX: isMobile ? 'auto' : undefined,
+                  WebkitOverflowScrolling: 'touch',
                 }}
               >
                 <input
@@ -349,76 +362,89 @@ export function HoursTabPanel({
                       bookingBlocks: p.bookingBlocks.map((b, j) => (j === i ? { ...b, date: e.target.value } : b)),
                     }))
                   }
-                  style={inp}
+                  style={blockInp({ flex: '0 0 auto', width: isMobile ? 118 : 130 })}
                 />
-                <input
-                  type="time"
-                  value={block.start ?? ''}
-                  onChange={(e) =>
-                    setSite((p) => ({
-                      ...p,
-                      bookingBlocks: p.bookingBlocks.map((b, j) =>
-                        j === i ? { ...b, allDay: false, start: e.target.value || '00:00' } : b
-                      ),
-                    }))
-                  }
-                  disabled={block.allDay}
-                  style={inp}
-                />
-                <input
-                  type="time"
-                  value={block.end ?? ''}
-                  onChange={(e) =>
-                    setSite((p) => ({
-                      ...p,
-                      bookingBlocks: p.bookingBlocks.map((b, j) =>
-                        j === i ? { ...b, allDay: false, end: e.target.value || '23:59' } : b
-                      ),
-                    }))
-                  }
-                  disabled={block.allDay}
-                  style={inp}
-                />
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    gridColumn: isMobile ? '1 / -1' : undefined,
-                  }}
-                >
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: ADMIN_T.muted }}>
+                {!block.allDay ? (
+                  <>
                     <input
-                      type="checkbox"
-                      checked={block.allDay}
+                      type="time"
+                      value={block.start ?? ''}
                       onChange={(e) =>
                         setSite((p) => ({
                           ...p,
                           bookingBlocks: p.bookingBlocks.map((b, j) =>
-                            j === i
-                              ? e.target.checked
-                                ? { ...b, allDay: true, start: undefined, end: undefined }
-                                : { ...b, allDay: false, start: b.start || '09:00', end: b.end || '10:00' }
-                              : b
+                            j === i ? { ...b, allDay: false, start: e.target.value || '00:00' } : b
                           ),
                         }))
                       }
+                      style={blockInp({ flex: '1 1 72px', maxWidth: 96 })}
                     />
-                    Цял ден
-                  </label>
-                  <button
-                    type="button"
-                    style={{ ...btn('ghost'), color: '#EF4444', padding: '5px 8px', fontSize: 12 }}
-                    onClick={() =>
+                    <span style={{ color: ADMIN_T.subtle, fontSize: 11, flexShrink: 0 }}>–</span>
+                    <input
+                      type="time"
+                      value={block.end ?? ''}
+                      onChange={(e) =>
+                        setSite((p) => ({
+                          ...p,
+                          bookingBlocks: p.bookingBlocks.map((b, j) =>
+                            j === i ? { ...b, allDay: false, end: e.target.value || '23:59' } : b
+                          ),
+                        }))
+                      }
+                      style={blockInp({ flex: '1 1 72px', maxWidth: 96 })}
+                    />
+                  </>
+                ) : null}
+                <label
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 11,
+                    color: ADMIN_T.muted,
+                    whiteSpace: 'nowrap',
+                    marginLeft: 'auto',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={block.allDay}
+                    onChange={(e) =>
                       setSite((p) => ({
                         ...p,
-                        bookingBlocks: p.bookingBlocks.filter((_, j) => j !== i),
+                        bookingBlocks: p.bookingBlocks.map((b, j) =>
+                          j === i
+                            ? e.target.checked
+                              ? { ...b, allDay: true, start: undefined, end: undefined }
+                              : { ...b, allDay: false, start: b.start || '09:00', end: b.end || '10:00' }
+                            : b
+                        ),
                       }))
                     }
-                  >
-                    Премахни
-                  </button>
-                </div>
+                  />
+                  Цял ден
+                </label>
+                <button
+                  type="button"
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    color: '#EF4444',
+                    padding: 0,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onClick={() =>
+                    setSite((p) => ({
+                      ...p,
+                      bookingBlocks: p.bookingBlocks.filter((_, j) => j !== i),
+                    }))
+                  }
+                >
+                  ×
+                </button>
               </div>
             </div>
           ))}
