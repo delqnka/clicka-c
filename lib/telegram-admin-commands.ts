@@ -272,6 +272,8 @@ export async function handleAdminCommand(
       .replace(/\s+(?:за\s+)?\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев|евро)/gi, '')
       .trim();
 
+    if (!rawName) return await handleWithAI(chatId, text, salon);
+
     const services = await getSalonServices(salon.salonId);
     if (services.some((s) => s.name.toLowerCase() === rawName.toLowerCase())) {
       await sendTelegramMessage(chatId, `⚠️ Услугата <b>${rawName}</b> вече съществува.\nЗа да промениш цената: <code>Промени цената на ${rawName} на ${price} €</code>`);
