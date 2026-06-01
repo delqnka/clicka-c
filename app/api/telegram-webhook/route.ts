@@ -12,7 +12,8 @@ import { parseBookingsFromPhoto } from '@/lib/telegram-photo-parser';
 import {
   handleAdminCommand,
   handlePriceListPhoto,
-  isPriceListPhoto,
+  handleGalleryPhoto,
+  photoTargetFromCaption,
 } from '@/lib/telegram-admin-commands';
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
@@ -254,49 +255,42 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const imageUrl = getTelegramFileUrl(filePath);
     const caption = (message.caption ?? '').trim();
+    const isForwarded = !!message.forward_date;
+    const photoTarget = photoTargetFromCaption(caption);
 
-    // Price list photo — add services
-    if (isPriceListPhoto(caption)) {
+    // Price list photo
+    if (photoTarget === 'price_list') {
       await handlePriceListPhoto(chatId, imageUrl, salon);
       return NextResponse.json({ ok: true });
     }
 
-    // Booking screenshot — block time slots
-    await sendTelegramMessage(chatId, '🔍 Анализирам снимката...');
-
-    const bookings = await parseBookingsFromPhoto(imageUrl);
-    if (bookings.length === 0) {
-      await sendTelegramMessage(
-        chatId,
-        '❌ Не открих резервации в снимката. Увери се, че часовете и датите се виждат ясно.\n\n💡 За да добавиш услуги от ценоразпис, изпрати снимката с надпис <i>ценоразпис</i>.',
-      );
-      return NextResponse.json({ ok: true });
+    // Forwarded photo without special caption → try booking screenshot parse
+    if (isForwarded && !caption) {
+      await sendTelegramMessage(chatId, '🔍 Анализирам снимката...');
+      const bookings = await parseBookingsFromPhoto(imageUrl);
+      if (bookings.length > 0) {
+        let blockedCount = 0;
+        for (const b of bookings) {
+          const block: BookingBlock = { date: b.date, allDay: false, start: b.start, end: b.end, note: 'От снимка (Fresha/друго приложение)' };
+          await addBookingBlock(salon.salonId, salon.slug, block);
+          blockedCount++;
+        }
+        revalidateTag(`salon-public-${salon.slug}`);
+        const lines = [`🔒 <b>Блокирани ${blockedCount} часа от снимката:</b>`, ''];
+        for (const b of bookings) {
+          const d = new Date(`${b.date}T12:00:00`);
+          lines.push(`📅 ${d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'long' })} — ${b.start} – ${b.end}`);
+        }
+        lines.push('', '💡 Ако нещо е грешно, деблокирай с /unblock');
+        await sendTelegramMessage(chatId, lines.join('\n'));
+        return NextResponse.json({ ok: true });
+      }
+      // Forwarded but no bookings found — fall through to gallery
     }
 
-    let blockedCount = 0;
-    for (const b of bookings) {
-      const block: BookingBlock = {
-        date: b.date,
-        allDay: false,
-        start: b.start,
-        end: b.end,
-        note: 'От снимка (Fresha/друго приложение)',
-      };
-      await addBookingBlock(salon.salonId, salon.slug, block);
-      blockedCount++;
-    }
-
-    revalidateTag(`salon-public-${salon.slug}`);
-
-    const lines = [`🔒 <b>Блокирани ${blockedCount} часа от снимката:</b>`, ''];
-    for (const b of bookings) {
-      const d = new Date(`${b.date}T12:00:00`);
-      const dateStr = d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'long' });
-      lines.push(`📅 ${dateStr} — ${b.start} – ${b.end}`);
-    }
-    lines.push('', '💡 Ако нещо е грешно, деблокирай с /unblock');
-
-    await sendTelegramMessage(chatId, lines.join('\n'));
+    // Default: upload to gallery / cover / portfolio
+    const galleryTarget = photoTarget === 'booking' ? 'gallery' : photoTarget;
+    await handleGalleryPhoto(chatId, imageUrl, salon, galleryTarget);
     return NextResponse.json({ ok: true });
   }
 

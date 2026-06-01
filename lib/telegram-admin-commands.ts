@@ -6,6 +6,8 @@ import { sql } from '@/lib/db';
 import { revalidateTag } from 'next/cache';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { normalizeServices, type ServiceItem } from '@/lib/salon-services';
+import { normalizeImageList } from '@/lib/admin-site';
+import { uploadToR2 } from '@/lib/r2';
 import { sendSmsReminder } from '@/lib/smsapi';
 import {
   getOpenRouterApiKey,
@@ -422,21 +424,34 @@ type AIIntent =
   | { action: 'next_client' }
   | { action: 'revenue_week' }
   | { action: 'revenue_month' }
+  | { action: 'revenue_range'; date_from: string; date_to: string }
+  | { action: 'revenue_compare' }
+  | { action: 'avg_booking_value' }
   | { action: 'revenue_client'; client_name: string }
   | { action: 'client_count' }
+  | { action: 'inactive_clients'; months: number }
   | { action: 'top_services' }
   | { action: 'list_services' }
   | { action: 'pending_bookings' }
+  | { action: 'complete_booking'; client_name: string }
   | { action: 'add_service'; name: string; duration_min: number; price_lv: number }
   | { action: 'update_price'; service_name: string; price_lv: number }
   | { action: 'delete_service'; service_name: string }
   | { action: 'day_off'; date: string }
+  | { action: 'unblock_day'; date: string }
   | { action: 'day_hours'; day_key: string; open: string; close: string }
   | { action: 'day_closed'; day_key: string }
   | { action: 'work_until'; close_time: string }
   | { action: 'update_phone'; phone: string }
   | { action: 'update_instagram'; handle: string }
+  | { action: 'update_facebook'; handle: string }
+  | { action: 'update_tiktok'; handle: string }
+  | { action: 'update_google_maps'; url: string }
+  | { action: 'update_email'; email: string }
   | { action: 'update_bio'; bio: string }
+  | { action: 'update_owner_bio'; bio: string }
+  | { action: 'sms_balance' }
+  | { action: 'toggle_sms'; enabled: boolean }
   | { action: 'confirm_booking'; client_name: string }
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
@@ -463,11 +478,22 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
 - { "action": "next_client" } — следващ клиент
 - { "action": "revenue_week" } — оборот тази седмица
 - { "action": "revenue_month" } — оборот този месец
+- { "action": "revenue_range", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD" } — оборот за период
+- { "action": "revenue_compare" } — сравнение с миналия месец
+- { "action": "avg_booking_value" } — средна стойност на резервация
 - { "action": "revenue_client", "client_name": "Мария Иванова" } — оборот от конкретен клиент
 - { "action": "client_count" } — брой клиенти
+- { "action": "inactive_clients", "months": 3 } — клиенти без посещение от X месеца
 - { "action": "top_services" } — най-популярни услуги
 - { "action": "list_services" } — списък услуги
 - { "action": "pending_bookings" } — незатвърдени резервации
+- { "action": "sms_balance" } — SMS кредити
+
+Управление на резервации:
+- { "action": "complete_booking", "client_name": "..." } — отбележи като завършена
+- { "action": "confirm_booking", "client_name": "..." }
+- { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
+- { "action": "remind_tomorrow" }
 
 Управление на услуги:
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_lv": 60 }
@@ -475,20 +501,22 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
 - { "action": "delete_service", "service_name": "..." }
 
 Работно време:
-- { "action": "day_off", "date": "YYYY-MM-DD" } — почивен ден
+- { "action": "day_off", "date": "YYYY-MM-DD" } — блокирай ден
+- { "action": "unblock_day", "date": "YYYY-MM-DD" } — деблокирай ден
 - { "action": "day_hours", "day_key": "monday", "open": "09:00", "close": "18:00" }
 - { "action": "day_closed", "day_key": "sunday" }
 - { "action": "work_until", "close_time": "19:00" }
 
-Резервации:
-- { "action": "confirm_booking", "client_name": "..." }
-- { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
-- { "action": "remind_tomorrow" }
-
 Профил:
 - { "action": "update_phone", "phone": "0888123456" }
 - { "action": "update_instagram", "handle": "mysalon" }
-- { "action": "update_bio", "bio": "..." }
+- { "action": "update_facebook", "handle": "mysalon" }
+- { "action": "update_tiktok", "handle": "mysalon" }
+- { "action": "update_google_maps", "url": "https://maps.google.com/..." }
+- { "action": "update_email", "email": "salon@example.com" }
+- { "action": "update_bio", "bio": "..." } — описание на салона
+- { "action": "update_owner_bio", "bio": "..." } — лично bio на собственика
+- { "action": "toggle_sms", "enabled": true } — вкл/изкл SMS напомняния
 
 Ако не можеш да определиш намерението: { "action": "unknown" }
 
@@ -626,6 +654,57 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
       await sql`UPDATE salons SET about = ${intent.bio}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
       revalidateTag(`salon-public-${salon.slug}`);
       await sendTelegramMessage(chatId, `✅ Описанието е обновено.`);
+      return true;
+    case 'revenue_range':
+      await handleRevenue(chatId, salon, 'range', intent.date_from, intent.date_to);
+      return true;
+    case 'revenue_compare':
+      await handleRevenueCompare(chatId, salon);
+      return true;
+    case 'avg_booking_value':
+      await handleAvgBookingValue(chatId, salon);
+      return true;
+    case 'inactive_clients':
+      await handleInactiveClients(chatId, salon, intent.months ?? 3);
+      return true;
+    case 'complete_booking':
+      await handleCompleteBooking(chatId, salon, intent.client_name);
+      return true;
+    case 'unblock_day':
+      await unblockDay(salon.salonId, salon.slug, intent.date);
+      await sendTelegramMessage(chatId, `🔓 <b>${formatDateBg(intent.date)}</b> е деблокиран.`);
+      return true;
+    case 'update_facebook':
+      await sql`UPDATE salons SET facebook_username = ${intent.handle}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ Facebook: <b>${intent.handle}</b>`);
+      return true;
+    case 'update_tiktok':
+      await sql`UPDATE salons SET tiktok_username = ${intent.handle}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ TikTok: <b>@${intent.handle}</b>`);
+      return true;
+    case 'update_google_maps':
+      await sql`UPDATE salons SET google_maps_url = ${intent.url}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ Google Maps линкът е обновен.`);
+      return true;
+    case 'update_email':
+      await sql`UPDATE salons SET email = ${intent.email}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ Имейлът е обновен: <b>${intent.email}</b>`);
+      return true;
+    case 'update_owner_bio':
+      await sql`UPDATE salons SET owner_public_bio = ${intent.bio}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await sendTelegramMessage(chatId, `✅ Личното ви bio е обновено.`);
+      return true;
+    case 'sms_balance':
+      await handleSmsBalance(chatId, salon);
+      return true;
+    case 'toggle_sms':
+      await sql`UPDATE salons SET sms_enabled = ${intent.enabled}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      await sendTelegramMessage(chatId, intent.enabled ? '✅ SMS напомнянията са <b>включени</b>.' : '🔕 SMS напомнянията са <b>изключени</b>.');
       return true;
     case 'confirm_booking':
       await handleConfirmBooking(chatId, salon, intent.client_name);
@@ -914,14 +993,18 @@ async function handleRemindTomorrow(chatId: number, salon: SalonRef): Promise<vo
 
 // ─── Revenue handlers ────────────────────────────────────────────────────────
 
-async function handleRevenue(chatId: number, salon: SalonRef, period: 'week' | 'month'): Promise<void> {
+async function handleRevenue(chatId: number, salon: SalonRef, period: 'week' | 'month' | 'range', rangeFrom?: string, rangeTo?: string): Promise<void> {
   let periodStart: string;
   let periodEnd: string;
   let label: string;
 
   const today = new Date();
 
-  if (period === 'week') {
+  if (period === 'range' && rangeFrom && rangeTo) {
+    periodStart = rangeFrom;
+    periodEnd = rangeTo;
+    label = `${formatDateBg(rangeFrom, { day: 'numeric', month: 'long' })} – ${formatDateBg(rangeTo, { day: 'numeric', month: 'long' })}`;
+  } else if (period === 'week') {
     const dayOfWeek = today.getDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(today);
@@ -1118,6 +1201,193 @@ async function blockAllDay(salonId: string, slug: string, date: string): Promise
     WHERE CAST(id AS text) = ${salonId}
   `;
   revalidateTag(`salon-public-${slug}`);
+}
+
+async function unblockDay(salonId: string, slug: string, date: string): Promise<void> {
+  const rows = await sql`SELECT opening_hours FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
+  const current = (rows[0]?.opening_hours && typeof rows[0].opening_hours === 'object'
+    ? rows[0].opening_hours : {}) as Record<string, unknown>;
+  const { normalizeBookingBlocks } = await import('@/lib/booking-blocks');
+  const blocks = normalizeBookingBlocks(current.booking_blocks).filter((b) => !(b.date === date && b.allDay));
+  await sql`UPDATE salons SET opening_hours = ${JSON.stringify({ ...current, booking_blocks: blocks })}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salonId}`;
+  revalidateTag(`salon-public-${slug}`);
+}
+
+async function handleCompleteBooking(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
+  const rows = await sql`
+    SELECT CAST(id AS text) AS id, client_name, date, time, service_name
+    FROM bookings
+    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+      AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
+      AND status NOT IN ('cancelled', 'completed')
+      AND date >= ${offsetDayISO(-1)}
+    ORDER BY date ASC, time ASC
+    LIMIT 1
+  ` as { id: string; client_name: string; date: string; time: string; service_name: string }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `❌ Не намерих активна резервация за <b>${clientName}</b>.`);
+    return;
+  }
+  const r = rows[0]!;
+  await sql`UPDATE bookings SET status = 'completed', completed_at = now() WHERE CAST(id AS text) = ${r.id}`;
+  await sendTelegramMessage(chatId, `✅ Завършена резервация:\n👤 ${r.client_name}\n🗓 ${formatDateBg(r.date)} в ${r.time}\n✂️ ${r.service_name}`);
+}
+
+async function handleRevenueCompare(chatId: number, salon: SalonRef): Promise<void> {
+  const today = new Date();
+  const thisMonthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+  const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const prevMonthStart = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
+  const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().slice(0, 10);
+
+  const [thisRows, prevRows] = await Promise.all([
+    sql`SELECT COUNT(*)::int AS total, COALESCE(SUM(service_price),0)::numeric AS revenue FROM bookings WHERE CAST(salon_id AS text) = ${salon.salonId} AND date >= ${thisMonthStart} AND status NOT IN ('cancelled')`,
+    sql`SELECT COUNT(*)::int AS total, COALESCE(SUM(service_price),0)::numeric AS revenue FROM bookings WHERE CAST(salon_id AS text) = ${salon.salonId} AND date >= ${prevMonthStart} AND date <= ${prevMonthEnd} AND status NOT IN ('cancelled')`,
+  ]);
+
+  const cur = thisRows[0] as { total: number; revenue: number };
+  const prev = prevRows[0] as { total: number; revenue: number };
+  const curEur = Number(cur.revenue);
+  const prevEur = Number(prev.revenue);
+  const diff = curEur - prevEur;
+  const diffPct = prevEur > 0 ? ((diff / prevEur) * 100).toFixed(0) : '—';
+  const arrow = diff > 0 ? '📈' : diff < 0 ? '📉' : '➡️';
+
+  const thisLabel = today.toLocaleDateString('bg-BG', { month: 'long' });
+  const prevLabel = prevMonthDate.toLocaleDateString('bg-BG', { month: 'long' });
+
+  await sendTelegramMessage(chatId, [
+    `${arrow} <b>Сравнение месец/месец:</b>`,
+    '',
+    `📅 ${thisLabel} (до момента): <b>${curEur.toFixed(0)} €</b> (${Number(cur.total)} резервации)`,
+    `📅 ${prevLabel}: <b>${prevEur.toFixed(0)} €</b> (${Number(prev.total)} резервации)`,
+    '',
+    `${diff >= 0 ? '▲' : '▼'} Разлика: <b>${Math.abs(diff).toFixed(0)} €</b> (${diffPct}%)`,
+  ].join('\n'));
+}
+
+async function handleAvgBookingValue(chatId: number, salon: SalonRef): Promise<void> {
+  const rows = await sql`
+    SELECT
+      COALESCE(AVG(service_price),0)::numeric AS avg_val,
+      COUNT(*)::int AS total
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND status NOT IN ('cancelled')
+      AND date >= ${offsetDayISO(-90)}
+  ` as { avg_val: number; total: number }[];
+
+  const r = rows[0]!;
+  await sendTelegramMessage(chatId, [
+    `💡 <b>Средна стойност на резервация (90 дни):</b>`,
+    '',
+    `💵 Средно: <b>${Number(r.avg_val).toFixed(0)} €</b>`,
+    `📊 Брой резервации: ${r.total}`,
+  ].join('\n'));
+}
+
+async function handleInactiveClients(chatId: number, salon: SalonRef, months: number): Promise<void> {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const rows = await sql`
+    SELECT client_name, client_phone, MAX(date) AS last_visit, COUNT(*)::int AS total_visits
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND status NOT IN ('cancelled')
+    GROUP BY client_name, client_phone
+    HAVING MAX(date) < ${cutoffStr}
+    ORDER BY MAX(date) DESC
+    LIMIT 15
+  ` as { client_name: string; client_phone: string; last_visit: string; total_visits: number }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `✅ Всички клиенти са посещавали салона в последните ${months} месеца.`);
+    return;
+  }
+
+  const lines = [`😴 <b>Клиенти без посещение от ${months}+ месеца (${rows.length}):</b>`, ''];
+  for (const r of rows) {
+    lines.push(`• ${r.client_name} — последно: ${formatDateBg(r.last_visit, { day: 'numeric', month: 'short', year: 'numeric' })}`);
+  }
+  await sendTelegramMessage(chatId, lines.join('\n'));
+}
+
+async function handleSmsBalance(chatId: number, salon: SalonRef): Promise<void> {
+  const rows = await sql`
+    SELECT sms_balance, sms_enabled, sms_reminder_mode
+    FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1
+  ` as { sms_balance: number; sms_enabled: boolean; sms_reminder_mode: string }[];
+
+  const r = rows[0]!;
+  await sendTelegramMessage(chatId, [
+    `📲 <b>SMS статус:</b>`,
+    '',
+    `💰 Кредити: <b>${Number(r.sms_balance ?? 0).toFixed(2)} лв</b>`,
+    `🔔 Автоматични напомняния: ${r.sms_enabled ? '✅ включени' : '🔕 изключени'}`,
+    `⚙️ Режим: ${r.sms_reminder_mode ?? 'off'}`,
+  ].join('\n'));
+}
+
+// ─── Gallery photo upload ─────────────────────────────────────────────────────
+
+export async function handleGalleryPhoto(
+  chatId: number,
+  imageUrl: string,
+  salon: SalonRef,
+  target: 'gallery' | 'cover' | 'portfolio' = 'gallery',
+): Promise<void> {
+  await sendTelegramMessage(chatId, '⬆️ Качвам снимката...');
+
+  let imageBuffer: Buffer;
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) throw new Error('fetch failed');
+    imageBuffer = Buffer.from(await res.arrayBuffer());
+  } catch {
+    await sendTelegramMessage(chatId, '❌ Не успях да изтегля снимката. Пробвай отново.');
+    return;
+  }
+
+  const key = `salons/${salon.slug}/${target}/${Date.now()}.jpg`;
+  let publicUrl: string;
+  try {
+    publicUrl = await uploadToR2(imageBuffer, key, 'image/jpeg');
+  } catch {
+    await sendTelegramMessage(chatId, '❌ Грешка при качване. Провери настройките на R2 storage.');
+    return;
+  }
+
+  if (target === 'cover') {
+    await sql`UPDATE salons SET cover_image_url = ${publicUrl}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+    revalidateTag(`salon-public-${salon.slug}`);
+    await sendTelegramMessage(chatId, '✅ Корицата е обновена!');
+    return;
+  }
+
+  const rows = await sql`SELECT ${target === 'portfolio' ? sql`portfolio_images` : sql`gallery_images`} FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
+  const existing = normalizeImageList(target === 'portfolio' ? rows[0]?.portfolio_images : rows[0]?.gallery_images);
+  const updated = [...existing, publicUrl];
+
+  if (target === 'portfolio') {
+    await sql`UPDATE salons SET portfolio_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+  } else {
+    await sql`UPDATE salons SET gallery_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+  }
+
+  revalidateTag(`salon-public-${salon.slug}`);
+  await sendTelegramMessage(chatId, `✅ Снимката е добавена в ${target === 'portfolio' ? 'портфолиото' : 'галерията'}! (${updated.length} общо)`);
+}
+
+export function photoTargetFromCaption(caption: string): 'gallery' | 'cover' | 'portfolio' | 'price_list' | 'booking' {
+  const c = caption.toLowerCase();
+  if (/ценоразпис|прайс|price.?list/.test(c)) return 'price_list';
+  if (/корица|cover|заглавна/.test(c)) return 'cover';
+  if (/портфолио|portfolio/.test(c)) return 'portfolio';
+  if (/галерия|gallery/.test(c)) return 'gallery';
+  return 'gallery'; // default — всяка снимка без надпис отива в галерията
 }
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
