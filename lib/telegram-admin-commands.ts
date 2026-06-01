@@ -15,6 +15,7 @@ import {
   OPENROUTER_BASE,
   openRouterHeaders,
 } from '@/lib/openrouter';
+import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 
 // ─── Conversation history (persisted in DB per chatId, last 12 messages) ─────
 type HistoryMessage = { role: 'user' | 'assistant'; content: string };
@@ -506,6 +507,7 @@ type AIIntent =
   | { action: 'update_price'; service_name: string; price_eur: number }
   | { action: 'update_category'; service_name: string; category: string }
   | { action: 'delete_service'; service_name: string }
+  | { action: 'block_hours'; date: string; start: string; end: string; note?: string }
   | { action: 'day_off'; date: string }
   | { action: 'unblock_day'; date: string }
   | { action: 'day_hours'; day_key: string; open: string; close: string }
@@ -572,7 +574,8 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← цената ВИНАГИ в евро (€)
 - { "action": "update_category", "service_name": "...", "category": "Колористика" }  ← смяна/добавяне на категория на услуга
 - { "action": "delete_service", "service_name": "..." }
-- { "action": "day_off", "date": "YYYY-MM-DD" }
+- { "action": "block_hours", "date": "YYYY-MM-DD", "start": "HH:mm", "end": "HH:mm", "note": "незадължително" }  ← блокира конкретни часове (не целия ден)
+- { "action": "day_off", "date": "YYYY-MM-DD" }  ← блокира ЦЕЛИЯ ден
 - { "action": "unblock_day", "date": "YYYY-MM-DD" }
 - { "action": "day_hours", "day_key": "monday", "open": "09:00", "close": "18:00" }
 - { "action": "day_closed", "day_key": "sunday" }
@@ -748,6 +751,19 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       services.splice(idx, 1);
       await saveSalonServices(salon.salonId, salon.slug, services);
       await sendTelegramMessage(chatId, `🗑 Услугата <b>${name}</b> е изтрита.`);
+      return true;
+    }
+    case 'block_hours': {
+      await addBookingBlockForSalon(salon.salonId, salon.slug, {
+        date: intent.date,
+        allDay: false,
+        start: intent.start,
+        end: intent.end,
+        ...(intent.note ? { note: intent.note } : {}),
+      });
+      revalidateTag(`salon-public-${salon.slug}`);
+      const blockMsg = `🔒 Блокирано: <b>${formatDateBg(intent.date)}</b> от <b>${intent.start}</b> до <b>${intent.end}</b>`;
+      await sendTelegramMessage(chatId, blockMsg);
       return true;
     }
     case 'day_off':
@@ -1379,6 +1395,18 @@ async function updateWorkingHoursClose(salonId: string, slug: string, closeTime:
   revalidateTag(`salon-public-${slug}`);
 }
 
+async function addBookingBlockForSalon(salonId: string, slug: string, block: BookingBlock): Promise<void> {
+  const rows = await sql`SELECT opening_hours FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
+  const current = (rows[0]?.opening_hours && typeof rows[0].opening_hours === 'object'
+    ? rows[0].opening_hours : {}) as Record<string, unknown>;
+  const blocks = normalizeBookingBlocks(current.booking_blocks);
+  blocks.push(block);
+  await sql`
+    UPDATE salons SET opening_hours = ${JSON.stringify({ ...current, booking_blocks: normalizeBookingBlocks(blocks) })}::jsonb, updated_at = now()
+    WHERE CAST(id AS text) = ${salonId}
+  `;
+}
+
 async function blockAllDay(salonId: string, slug: string, date: string): Promise<void> {
   const rows = await sql`
     SELECT opening_hours FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1
@@ -1386,7 +1414,6 @@ async function blockAllDay(salonId: string, slug: string, date: string): Promise
   const current = (rows[0]?.opening_hours && typeof rows[0].opening_hours === 'object'
     ? rows[0].opening_hours : {}) as Record<string, unknown>;
 
-  const { normalizeBookingBlocks } = await import('@/lib/booking-blocks');
   const blocks = normalizeBookingBlocks(current.booking_blocks);
   if (!blocks.some((b) => b.date === date && b.allDay)) {
     blocks.push({ date, allDay: true, start: '00:00', end: '23:59', note: 'Почивен ден (Telegram)' });
