@@ -1,8 +1,37 @@
-import { renderLegalDocumentPage } from '@/lib/legal-document-page';
+import { ClickaTermsContent } from '@/components/legal/clicka-terms-content';
 
-export const dynamic = 'force-dynamic';
+export const metadata = {
+  title: 'Общи условия — Clicka.bg',
+  description: 'Общи условия за ползване на платформата Clicka.bg',
+};
 
-/** Правни документи на собствен домейн или поддомейн (без /slug в пътя). */
-export default function TermsOnHostPage() {
-  return renderLegalDocumentPage({ document: 'terms' });
+export default function TermsPage() {
+  return (
+    <main
+      style={{
+        maxWidth: 780,
+        margin: '0 auto',
+        padding: '48px 24px 80px',
+        fontFamily: 'system-ui, sans-serif',
+        color: '#1a1a1a',
+        lineHeight: 1.7,
+      }}
+    >
+      <a
+        href="/"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 13,
+          color: '#6b7280',
+          textDecoration: 'none',
+          marginBottom: 32,
+        }}
+      >
+        ← Обратно към Clicka.bg
+      </a>
+      <ClickaTermsContent />
+    </main>
+  );
 }

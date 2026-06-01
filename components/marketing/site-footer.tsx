@@ -13,9 +13,18 @@ export function SiteFooter() {
             Създай сайт
           </Link>
           <span className="hidden sm:inline">·</span>
-          <span className="hover:text-white/60">София</span>
-          <Link href="mailto:hello@clicka.bg" className="hover:text-white/80">
-            hello@clicka.bg
+          <Link href="/terms" className="transition hover:text-white/60">
+            Общи условия
+          </Link>
+          <Link href="/privacy" className="transition hover:text-white/60">
+            Поверителност
+          </Link>
+          <Link href="/cookies" className="transition hover:text-white/60">
+            Бисквитки
+          </Link>
+          <span className="hidden sm:inline">·</span>
+          <Link href="mailto:support@clicka.bg" className="hover:text-white/80">
+            support@clicka.bg
           </Link>
         </div>
       </div>

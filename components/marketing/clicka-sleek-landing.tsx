@@ -7,6 +7,7 @@ import { ServicesSection } from '@/components/marketing/services-section';
 import { SiteFooter } from '@/components/marketing/site-footer';
 import { SiteHeader } from '@/components/marketing/site-header';
 import { SmoothScroll } from '@/components/marketing/smooth-scroll';
+import { PricingSection } from '@/components/marketing/pricing-section';
 import { WorkSection } from '@/components/marketing/work-section';
 
 export function ClickaSleekLanding() {
@@ -18,6 +19,7 @@ export function ClickaSleekLanding() {
           <HeroSection />
           <ActivityBanner />
           <ServicesSection />
+          <PricingSection />
           <WorkSection />
           <ContactSection />
         </main>
