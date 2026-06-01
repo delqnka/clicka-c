@@ -21,3 +21,9 @@ node_modules/
 
 # TypeScript
 tsconfig.tsbuildinfo
+
+# Local salon scrape / PDF exports (not for git)
+generate_salons_pdf.py
+sofia_salons_no_website.pdf
+plovdiv_salons.pdf
+*_salons*.pdf

@@ -1,3 +1,4 @@
+import { GOOGLE_REVIEWS_CACHE_MAX } from '@/lib/google-reviews-limits';
 import {
   extractJsonArrayFromModelText,
   getOpenRouterApiKey,
@@ -20,7 +21,7 @@ Format: [{ "author_name": string, "rating": number, "text": string }]
 - rating: integer 1-5
 - text: the review text (original language)
 - author_name: reviewer name or "Google потребител"
-Return up to 10 most recent reviews. If no reviews found, return [].`;
+Return up to ${GOOGLE_REVIEWS_CACHE_MAX} most recent reviews. If no reviews found, return [].`;
 
 function reviewsModel(): string {
   return process.env.OPENROUTER_REVIEWS_MODEL?.trim() || DEFAULT_REVIEWS_MODEL;
@@ -82,7 +83,7 @@ function normalizeReviews(parsed: unknown): GoogleReviewLite[] {
       rating,
       text: text || '—',
     });
-    if (out.length >= 10) break;
+    if (out.length >= GOOGLE_REVIEWS_CACHE_MAX) break;
   }
   return out;
 }
@@ -114,7 +115,7 @@ async function fetchOnce(
 Google Place ID: ${id}
 Google Maps URL: ${mapsUrl}
 
-Please search the web for Google Maps reviews of this business and return ONLY a JSON array with up to 10 reviews.`,
+Please search the web for Google Maps reviews of this business and return ONLY a JSON array with up to ${GOOGLE_REVIEWS_CACHE_MAX} reviews.`,
       },
     ],
   });

@@ -4,6 +4,7 @@ import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
 import { probeGoogleReviewsForPlace, resolveGooglePlaceId } from '@/lib/google-place-server';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
+import { GOOGLE_REVIEWS_CACHE_MAX } from '@/lib/google-reviews-limits';
 
 export const dynamic = 'force-dynamic';
 const GOOGLE_REVIEWS_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
       .filter((r): r is ReviewLite => Boolean(r));
     const existingKeys = new Set(cachedReviews.map(reviewLiteKey));
     const newOnly = incomingReviews.filter((r) => !existingKeys.has(reviewLiteKey(r)));
-    const mergedReviews = [...newOnly, ...cachedReviews].slice(0, 10);
+    const mergedReviews = [...newOnly, ...cachedReviews].slice(0, GOOGLE_REVIEWS_CACHE_MAX);
 
     await sql`
       UPDATE salons

@@ -1,6 +1,7 @@
 /** Server-only: Google reviews (Outscraper) + static maps (Google Maps API). */
 
 import { unstable_cache } from 'next/cache';
+import { GOOGLE_REVIEWS_CACHE_MAX } from '@/lib/google-reviews-limits';
 
 export type GoogleReviewLite = { author_name: string; rating: number; text: string };
 export type GoogleReviewsProbe = {
@@ -98,7 +99,7 @@ function mapOutscraperReviews(data: unknown): GoogleReviewLite[] {
       text: String(r.review_text ?? r.text ?? '').trim(),
     }))
     .filter((r) => Number.isFinite(r.rating) && r.rating >= 4)
-    .slice(0, 10);
+    .slice(0, GOOGLE_REVIEWS_CACHE_MAX);
 }
 
 async function outscraperGet(url: string, apiKey: string): Promise<OutscraperPayload> {
@@ -128,7 +129,7 @@ async function fetchReviewsViaOutscraperQuery(
 
   const params = new URLSearchParams({
     query: queryValue,
-    reviewsLimit: '10',
+    reviewsLimit: String(GOOGLE_REVIEWS_CACHE_MAX),
     language: 'bg',
     sort: 'newest',
   });

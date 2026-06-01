@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
+import { GOOGLE_REVIEWS_CACHE_MAX } from '@/lib/google-reviews-limits';
 import { resolveGooglePlaceId } from '@/lib/google-place-server';
 import { sql } from '@/lib/db';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
       if (!r || typeof r !== 'object') return false;
       const rating = Number((r as { rating?: unknown }).rating);
       return Number.isFinite(rating) && rating >= 4;
-    }).slice(0, 10)
+    }).slice(0, GOOGLE_REVIEWS_CACHE_MAX)
     : [];
   const cachedCount = shownReviews.length;
   const hasGoogleConnection =
