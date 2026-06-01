@@ -9,6 +9,7 @@ import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
 import { ROOT_DOMAIN } from '@/lib/domain-routing';
 import { ensureDomainPurchaseSchema } from '@/lib/domain-purchase';
 import { syncDomainWithVercel, removeProjectDomain } from '@/lib/vercel-domains';
+import { writeAuditLog } from '@/lib/audit-log';
 
 async function persistDomainState({
   slug,
@@ -129,8 +130,9 @@ export async function DELETE(request: NextRequest) {
   const site = await loadAdminSiteDataBySlug(auth.salon.slug);
   if (!site) return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
 
-  if (site.customDomain) {
-    await removeProjectDomain(site.customDomain);
+  const removedDomain = site.customDomain;
+  if (removedDomain) {
+    await removeProjectDomain(removedDomain);
   }
 
   await sql`
@@ -144,6 +146,14 @@ export async function DELETE(request: NextRequest) {
       updated_at = now()
     WHERE slug = ${auth.salon.slug}
   `;
+
+  void writeAuditLog({
+    salonId: auth.salon.salonId,
+    ownerId: auth.session.ownerId,
+    action: 'domain_disconnected',
+    detail: removedDomain ? { domain: removedDomain } : undefined,
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? null,
+  });
 
   return NextResponse.json({ success: true });
 }
@@ -170,11 +180,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Този домейн е запазен за платформата.' }, { status: 400 });
   }
 
+  // Prevent claiming a domain already registered to another salon
+  const existing = await sql`
+    SELECT slug FROM salons
+    WHERE lower(custom_domain) = lower(${domain})
+      AND slug <> ${auth.salon.slug}
+    LIMIT 1
+  `;
+  if (existing.length > 0) {
+    return NextResponse.json(
+      { error: 'Този домейн вече е свързан с друг акаунт.' },
+      { status: 409 },
+    );
+  }
+
   const provider = await syncDomainWithVercel(domain);
   await persistDomainState({
     slug: auth.salon.slug,
     domain,
     provider,
+  });
+
+  void writeAuditLog({
+    salonId: auth.salon.salonId,
+    ownerId: auth.session.ownerId,
+    action: 'domain_connected',
+    detail: { domain, status: provider.status },
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? null,
   });
 
   return NextResponse.json({

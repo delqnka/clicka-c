@@ -3,7 +3,7 @@ import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { stripe } from '@/lib/stripe';
 
 export async function GET(request: NextRequest) {
-  if (!isPlatformAdminRequest(request)) {
+  if (!(await isPlatformAdminRequest(request))) {
     return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
   }
 

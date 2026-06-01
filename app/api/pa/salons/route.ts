@@ -3,7 +3,7 @@ import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
-  if (!isPlatformAdminRequest(request)) {
+  if (!(await isPlatformAdminRequest(request))) {
     return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
   }
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!isPlatformAdminRequest(request)) {
+  if (!(await isPlatformAdminRequest(request))) {
     return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
   }
 

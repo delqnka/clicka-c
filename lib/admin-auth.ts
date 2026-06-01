@@ -230,6 +230,8 @@ export async function resolveSalonBySlugOrHost({
   }
   if (!hostname || isPlatformHost(hostname)) return null;
 
+  // Only route custom domains that have been verified (domain_status = 'active').
+  // This prevents an unverified/squatted domain from intercepting traffic.
   const customRows = includeInactive
     ? await sql`
         SELECT
@@ -242,6 +244,7 @@ export async function resolveSalonBySlugOrHost({
           domain_status
         FROM salons
         WHERE lower(custom_domain) = lower(${hostname})
+          AND domain_status = 'active'
         LIMIT 1
       `
     : await sql`
@@ -254,7 +257,9 @@ export async function resolveSalonBySlugOrHost({
           custom_domain,
           domain_status
         FROM salons
-        WHERE lower(custom_domain) = lower(${hostname}) AND is_active = true
+        WHERE lower(custom_domain) = lower(${hostname})
+          AND is_active = true
+          AND domain_status = 'active'
         LIMIT 1
       `;
 
@@ -454,12 +459,23 @@ export async function destroyOwnerSession(sessionId: string) {
   await sql`DELETE FROM owner_sessions WHERE session_hash = ${sessionHash}`;
 }
 
+/** Invalidate ALL sessions for this owner except the current one (used on password change). */
+export async function destroyAllOtherOwnerSessions(ownerId: string, currentSessionId: string) {
+  await ensureAdminAuthSchema();
+  const currentHash = sha256(currentSessionId);
+  await sql`
+    DELETE FROM owner_sessions
+    WHERE owner_id = ${ownerId}
+      AND session_hash <> ${currentHash}
+  `;
+}
+
 export function setAdminSessionCookie(response: NextResponse, request: NextRequest, sessionId: string, expiresAt: Date) {
   response.cookies.set({
     name: ADMIN_COOKIE_NAME,
     value: sessionId,
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'strict',
     secure: request.nextUrl.protocol === 'https:',
     path: '/',
     expires: expiresAt,
@@ -521,7 +537,9 @@ export async function verifyPassword(password: string, stored: string): Promise<
 }
 
 export function generateOtpCode() {
-  return String(Math.floor(1000 + Math.random() * 9000));
+  // 6-digit code via crypto — range 100000–999999
+  const n = crypto.randomInt(100_000, 1_000_000);
+  return String(n);
 }
 
 export function hashOtpCode(emailNorm: string, code: string) {

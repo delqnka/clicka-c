@@ -1,4 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+function validatePasswordStrength(password: string): string | null {
+  if (password.length < 8) return 'Паролата трябва да е поне 8 символа.';
+  if (!/[A-Z]/.test(password)) return 'Паролата трябва да съдържа поне една главна буква.';
+  if (!/[a-z]/.test(password)) return 'Паролата трябва да съдържа поне една малка буква.';
+  if (!/[0-9]/.test(password)) return 'Паролата трябва да съдържа поне една цифра.';
+  return null;
+}
+
 import { sql } from '@/lib/db';
 import {
   createOwnerSession,
@@ -32,9 +41,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Невалиден линк' }, { status: 400 });
   }
 
-  if (password.length < 8) {
-    return NextResponse.json({ error: 'Паролата трябва да е поне 8 символа' }, { status: 400 });
-  }
+  const pwErr = validatePasswordStrength(password);
+  if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 });
 
   if (password !== confirmPassword) {
     return NextResponse.json({ error: 'Паролите не съвпадат' }, { status: 400 });

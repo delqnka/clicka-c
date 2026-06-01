@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import {
+  ADMIN_COOKIE_NAME,
+  destroyAllOtherOwnerSessions,
   hashPassword,
   normalizeEmail,
   requireAdminRequestAccess,
@@ -14,6 +16,20 @@ import {
   sendEmailVerificationRequest,
   sendPasswordChangedNotification,
 } from '@/lib/resend';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { writeAuditLog } from '@/lib/audit-log';
+
+// 3 email-change requests per hour per IP
+const EMAIL_CHANGE_MAX = 3;
+const EMAIL_CHANGE_WINDOW_MS = 60 * 60 * 1000;
+
+function validatePasswordStrength(password: string): string | null {
+  if (password.length < 8) return 'Паролата трябва да е поне 8 символа.';
+  if (!/[A-Z]/.test(password)) return 'Паролата трябва да съдържа поне една главна буква.';
+  if (!/[a-z]/.test(password)) return 'Паролата трябва да съдържа поне една малка буква.';
+  if (!/[0-9]/.test(password)) return 'Паролата трябва да съдържа поне една цифра.';
+  return null;
+}
 
 async function getOwnerPasswordHash(ownerId: string): Promise<string> {
   const rows = await sql`
@@ -77,9 +93,8 @@ export async function PATCH(request: NextRequest) {
     const newPassword = String(body.newPassword ?? '');
     const confirmPassword = String(body.confirmPassword ?? '');
 
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'Новата парола трябва да е поне 8 символа' }, { status: 400 });
-    }
+    const pwErr = validatePasswordStrength(newPassword);
+    if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 });
     if (newPassword !== confirmPassword) {
       return NextResponse.json({ error: 'Паролите не съвпадат' }, { status: 400 });
     }
@@ -90,6 +105,12 @@ export async function PATCH(request: NextRequest) {
       WHERE id = ${auth.session.ownerId}
     `;
 
+    // Invalidate all other sessions — if account was compromised, attacker loses access immediately
+    const currentSessionId = request.cookies.get(ADMIN_COOKIE_NAME)?.value ?? '';
+    if (currentSessionId) {
+      await destroyAllOtherOwnerSessions(auth.session.ownerId, currentSessionId);
+    }
+
     // Notify owner that password was changed
     try {
       await sendPasswordChangedNotification(auth.session.ownerEmail);
@@ -97,10 +118,26 @@ export async function PATCH(request: NextRequest) {
       // non-fatal — password is already changed
     }
 
+    void writeAuditLog({
+      salonId: auth.session.salonId,
+      ownerId: auth.session.ownerId,
+      action: 'password_changed',
+      ip: getClientIp(request as unknown as Request),
+    });
+
     return NextResponse.json({ success: true, message: 'Паролата е сменена.' });
   }
 
   if (action === 'email') {
+    const ip = getClientIp(request as unknown as Request);
+    const rl = await checkRateLimit('account-email-change', ip, EMAIL_CHANGE_MAX, EMAIL_CHANGE_WINDOW_MS);
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: 'Твърде много заявки за смяна на имейл. Опитайте след един час.' },
+        { status: 429 },
+      );
+    }
+
     const newEmail = normalizeEmail(String(body.newEmail ?? ''));
     if (!newEmail) {
       return NextResponse.json({ error: 'Въведете валиден имейл' }, { status: 400 });
@@ -150,6 +187,14 @@ export async function PATCH(request: NextRequest) {
     } catch {
       // non-fatal — pending email is saved, user can retry
     }
+
+    void writeAuditLog({
+      salonId: auth.session.salonId,
+      ownerId: auth.session.ownerId,
+      action: 'email_change_requested',
+      detail: { newEmail },
+      ip: getClientIp(request as unknown as Request),
+    });
 
     return NextResponse.json({
       success: true,

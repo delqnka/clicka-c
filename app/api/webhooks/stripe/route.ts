@@ -175,6 +175,45 @@ export async function POST(request: NextRequest) {
     }
 
     if (!salonSlug) {
+      // Send invoice notification if billing info was provided
+      const invoiceEik = String(session.metadata?.invoiceEik ?? '').trim();
+      if (invoiceEik && process.env.RESEND_API_KEY) {
+        const invoiceCompanyName = String(session.metadata?.invoiceCompanyName ?? '').trim();
+        const invoiceVat = String(session.metadata?.invoiceVat ?? '').trim();
+        const amountTotal = (session.amount_total ?? 0) / 100;
+        const currency = (session.currency ?? 'eur').toUpperCase();
+        const customerEmail = session.customer_details?.email ?? '';
+        const customerName = session.customer_details?.name ?? '';
+        const billingAddr = session.customer_details?.address;
+        const addressStr = billingAddr
+          ? [billingAddr.line1, billingAddr.city, billingAddr.postal_code, billingAddr.country].filter(Boolean).join(', ')
+          : 'Не е попълнен';
+
+        const notifEmail = process.env.RESEND_NOTIFICATION_EMAIL ?? 'support@clicka.bg';
+        await resend.emails.send({
+          from: 'Clicka.bg <noreply@clicka.bg>',
+          to: notifEmail,
+          subject: `Нова заявка за фактура — ${invoiceCompanyName} (${invoiceEik})`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+              <h2>Необходима е фактура за плащане</h2>
+              <p><strong>План:</strong> ${planType ?? '—'}</p>
+              <p><strong>Сума:</strong> ${amountTotal.toFixed(2)} ${currency}</p>
+              <p><strong>Stripe Session:</strong> ${session.id}</p>
+              <hr style="margin: 20px 0;" />
+              <h3>Данни за фактура</h3>
+              <p><strong>Фирма:</strong> ${invoiceCompanyName}</p>
+              <p><strong>ЕИК:</strong> ${invoiceEik}</p>
+              <p><strong>ДДС номер:</strong> ${invoiceVat || 'Не е посочен'}</p>
+              <p><strong>Адрес за фактуриране:</strong> ${addressStr}</p>
+              <hr style="margin: 20px 0;" />
+              <h3>Данни на платеца</h3>
+              <p><strong>Име:</strong> ${customerName || '—'}</p>
+              <p><strong>Имейл:</strong> ${customerEmail || '—'}</p>
+            </div>
+          `,
+        }).catch(() => {});
+      }
       return NextResponse.json({ received: true });
     }
 
@@ -205,7 +244,7 @@ export async function POST(request: NextRequest) {
       const adminUrl = getPlatformAdminUrl(String(salonSlug));
 
       const magicLink = salonId
-        ? await generateAdminMagicLink({ salonId, slug: String(salonSlug), email, expiresMs: 7 * 24 * 60 * 60 * 1000 }).catch(() => adminUrl)
+        ? await generateAdminMagicLink({ salonId, slug: String(salonSlug), email, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl)
         : adminUrl;
 
       await resend.emails.send({
@@ -232,7 +271,7 @@ export async function POST(request: NextRequest) {
             </p>
             ${planType === 'custom_domain' ? '<p style="line-height: 1.7;">Собственият домейн може да се свърже от таба „Домейн" в панела.</p>' : ''}
             <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">
-              Линкът е валиден 7 дни. Ако не сте поръчали сайт, игнорирайте имейла.
+              Линкът е валиден 24 часа. Ако не сте поръчали сайт, игнорирайте имейла.
             </p>
           </div>
         `,

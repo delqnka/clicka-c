@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
 
   const emailNorm = normalizeEmail(body.email ?? '');
   const code = String(body.code ?? '').trim();
-  if (!emailNorm || !/^\d{4}$/.test(code)) {
-    return NextResponse.json({ error: 'Въведете валиден 4-цифрен код.' }, { status: 400 });
+  if (!emailNorm || !/^\d{6}$/.test(code)) {
+    return NextResponse.json({ error: 'Въведете валиден 6-цифрен код.' }, { status: 400 });
   }
 
   const salon = await resolveSalonBySlugOrHost({

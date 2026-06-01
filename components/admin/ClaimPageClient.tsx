@@ -16,7 +16,6 @@ export default function ClaimPageClient({
 }) {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
-  const [debugCode, setDebugCode] = useState('');
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,14 +35,7 @@ export default function ClaimPageClient({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Не успяхме да изпратим код.');
       setStep('code');
-      if (typeof data.debugCode === 'string' && data.debugCode.length === 4) {
-        setDebugCode(data.debugCode);
-        setCode(data.debugCode);
-        setNotice(`Тестов код за вход: ${data.debugCode}`);
-      } else {
-        setDebugCode('');
-        setNotice('Изпратихме 4-цифрен код на този имейл.');
-      }
+      setNotice('Изпратихме 6-цифрен код на този имейл.');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Грешка');
     } finally {
@@ -182,21 +174,16 @@ export default function ClaimPageClient({
           <form onSubmit={confirmCode} style={{ marginTop: 22, display: 'grid', gap: 14 }}>
             <div>
               <label style={{ display: 'block', marginBottom: 7, fontSize: 13, fontWeight: 700, color: '#000' }}>
-                4-цифрен код
+                6-цифрен код
               </label>
-              {debugCode ? (
-                <p style={{ margin: '0 0 8px', fontSize: 14, lineHeight: 1.6, color: '#000' }}>
-                  Тестов код: <strong style={{ letterSpacing: '0.16em' }}>{debugCode}</strong>
-                </p>
-              ) : null}
               <input
                 type="text"
                 inputMode="numeric"
-                pattern="[0-9]{4}"
-                maxLength={4}
+                pattern="[0-9]{6}"
+                maxLength={6}
                 value={code}
-                onChange={event => setCode(event.target.value.replace(/\D+/g, '').slice(0, 4))}
-                placeholder="0000"
+                onChange={event => setCode(event.target.value.replace(/\D+/g, '').slice(0, 6))}
+                placeholder="000000"
                 required
                 style={{
                   width: '100%',
@@ -236,7 +223,6 @@ export default function ClaimPageClient({
               type="button"
               onClick={() => {
                 setCode('');
-                setDebugCode('');
                 setError('');
                 setNotice('');
                 setStep('email');

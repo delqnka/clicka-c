@@ -29,6 +29,7 @@ import {
 } from '@/lib/sms-reminders';
 import { sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
@@ -69,6 +70,13 @@ export async function GET(request: NextRequest) {
   const { searchParams: requestSearchParams } = new URL(request.url);
 
   if (requestSearchParams.get('public') === '1' && requestSearchParams.get('date')) {
+    // Rate limit public slot checks — 120 requests per minute per IP to stop enumeration
+    const ip = getClientIp(request as unknown as Request);
+    const rl = await checkRateLimit('bookings-public', ip, 120, 60 * 1000);
+    if (rl.limited) {
+      return NextResponse.json({ error: 'Твърде много заявки.' }, { status: 429 });
+    }
+
     const resolved = await resolveSalonFromRequest(request);
     if ('error' in resolved) return resolved.error;
     const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');

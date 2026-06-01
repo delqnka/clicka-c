@@ -10,10 +10,28 @@ import {
   sha256,
 } from '@/lib/admin-auth';
 import { getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { checkCsrfOrigin } from '@/lib/csrf';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// 5 password-reset emails per hour per IP
+const RESET_MAX = 5;
+const RESET_WINDOW_MS = 60 * 60 * 1000;
+
 export async function POST(request: NextRequest) {
+  const csrfErr = checkCsrfOrigin(request);
+  if (csrfErr) return NextResponse.json({ error: csrfErr }, { status: 403 });
+
+  const ip = getClientIp(request as unknown as Request);
+  const rl = await checkRateLimit('admin-request-login', ip, RESET_MAX, RESET_WINDOW_MS);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: 'Твърде много заявки. Опитайте отново след един час.' },
+      { status: 429 },
+    );
+  }
+
   await ensureAdminAuthSchema();
 
   let body: { email?: string; slug?: string };
@@ -26,10 +44,10 @@ export async function POST(request: NextRequest) {
   const email = normalizeEmail(body.email ?? '');
   if (!email) return NextResponse.json({ error: 'Липсва имейл' }, { status: 400 });
 
-  const { searchParams } = new URL(request.url);
-  const slugFromHeader = request.headers.get('x-salon-slug');
+  // Resolve only from Host header — never trust client-supplied x-salon-slug.
+  // body.slug is still accepted because the token validates ownership anyway.
   const salon = await resolveSalonBySlugOrHost({
-    slug: body.slug || slugFromHeader || searchParams.get('slug'),
+    slug: body.slug || undefined,
     host: request.headers.get('host'),
     includeInactive: true,
   });

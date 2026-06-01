@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
@@ -39,6 +40,11 @@ async function loadBookingByToken(
   token: string,
 ): Promise<{ booking: BookingRow; salonName: string; salonSlug: string; telegramChatId: string } | null> {
   await ensureBookingsSchema();
+
+  // New tokens are stored as SHA-256 hashes. Old tokens (pre-migration) are
+  // stored as plaintext 32-char hex. We try the hash first, then fall back.
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
   const rows = await sql`
     SELECT
       b.id, b.salon_id, b.client_name, b.client_phone, b.client_email,
@@ -48,7 +54,7 @@ async function loadBookingByToken(
     FROM bookings b
     JOIN salons s ON CAST(s.id AS text) = b.salon_id
     WHERE b.id = ${bookingId}
-      AND b.manage_token = ${token}
+      AND (b.manage_token = ${tokenHash} OR b.manage_token = ${token})
     LIMIT 1
   `;
   if (rows.length === 0) return null;

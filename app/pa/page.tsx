@@ -109,7 +109,7 @@ async function loadRecentBookings() {
 export default async function PlatformAdminPage() {
   void cookies(); // force dynamic
 
-  if (!isPlatformAdminSession()) {
+  if (!(await isPlatformAdminSession())) {
     redirect('/pa/sign-in');
   }
 

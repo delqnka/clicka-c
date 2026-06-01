@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { uploadToR2 } from '@/lib/r2';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const MAX_DIMENSION = 2048;
 const PROFILE_MAX_DIMENSION = 1200;
 const WEBP_QUALITY = 82;
+
+// draft-<uuid> — used during onboarding before the salon is activated
+const DRAFT_SLUG_RE = /^draft-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -21,7 +25,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!salonSlug.startsWith('draft-')) {
+  if (DRAFT_SLUG_RE.test(salonSlug)) {
+    // Draft salons have no session yet (onboarding flow).
+    // Allow upload but enforce strict IP rate limit to prevent storage abuse.
+    const ip = getClientIp(request as unknown as Request);
+    const rl = await checkRateLimit('draft-upload', ip, 20, 60 * 60 * 1000);
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: 'Твърде много качвания. Опитайте отново след един час.' },
+        { status: 429 },
+      );
+    }
+  } else {
     const auth = await requireAdminRequestAccess(request, salonSlug);
     if (!auth.ok) return auth.response;
   }

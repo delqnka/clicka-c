@@ -9,10 +9,24 @@ import {
   normalizeEmail,
   resolveSalonBySlugOrHost,
 } from '@/lib/admin-auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// 5 OTP sends per hour per IP
+const OTP_MAX = 5;
+const OTP_WINDOW_MS = 60 * 60 * 1000;
+
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request as unknown as Request);
+  const rl = await checkRateLimit('claim-send-otp', ip, OTP_MAX, OTP_WINDOW_MS);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: 'Твърде много заявки. Опитайте отново след един час.' },
+      { status: 429 },
+    );
+  }
+
   await ensureAdminAuthSchema();
 
   let body: { slug?: string; email?: string };
@@ -64,9 +78,12 @@ export async function POST(request: NextRequest) {
   const code = generateOtpCode();
   const codeHash = hashOtpCode(emailNorm, code);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  // Debug bypass — only permitted outside production to prevent auth bypass
   const skipCheckoutMode =
-    process.env.CLICKA_SKIP_CHECKOUT === '1' ||
-    process.env.CLICKA_SKIP_CHECKOUT === 'true';
+    process.env.NODE_ENV !== 'production' &&
+    (process.env.CLICKA_SKIP_CHECKOUT === '1' ||
+      process.env.CLICKA_SKIP_CHECKOUT === 'true');
 
   await sql`
     INSERT INTO salon_claim_otp (salon_id, email_norm, code_hash, expires_at, attempts, created_at)
@@ -80,7 +97,9 @@ export async function POST(request: NextRequest) {
   `;
 
   if (skipCheckoutMode) {
-    return NextResponse.json({ success: true, debugCode: code });
+    // Never expose code to client — log server-side only in dev
+    console.log(`[dev] OTP for ${emailNorm}: ${code}`);
+    return NextResponse.json({ success: true });
   }
 
   const sendResult = await resend.emails.send({

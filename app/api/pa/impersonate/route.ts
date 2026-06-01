@@ -4,7 +4,7 @@ import { sql } from '@/lib/db';
 import { generateAdminMagicLink } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
-  if (!isPlatformAdminRequest(request)) {
+  if (!(await isPlatformAdminRequest(request))) {
     return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
   }
 

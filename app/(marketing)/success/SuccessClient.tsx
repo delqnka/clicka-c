@@ -39,10 +39,6 @@ export default function SuccessClient({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Не успяхме да изпратим код.');
       setOtpSent(true);
-      if (typeof data.debugCode === 'string' && data.debugCode.length === 4) {
-        setCode(data.debugCode);
-        setNotice(`Тестов код: ${data.debugCode}`);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Грешка');
     } finally {
@@ -139,7 +135,7 @@ export default function SuccessClient({
             </h1>
             <p className="fade-2" style={{ fontSize: 18, color: '#667085', maxWidth: 480, lineHeight: 1.65, margin: '0 0 40px' }}>
               {otpSent
-                ? <>Изпратихме 4-цифрен код на <strong>{maskedEmail}</strong>. Въведи го, за да влезеш в панела.</>
+                ? <>Изпратихме 6-цифрен код на <strong>{maskedEmail}</strong>. Въведи го, за да влезеш в панела.</>
                 : loading
                   ? 'Изпращаме код за достъп...'
                   : 'Подготвяме достъпа до панела...'}
@@ -162,16 +158,16 @@ export default function SuccessClient({
               <form onSubmit={confirmOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: 7, fontSize: 13, fontWeight: 700, color: '#0D0D12', textAlign: 'left' }}>
-                    4-цифрен код
+                    6-цифрен код
                   </label>
                   <input
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]{4}"
-                    maxLength={4}
+                    pattern="[0-9]{6}"
+                    maxLength={6}
                     value={code}
-                    onChange={e => setCode(e.target.value.replace(/\D+/g, '').slice(0, 4))}
-                    placeholder="0000"
+                    onChange={e => setCode(e.target.value.replace(/\D+/g, '').slice(0, 6))}
+                    placeholder="000000"
                     required
                     autoFocus
                     style={{

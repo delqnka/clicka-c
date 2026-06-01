@@ -27,7 +27,10 @@ export async function insertBookingIfNoOverlap(
   const requestedEndMinutes = requestedStartMinutes + requestedDurationMinutes;
   const legacyDate = formatLegacyDateDMY(row.date) ?? row.date;
   const consentAt = row.smsReminderConsent ? new Date().toISOString() : null;
-  const manageToken = crypto.randomBytes(16).toString('hex');
+  // Generate a random token; store only its SHA-256 hash in the DB so that
+  // a database dump cannot be used to forge manage links.
+  const manageToken = crypto.randomBytes(32).toString('hex');
+  const manageTokenHash = crypto.createHash('sha256').update(manageToken).digest('hex');
 
   const inserted = await sql`
     INSERT INTO bookings (
@@ -53,7 +56,7 @@ export async function insertBookingIfNoOverlap(
       ${row.smsReminderConsent},
       ${consentAt},
       ${row.offerId},
-      ${manageToken}
+      ${manageTokenHash}
     WHERE NOT EXISTS (
       SELECT 1
       FROM bookings b
@@ -79,8 +82,9 @@ export async function insertBookingIfNoOverlap(
   `;
 
   if (inserted.length === 0) return null;
-  const result = inserted[0] as { id: string; manage_token: string };
-  return { id: String(result.id ?? row.id), manageToken: String(result.manage_token ?? manageToken) };
+  const result = inserted[0] as { id: string };
+  // Return the raw token (not the hash) — only this response moment exposes it.
+  return { id: String(result.id ?? row.id), manageToken };
 }
 
 export async function claimOfferSlotAfterBooking(
