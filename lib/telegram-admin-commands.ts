@@ -517,7 +517,7 @@ async function handleBookingsForDay(
   const rows = await sql`
     SELECT client_name, time, service_name, status
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date = ${date}
       AND status NOT IN ('cancelled')
     ORDER BY time ASC
@@ -545,7 +545,7 @@ async function handleNextClient(chatId: number, salon: SalonRef): Promise<void> 
   const rows = await sql`
     SELECT client_name, client_phone, time, service_name, service_duration, date
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status NOT IN ('cancelled', 'completed')
       AND (date > ${todayStr} OR (date = ${todayStr} AND time >= ${currentTime}))
     ORDER BY date ASC, time ASC
@@ -577,7 +577,7 @@ async function handleConfirmBooking(chatId: number, salon: SalonRef, clientName:
   const rows = await sql`
     SELECT CAST(id AS text) AS id, client_name, date, time, service_name
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status = 'pending'
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
       AND date >= ${todayISO()}
@@ -602,7 +602,7 @@ async function handleCancelBooking(chatId: number, salon: SalonRef, date: string
   const rows = await sql`
     SELECT CAST(id AS text) AS id, client_name, service_name
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date = ${date}
       AND time = ${time}
       AND status NOT IN ('cancelled', 'completed')
@@ -626,7 +626,7 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
   const rows = await sql`
     SELECT client_name, date, time, service_name
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status = 'pending'
       AND date >= ${todayISO()}
     ORDER BY date ASC, time ASC
@@ -657,7 +657,7 @@ async function handleRemindTomorrow(chatId: number, salon: SalonRef): Promise<vo
   const rows = await sql`
     SELECT client_name, client_phone, time, service_name, sms_reminder_consent
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date = ${tomorrow}
       AND status NOT IN ('cancelled', 'completed')
     ORDER BY time ASC
@@ -718,7 +718,7 @@ async function handleRevenue(chatId: number, salon: SalonRef, period: 'week' | '
       COALESCE(SUM(service_price), 0)::numeric AS revenue,
       COALESCE(SUM(service_price) FILTER (WHERE status = 'completed'), 0)::numeric AS completed_revenue
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date >= ${periodStart}
       AND date <= ${periodEnd}
       AND status NOT IN ('cancelled')
@@ -752,7 +752,7 @@ async function handleClientRevenue(chatId: number, salon: SalonRef, clientName: 
       MAX(date) AS last_visit,
       mode() WITHIN GROUP (ORDER BY service_name) AS top_service
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
       AND status NOT IN ('cancelled')
   ` as { total: number; revenue: number; first_visit: string; last_visit: string; top_service: string }[];
@@ -789,7 +789,7 @@ async function handleClientCountMonth(chatId: number, salon: SalonRef): Promise<
       COUNT(*)::int AS total,
       COUNT(DISTINCT lower(client_name))::int AS unique_clients
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date >= ${monthStart}
       AND status NOT IN ('cancelled')
   ` as { total: number; unique_clients: number }[];
@@ -806,7 +806,7 @@ async function handleTopServices(chatId: number, salon: SalonRef): Promise<void>
   const rows = await sql`
     SELECT service_name, COUNT(*)::int AS cnt, COALESCE(SUM(service_price), 0)::numeric AS revenue
     FROM bookings
-    WHERE salon_id = CAST(${salon.salonId} AS uuid)
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status NOT IN ('cancelled')
       AND date >= ${offsetDayISO(-90)}
     GROUP BY service_name
