@@ -1171,7 +1171,7 @@ export default function AdminDashboardClient({
     const galleryImages = payload.galleryImages.filter(u => u && !u.startsWith('blob:'));
     const portfolioImages = payload.portfolioImages.filter(u => u && !u.startsWith('blob:'));
     let coverImageUrl = payload.coverImageUrl;
-    if (!coverImageUrl || coverImageUrl.startsWith('blob:')) {
+    if (coverImageUrl.startsWith('blob:')) {
       coverImageUrl = galleryImages[0] ?? '';
     }
     try {

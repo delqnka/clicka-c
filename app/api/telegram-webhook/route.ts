@@ -300,6 +300,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (salon) {
       const handled = await handleAdminCommand(chatId, text, salon);
       if (handled) return NextResponse.json({ ok: true });
+
+      // Admin command not recognised — try booking-block parser ("зает 14:00-16:00")
+      const blockParsed = parseBlockFromMessage(text);
+      if (blockParsed) {
+        const block: BookingBlock = parsedBlockToBookingBlock(blockParsed);
+        await addBookingBlock(salon.salonId, salon.slug, block);
+        revalidateTag(`salon-public-${salon.slug}`);
+        await sendTelegramMessage(chatId, formatBlockConfirmation(blockParsed));
+      } else {
+        // Nothing matched — send a helpful hint instead of the confusing time-parser error
+        await sendTelegramMessage(
+          chatId,
+          '❓ Не разбрах тази команда.\n\n' +
+          '<b>Справки:</b>\n• оборот тази седмица / месец\n• резервации утре / днес\n• следващ клиент\n\n' +
+          '<b>Блокиране:</b>\n• зает 14:00-16:00 утре\n• почивам утре\n\n' +
+          '<b>Управление:</b>\n• добави услуга: Масаж — 60 мин — 80 лв\n• промени цената на Масаж на 90 лв\n\n' +
+          'Натисни /help за пълен списък.',
+        );
+      }
+      return NextResponse.json({ ok: true });
     }
     await handleBlockMessage(chatId, text);
     return NextResponse.json({ ok: true });

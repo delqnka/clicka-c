@@ -8,6 +8,7 @@ import { sendTelegramMessage } from '@/lib/telegram';
 import { normalizeServices, type ServiceItem } from '@/lib/salon-services';
 import { normalizeImageList } from '@/lib/admin-site';
 import { uploadToR2 } from '@/lib/r2';
+import sharp from 'sharp';
 import { sendSmsReminder } from '@/lib/smsapi';
 import {
   getOpenRouterApiKey,
@@ -455,7 +456,7 @@ type AIIntent =
   | { action: 'confirm_booking'; client_name: string }
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
-  | { action: 'unknown' };
+  | { action: 'chat'; reply: string };
 
 async function handleWithAI(chatId: number, text: string, salon: SalonRef): Promise<boolean> {
   const apiKey = getOpenRouterApiKey();
@@ -465,64 +466,60 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
   const todayStr = todayISO();
   const tomorrowStr = offsetDayISO(1);
 
-  const systemPrompt = `Ти си асистент на собственик на салон за красота. Получаваш съобщение на български и трябва да определиш намерението.
+  // Load salon context for conversational answers
+  const salonContext = await loadSalonContext(salon.salonId);
+
+  const systemPrompt = `Ти си личен AI асистент на собственик на салон за красота. Говориш на естествен, топъл български — като добър приятел с опит в бранша.
 
 Днес е ${today.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
-Днешна дата (ISO): ${todayStr}
-Утрешна дата (ISO): ${tomorrowStr}
+Днешна дата (ISO): ${todayStr}. Утрешна дата (ISO): ${tomorrowStr}.
 
-Върни САМО валиден JSON обект с поле "action" и допълнителни полета според действието:
+${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
+Върни САМО валиден JSON обект. Ако съобщението изисква конкретно действие — върни action. За всичко останало (въпроси, разговор, съвети, съдържание, формули, мотивация) — върни { "action": "chat", "reply": "отговорът ти тук" }.
 
-Справки:
-- { "action": "bookings_day", "date": "YYYY-MM-DD" } — резервации за конкретен ден
-- { "action": "next_client" } — следващ клиент
-- { "action": "revenue_week" } — оборот тази седмица
-- { "action": "revenue_month" } — оборот този месец
-- { "action": "revenue_range", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD" } — оборот за период
-- { "action": "revenue_compare" } — сравнение с миналия месец
-- { "action": "avg_booking_value" } — средна стойност на резервация
-- { "action": "revenue_client", "client_name": "Мария Иванова" } — оборот от конкретен клиент
-- { "action": "client_count" } — брой клиенти
-- { "action": "inactive_clients", "months": 3 } — клиенти без посещение от X месеца
-- { "action": "top_services" } — най-популярни услуги
-- { "action": "list_services" } — списък услуги
-- { "action": "pending_bookings" } — незатвърдени резервации
-- { "action": "sms_balance" } — SMS кредити
+ВАЖНО: Никога не казвай "не мога" или "нямам такава команда". Винаги отговаряй полезно.
 
-Управление на резервации:
-- { "action": "complete_booking", "client_name": "..." } — отбележи като завършена
+Действия:
+- { "action": "bookings_day", "date": "YYYY-MM-DD" }
+- { "action": "next_client" }
+- { "action": "revenue_week" }
+- { "action": "revenue_month" }
+- { "action": "revenue_range", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD" }
+- { "action": "revenue_compare" }
+- { "action": "avg_booking_value" }
+- { "action": "revenue_client", "client_name": "..." }
+- { "action": "client_count" }
+- { "action": "inactive_clients", "months": 3 }
+- { "action": "top_services" }
+- { "action": "list_services" }
+- { "action": "pending_bookings" }
+- { "action": "sms_balance" }
+- { "action": "complete_booking", "client_name": "..." }
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
-
-Управление на услуги:
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_lv": 60 }
 - { "action": "update_price", "service_name": "...", "price_lv": 35 }
 - { "action": "delete_service", "service_name": "..." }
-
-Работно време:
-- { "action": "day_off", "date": "YYYY-MM-DD" } — блокирай ден
-- { "action": "unblock_day", "date": "YYYY-MM-DD" } — деблокирай ден
+- { "action": "day_off", "date": "YYYY-MM-DD" }
+- { "action": "unblock_day", "date": "YYYY-MM-DD" }
 - { "action": "day_hours", "day_key": "monday", "open": "09:00", "close": "18:00" }
 - { "action": "day_closed", "day_key": "sunday" }
 - { "action": "work_until", "close_time": "19:00" }
+- { "action": "update_phone", "phone": "..." }
+- { "action": "update_instagram", "handle": "..." }
+- { "action": "update_facebook", "handle": "..." }
+- { "action": "update_tiktok", "handle": "..." }
+- { "action": "update_google_maps", "url": "..." }
+- { "action": "update_email", "email": "..." }
+- { "action": "update_bio", "bio": "..." }
+- { "action": "update_owner_bio", "bio": "..." }
+- { "action": "toggle_sms", "enabled": true }
+- { "action": "chat", "reply": "естествен отговор на български" } — за разговор, въпроси, съвети, писане на текстове, формули, всичко друго
 
-Профил:
-- { "action": "update_phone", "phone": "0888123456" }
-- { "action": "update_instagram", "handle": "mysalon" }
-- { "action": "update_facebook", "handle": "mysalon" }
-- { "action": "update_tiktok", "handle": "mysalon" }
-- { "action": "update_google_maps", "url": "https://maps.google.com/..." }
-- { "action": "update_email", "email": "salon@example.com" }
-- { "action": "update_bio", "bio": "..." } — описание на салона
-- { "action": "update_owner_bio", "bio": "..." } — лично bio на собственика
-- { "action": "toggle_sms", "enabled": true } — вкл/изкл SMS напомняния
+Само JSON, без обяснения извън полето reply.`;
 
-Ако не можеш да определиш намерението: { "action": "unknown" }
-
-Само JSON, без обяснения.`;
-
-  let intent: AIIntent = { action: 'unknown' };
+  let intent: AIIntent = { action: 'chat', reply: '' };
 
   try {
     const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
@@ -534,18 +531,22 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text },
         ],
-        temperature: 0.1,
+        temperature: 0.4,
       }),
     });
 
-    if (!response.ok) return false;
+    if (!response.ok) {
+      await sendTelegramMessage(chatId, '⚠️ AI асистентът не отговори. Пробвай пак след малко.');
+      return true;
+    }
 
     const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
     const raw = (data.choices?.[0]?.message?.content ?? '').trim();
     const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
     intent = JSON.parse(jsonStr) as AIIntent;
   } catch {
-    return false;
+    await sendTelegramMessage(chatId, '⚠️ Грешка при свързване с AI. Пробвай отново.');
+    return true;
   }
 
   switch (intent.action) {
@@ -715,8 +716,72 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
     case 'remind_tomorrow':
       await handleRemindTomorrow(chatId, salon);
       return true;
+    case 'chat':
+      if (intent.reply) {
+        await sendTelegramMessage(chatId, intent.reply);
+        return true;
+      }
+      return false;
     default:
       return false;
+  }
+}
+
+// ─── Salon context loader ─────────────────────────────────────────────────────
+
+async function loadSalonContext(salonId: string): Promise<string> {
+  try {
+    const [salonRows, bookingRows, revenueRows] = await Promise.all([
+      sql`
+        SELECT name, category, city, about, services, working_hours
+        FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1
+      `,
+      sql`
+        SELECT client_name, service_name, start_time, end_time, date, status, service_price
+        FROM bookings
+        WHERE CAST(salon_id AS text) = ${salonId}
+          AND date >= ${todayISO()}
+          AND status NOT IN ('cancelled')
+        ORDER BY date, start_time
+        LIMIT 10
+      `,
+      sql`
+        SELECT
+          COALESCE(SUM(service_price), 0)::numeric AS month_revenue,
+          COUNT(*)::int AS month_bookings
+        FROM bookings
+        WHERE CAST(salon_id AS text) = ${salonId}
+          AND date >= ${`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`}
+          AND status NOT IN ('cancelled')
+      `,
+    ]);
+
+    const salon = salonRows[0] as Record<string, unknown> | undefined;
+    if (!salon) return '';
+
+    const services = normalizeServices(salon.services ?? []);
+    const servicesList = services.length > 0
+      ? services.map((s) => `${s.name} (${s.duration_min} мин, ${(s.price * 1.95583).toFixed(0)} лв)`).join(', ')
+      : 'няма добавени услуги';
+
+    const upcomingBookings = (bookingRows as Record<string, unknown>[]).map((b) =>
+      `${b.date} ${b.start_time}–${b.end_time}: ${b.client_name} — ${b.service_name} (${b.status})`
+    ).join('\n') || 'няма предстоящи резервации';
+
+    const rev = revenueRows[0] as { month_revenue: number; month_bookings: number } | undefined;
+    const monthRevenueLv = rev ? (Number(rev.month_revenue) * 1.95583).toFixed(0) : '0';
+    const monthBookings = rev ? Number(rev.month_bookings) : 0;
+
+    return `
+Салон: ${salon.name} (${salon.category ?? 'красота'}, ${salon.city ?? ''})
+Описание: ${String(salon.about ?? '').slice(0, 300) || 'няма'}
+Услуги: ${servicesList}
+Оборот този месец: ${monthRevenueLv} лв (${monthBookings} резервации)
+Предстоящи резервации (следващите 10):
+${upcomingBookings}
+`.trim();
+  } catch {
+    return '';
   }
 }
 
@@ -1351,10 +1416,37 @@ export async function handleGalleryPhoto(
     return;
   }
 
-  const key = `salons/${salon.slug}/${target}/${Date.now()}.jpg`;
+  // Convert to WebP (matches admin upload pipeline) + generate LCP sidecar.
+  const stamp = Date.now();
+  const base = `salons/${salon.slug}/${target}/${stamp}`;
+  const key = `${base}.webp`;
+  const lcpKey = `${base}-lcp-640.webp`;
+
+  let webpBuffer: Buffer;
+  let lcpBuffer: Buffer;
+  try {
+    [webpBuffer, lcpBuffer] = await Promise.all([
+      sharp(imageBuffer, { failOn: 'none' })
+        .rotate()
+        .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer(),
+      sharp(imageBuffer, { failOn: 'none' })
+        .rotate()
+        .resize({ width: 640, withoutEnlargement: true, fastShrinkOnLoad: true })
+        .webp({ quality: 56, effort: 2 })
+        .toBuffer(),
+    ]);
+  } catch {
+    await sendTelegramMessage(chatId, '❌ Грешка при обработка на снимката. Пробвай отново.');
+    return;
+  }
+
   let publicUrl: string;
   try {
-    publicUrl = await uploadToR2(imageBuffer, key, 'image/jpeg');
+    publicUrl = await uploadToR2(webpBuffer, key, 'image/webp');
+    // Upload LCP sidecar in background — non-critical
+    uploadToR2(lcpBuffer, lcpKey, 'image/webp').catch(() => undefined);
   } catch {
     await sendTelegramMessage(chatId, '❌ Грешка при качване. Провери настройките на R2 storage.');
     return;
@@ -1371,16 +1463,10 @@ export async function handleGalleryPhoto(
   const existingGallery = normalizeImageList(rows[0]?.gallery_images);
   const existingPortfolio = normalizeImageList(rows[0]?.portfolio_images);
 
-  let updatedCount: number;
-  if (target === 'portfolio') {
-    const updated = [...existingPortfolio, publicUrl];
-    updatedCount = updated.length;
-    await sql`UPDATE salons SET portfolio_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
-  } else {
-    const updated = [...existingGallery, publicUrl];
-    updatedCount = updated.length;
-    await sql`UPDATE salons SET gallery_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
-  }
+  // Keep gallery_images and portfolio_images in sync — admin UI merges them, so both must have the same URLs.
+  const merged = [...new Set([...existingGallery, ...existingPortfolio, publicUrl])];
+  const updatedCount = merged.length;
+  await sql`UPDATE salons SET gallery_images = ${JSON.stringify(merged)}::jsonb, portfolio_images = ${JSON.stringify(merged)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
 
   revalidateTag(`salon-public-${salon.slug}`);
   await sendTelegramMessage(chatId, `✅ Снимката е добавена в ${target === 'portfolio' ? 'портфолиото' : 'галерията'}! (${updatedCount} общо)`);

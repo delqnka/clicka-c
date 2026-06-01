@@ -56,10 +56,11 @@ export async function PATCH(request: NextRequest) {
     body.portfolioImages !== undefined
       ? mergePortfolioImageSave(portfolioImagesRaw, current.portfolioImages, galleryImages)
       : current.portfolioImages;
-  const normalizedCoverImageUrl =
-    coverImageUrl || galleryImages[0] || logoImageUrl || current.coverImageUrl || current.logoImageUrl;
+  // If client sends '' it means "clear the cover" — do NOT silently replace with gallery[0].
+  // The public site already falls back to gallery[0] if cover is empty.
+  const normalizedCoverImageUrl = coverImageUrl || current.coverImageUrl || '';
   const normalizedLogoImageUrl =
-    logoImageUrl || normalizedCoverImageUrl || galleryImages[0] || current.logoImageUrl || current.coverImageUrl;
+    logoImageUrl || normalizedCoverImageUrl || galleryImages[0];
 
   await sql`
     UPDATE salons

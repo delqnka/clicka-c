@@ -224,7 +224,28 @@ export function ImagesTabPanel({
           mobile={isMobile}
           imageUrl={site.coverImageUrl}
           onUpload={(files) => void handleCoverUpload(files?.[0] ?? null)}
-        />
+        >
+          {site.coverImageUrl ? (
+            <button
+              type="button"
+              style={{
+                marginTop: 8,
+                fontSize: 12,
+                color: '#EF4444',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 0',
+              }}
+              onClick={() => {
+                setSite((p) => ({ ...p, coverImageUrl: '' }));
+                setNotice('Cover премахнат. Натисни „Запази".');
+              }}
+            >
+              Премахни cover
+            </button>
+          ) : null}
+        </AdminImageAssetField>
       ) : null}
 
       {section === 'portfolio' ? (
