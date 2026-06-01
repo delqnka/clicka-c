@@ -562,7 +562,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       method: 'POST',
       headers: openRouterHeaders(),
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-preview',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text },
@@ -850,7 +850,7 @@ export async function handlePriceListPhoto(
     method: 'POST',
     headers: openRouterHeaders(),
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash-preview',
+      model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         {
