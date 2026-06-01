@@ -48,7 +48,7 @@ async function appendHistory(chatId: number, role: 'user' | 'assistant', content
 // ─── Regex patterns ─────────────────────────────────────────────────────────
 
 const ADD_SERVICE_RE =
-  /^(?:добав(?:[ии]|яне\s+на|ете(?:\s+ми)?)|add)\s+(?:ми\s+)?(?:нова\s+)?услуг[аa][:：]?\s+(.+)/i;
+  /^(?:добав(?:[ии]|яне\s+на|ете(?:\s+ми)?)|add)\s+(?:ми\s+)?(?:нова\s+)?(?:услуг[аa][:：]?\s+)?(.+)/i;
 
 const UPDATE_PRICE_RE =
   /^(?:промен[ии]|смен[ии])\s+цен(?:ата|а)\s+на\s+(.+?)\s+на\s+(\d+(?:[.,]\d+)?)\s*(лв|bgn|€|eur|лев)?$/i;
@@ -222,7 +222,9 @@ export async function handleAdminCommand(
 
   // ── Add service ──────────────────────────────────────────────────────────
   const addMatch = text.match(ADD_SERVICE_RE);
-  if (addMatch) {
+  const hasServiceKeyword = /услуг[аa]/i.test(text);
+  const hasDurationOrPrice = /\d+\s*(?:ч|мин|часа|евро|лв|€|eur|bgn|лев)/i.test(text);
+  if (addMatch && (hasServiceKeyword || hasDurationOrPrice)) {
     const rawFull = addMatch[1]!.trim();
 
     // Parse duration — all formats:
