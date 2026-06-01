@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, X } from 'lucide-react';
+import { Clock, Plus, Tag, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { AdminSitePayload, ServiceItem } from '@/lib/admin-site';
 
@@ -65,6 +65,24 @@ function EmptyState({
   );
 }
 
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        display: 'block',
+        fontSize: 10,
+        fontWeight: 700,
+        color: '#000',
+        textTransform: 'uppercase',
+        letterSpacing: '0.06em',
+        marginBottom: 3,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 const ServiceCardRow = memo(function ServiceCardRow({
   index,
   svc,
@@ -125,217 +143,360 @@ const ServiceCardRow = memo(function ServiceCardRow({
 
   const variants = mapVariants(draft);
   const categoryLabel = String(draft.category ?? '').trim() || 'Без категория';
-  const inp = compactInp(svcInp);
+
+  const fieldInp: CSSProperties = {
+    ...svcInp,
+    padding: '7px 10px',
+    fontSize: 13,
+    borderRadius: 8,
+    width: '100%',
+    boxSizing: 'border-box',
+  };
+
+  const numInp: CSSProperties = {
+    ...fieldInp,
+    fontWeight: 700,
+    fontSize: 15,
+    color: '#000',
+    textAlign: 'right' as const,
+  };
 
   return (
     <div
       style={{
-        border: `1px solid ${T.border}`,
-        borderRadius: 8,
-        padding: '7px 8px',
+        border: '1px solid #E8E8E8',
+        borderRadius: 14,
         background: '#fff',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+        overflow: 'hidden',
       }}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flushCommit();
       }}
     >
-      {!hideCategoryBadge ? (
-        <span
-          style={{
-            display: 'block',
-            marginBottom: 5,
-            fontSize: 9,
-            fontWeight: 600,
-            color: T.subtle,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}
-        >
-          {categoryLabel}
-        </span>
-      ) : null}
-
+      {/* Header strip */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr 58px 52px 22px' : '1fr 68px 58px 22px',
-          gap: 6,
+          display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 12px 8px',
+          borderBottom: '1px solid #F2F2F2',
+          gap: 8,
         }}
       >
-        <input
-          value={draft.name}
-          onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
-          style={inp}
-          placeholder="Услуга"
-        />
-        <input
-          type="number"
-          value={draft.price}
-          onChange={(e) => updateDraft((s) => ({ ...s, price: Number(e.target.value) || 0 }))}
-          style={inp}
-          placeholder="€"
-          aria-label="Цена в евро"
-        />
-        <input
-          type="number"
-          value={draft.duration_min}
-          onChange={(e) => updateDraft((s) => ({ ...s, duration_min: Number(e.target.value) || 30 }))}
-          style={inp}
-          placeholder="мин"
-          aria-label="Продължителност в минути"
-        />
+        {!hideCategoryBadge ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#000',
+              textTransform: 'uppercase',
+              letterSpacing: '0.07em',
+              background: '#F4F4F4',
+              borderRadius: 6,
+              padding: '3px 7px',
+            }}
+          >
+            <Tag size={9} />
+            {categoryLabel}
+          </span>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           aria-label="Премахни услуга"
           onClick={() => onRemove(index)}
           style={{
-            width: 22,
-            height: 22,
-            borderRadius: 6,
-            border: 'none',
-            background: 'transparent',
+            width: 26,
+            height: 26,
+            borderRadius: 8,
+            border: '1px solid #EBEBEB',
+            background: '#FAFAFA',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: T.subtle,
+            color: '#999',
             cursor: 'pointer',
+            flexShrink: 0,
           }}
         >
           <X size={13} />
         </button>
       </div>
 
-      <input
-        value={draft.description ?? ''}
-        onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
-        style={{ ...inp, marginTop: 5 }}
-        placeholder="Описание на услугата"
-        aria-label="Описание на услугата"
-      />
+      {/* Body */}
+      <div style={{ padding: '12px 12px 10px' }}>
+        {/* Service name */}
+        <div style={{ marginBottom: 10 }}>
+          <FieldLabel>Наименование</FieldLabel>
+          <input
+            value={draft.name}
+            onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
+            style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
+            placeholder="Напр. Подстригване, Боядисване…"
+          />
+        </div>
 
-      <input
-        value={draft.category ?? ''}
-        list="service-category-options"
-        onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
-        style={{ ...inp, marginTop: 5, fontSize: 11, color: T.muted }}
-        placeholder="Категория"
-      />
-
-      <details style={{ marginTop: 6 }}>
-        <summary
+        {/* Price + Duration row */}
+        <div
           style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: T.muted,
-            cursor: 'pointer',
-            listStyle: 'none',
-            userSelect: 'none',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+            marginBottom: 10,
           }}
         >
-          Варианти{variants.length > 0 ? ` (${variants.length})` : ''}
-        </summary>
-        <div style={{ display: 'grid', gap: 5, marginTop: 6 }}>
-          {variants.map((variant, variantIndex) => (
-            <div
-              key={`variant-${index}-${variantIndex}`}
+          {/* Price */}
+          <div
+            style={{
+              background: '#F9F9F9',
+              border: '1px solid #EBEBEB',
+              borderRadius: 10,
+              padding: '8px 10px',
+            }}
+          >
+            <span
               style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr 58px 52px 22px' : '1fr 68px 58px 22px',
-                gap: 5,
+                display: 'flex',
                 alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#000',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                marginBottom: 4,
               }}
             >
-              <input
-                value={variant.label}
-                onChange={(e) =>
-                  updateDraft((serviceRow) => {
-                    const prevVariants = mapVariants(serviceRow);
-                    prevVariants[variantIndex] = { ...prevVariants[variantIndex], label: e.target.value };
-                    return { ...serviceRow, variants: prevVariants };
-                  })
-                }
-                style={inp}
-                placeholder="Вариант"
-              />
+              💳 Цена
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <input
                 type="number"
-                value={variant.price}
-                onChange={(e) =>
-                  updateDraft((serviceRow) => {
-                    const prevVariants = mapVariants(serviceRow);
-                    prevVariants[variantIndex] = {
-                      ...prevVariants[variantIndex],
-                      price: Math.max(0, Number(e.target.value) || 0),
-                    };
-                    return { ...serviceRow, variants: prevVariants };
-                  })
-                }
-                style={inp}
-                placeholder="€"
+                value={draft.price}
+                onChange={(e) => updateDraft((s) => ({ ...s, price: Number(e.target.value) || 0 }))}
+                style={{
+                  ...numInp,
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  padding: '0',
+                }}
+                aria-label="Цена в лева"
               />
-              <input
-                type="number"
-                value={Number(variant.duration ?? draft.duration_min ?? 30)}
-                onChange={(e) =>
-                  updateDraft((serviceRow) => {
-                    const prevVariants = mapVariants(serviceRow);
-                    prevVariants[variantIndex] = {
-                      ...prevVariants[variantIndex],
-                      duration: Math.max(5, Number(e.target.value) || 30),
-                    };
-                    return { ...serviceRow, variants: prevVariants };
-                  })
-                }
-                style={inp}
-                placeholder="мин"
-              />
-              <button
-                type="button"
-                style={{ ...btn('ghost'), padding: 4, minWidth: 22, width: 22, height: 22 }}
-                onClick={() =>
-                  updateDraft((serviceRow) => {
-                    const nextVariants = mapVariants(serviceRow).filter((_, idx) => idx !== variantIndex);
-                    return { ...serviceRow, variants: nextVariants };
-                  })
-                }
-                aria-label="Премахни вариант"
-              >
-                <X size={12} />
-              </button>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#000', flexShrink: 0 }}>лв.</span>
             </div>
-          ))}
-          <button
-            type="button"
+          </div>
+
+          {/* Duration */}
+          <div
             style={{
-              ...btn('sm-ghost'),
-              marginTop: variants.length ? 2 : 0,
-              padding: '4px 8px',
-              fontSize: 11,
-              alignSelf: 'start',
+              background: '#F9F9F9',
+              border: '1px solid #EBEBEB',
+              borderRadius: 10,
+              padding: '8px 10px',
             }}
-            onClick={() =>
-              updateDraft((serviceRow) => {
-                const prevVariants = mapVariants(serviceRow);
-                return {
-                  ...serviceRow,
-                  variants: [
-                    ...prevVariants,
-                    {
-                      label: '',
-                      price: Math.max(0, Number(serviceRow.price) || 0),
-                      duration: Math.max(5, Number(serviceRow.duration_min) || 30),
-                    },
-                  ],
-                };
-              })
-            }
           >
-            <Plus size={11} />
-            Вариант
-          </button>
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#000',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                marginBottom: 4,
+              }}
+            >
+              <Clock size={10} />
+              Времетраене
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="number"
+                value={draft.duration_min}
+                onChange={(e) => updateDraft((s) => ({ ...s, duration_min: Number(e.target.value) || 30 }))}
+                style={{
+                  ...numInp,
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  padding: '0',
+                }}
+                aria-label="Продължителност в минути"
+              />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#000', flexShrink: 0 }}>мин</span>
+            </div>
+          </div>
         </div>
-      </details>
+
+        {/* Description */}
+        <div style={{ marginBottom: 8 }}>
+          <FieldLabel>Описание</FieldLabel>
+          <input
+            value={draft.description ?? ''}
+            onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
+            style={{ ...fieldInp, color: '#444' }}
+            placeholder="Кратко описание на услугата (по избор)"
+            aria-label="Описание на услугата"
+          />
+        </div>
+
+        {/* Category */}
+        <div style={{ marginBottom: 6 }}>
+          <FieldLabel>Категория</FieldLabel>
+          <input
+            value={draft.category ?? ''}
+            list="service-category-options"
+            onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
+            style={{ ...fieldInp, color: '#444' }}
+            placeholder="Напр. Коса, Маникюр, Грим…"
+            aria-label="Категория на услугата"
+          />
+        </div>
+
+        {/* Variants */}
+        <details style={{ marginTop: 8 }}>
+          <summary
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#000',
+              cursor: 'pointer',
+              listStyle: 'none',
+              userSelect: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 0',
+            }}
+          >
+            Варианти{variants.length > 0 ? ` (${variants.length})` : ''}
+          </summary>
+          <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+            {variants.map((variant, variantIndex) => (
+              <div
+                key={`variant-${index}-${variantIndex}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 70px 60px 28px',
+                  gap: 5,
+                  alignItems: 'center',
+                }}
+              >
+                <input
+                  value={variant.label}
+                  onChange={(e) =>
+                    updateDraft((serviceRow) => {
+                      const prevVariants = mapVariants(serviceRow);
+                      prevVariants[variantIndex] = { ...prevVariants[variantIndex], label: e.target.value };
+                      return { ...serviceRow, variants: prevVariants };
+                    })
+                  }
+                  style={{ ...fieldInp, padding: '5px 8px', fontSize: 12 }}
+                  placeholder="Вариант"
+                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="number"
+                    value={variant.price}
+                    onChange={(e) =>
+                      updateDraft((serviceRow) => {
+                        const prevVariants = mapVariants(serviceRow);
+                        prevVariants[variantIndex] = {
+                          ...prevVariants[variantIndex],
+                          price: Math.max(0, Number(e.target.value) || 0),
+                        };
+                        return { ...serviceRow, variants: prevVariants };
+                      })
+                    }
+                    style={{ ...fieldInp, padding: '5px 24px 5px 6px', fontSize: 12, fontWeight: 700 }}
+                    placeholder="0"
+                    aria-label="Цена"
+                  />
+                  <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#666', pointerEvents: 'none' }}>лв</span>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="number"
+                    value={Number(variant.duration ?? draft.duration_min ?? 30)}
+                    onChange={(e) =>
+                      updateDraft((serviceRow) => {
+                        const prevVariants = mapVariants(serviceRow);
+                        prevVariants[variantIndex] = {
+                          ...prevVariants[variantIndex],
+                          duration: Math.max(5, Number(e.target.value) || 30),
+                        };
+                        return { ...serviceRow, variants: prevVariants };
+                      })
+                    }
+                    style={{ ...fieldInp, padding: '5px 26px 5px 6px', fontSize: 12, fontWeight: 700 }}
+                    placeholder="30"
+                    aria-label="Минути"
+                  />
+                  <span style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: '#666', pointerEvents: 'none' }}>мин</span>
+                </div>
+                <button
+                  type="button"
+                  style={{ ...btn('ghost'), padding: 4, minWidth: 28, width: 28, height: 28 }}
+                  onClick={() =>
+                    updateDraft((serviceRow) => {
+                      const nextVariants = mapVariants(serviceRow).filter((_, idx) => idx !== variantIndex);
+                      return { ...serviceRow, variants: nextVariants };
+                    })
+                  }
+                  aria-label="Премахни вариант"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              style={{
+                ...btn('sm-ghost'),
+                marginTop: variants.length ? 2 : 0,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 600,
+                alignSelf: 'start',
+              }}
+              onClick={() =>
+                updateDraft((serviceRow) => {
+                  const prevVariants = mapVariants(serviceRow);
+                  return {
+                    ...serviceRow,
+                    variants: [
+                      ...prevVariants,
+                      {
+                        label: '',
+                        price: Math.max(0, Number(serviceRow.price) || 0),
+                        duration: Math.max(5, Number(serviceRow.duration_min) || 30),
+                      },
+                    ],
+                  };
+                })
+              }
+            >
+              <Plus size={11} />
+              Вариант
+            </button>
+          </div>
+        </details>
+      </div>
     </div>
   );
 });
@@ -413,16 +574,18 @@ export function ServicesEditorPanel({
                 onClick={() => setSelectedAdminServiceCategory(cat.id)}
                 style={{
                   borderRadius: 999,
-                  border: active ? `1px solid ${T.text}` : `1px solid ${T.border}`,
-                  background: active ? T.text : '#fff',
-                  color: active ? '#fff' : T.text,
-                  padding: '4px 11px',
-                  fontSize: 11,
-                  fontWeight: 500,
-                  lineHeight: 1.3,
+                  border: active ? '1.5px solid #000' : '1px solid #E0E0E0',
+                  background: active ? '#000' : '#fff',
+                  color: active ? '#fff' : '#000',
+                  padding: '3px 10px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  lineHeight: 1.4,
                   cursor: 'pointer',
                   flexShrink: 0,
                   whiteSpace: 'nowrap',
+                  transition: 'all 0.15s',
                 }}
               >
                 {cat.label}
