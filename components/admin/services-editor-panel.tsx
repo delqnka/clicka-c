@@ -70,11 +70,9 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     <span
       style={{
         display: 'block',
-        fontSize: 10,
-        fontWeight: 700,
+        fontSize: 11,
+        fontWeight: 600,
         color: '#000',
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
         marginBottom: 3,
       }}
     >
@@ -174,73 +172,62 @@ const ServiceCardRow = memo(function ServiceCardRow({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flushCommit();
       }}
     >
-      {/* Header strip */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 12px 8px',
-          borderBottom: '1px solid #F2F2F2',
-          gap: 8,
-        }}
-      >
-        {!hideCategoryBadge ? (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              fontSize: 10,
-              fontWeight: 700,
-              color: '#000',
-              textTransform: 'uppercase',
-              letterSpacing: '0.07em',
-              background: '#F4F4F4',
-              borderRadius: 6,
-              padding: '3px 7px',
-            }}
-          >
-            <Tag size={9} />
-            {categoryLabel}
-          </span>
-        ) : (
-          <span />
-        )}
-        <button
-          type="button"
-          aria-label="Премахни услуга"
-          onClick={() => onRemove(index)}
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 8,
-            border: '1px solid #EBEBEB',
-            background: '#FAFAFA',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#999',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-        >
-          <X size={13} />
-        </button>
-      </div>
-
       {/* Body */}
       <div style={{ padding: '12px 12px 10px' }}>
-        {/* Service name */}
-        <div style={{ marginBottom: 10 }}>
-          <FieldLabel>Наименование</FieldLabel>
-          <input
-            value={draft.name}
-            onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
-            style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
-            placeholder="Напр. Подстригване, Боядисване…"
-          />
+        {/* Service name + remove button on same row */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <FieldLabel>Наименование</FieldLabel>
+            <input
+              value={draft.name}
+              onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
+              style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
+              placeholder="Напр. Подстригване, Боядисване…"
+            />
+          </div>
+          <button
+            type="button"
+            aria-label="Премахни услуга"
+            onClick={() => onRemove(index)}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              border: 'none',
+              background: 'transparent',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#000',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <X size={16} />
+          </button>
         </div>
+
+        {/* Category badge (when not filtered) */}
+        {!hideCategoryBadge ? (
+          <div style={{ marginBottom: 10 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                fontWeight: 500,
+                color: '#555',
+                background: '#F4F4F4',
+                borderRadius: 6,
+                padding: '3px 8px',
+              }}
+            >
+              <Tag size={10} />
+              {categoryLabel}
+            </span>
+          </div>
+        ) : null}
 
         {/* Price + Duration row */}
         <div
@@ -254,28 +241,23 @@ const ServiceCardRow = memo(function ServiceCardRow({
           {/* Price */}
           <div
             style={{
-              background: '#F9F9F9',
-              border: '1px solid #EBEBEB',
+              border: '1px solid #E8E8E8',
               borderRadius: 10,
-              padding: '8px 10px',
+              padding: '6px 10px',
             }}
           >
             <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 10,
-                fontWeight: 700,
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 600,
                 color: '#000',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                marginBottom: 4,
+                marginBottom: 2,
               }}
             >
-              💳 Цена
+              Цена
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
               <input
                 type="number"
                 value={draft.price}
@@ -289,20 +271,20 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   outline: 'none',
                   boxShadow: 'none',
                   padding: '0',
+                  fontSize: 22,
                 }}
-                aria-label="Цена в лева"
+                aria-label="Цена в евро"
               />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#000', flexShrink: 0 }}>лв.</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>€</span>
             </div>
           </div>
 
           {/* Duration */}
           <div
             style={{
-              background: '#F9F9F9',
-              border: '1px solid #EBEBEB',
+              border: '1px solid #E8E8E8',
               borderRadius: 10,
-              padding: '8px 10px',
+              padding: '6px 10px',
             }}
           >
             <span
@@ -310,18 +292,16 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                fontSize: 10,
-                fontWeight: 700,
+                fontSize: 11,
+                fontWeight: 600,
                 color: '#000',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                marginBottom: 4,
+                marginBottom: 2,
               }}
             >
-              <Clock size={10} />
+              <Clock size={11} />
               Времетраене
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
               <input
                 type="number"
                 value={draft.duration_min}
@@ -335,10 +315,11 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   outline: 'none',
                   boxShadow: 'none',
                   padding: '0',
+                  fontSize: 22,
                 }}
                 aria-label="Продължителност в минути"
               />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#000', flexShrink: 0 }}>мин</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>мин</span>
             </div>
           </div>
         </div>
