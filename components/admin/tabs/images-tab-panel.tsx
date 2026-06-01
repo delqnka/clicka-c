@@ -6,7 +6,7 @@ import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminGalleryDropZone, AdminImageAssetField, AdminSaveBtn, AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
-import { mergeUniqueImageLists } from '@/lib/admin-site';
+import { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 
 const GalleryReorderGrid = dynamic(
   () => import('@/components/admin/gallery-reorder-grid').then((m) => m.GalleryReorderGrid),

@@ -20,6 +20,8 @@ import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks'
 import { normalizeSmsReminderMode, type SmsReminderMode } from '@/lib/sms-shared';
 import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
 
+export { mergeUniqueImageLists } from '@/lib/admin-image-utils';
+
 export type LegalInfoPayload = LegalInfoStored;
 
 export type WorkingDay = {
@@ -126,21 +128,6 @@ export function normalizeImageList(raw: unknown): string[] {
   return raw
     .map(item => String(item ?? '').trim())
     .filter(Boolean);
-}
-
-export function mergeUniqueImageLists(...lists: (string[] | null | undefined)[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const list of lists) {
-    if (!Array.isArray(list)) continue;
-    for (const raw of list) {
-      const url = String(raw ?? '').trim();
-      if (!url || url.startsWith('blob:') || seen.has(url)) continue;
-      seen.add(url);
-      out.push(url);
-    }
-  }
-  return out;
 }
 
 /** Avoid wiping legacy portfolio when admin uploads into an empty portfolio tab. */

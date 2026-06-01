@@ -50,7 +50,7 @@ import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
-import { mergeUniqueImageLists } from '@/lib/admin-site';
+import { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
