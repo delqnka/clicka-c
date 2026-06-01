@@ -9,6 +9,11 @@ import {
 } from '@/lib/telegram-block-parser';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { parseBookingsFromPhoto } from '@/lib/telegram-photo-parser';
+import {
+  handleAdminCommand,
+  handlePriceListPhoto,
+  isPriceListPhoto,
+} from '@/lib/telegram-admin-commands';
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
 
@@ -156,16 +161,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       [
         '<b>Какво мога да правя:</b>',
         '',
-        '📌 <b>Блокирай час</b> — напиши напр.:',
+        '📌 <b>Блокирай час</b>',
         '<code>зает 14:00-16:00 утре</code>',
-        '<code>зает 10:00-11:30 5 юни</code>',
         '<code>зает 9:00-10:00 понеделник</code>',
         '',
-        '📸 <b>Скрийншот от Fresha/Studio24</b> — изпрати снимка на резервациите и ще ги блокирам автоматично.',
+        '😴 <b>Почивен ден</b>',
+        '<code>утре почивам</code>',
+        '<code>събота почивам</code>',
         '',
-        '📩 <b>Forward от Fresha/Studio24</b> — просто forward-ни нотификацията тук и часът ще се блокира.',
+        '⏰ <b>Работно време</b>',
+        '<code>работя до 19:00 тази седмица</code>',
         '',
-        '📅 Блокираните часове няма да са достъпни за нови резервации в Clicka.',
+        '✂️ <b>Услуги</b>',
+        '<code>добави услуга: Ламиниране — 45 мин — 60 лв</code>',
+        '<code>промени цената на Маникюр на 35 лв</code>',
+        '',
+        '📸 <b>Ценоразпис (снимка)</b> — изпрати снимка с надпис <i>ценоразпис</i> и услугите влизат сами.',
+        '',
+        '📊 <b>Справки</b>',
+        '<code>колко записа имам за утре</code>',
+        '<code>следващият ми клиент</code>',
+        '<code>приходът ми тази седмица</code>',
+        '',
+        '📩 <b>Forward от Fresha/Studio24</b> — forward-ни нотификацията и часът се блокира.',
       ].join('\n'),
     );
     return NextResponse.json({ ok: true });
@@ -219,7 +237,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true });
   }
 
-  // Handle photo — parse bookings from screenshot via AI vision
+  // Handle photo
   if (message.photo && message.photo.length > 0) {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
@@ -235,13 +253,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const imageUrl = getTelegramFileUrl(filePath);
+    const caption = (message.caption ?? '').trim();
+
+    // Price list photo — add services
+    if (isPriceListPhoto(caption)) {
+      await handlePriceListPhoto(chatId, imageUrl, salon);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Booking screenshot — block time slots
     await sendTelegramMessage(chatId, '🔍 Анализирам снимката...');
 
     const bookings = await parseBookingsFromPhoto(imageUrl);
     if (bookings.length === 0) {
       await sendTelegramMessage(
         chatId,
-        '❌ Не открих резервации в снимката. Увери се, че часовете и датите се виждат ясно.',
+        '❌ Не открих резервации в снимката. Увери се, че часовете и датите се виждат ясно.\n\n💡 За да добавиш услуги от ценоразпис, изпрати снимката с надпис <i>ценоразпис</i>.',
       );
       return NextResponse.json({ ok: true });
     }
@@ -273,8 +300,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true });
   }
 
-  // Any other message (including forwarded) — try to parse as a booking block
+  // Any other text — try admin commands first, then booking block parser
   if (text) {
+    const salon = await findSalonByChatId(chatId);
+    if (salon) {
+      const handled = await handleAdminCommand(chatId, text, salon);
+      if (handled) return NextResponse.json({ ok: true });
+    }
     await handleBlockMessage(chatId, text);
     return NextResponse.json({ ok: true });
   }
