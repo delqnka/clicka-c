@@ -1371,16 +1371,19 @@ export async function handleGalleryPhoto(
   const existingGallery = normalizeImageList(rows[0]?.gallery_images);
   const existingPortfolio = normalizeImageList(rows[0]?.portfolio_images);
 
+  let updatedCount: number;
   if (target === 'portfolio') {
     const updated = [...existingPortfolio, publicUrl];
+    updatedCount = updated.length;
     await sql`UPDATE salons SET portfolio_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
   } else {
     const updated = [...existingGallery, publicUrl];
+    updatedCount = updated.length;
     await sql`UPDATE salons SET gallery_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
   }
 
   revalidateTag(`salon-public-${salon.slug}`);
-  await sendTelegramMessage(chatId, `✅ Снимката е добавена в ${target === 'portfolio' ? 'портфолиото' : 'галерията'}! (${updated.length} общо)`);
+  await sendTelegramMessage(chatId, `✅ Снимката е добавена в ${target === 'portfolio' ? 'портфолиото' : 'галерията'}! (${updatedCount} общо)`);
 }
 
 export function photoTargetFromCaption(caption: string): 'gallery' | 'cover' | 'portfolio' | 'price_list' | 'booking' {
