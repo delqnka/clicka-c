@@ -1367,13 +1367,15 @@ export async function handleGalleryPhoto(
     return;
   }
 
-  const rows = await sql`SELECT ${target === 'portfolio' ? sql`portfolio_images` : sql`gallery_images`} FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
-  const existing = normalizeImageList(target === 'portfolio' ? rows[0]?.portfolio_images : rows[0]?.gallery_images);
-  const updated = [...existing, publicUrl];
+  const rows = await sql`SELECT gallery_images, portfolio_images FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
+  const existingGallery = normalizeImageList(rows[0]?.gallery_images);
+  const existingPortfolio = normalizeImageList(rows[0]?.portfolio_images);
 
   if (target === 'portfolio') {
+    const updated = [...existingPortfolio, publicUrl];
     await sql`UPDATE salons SET portfolio_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
   } else {
+    const updated = [...existingGallery, publicUrl];
     await sql`UPDATE salons SET gallery_images = ${JSON.stringify(updated)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
   }
 
