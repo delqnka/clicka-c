@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { SalonPublicPageView } from '@/components/salon/salon-public-page-view';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { buildSalonPageMetadata } from '@/lib/seo';
 
 export const revalidate = 60;
+
+const STATIC_ASSETS = new Set(['favicon.ico', 'robots.txt', 'sitemap.xml', 'apple-touch-icon.png']);
 
 type Props = {
   params: { slug: string };
@@ -11,6 +14,7 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (STATIC_ASSETS.has(params.slug)) return {};
   const pageData = await getPublicSalonPageData({ slug: params.slug });
   if (!pageData) {
     return buildSalonPageMetadata({}, params.slug, { notFound: true });
@@ -20,6 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function SalonSlugPage({ params, searchParams }: Props) {
+  if (STATIC_ASSETS.has(params.slug)) notFound();
   const pageData = await getPublicSalonPageData({ slug: params.slug });
 
   if (!pageData) {
