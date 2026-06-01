@@ -1,22 +1,19 @@
 'use client';
 
-import { Camera, Plus, Trash2 } from 'lucide-react';
+import { Camera, Trash2 } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { toBlogSlug } from '@/lib/blog-slug';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
-import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
-
 const GRADIENT_PRIMARY: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: 6,
-  borderRadius: 10,
+  borderRadius: 8,
   border: 'none',
   color: '#fff',
   background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
-  boxShadow: '0 8px 20px rgba(124,58,237,0.28)',
-  padding: '9px 16px',
-  fontSize: 14,
+  padding: '6px 12px',
+  fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
@@ -92,11 +89,6 @@ export function SalonBlogSection({
     onActiveIndexChange?.(index);
   }
 
-  function addPost() {
-    onReplacePosts([newEmptyBlogPost(), ...posts]);
-    selectPost(0);
-  }
-
   function removePost(index: number) {
     onReplacePosts(posts.filter((_, i) => i !== index));
     setActiveIndex((i) => {
@@ -125,13 +117,6 @@ export function SalonBlogSection({
 
   return (
     <div style={{ display: 'grid', gap: isMobile ? 16 : 14 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <button type="button" style={GRADIENT_PRIMARY} onClick={addPost}>
-          <Plus size={15} strokeWidth={2.25} />
-          Нова статия
-        </button>
-      </div>
-
       <label style={{ display: 'grid', gap: 4 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
           Име на секцията на сайта
@@ -156,7 +141,7 @@ export function SalonBlogSection({
             fontSize: 14,
           }}
         >
-          Няма статии. Натиснете „Нова статия“, за да започнете.
+          Няма статии.
         </div>
       ) : (
         <>

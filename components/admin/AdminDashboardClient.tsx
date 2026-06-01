@@ -49,6 +49,8 @@ import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer } from '@/lib/salon-offers';
 import { SalonOffersSection } from '@/components/admin/SalonOffersSection';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
+import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
+import { SalonBlogSection } from '@/components/admin/SalonBlogSection';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
@@ -78,10 +80,6 @@ import {
 
 const DomainPurchaseSection = dynamic(
   () => import('@/components/admin/DomainPurchaseSection'),
-  { ssr: false }
-);
-const SalonBlogSection = dynamic(
-  () => import('@/components/admin/SalonBlogSection').then((m) => m.SalonBlogSection),
   { ssr: false }
 );
 const BookingsPanel = dynamic(
@@ -201,6 +199,8 @@ type Props = {
   initialSite: AdminSitePayload;
   initialBookings: BookingRecord[];
   initialOffers?: AdminSalonOffer[];
+  initialBlogPosts?: AdminSalonBlogPost[];
+  initialBlogTitle?: string;
 };
 
 type BookingStatus = BookingRecord['status'];
@@ -340,6 +340,8 @@ export default function AdminDashboardClient({
   initialSite,
   initialBookings,
   initialOffers = [],
+  initialBlogPosts = [],
+  initialBlogTitle = '',
 }: Props) {
   const [site, setSite]           = useState(initialSite);
   const siteRef = useRef(site);
@@ -410,9 +412,9 @@ export default function AdminDashboardClient({
     variants: [] as { label: string; price: number; duration_min: number }[],
   });
   const [offers, setOffers] = useState<AdminSalonOffer[]>(initialOffers);
-  const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
-  const [blogSectionTitle, setBlogSectionTitle] = useState('');
-  const blogPostsRef = useRef<AdminSalonBlogPost[]>([]);
+  const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>(initialBlogPosts);
+  const [blogSectionTitle, setBlogSectionTitle] = useState(initialBlogTitle);
+  const blogPostsRef = useRef<AdminSalonBlogPost[]>(initialBlogPosts);
   const blogSaveBusyRef = useRef(false);
   const blogSaveAgainRef = useRef(false);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
@@ -1009,31 +1011,6 @@ export default function AdminDashboardClient({
       document.documentElement.style.overflow = prevHtmlOverflow;
     };
   }, [serviceModalOpen]);
-
-  useEffect(() => {
-    if (activeTab !== 'blog') return;
-    let cancelled = false;
-    const run = async () => {
-      try {
-        const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`);
-        const data = await readJson(res);
-        if (!res.ok) throw new Error((data as { error?: string }).error || 'Грешка');
-        if (cancelled) return;
-        const list = (data as { posts?: AdminSalonBlogPost[] }).posts;
-        const loaded = Array.isArray(list) ? list : [];
-        blogPostsRef.current = loaded;
-        setBlogPosts(loaded);
-        const title = (data as { blogTitle?: string }).blogTitle;
-        if (typeof title === 'string') setBlogSectionTitle(title);
-      } catch (e) {
-        if (!cancelled) handleErr(e);
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab, slug]);
 
   useEffect(() => {
     if (activeTab !== 'sms') return;
@@ -2766,30 +2743,48 @@ export default function AdminDashboardClient({
               title="Блог"
               compact={isMobile}
               action={
-                blogPosts.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                   <button
                     type="button"
-                    onClick={() => void saveBlogDraft(blogActiveIndex)}
-                    disabled={busyKey === 'blog'}
+                    onClick={() => {
+                      const next = [newEmptyBlogPost(), ...blogPosts];
+                      blogPostsRef.current = next;
+                      setBlogPosts(next);
+                      setBlogActiveIndex(0);
+                    }}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
+                      gap: 5,
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: '#16A34A',
-                      padding: '6px 14px',
+                      background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                      padding: '6px 12px',
                       fontSize: 12,
                       fontWeight: 600,
-                      cursor: busyKey === 'blog' ? 'wait' : 'pointer',
-                      opacity: busyKey === 'blog' ? 0.7 : 1,
+                      cursor: 'pointer',
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {busyKey === 'blog' ? 'Запазване…' : 'Запази'}
+                    <Plus size={14} strokeWidth={2.25} />
+                    Нова статия
                   </button>
-                ) : undefined
+                  {blogPosts.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void saveBlogDraft(blogActiveIndex)}
+                      disabled={busyKey === 'blog'}
+                      style={{
+                        ...ADMIN_COMPACT_SAVE_BTN,
+                        opacity: busyKey === 'blog' ? 0.7 : 1,
+                        cursor: busyKey === 'blog' ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {busyKey === 'blog' ? 'Запазване…' : 'Запази'}
+                    </button>
+                  ) : null}
+                </div>
               }
             >
               <SalonBlogSection
