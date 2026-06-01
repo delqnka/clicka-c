@@ -880,7 +880,6 @@ export default function AdminDashboardClient({
   }, [activeTab, loadGoogleReviewsStatus, loadCalendarIntegrationStatus]);
 
   useEffect(() => {
-    if (activeTab !== 'bookings' && activeTab !== 'clients') return;
     if (bookingsLoaded) return;
     let cancelled = false;
     const run = async () => {
@@ -899,7 +898,7 @@ export default function AdminDashboardClient({
     };
     void run();
     return () => { cancelled = true; };
-  }, [activeTab, bookingsLoaded, slug]);
+  }, [bookingsLoaded, slug]);
 
   useEffect(() => {
     if (activeTab !== 'blog') return;
