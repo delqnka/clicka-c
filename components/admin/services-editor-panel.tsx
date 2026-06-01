@@ -417,7 +417,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     placeholder="0"
                     aria-label="Цена"
                   />
-                  <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#666', pointerEvents: 'none' }}>лв</span>
+                  <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#666', pointerEvents: 'none' }}>€</span>
                 </div>
                 <div style={{ position: 'relative' }}>
                   <input
