@@ -225,38 +225,49 @@ export async function handleAdminCommand(
   if (addMatch) {
     const rawFull = addMatch[1]!.trim();
 
-    // Parse duration: "— 45 мин" OR "за 4 часа" OR "за 45 мин"
+    // Parse duration — all formats:
+    // "— 45 мин" | "за 45 мин" | "45мин" | "1ч" | "1ч30" | "1.5ч" | "за 2 часа" | "2 часа"
     let duration = 30;
-    const dashMinMatch = rawFull.match(/[—\-–]\s*(\d+)\s*мин/i);
-    const forHoursMatch = rawFull.match(/за\s+(\d+(?:[.,]\d+)?)\s*часа?/i);
-    const forMinMatch = rawFull.match(/за\s+(\d+)\s*мин/i);
-    if (dashMinMatch) duration = Math.max(5, parseInt(dashMinMatch[1]!, 10));
+    const dashMinMatch  = rawFull.match(/[—\-–]\s*(\d+)\s*мин/i);
+    const forMinMatch   = rawFull.match(/(?:за\s+)?(\d+)\s*мин(?:ути?)?(?!\w)/i);
+    const forHoursMatch = rawFull.match(/(?:за\s+)?(\d+(?:[.,]\d+)?)\s*часа?(?!\w)/i);
+    const shortHrMin    = rawFull.match(/(\d+)ч(?:а?с?а?)?(?:\s*(\d+)\s*мин)?/i); // "1ч30мин" "1ч 30мин" "1ч"
+    if (dashMinMatch)   duration = Math.max(5, parseInt(dashMinMatch[1]!, 10));
+    else if (shortHrMin) {
+      const hrs = parseInt(shortHrMin[1]!, 10);
+      const mins = shortHrMin[2] ? parseInt(shortHrMin[2], 10) : 0;
+      duration = Math.max(5, hrs * 60 + mins);
+    }
     else if (forHoursMatch) duration = Math.max(5, Math.round(parseFloat(forHoursMatch[1]!.replace(',', '.')) * 60));
-    else if (forMinMatch) duration = Math.max(5, parseInt(forMinMatch[1]!, 10));
+    else if (forMinMatch)   duration = Math.max(5, parseInt(forMinMatch[1]!, 10));
 
-    // Parse price: "— 60 лв/€" OR "за 250 евро/лв/€"
+    // Parse price — all formats:
+    // "— 60 лв/€" | "за 250 евро" | "250 евро" | "250€" | "250 лв"
     let price = 0;
     const dashPriceMatch = rawFull.match(/[—\-–]\s*(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев)/i);
-    const forPriceMatch = rawFull.match(/за\s+(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев|евро)/i);
-    if (dashPriceMatch) price = lvToEur(parseFloat(dashPriceMatch[1]!.replace(',', '.')));
-    else if (forPriceMatch) {
-      const val = parseFloat(forPriceMatch[1]!.replace(',', '.'));
-      const unit = forPriceMatch[0]!.toLowerCase();
-      price = /€|eur|евро/.test(unit) ? Math.round(val) : lvToEur(val);
+    const anyPriceMatch  = rawFull.match(/(\d+(?:[.,]\d+)?)\s*(?:лв|bgn|€|eur|лев|евро)/i);
+    if (dashPriceMatch) {
+      const val = parseFloat(dashPriceMatch[1]!.replace(',', '.'));
+      price = /€|eur/.test(dashPriceMatch[0]!.toLowerCase()) ? Math.round(val) : lvToEur(val);
+    } else if (anyPriceMatch) {
+      const val = parseFloat(anyPriceMatch[1]!.replace(',', '.'));
+      price = /€|eur|евро/.test(anyPriceMatch[0]!.toLowerCase()) ? Math.round(val) : lvToEur(val);
     }
 
-    // Parse category: "категория: X" OR "— X" as last dash segment if not price/duration
+    // Parse category: "в категория X" OR "категория: X"
     let category: string | undefined;
-    const catMatch = rawFull.match(/(?:категория|cat)[:：]\s*(.+?)(?:\s*[—\-–]|$)/i);
+    const catMatch = rawFull.match(/(?:в\s+)?(?:категория|cat)[:：]?\s+([^—\-–\d]+?)(?:\s*[—\-–]|\s*\d|\s*$)/i);
     if (catMatch) category = catMatch[1]!.trim();
 
     // Extract clean service name (strip price/duration/category suffixes)
     const rawName = rawFull
+      .replace(/\s*в\s+(?:категория|cat)\s+.+$/i, '')
       .replace(/\s*(?:категория|cat)[:：]\s*.+$/i, '')
       .replace(/\s*[—\-–]\s*\d+\s*мин[^\s]*/gi, '')
       .replace(/\s*[—\-–]\s*\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев)/gi, '')
-      .replace(/\s+за\s+\d+(?:[.,]\d+)?\s*(?:часа?|мин[^\s]*)/gi, '')
-      .replace(/\s+за\s+\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев|евро)/gi, '')
+      .replace(/\s+\d+ч(?:а?с?а?)?\s*\d*(?:мин)?/gi, '')
+      .replace(/\s+(?:за\s+)?\d+(?:[.,]\d+)?\s*(?:часа?|мин[^\s]*)/gi, '')
+      .replace(/\s+(?:за\s+)?\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев|евро)/gi, '')
       .trim();
 
     const services = await getSalonServices(salon.salonId);
