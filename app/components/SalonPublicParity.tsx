@@ -1935,14 +1935,14 @@ export default function SalonPublicParity({
 
       {!disableStickySectionTabs ? (
         <div
-          className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-3 lg:hidden ${
+          className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[env(safe-area-inset-bottom,0px)] pt-3 transition-transform duration-200 lg:hidden ${
             showStickySectionTabs
-              ? 'pointer-events-auto visible'
-              : 'pointer-events-none invisible'
+              ? 'pointer-events-auto translate-y-0'
+              : 'pointer-events-none translate-y-full'
           }`}
           aria-hidden={!showStickySectionTabs}
         >
-          <div className="mx-auto w-full max-w-[min(100%,1180px)]">
+          <div className="mx-auto w-full max-w-[min(100%,1180px)] pb-3">
             <button
               type="button"
               tabIndex={showStickySectionTabs ? 0 : -1}
