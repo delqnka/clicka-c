@@ -610,6 +610,19 @@ export default function AdminDashboardClient({
     if (!hasCategory) setSelectedAdminServiceCategory(null);
   }, [site.services, selectedAdminServiceCategory]);
 
+  // Refresh services from DB when the tab becomes active (bot/other sources may have added services)
+  useEffect(() => {
+    if (activeTab !== 'services') return;
+    fetch(`/api/admin/site-services?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.services) {
+          setSite((prev) => ({ ...prev, services: data.services as AdminSitePayload['services'] }));
+        }
+      })
+      .catch(() => undefined);
+  }, [activeTab, slug]);
+
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
