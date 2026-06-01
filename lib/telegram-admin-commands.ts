@@ -16,19 +16,32 @@ import {
   openRouterHeaders,
 } from '@/lib/openrouter';
 
-// ─── Conversation history (in-memory, per chatId, last 6 turns) ─────────────
+// ─── Conversation history (persisted in DB per chatId, last 12 messages) ─────
 type HistoryMessage = { role: 'user' | 'assistant'; content: string };
-const conversationHistory = new Map<number, HistoryMessage[]>();
 
-function getHistory(chatId: number): HistoryMessage[] {
-  return conversationHistory.get(chatId) ?? [];
+async function getHistory(chatId: number): Promise<HistoryMessage[]> {
+  try {
+    const rows = await sql`SELECT ai_chat_history FROM salons WHERE telegram_chat_id = ${String(chatId)} LIMIT 1`;
+    const row = rows[0] as { ai_chat_history: HistoryMessage[] | null } | undefined;
+    return row?.ai_chat_history ?? [];
+  } catch {
+    return [];
+  }
 }
 
-function appendHistory(chatId: number, role: 'user' | 'assistant', content: string) {
-  const history = conversationHistory.get(chatId) ?? [];
+async function saveHistory(chatId: number, history: HistoryMessage[]): Promise<void> {
+  try {
+    const trimmed = history.slice(-12);
+    await sql`UPDATE salons SET ai_chat_history = ${JSON.stringify(trimmed)}::jsonb WHERE telegram_chat_id = ${String(chatId)}`;
+  } catch {
+    // non-critical
+  }
+}
+
+async function appendHistory(chatId: number, role: 'user' | 'assistant', content: string): Promise<void> {
+  const history = await getHistory(chatId);
   history.push({ role, content });
-  if (history.length > 12) history.splice(0, history.length - 12);
-  conversationHistory.set(chatId, history);
+  await saveHistory(chatId, history);
 }
 
 // ─── Regex patterns ─────────────────────────────────────────────────────────
@@ -576,8 +589,8 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 
   let intent: AIIntent = { action: 'chat', reply: '' };
 
-  const history = getHistory(chatId);
-  appendHistory(chatId, 'user', text);
+  const history = await getHistory(chatId);
+  await appendHistory(chatId, 'user', text);
 
   try {
     const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
@@ -650,7 +663,17 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       return true;
     case 'add_service': {
       const services = await getSalonServices(salon.salonId);
-      if (services.some((s) => s.name.toLowerCase() === intent.name.toLowerCase())) {
+      const existingIdx = services.findIndex((s) => s.name.toLowerCase() === intent.name.toLowerCase());
+      if (existingIdx !== -1) {
+        // Service exists — if category provided, update it instead of rejecting
+        if (intent.category) {
+          services[existingIdx]!.category = intent.category;
+          await saveSalonServices(salon.salonId, salon.slug, services);
+          const catReply = `✅ <b>${services[existingIdx]!.name}</b> е в категория <b>${intent.category}</b>`;
+          await appendHistory(chatId, 'assistant', catReply);
+          await sendTelegramMessage(chatId, catReply);
+          return true;
+        }
         await sendTelegramMessage(chatId, `⚠️ Услугата <b>${intent.name}</b> вече съществува.`);
         return true;
       }
@@ -658,7 +681,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       await saveSalonServices(salon.salonId, salon.slug, services);
       const catLine = intent.category ? ` (${intent.category})` : '';
       const addReply = `✅ Добавена в ${salon.name}:\n${intent.name}${catLine} — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`;
-      appendHistory(chatId, 'assistant', addReply);
+      await appendHistory(chatId, 'assistant', addReply);
       await sendTelegramMessage(chatId, `✅ Добавена в <b>${salon.name}</b>:\n<b>${intent.name}</b>${catLine} — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`);
       return true;
     }
@@ -684,7 +707,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       services[idx]!.category = intent.category;
       await saveSalonServices(salon.salonId, salon.slug, services);
       const reply = `✅ <b>${services[idx]!.name}</b> е в категория <b>${intent.category}</b>`;
-      appendHistory(chatId, 'assistant', reply);
+      await appendHistory(chatId, 'assistant', reply);
       await sendTelegramMessage(chatId, reply);
       return true;
     }
@@ -799,7 +822,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
         const looksLikeFakeAction = /добав[ии]|запис[ао]|обнов[ии]|промен[ии]|изтр[ии]|запаз[ии]/i.test(intent.reply)
           && /✅|успешно|добавена|добавен/i.test(intent.reply);
         if (looksLikeFakeAction) return false;
-        appendHistory(chatId, 'assistant', intent.reply);
+        await appendHistory(chatId, 'assistant', intent.reply);
         await sendTelegramMessage(chatId, intent.reply);
         return true;
       }
