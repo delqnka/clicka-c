@@ -570,7 +570,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
 - { "action": "sort_services", "by": "price_asc" }  ← by може да е: price_asc, price_desc, duration_asc, name_asc
-- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "Колористика" }  ← цената ВИНАГИ в евро (€); category е незадължително
+- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "Колористика" }  ← ПАРСВАНЕ ПРАВИЛА: name е САМО името на услугата (без цена/продължителност/категория). duration_min: "1ч"=60, "1ч30"/"1.5ч"=90, "2ч"=120, "45мин"=45, "30мин"=30. price_eur: числото ПРЕДИ "евро"/"лв"/"€/лв" — ако е в лева раздели на 1.96. category: текстът СЛЕД "в категория". Пример: "Боядисване 2ч 80 евро в категория Колористика" → name="Боядисване", duration_min=120, price_eur=80, category="Колористика"
 - { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← цената ВИНАГИ в евро (€)
 - { "action": "update_category", "service_name": "...", "category": "Колористика" }  ← смяна/добавяне на категория на услуга
 - { "action": "delete_service", "service_name": "..." }
