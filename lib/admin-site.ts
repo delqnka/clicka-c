@@ -128,10 +128,11 @@ export function normalizeImageList(raw: unknown): string[] {
     .filter(Boolean);
 }
 
-export function mergeUniqueImageLists(...lists: string[][]): string[] {
+export function mergeUniqueImageLists(...lists: (string[] | null | undefined)[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const list of lists) {
+    if (!Array.isArray(list)) continue;
     for (const raw of list) {
       const url = String(raw ?? '').trim();
       if (!url || url.startsWith('blob:') || seen.has(url)) continue;

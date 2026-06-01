@@ -644,7 +644,18 @@ export default function AdminDashboardClient({ slug, ownerEmail, initialSite, in
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-    void navigator.serviceWorker.register('/sw-admin.js', { scope: '/' }).catch(() => { /* ignore */ });
+    if (!window.location.pathname.includes('/admin')) return;
+    void navigator.serviceWorker
+      .getRegistrations()
+      .then((regs) => {
+        for (const reg of regs) {
+          const script =
+            reg.active?.scriptURL ?? reg.installing?.scriptURL ?? reg.waiting?.scriptURL ?? '';
+          if (script.includes('sw-admin.js')) void reg.unregister();
+        }
+      })
+      .catch(() => { /* ignore */ });
+    void navigator.serviceWorker.register('/admin/sw.js', { scope: '/admin' }).catch(() => { /* ignore */ });
   }, []);
 
   useEffect(() => {

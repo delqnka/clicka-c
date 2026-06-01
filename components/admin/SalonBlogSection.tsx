@@ -64,12 +64,14 @@ export function SalonBlogSection({
   const saving = busyKey === 'blog';
 
   useEffect(() => {
-    if (activeIndex >= posts.length) {
-      const next = Math.max(0, posts.length - 1);
-      setActiveIndex(next);
-      onActiveIndexChange?.(next);
+    if (posts.length === 0) {
+      if (activeIndex !== 0) setActiveIndex(0);
+      return;
     }
-  }, [activeIndex, posts.length, onActiveIndexChange]);
+    if (activeIndex >= posts.length) {
+      setActiveIndex(posts.length - 1);
+    }
+  }, [activeIndex, posts.length]);
 
   useEffect(() => {
     onActiveIndexChange?.(activeIndex);
