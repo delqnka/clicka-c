@@ -489,11 +489,13 @@ type AIIntent =
   | { action: 'next_client' }
   | { action: 'revenue_week' }
   | { action: 'revenue_month' }
+  | { action: 'revenue_months'; months?: number }
   | { action: 'revenue_range'; date_from: string; date_to: string }
   | { action: 'revenue_compare' }
   | { action: 'avg_booking_value' }
   | { action: 'revenue_client'; client_name: string }
   | { action: 'client_count' }
+  | { action: 'list_clients' }
   | { action: 'inactive_clients'; months: number }
   | { action: 'top_services' }
   | { action: 'list_services' }
@@ -550,6 +552,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "next_client" }
 - { "action": "revenue_week" }
 - { "action": "revenue_month" }
+- { "action": "revenue_months", "months": 6 }  ← приход по месеци (последните N месеца, по подразбиране 6)
 - { "action": "revenue_range", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD" }
 - { "action": "revenue_compare" }
 - { "action": "avg_booking_value" }
@@ -618,6 +621,10 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
     const raw = (data.choices?.[0]?.message?.content ?? '').trim();
     const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
     intent = JSON.parse(jsonStr) as AIIntent;
+    // Record the action taken so future messages have context
+    if (intent.action !== 'chat') {
+      await appendHistory(chatId, 'assistant', `[изпълнено действие: ${intent.action}]`);
+    }
   } catch {
     await sendTelegramMessage(chatId, '⚠️ Грешка при свързване с AI. Пробвай отново.');
     return true;
@@ -635,6 +642,9 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       return true;
     case 'revenue_month':
       await handleRevenue(chatId, salon, 'month');
+      return true;
+    case 'revenue_months':
+      await handleRevenueMonths(chatId, salon, intent.months ?? 6);
       return true;
     case 'revenue_client':
       await handleClientRevenue(chatId, salon, intent.client_name);
@@ -1417,6 +1427,47 @@ async function handleCompleteBooking(chatId: number, salon: SalonRef, clientName
   const r = rows[0]!;
   await sql`UPDATE bookings SET status = 'completed', completed_at = now() WHERE CAST(id AS text) = ${r.id}`;
   await sendTelegramMessage(chatId, `✅ Завършена резервация:\n👤 ${r.client_name}\n🗓 ${formatDateBg(r.date)} в ${r.time}\n✂️ ${r.service_name}`);
+}
+
+async function handleRevenueMonths(chatId: number, salon: SalonRef, numMonths: number): Promise<void> {
+  const today = new Date();
+  const results: { label: string; revenue: number; completed: number; total: number }[] = [];
+
+  for (let i = numMonths - 1; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const periodStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    const periodEnd = lastDay.toISOString().slice(0, 10);
+    const label = d.toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' });
+
+    const rows = await sql`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
+        COALESCE(SUM(service_price), 0)::numeric AS revenue
+      FROM bookings
+      WHERE CAST(salon_id AS text) = ${salon.salonId}
+        AND date >= ${periodStart}
+        AND date <= ${periodEnd}
+        AND status NOT IN ('cancelled')
+    ` as { total: number; completed: number; revenue: number }[];
+
+    const r = rows[0]!;
+    results.push({ label, revenue: Number(r.revenue), completed: Number(r.completed), total: Number(r.total) });
+  }
+
+  const totalRev = results.reduce((s, r) => s + r.revenue, 0);
+  const maxRev = Math.max(...results.map((r) => r.revenue), 1);
+  const lines = [`📅 <b>Приход по месеци (последните ${numMonths}):</b>`, ''];
+  for (const r of results) {
+    const barLen = Math.max(1, Math.round((r.revenue / maxRev) * 8));
+    const bar = r.revenue > 0 ? '▓'.repeat(barLen) : '░';
+    lines.push(`<b>${r.label}</b>: ${r.revenue.toFixed(0)} € ${bar}`);
+    lines.push(`  ${r.total} резерв. · ${r.completed} завършени`);
+  }
+  lines.push('');
+  lines.push(`Общо: <b>${totalRev.toFixed(0)} €</b> (${eurToLv(totalRev)} лв)`);
+  await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
 async function handleRevenueCompare(chatId: number, salon: SalonRef): Promise<void> {
