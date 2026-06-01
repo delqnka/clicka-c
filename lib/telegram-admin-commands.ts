@@ -1385,9 +1385,8 @@ export function photoTargetFromCaption(caption: string): 'gallery' | 'cover' | '
   const c = caption.toLowerCase();
   if (/ценоразпис|прайс|price.?list/.test(c)) return 'price_list';
   if (/корица|cover|заглавна/.test(c)) return 'cover';
-  if (/портфолио|portfolio/.test(c)) return 'portfolio';
   if (/галерия|gallery/.test(c)) return 'gallery';
-  return 'gallery'; // default — всяка снимка без надпис отива в галерията
+  return 'portfolio'; // default — всяка снимка без надпис отива в портфолиото
 }
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
