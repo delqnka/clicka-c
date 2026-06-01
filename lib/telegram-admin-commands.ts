@@ -16,6 +16,21 @@ import {
   openRouterHeaders,
 } from '@/lib/openrouter';
 
+// ─── Conversation history (in-memory, per chatId, last 6 turns) ─────────────
+type HistoryMessage = { role: 'user' | 'assistant'; content: string };
+const conversationHistory = new Map<number, HistoryMessage[]>();
+
+function getHistory(chatId: number): HistoryMessage[] {
+  return conversationHistory.get(chatId) ?? [];
+}
+
+function appendHistory(chatId: number, role: 'user' | 'assistant', content: string) {
+  const history = conversationHistory.get(chatId) ?? [];
+  history.push({ role, content });
+  if (history.length > 12) history.splice(0, history.length - 12);
+  conversationHistory.set(chatId, history);
+}
+
 // ─── Regex patterns ─────────────────────────────────────────────────────────
 
 const ADD_SERVICE_RE =
@@ -473,6 +488,7 @@ type AIIntent =
   | { action: 'complete_booking'; client_name: string }
   | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string }
   | { action: 'update_price'; service_name: string; price_eur: number }
+  | { action: 'update_category'; service_name: string; category: string }
   | { action: 'delete_service'; service_name: string }
   | { action: 'day_off'; date: string }
   | { action: 'unblock_day'; date: string }
@@ -536,6 +552,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "remind_tomorrow" }
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "Колористика" }  ← цената ВИНАГИ в евро (€); category е незадължително
 - { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← цената ВИНАГИ в евро (€)
+- { "action": "update_category", "service_name": "...", "category": "Колористика" }  ← смяна/добавяне на категория на услуга
 - { "action": "delete_service", "service_name": "..." }
 - { "action": "day_off", "date": "YYYY-MM-DD" }
 - { "action": "unblock_day", "date": "YYYY-MM-DD" }
@@ -553,9 +570,14 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "toggle_sms", "enabled": true }
 - { "action": "chat", "reply": "естествен отговор на български" } — за разговор, въпроси, съвети, писане на текстове, формули, всичко друго
 
+КОНТЕКСТ НА РАЗГОВОРА: Когато потребителят казва "тази услуга", "тя", "горната", "последната" — имат предвид последно споменатата или добавена услуга от историята на разговора. Използвай историята на съобщенията за да разбереш за коя услуга/резервация/клиент говорят. Никога не питай "коя услуга?" ако отговорът е ясен от контекста.
+
 Само JSON, без обяснения извън полето reply.`;
 
   let intent: AIIntent = { action: 'chat', reply: '' };
+
+  const history = getHistory(chatId);
+  appendHistory(chatId, 'user', text);
 
   try {
     const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
@@ -565,6 +587,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
+          ...history,
           { role: 'user', content: text },
         ],
         temperature: 0.4,
@@ -634,6 +657,8 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       services.push({ name: intent.name, price: Math.round(intent.price_eur), duration_min: intent.duration_min, ...(intent.category ? { category: intent.category } : {}) });
       await saveSalonServices(salon.salonId, salon.slug, services);
       const catLine = intent.category ? ` (${intent.category})` : '';
+      const addReply = `✅ Добавена в ${salon.name}:\n${intent.name}${catLine} — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`;
+      appendHistory(chatId, 'assistant', addReply);
       await sendTelegramMessage(chatId, `✅ Добавена в <b>${salon.name}</b>:\n<b>${intent.name}</b>${catLine} — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`);
       return true;
     }
@@ -647,6 +672,20 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       services[idx]!.price = Math.round(intent.price_eur);
       await saveSalonServices(salon.salonId, salon.slug, services);
       await sendTelegramMessage(chatId, `✅ Цената на <b>${services[idx]!.name}</b> е <b>${Math.round(intent.price_eur)} €</b>`);
+      return true;
+    }
+    case 'update_category': {
+      const services = await getSalonServices(salon.salonId);
+      const idx = findServiceIndex(services, intent.service_name);
+      if (idx === -1) {
+        await sendTelegramMessage(chatId, `❌ Не намерих услуга <b>${intent.service_name}</b>.`);
+        return true;
+      }
+      services[idx]!.category = intent.category;
+      await saveSalonServices(salon.salonId, salon.slug, services);
+      const reply = `✅ <b>${services[idx]!.name}</b> е в категория <b>${intent.category}</b>`;
+      appendHistory(chatId, 'assistant', reply);
+      await sendTelegramMessage(chatId, reply);
       return true;
     }
     case 'delete_service': {
@@ -760,6 +799,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
         const looksLikeFakeAction = /добав[ии]|запис[ао]|обнов[ии]|промен[ии]|изтр[ии]|запаз[ии]/i.test(intent.reply)
           && /✅|успешно|добавена|добавен/i.test(intent.reply);
         if (looksLikeFakeAction) return false;
+        appendHistory(chatId, 'assistant', intent.reply);
         await sendTelegramMessage(chatId, intent.reply);
         return true;
       }
