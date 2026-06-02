@@ -32,6 +32,16 @@ export async function insertBookingIfNoOverlap(
   const manageToken = crypto.randomBytes(32).toString('hex');
   const manageTokenHash = crypto.createHash('sha256').update(manageToken).digest('hex');
 
+  // Cancel stale pending-payment bookings for the same slot before inserting
+  await sql`
+    UPDATE bookings
+    SET status = 'cancelled', payment_status = 'failed'
+    WHERE salon_id = ${row.salonId}
+      AND date IN (${row.date}, ${legacyDate})
+      AND payment_status = 'pending'
+      AND created_at < now() - interval '5 minutes'
+  `.catch(() => {});
+
   const inserted = await sql`
     INSERT INTO bookings (
       id, salon_id, client_name, client_phone, client_email,
