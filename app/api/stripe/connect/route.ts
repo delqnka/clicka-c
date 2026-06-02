@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { salonId, salonSlug } = access.session;
+  const { salonId, salonSlug, salonName } = access.session;
 
   // Load existing stripe_account_id
   const rows = await sql`
@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
   const row = rows[0] as { stripe_account_id: string | null } | undefined;
   let accountId = row?.stripe_account_id ?? null;
 
-  // Create Express account if first time
+  // Create connected account if first time
   if (!accountId) {
-    accountId = await createConnectedAccount(access.session.ownerEmail);
+    accountId = await createConnectedAccount(access.session.ownerEmail, salonName);
     await sql`
       UPDATE salons
       SET stripe_account_id = ${accountId}

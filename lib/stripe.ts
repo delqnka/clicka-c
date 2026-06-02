@@ -1,8 +1,6 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export type PlanType = 'subdomain' | 'custom_domain';
 
@@ -54,10 +52,14 @@ export async function createCheckoutSession(
 
 // ─── Stripe Connect helpers ────────────────────────────────────────────────
 
-export async function createConnectedAccount(email: string): Promise<string> {
+export async function createConnectedAccount(
+  email: string,
+  displayName: string,
+): Promise<string> {
   const account = await stripe.accounts.create({
     type: 'express',
     email,
+    business_profile: { name: displayName },
     capabilities: {
       card_payments: { requested: true },
       transfers: { requested: true },
