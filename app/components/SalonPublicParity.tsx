@@ -1544,7 +1544,14 @@ export default function SalonPublicParity({
                     >
                       <div className="flex flex-row items-start gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-[15px] font-medium leading-snug text-[#1a1a1a]">{service.name}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[15px] font-medium leading-snug text-[#1a1a1a]">{service.name}</p>
+                            {service.payment_type === 'deposit' && (
+                              <span className="inline-flex items-center rounded-full bg-[#007AFF]/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#007AFF]">
+                                Изисква се депозит
+                              </span>
+                            )}
+                          </div>
                           {variants && variants.length > 0 ? (
                             <div className="relative mt-1.5 max-w-full sm:max-w-md">
                               <button
