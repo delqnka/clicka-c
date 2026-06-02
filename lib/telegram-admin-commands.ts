@@ -544,7 +544,7 @@ type AIIntent =
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
   | { action: 'client_phone'; client_name: string }
-  | { action: 'reschedule_booking'; client_name: string; from_date: string; to_date: string; to_time: string }
+  | { action: 'reschedule_booking'; client_name: string; from_date: string; to_date: string; to_time?: string }
   | { action: 'confirm_day_off'; date: string }
   | { action: 'chat'; reply: string };
 
@@ -1376,7 +1376,7 @@ async function handleRescheduleBooking(
   clientName: string,
   fromDate: string,
   toDate: string,
-  toTime: string,
+  toTime: string | undefined,
 ): Promise<void> {
   const rows = await sql`
     SELECT CAST(id AS text) AS id, client_name, date, time, service_name, service_duration
@@ -1396,20 +1396,30 @@ async function handleRescheduleBooking(
 
   const r = rows[0]!;
   const duration = r.service_duration ?? 60;
-  const [hh, mm] = toTime.split(':').map(Number);
+
+  if (!toTime) {
+    await sendTelegramMessage(
+      chatId,
+      `⏰ В колко часа да преместя резервацията на <b>${r.client_name}</b> за ${formatDateBg(toDate)}?\nМоментален час: <b>${r.time}</b>`,
+    );
+    return;
+  }
+
+  const resolvedTime = toTime;
+  const [hh, mm] = resolvedTime.split(':').map(Number);
   const startMin = (hh ?? 0) * 60 + (mm ?? 0);
   const endMin = startMin + duration;
   const endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
 
   await sql`
     UPDATE bookings
-    SET date = ${toDate}, time = ${toTime}, updated_at = now()
+    SET date = ${toDate}, time = ${resolvedTime}, updated_at = now()
     WHERE CAST(id AS text) = ${r.id}
   `;
 
   await sendTelegramMessage(
     chatId,
-    `✅ Резервацията е преместена:\n👤 <b>${r.client_name}</b> — ${r.service_name}\n📅 ${formatDateBg(toDate)} в <b>${toTime}</b>`,
+    `✅ Резервацията е преместена:\n👤 <b>${r.client_name}</b> — ${r.service_name}\n📅 ${formatDateBg(toDate)} в <b>${resolvedTime}</b>`,
   );
 }
 
