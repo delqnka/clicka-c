@@ -58,6 +58,18 @@ export async function ensureBookingsSchema() {
         ADD COLUMN IF NOT EXISTS manage_token text
       `;
       await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS payment_status text NOT NULL DEFAULT 'free'
+      `;
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS stripe_checkout_session_id text
+      `;
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS amount_paid numeric
+      `;
+      await sql`
         CREATE INDEX IF NOT EXISTS bookings_salon_id_idx ON bookings(salon_id)
       `;
       await sql`
