@@ -1650,10 +1650,6 @@ async function handleRescheduleBooking(
   }
 
   const resolvedTime = toTime;
-  const [hh, mm] = resolvedTime.split(':').map(Number);
-  const startMin = (hh ?? 0) * 60 + (mm ?? 0);
-  const endMin = startMin + duration;
-  const endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
 
   await sql`
     UPDATE bookings
@@ -1661,10 +1657,40 @@ async function handleRescheduleBooking(
     WHERE CAST(id AS text) = ${r.id}
   `;
 
-  await sendTelegramMessage(
-    chatId,
-    `✅ Резервацията е преместена:\n👤 <b>${r.client_name}</b> — ${r.service_name}\n📅 ${formatDateBg(toDate)} в <b>${resolvedTime}</b>`,
-  );
+  // Fire the Booking Rescheduled event — email + reminders
+  const { onBookingRescheduled } = await import('@/lib/booking-reschedule');
+  const rescheduleResult = await onBookingRescheduled({
+    bookingId: r.id,
+    salonId: salon.salonId,
+    oldDate: fromDate,
+    oldTime: r.time,
+    newDate: toDate,
+    newTime: resolvedTime,
+  });
+
+  // Build owner report
+  const lines = [
+    `✅ <b>Резервацията е преместена</b>`,
+    ``,
+    `👤 <b>${r.client_name}</b>`,
+    `✂️ ${r.service_name}`,
+    `📅 ${formatDateBg(toDate)} в <b>${resolvedTime}</b>`,
+    ``,
+  ];
+
+  if (rescheduleResult.emailSent) {
+    lines.push(`📧 Изпратих имейл уведомление на клиента.`);
+  } else if (rescheduleResult.emailReason === 'no_email') {
+    lines.push(`⚠️ Клиентът няма имейл адрес — не беше изпратено уведомление.`);
+  } else if (rescheduleResult.emailReason === 'send_failed') {
+    lines.push(`⚠️ Имейлът не беше изпратен поради техническа грешка.`);
+  }
+
+  if (rescheduleResult.remindersUpdated) {
+    lines.push(`⏰ Обнових автоматичните напомняния.`);
+  }
+
+  await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
 async function handleClientPhone(chatId: number, salon: SalonRef, clientName: string): Promise<void> {

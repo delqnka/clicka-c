@@ -551,3 +551,66 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ success: true, reviewInvite });
 }
+
+// ── PUT /api/bookings — reschedule (change date/time) ────────────────────────
+export async function PUT(request: NextRequest) {
+  try {
+    await ensureBookingsSchema();
+  } catch (err) {
+    console.error('[bookings PUT] schema', err);
+    return NextResponse.json({ error: 'Резервационната система не е налична.' }, { status: 503 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const auth = await requireAdminRequestAccess(request, searchParams.get('slug'));
+  if (!auth.ok) return auth.response;
+
+  const resolved = await resolveSalonFromRequest(request);
+  if ('error' in resolved) return resolved.error;
+
+  let body: { bookingId?: string; newDate?: string; newTime?: string; oldDate?: string; oldTime?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
+  }
+
+  const { bookingId, newDate, newTime, oldDate, oldTime } = body;
+  if (!bookingId || !newDate || !newTime) {
+    return NextResponse.json({ error: 'Липсват bookingId, newDate или newTime' }, { status: 400 });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || !/^\d{2}:\d{2}$/.test(newTime)) {
+    return NextResponse.json({ error: 'Невалиден формат на дата или час' }, { status: 400 });
+  }
+
+  const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+
+  const updated = await sql`
+    UPDATE bookings
+    SET date = ${newDate}, time = ${newTime}
+    WHERE CAST(id AS text) = ${bookingId}
+      AND salon_id = ${salonId}
+      AND status NOT IN ('cancelled', 'completed')
+    RETURNING CAST(id AS text) AS id, date, time, client_name, service_name
+  ` as { id: string; date: string; time: string; client_name: string; service_name: string }[];
+
+  if (updated.length === 0) {
+    return NextResponse.json({ error: 'Резервацията не е намерена или не може да се промени' }, { status: 404 });
+  }
+
+  const row = updated[0]!;
+
+  if (oldDate && oldTime) {
+    const { onBookingRescheduled } = await import('@/lib/booking-reschedule');
+    void onBookingRescheduled({
+      bookingId: row.id,
+      salonId,
+      oldDate,
+      oldTime,
+      newDate,
+      newTime,
+    }).catch((err) => console.error('[bookings PUT] onBookingRescheduled', err));
+  }
+
+  return NextResponse.json({ success: true, booking: { id: row.id, date: row.date, time: row.time } });
+}

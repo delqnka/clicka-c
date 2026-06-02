@@ -34,6 +34,53 @@ function formatBgDateDMY(dateStr: string): string {
   return d.toLocaleDateString('bg-BG');
 }
 
+export interface RescheduleDetails {
+  clientName: string;
+  serviceName: string;
+  oldDate: string;
+  oldTime: string;
+  newDate: string;
+  newTime: string;
+  salonName: string;
+  salonPhone?: string;
+}
+
+export async function sendRescheduleNotification(
+  clientEmail: string,
+  details: RescheduleDetails,
+): Promise<void> {
+  const oldDateFmt = formatBgDateDMY(details.oldDate);
+  const newDateFmt = formatBgDateDMY(details.newDate);
+  const firstName = details.clientName.split(' ')[0] ?? details.clientName;
+
+  await sendResendWithRetry({
+    from: senderFromSalonName(details.salonName),
+    to: clientEmail,
+    subject: `Вашият час беше променен — ${details.salonName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">Вашият час беше преместен</h2>
+        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(firstName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          Вашият час при <strong>${escapeHtml(details.salonName)}</strong> беше преместен.
+        </p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          ${renderRow('Стара дата', `${oldDateFmt} в ${details.oldTime}`)}
+          ${renderRow('Нова дата', `${newDateFmt} в ${details.newTime}`)}
+          ${renderRow('Услуга', details.serviceName)}
+          ${details.salonPhone ? renderRow('Телефон на салона', details.salonPhone) : ''}
+        </table>
+        <p style="margin-top: 20px; line-height: 1.7; color: #555;">
+          Ако имате въпроси, свържете се директно със салона.
+        </p>
+        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
+          Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export interface BookingDetails {
   bookingId?: string;
   manageToken?: string;
