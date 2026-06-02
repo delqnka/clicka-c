@@ -45,6 +45,51 @@ async function appendHistory(chatId: number, role: 'user' | 'assistant', content
   await saveHistory(chatId, history);
 }
 
+// ─── Conversation state machine (persisted in DB, cleared after use) ─────────
+// Gemini is used ONLY for intent detection. All multi-step flows are managed here.
+
+const STATE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+type ConvState =
+  | { type: 'waiting_reschedule_time'; booking_id: string; client_name: string; from_date: string; to_date: string; created_at: string }
+  | { type: 'waiting_block_confirm'; date: string; created_at: string }
+  | { type: 'waiting_block_and_reschedule'; block_date: string; booking_id: string; client_name: string; to_date: string; to_time: string; created_at: string };
+
+async function getState(chatId: number): Promise<ConvState | null> {
+  try {
+    const rows = await sql`SELECT bot_conversation_state FROM salons WHERE telegram_chat_id = ${String(chatId)} LIMIT 1`;
+    const row = rows[0] as { bot_conversation_state: ConvState | null } | undefined;
+    const state = row?.bot_conversation_state ?? null;
+    if (!state) return null;
+    // Expire stale states so old context never bleeds into new conversations
+    if (Date.now() - new Date(state.created_at).getTime() > STATE_TTL_MS) {
+      await clearStateRaw(chatId);
+      return null;
+    }
+    return state;
+  } catch {
+    return null;
+  }
+}
+
+async function setState(chatId: number, state: ConvState): Promise<void> {
+  try {
+    await sql`UPDATE salons SET bot_conversation_state = ${JSON.stringify(state)}::jsonb WHERE telegram_chat_id = ${String(chatId)}`;
+  } catch {
+    // non-critical
+  }
+}
+
+async function clearStateRaw(chatId: number): Promise<void> {
+  try {
+    await sql`UPDATE salons SET bot_conversation_state = NULL WHERE telegram_chat_id = ${String(chatId)}`;
+  } catch { /* non-critical */ }
+}
+
+async function clearState(chatId: number): Promise<void> {
+  await clearStateRaw(chatId);
+}
+
 // ─── Regex patterns ─────────────────────────────────────────────────────────
 
 const ADD_SERVICE_RE =
@@ -494,6 +539,27 @@ export async function handleAdminCommand(
     return true;
   }
 
+  // ── /state debug command ─────────────────────────────────────────────────
+  if (text.trim().toLowerCase() === '/state') {
+    const s = await getState(chatId);
+    if (!s) {
+      await sendTelegramMessage(chatId, `🟢 <b>State:</b> няма активен state`);
+    } else {
+      const age = Math.round((Date.now() - new Date(s.created_at).getTime()) / 1000);
+      const expiresIn = Math.max(0, Math.round((STATE_TTL_MS - (Date.now() - new Date(s.created_at).getTime())) / 1000));
+      const isoToDMY = (v: string) => /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(8, 10) + '-' + v.slice(5, 7) + '-' + v.slice(0, 4) : v;
+      const display = JSON.stringify(s, (_k, v) => typeof v === 'string' ? isoToDMY(v) : v, 2);
+      const lines = [
+        `🔍 <b>Bot State Debug</b>`,
+        `<code>${display}</code>`,
+        ``,
+        `⏱ Възраст: ${age}с | Изтича след: ${expiresIn}с`,
+      ];
+      await sendTelegramMessage(chatId, lines.join('\n'));
+    }
+    return true;
+  }
+
   // ── AI fallback — free natural language ──────────────────────────────────
   return await handleWithAI(chatId, text, salon);
 }
@@ -548,10 +614,162 @@ type AIIntent =
   | { action: 'confirm_day_off'; date: string }
   | { action: 'chat'; reply: string };
 
+// ─── Free slot finder ────────────────────────────────────────────────────────
+
+type FreeSlot = { date: string; time: string; label: string };
+
+const JS_DAY_KEY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+
+async function findNearestFreeSlots(
+  salonId: string,
+  skipDate: string,
+  durationMin: number,
+  limit = 3,
+): Promise<FreeSlot[]> {
+  // Load working hours
+  const whRows = await sql`SELECT working_hours FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
+  const wh = (whRows[0]?.working_hours ?? {}) as Record<string, { open?: string; close?: string; closed?: boolean }>;
+
+  // Load bookings for the next 14 days
+  const searchStart = offsetDayISO(1);
+  const searchEnd = offsetDayISO(15);
+  const bookingRows = await sql`
+    SELECT date, time, COALESCE(service_duration, 60) AS duration
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salonId}
+      AND date >= ${searchStart}
+      AND date <= ${searchEnd}
+      AND status NOT IN ('cancelled', 'completed')
+    ORDER BY date, time
+  ` as { date: string; time: string; duration: number }[];
+
+  // Index bookings by date
+  const bookedByDate = new Map<string, { startMin: number; endMin: number }[]>();
+  for (const b of bookingRows) {
+    const [bh, bm] = b.time.split(':').map(Number);
+    const startMin = (bh ?? 0) * 60 + (bm ?? 0);
+    const endMin = startMin + b.duration;
+    const list = bookedByDate.get(b.date) ?? [];
+    list.push({ startMin, endMin });
+    bookedByDate.set(b.date, list);
+  }
+
+  const slots: FreeSlot[] = [];
+  const SLOT_STEP = 30;
+
+  for (let d = 1; d <= 14 && slots.length < limit; d++) {
+    const dateStr = offsetDayISO(d);
+    if (dateStr === skipDate) continue;
+
+    const jsDay = new Date(dateStr + 'T12:00:00').getDay();
+    const dayKey = JS_DAY_KEY[jsDay]!;
+    const dayHours = wh[dayKey];
+    if (!dayHours || dayHours.closed || !dayHours.open || !dayHours.close) continue;
+
+    const [oh, om] = dayHours.open.split(':').map(Number);
+    const [ch, cm] = dayHours.close.split(':').map(Number);
+    const openMin = (oh ?? 9) * 60 + (om ?? 0);
+    const closeMin = (ch ?? 18) * 60 + (cm ?? 0);
+    const booked = bookedByDate.get(dateStr) ?? [];
+
+    for (let t = openMin; t + durationMin <= closeMin && slots.length < limit; t += SLOT_STEP) {
+      const overlaps = booked.some(b => t < b.endMin && t + durationMin > b.startMin);
+      if (!overlaps) {
+        const hh = String(Math.floor(t / 60)).padStart(2, '0');
+        const mm = String(t % 60).padStart(2, '0');
+        const timeStr = `${hh}:${mm}`;
+        const dateObj = new Date(dateStr + 'T12:00:00');
+        const dayName = dateObj.toLocaleDateString('bg-BG', { weekday: 'long' });
+        const dayNum = dateObj.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long' });
+        slots.push({ date: dateStr, time: timeStr, label: `${dayName} ${dayNum} в ${timeStr}` });
+        // One slot per day is enough to keep the list clean
+        break;
+      }
+    }
+  }
+
+  return slots;
+}
+
+// Match "в 09:30", "09:30", "в 9", "14" etc.
+const TIME_ONLY_RE = /^(?:в\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:ч(?:аса?)?)?$/i;
+
+function parseTimeOnly(text: string): string | null {
+  const m = text.trim().match(TIME_ONLY_RE);
+  if (!m) return null;
+  let hh = parseInt(m[1]!, 10);
+  const mm = m[2] ? parseInt(m[2], 10) : 0;
+  if (hh < 7) hh += 12;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+const CONFIRM_RE = /^(да|yes|ок|okay|потвърди|потвърждавам|блокирай|добре|разбира\s+се)$/i;
+const DENY_RE = /^(не|no|отказвам|откажи|стоп|cancel)$/i;
+
 async function handleWithAI(chatId: number, text: string, salon: SalonRef): Promise<boolean> {
   const apiKey = getOpenRouterApiKey();
   console.log('[AI] handleWithAI called, text:', text, 'hasApiKey:', !!apiKey);
   if (!apiKey) return false;
+
+  // ── State machine: handle all multi-step flows programmatically, no AI ────
+  const convState = await getState(chatId);
+
+  if (convState) {
+    // ── waiting_reschedule_time: user must reply with a time ─────────────────
+    if (convState.type === 'waiting_reschedule_time') {
+      const toTime = parseTimeOnly(text);
+      if (toTime) {
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        await handleRescheduleBooking(chatId, salon, convState.client_name, convState.from_date, convState.to_date, toTime);
+        return true;
+      }
+      // Not a time — user may be doing something else; clear state and fall through to AI
+      await clearState(chatId);
+    }
+
+    // ── waiting_block_confirm: user must confirm or deny blocking the day ────
+    if (convState.type === 'waiting_block_confirm') {
+      if (CONFIRM_RE.test(text.trim())) {
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        await blockAllDay(salon.salonId, salon.slug, convState.date);
+        await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(convState.date)}</b> е блокиран — без нови резервации.`);
+        return true;
+      }
+      if (DENY_RE.test(text.trim())) {
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        await sendTelegramMessage(chatId, `ОК, денят не е блокиран.`);
+        return true;
+      }
+      // User sent a more complex command (e.g. "блокирай И премести Деляна за вторник в 12:30")
+      // Pass to AI but inject block_date into context so it can be resolved
+      // State is cleared here; AI intent will handle the combined action below
+      await clearState(chatId);
+      // Fall through to AI with the block date injected as context
+    }
+
+    // ── waiting_block_and_reschedule: block the day AND reschedule ────────────
+    if (convState.type === 'waiting_block_and_reschedule') {
+      if (CONFIRM_RE.test(text.trim())) {
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        await blockAllDay(salon.salonId, salon.slug, convState.block_date);
+        await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(convState.block_date)}</b> е блокиран.`);
+        await handleRescheduleBooking(chatId, salon, convState.client_name, convState.block_date, convState.to_date, convState.to_time);
+        return true;
+      }
+      if (DENY_RE.test(text.trim())) {
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        await sendTelegramMessage(chatId, `ОК, отменено.`);
+        return true;
+      }
+      // Not a yes/no — clear state and fall through to AI
+      await clearState(chatId);
+    }
+  }
 
   const today = new Date();
   const todayStr = todayISO();
@@ -563,7 +781,13 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
   const currentServices = await getSalonServices(salon.salonId);
   const servicesJson = JSON.stringify(currentServices.map((s, i) => ({ id: String(i + 1), name: s.name, price: s.price, duration_min: s.duration_min, category: s.category ?? null })), null, 2);
 
-  const systemPrompt = `Ти си личен AI асистент на собственик на малък бизнес. Говориш на естествен, топъл български — като добър приятел с опит в бранша.
+  // If there was a pending block_confirm state, inject the date as context for AI
+  const pendingBlockDate = (convState?.type === 'waiting_block_confirm') ? convState.date : null;
+  const stateContext = pendingBlockDate
+    ? `\n\n[КОНТЕКСТ: Преди това потребителят искаше да блокира ${formatDateBg(pendingBlockDate)} (${pendingBlockDate}). Ако сега казва "блокирай деня" или "блокирай" без дата, имат предвид тази дата.]`
+    : '';
+
+  const systemPrompt = `Ти си личен AI асистент на собственик на малък бизнес. Говориш на естествен, топъл български — като добър приятел с опит в бранша.${stateContext}
 
 Днес е ${today.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
 Днешна дата (ISO): ${todayStr}. Утрешна дата (ISO): ${tomorrowStr}.
@@ -614,12 +838,7 @@ ${servicesJson}
   "премести резервацията на Деляна от петък за вторник в 13", "мести Иван за утре в 15:30", "смени часа на Мария за сряда в 10"
   → { "action": "reschedule_booking", "client_name": "Деляна", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
 
-  Ако в историята има [чакам час за reschedule: client_name="X", from_date="...", to_date="..."] и потребителят отговаря само с час ("в 09:30", "09:30", "в 10", "14:00"):
-  → { "action": "reschedule_booking", "client_name": "X", "from_date": "...", "to_date": "...", "to_time": "HH:mm" }  ← вземи данните от историята
-
-ПОТВЪРЖДЕНИЕ НА БЛОКИРАНЕ (confirm_day_off) — само когато ботът е предупредил за резервации и чака потвърждение:
-  "да, блокирай", "да", "потвърждавам", "ок блокирай"
-  → { "action": "confirm_day_off", "date": "YYYY-MM-DD" }  ← датата от предишния контекст
+  ВАЖНО: from_date и to_date ЗАДЪЛЖИТЕЛНО трябва да са валидни ISO дати (YYYY-MM-DD). Ако не можеш да определиш точна дата, НЕ използвай reschedule_booking — върни { "action": "chat", "reply": "Уточни от коя дата на коя дата." }
 
 ПОТВЪРЖДАВАНЕ на запис (confirm_booking):
   "потвърди Мария", "окей записа на Иван", "да, потвърди", "ок потвърждавам"
@@ -695,7 +914,6 @@ ${servicesJson}
 - { "action": "remind_tomorrow" }
 - { "action": "client_phone", "client_name": "..." }
 - { "action": "reschedule_booking", "client_name": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
-- { "action": "confirm_day_off", "date": "YYYY-MM-DD" }
 - { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "..." }
 - { "action": "update_service", "service_name": "...", "price_eur": 35, "duration_min": 60, "category": "...", "new_name": "..." }  ← подавай само полетата, които се променят
@@ -943,26 +1161,37 @@ ${servicesJson}
     }
     case 'day_off': {
       const existingBookings = await sql`
-        SELECT client_name, client_phone, time FROM bookings
+        SELECT client_name, client_phone, time, COALESCE(service_duration, 60) AS duration
+        FROM bookings
         WHERE CAST(salon_id AS text) = ${salon.salonId}
           AND date = ${intent.date}
           AND status NOT IN ('cancelled', 'completed')
         ORDER BY time ASC
-      ` as { client_name: string; client_phone: string; time: string }[];
+      ` as { client_name: string; client_phone: string; time: string; duration: number }[];
 
       if (existingBookings.length > 0) {
+        // Find nearest free slots based on the longest booking's duration
+        const maxDuration = Math.max(...existingBookings.map(b => b.duration));
+        const freeSlots = await findNearestFreeSlots(salon.salonId, intent.date, maxDuration);
+
         const lines = [
-          `⚠️ Имаш <b>${existingBookings.length} резервации</b> за <b>${formatDateBg(intent.date)}</b>:`,
+          `⚠️ Имаш <b>${existingBookings.length} ${existingBookings.length === 1 ? 'резервация' : 'резервации'}</b> за <b>${formatDateBg(intent.date)}</b>:`,
           '',
         ];
         for (const b of existingBookings) {
           lines.push(`• ${b.time} — <b>${b.client_name}</b>`);
-          if (b.client_phone) lines.push(`  ${b.client_phone}`);
         }
-        lines.push('', `Напиши <b>да, блокирай</b> за да потвърдиш почивния ден.`);
-        const warningMsg = lines.join('\n');
-        await appendHistory(chatId, 'assistant', `[чакам потвърждение за блокиране на ${intent.date}]`);
-        await sendTelegramMessage(chatId, warningMsg);
+
+        if (freeSlots.length > 0) {
+          lines.push('', `📅 Най-близките свободни часове:`);
+          freeSlots.forEach((s, i) => lines.push(`${i + 1}. ${s.label}`));
+          lines.push('', `Напиши <b>да</b> за да блокираш деня, или кажи на кой час да преместя ${existingBookings.length === 1 ? `<b>${existingBookings[0]!.client_name}</b>` : 'клиентите'} — напр. <i>"Премести ${existingBookings[0]!.client_name} за ${freeSlots[0]!.label.split(' в ')[0]}"</i>.`);
+        } else {
+          lines.push('', `Напиши <b>да</b> за да потвърдиш почивния ден.`);
+        }
+
+        await setState(chatId, { type: 'waiting_block_confirm', date: intent.date, created_at: new Date().toISOString() });
+        await sendTelegramMessage(chatId, lines.join('\n'));
         return true;
       }
 
@@ -1061,12 +1290,23 @@ ${servicesJson}
       await handleClientPhone(chatId, salon, intent.client_name);
       return true;
     case 'confirm_day_off':
-      await blockAllDay(salon.salonId, salon.slug, intent.date);
-      await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без нови резервации.`);
+      // Handled by state machine above; AI may still emit this if confused — treat as block
+      if (intent.date && /^\d{4}-\d{2}-\d{2}$/.test(intent.date)) {
+        await blockAllDay(salon.salonId, salon.slug, intent.date);
+        await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без нови резервации.`);
+      }
       return true;
-    case 'reschedule_booking':
+    case 'reschedule_booking': {
+      // Guard: skip if AI gave us invalid dates (happens when context is lost)
+      const validFrom = intent.from_date && /^\d{4}-\d{2}-\d{2}$/.test(intent.from_date);
+      const validTo = intent.to_date && /^\d{4}-\d{2}-\d{2}$/.test(intent.to_date);
+      if (!validFrom || !validTo) {
+        await sendTelegramMessage(chatId, `⚠️ Не разбрах от коя дата на коя дата да преместя. Моля, уточни — напр. "Премести Деляна от четвъртък за вторник в 10:00".`);
+        return true;
+      }
       await handleRescheduleBooking(chatId, salon, intent.client_name, intent.from_date, intent.to_date, intent.to_time);
       return true;
+    }
     case 'chat':
       if (intent.reply) {
         // Guard: if AI hallucinated a success message for a write action, fall through so the
@@ -1401,14 +1641,10 @@ async function handleRescheduleBooking(
   const duration = r.service_duration ?? 60;
 
   if (!toTime) {
+    await setState(chatId, { type: 'waiting_reschedule_time', booking_id: r.id, client_name: r.client_name, from_date: fromDate, to_date: toDate, created_at: new Date().toISOString() });
     await sendTelegramMessage(
       chatId,
       `⏰ В колко часа да преместя резервацията на <b>${r.client_name}</b> за ${formatDateBg(toDate)}?\nМоментален час: <b>${r.time}</b>`,
-    );
-    await appendHistory(
-      chatId,
-      'assistant',
-      `[чакам час за reschedule: client_name="${r.client_name}", from_date="${fromDate}", to_date="${toDate}"]`,
     );
     return;
   }
