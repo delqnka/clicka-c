@@ -11,7 +11,10 @@ export async function POST(request: NextRequest) {
   const sig = request.headers.get('stripe-signature');
   const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
 
+  console.log('[stripe-connect webhook] received POST, sig present:', !!sig, 'secret present:', !!secret);
+
   if (!sig || !secret) {
+    console.error('[stripe-connect webhook] ABORT: missing sig or secret');
     return NextResponse.json({ error: 'Missing signature or secret' }, { status: 400 });
   }
 
@@ -19,9 +22,11 @@ export async function POST(request: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, secret);
   } catch (err) {
-    console.error('[stripe-connect webhook] signature verification failed:', err);
+    console.error('[stripe-connect webhook] ABORT: signature verification failed:', err);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
+
+  console.log('[stripe-connect webhook] event.type:', event.type, '| event.account:', (event as { account?: string }).account ?? 'none');
 
   if (event.type === 'account.updated') {
     const account = event.data.object as {
@@ -48,27 +53,39 @@ export async function POST(request: NextRequest) {
       payment_status: string;
     };
 
+    console.log('[stripe-connect webhook] checkout.session.completed session.id:', session.id,
+      '| payment_status:', session.payment_status,
+      '| metadata.bookingId:', session.metadata?.bookingId ?? 'MISSING',
+      '| event.account:', (event as { account?: string }).account ?? 'MISSING');
+
     // Thin payload — fetch full session to get metadata
-    if (!session.metadata?.bookingId && event.account) {
+    if (!session.metadata?.bookingId && (event as { account?: string }).account) {
+      console.log('[stripe-connect webhook] metadata missing — fetching full session for account:', (event as { account?: string }).account);
       try {
-        const full = await stripe.checkout.sessions.retrieve(session.id, {}, { stripeAccount: event.account });
+        const full = await stripe.checkout.sessions.retrieve(session.id, {}, { stripeAccount: (event as { account?: string }).account });
+        console.log('[stripe-connect webhook] full session metadata.bookingId:', full.metadata?.bookingId ?? 'STILL MISSING');
         session = { ...session, metadata: full.metadata ?? {}, amount_total: full.amount_total };
       } catch (err) {
         console.error('[stripe-connect webhook] failed to fetch full session', err);
       }
     }
 
+    console.log('[stripe-connect webhook] final bookingId:', session.metadata?.bookingId ?? 'NONE', '| payment_status:', session.payment_status);
+
     if (session.payment_status === 'paid') {
       const bookingId = session.metadata?.bookingId;
       if (bookingId) {
-        await sql`
+        console.log('[stripe-connect webhook] running UPDATE for bookingId:', bookingId);
+        const result = await sql`
           UPDATE bookings SET
             status         = 'confirmed',
             payment_status = 'paid',
             amount_paid    = ${session.amount_total ?? 0}
           WHERE id = ${bookingId}
             AND payment_status != 'paid'
+          RETURNING id
         `;
+        console.log('[stripe-connect webhook] rows updated:', result.length, '| bookingId:', bookingId);
 
         // Load booking + salon for notifications
         const rows = await sql`
