@@ -1130,6 +1130,7 @@ export default function SalonPublicParity({
           time: selectedTime,
           notes: notes.trim() || undefined,
           smsReminderConsent,
+          requiresPayment,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string; id?: string; bookingId?: string };

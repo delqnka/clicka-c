@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
     notes?: string;
     smsReminderConsent?: boolean;
     offerId?: string;
+    requiresPayment?: boolean;
   };
 
   try {
@@ -203,10 +204,12 @@ export async function POST(request: NextRequest) {
     notes,
     smsReminderConsent,
     offerId,
+    requiresPayment,
   } = body;
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
   const hasSmsReminderConsent = smsReminderConsent === true;
   const normalizedOfferId = typeof offerId === 'string' ? offerId.trim() : '';
+  const skipNotifications = requiresPayment === true;
 
   if (!clientName || !clientPhone || !clientEmail || !serviceName || !date || !time) {
     return NextResponse.json(
@@ -392,18 +395,20 @@ export async function POST(request: NextRequest) {
 
   const telegramChatId = String((resolved.salon as Record<string, unknown>).telegram_chat_id ?? '').trim();
 
-  runAfterResponse(
-    dispatchBookingNotifications({
-      salonEmail: resolved.salon.email ? String(resolved.salon.email) : null,
-      clientEmail: normalizedClientEmail,
-      telegramChatId,
-      bookingDetails,
-      telegramDetails: {
-        ...bookingDetails,
+  if (!skipNotifications) {
+    runAfterResponse(
+      dispatchBookingNotifications({
+        salonEmail: resolved.salon.email ? String(resolved.salon.email) : null,
         clientEmail: normalizedClientEmail,
-      },
-    }),
-  );
+        telegramChatId,
+        bookingDetails,
+        telegramDetails: {
+          ...bookingDetails,
+          clientEmail: normalizedClientEmail,
+        },
+      }),
+    );
+  }
 
   runAfterResponse(
     scheduleBookingSmsReminders({
