@@ -32,13 +32,14 @@ export async function insertBookingIfNoOverlap(
   const manageToken = crypto.randomBytes(32).toString('hex');
   const manageTokenHash = crypto.createHash('sha256').update(manageToken).digest('hex');
 
-  // Cancel stale pending-payment bookings for the same slot before inserting
+  // Cancel stale pending-payment bookings for the same date before inserting.
+  // Matches both 'pending' and 'unpaid' — older inserts used 'unpaid' as the default.
   await sql`
     UPDATE bookings
     SET status = 'cancelled', payment_status = 'failed'
     WHERE salon_id = ${row.salonId}
       AND date IN (${row.date}, ${legacyDate})
-      AND payment_status = 'pending'
+      AND payment_status IN ('pending', 'unpaid')
       AND created_at < now() - interval '5 minutes'
   `.catch(() => {});
 
@@ -76,7 +77,7 @@ export async function insertBookingIfNoOverlap(
           'cancelled', 'canceled', 'отказана', 'анулирана'
         )
         AND NOT (
-          b.payment_status = 'pending'
+          b.payment_status IN ('pending', 'unpaid')
           AND b.created_at < now() - interval '5 minutes'
         )
         AND (

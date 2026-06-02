@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       WHERE salon_id = ${salonId}
         AND date IN (${date}, ${legacyDate ?? date})
         AND NOT (
-          payment_status = 'pending'
+          payment_status IN ('pending', 'unpaid')
           AND created_at < now() - interval '5 minutes'
         )
       ORDER BY time ASC
