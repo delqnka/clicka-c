@@ -718,16 +718,19 @@ export function SalonBookingModal({
         {!bookingSuccess && !bookingSuccessDetails ? (
           <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
             {hasServices ? (
-              <div className="mb-3 rounded-2xl bg-white px-3.5 py-2.5">
-                <p className="text-[15px] font-bold tabular-nums text-black">
-                  Общо: {Math.max(0, totalDuration)} мин · {totalPrice.toFixed(2)} EUR
+              <div className="mb-3 px-1">
+                <p className="text-[13px] tabular-nums text-black/50">
+                  Общо: {Math.max(0, totalDuration)} мин
+                </p>
+                <p className="text-[22px] font-bold tabular-nums text-black leading-tight">
+                  {totalPrice.toFixed(2)} EUR
                 </p>
                 {selectedTime ? (
                   <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-black">
                     Старт {selectedTime} · Готови около {endTime}
                   </p>
                 ) : step > 1 ? (
-                  <p className="mt-0.5 truncate text-[13px] font-medium text-black/60">
+                  <p className="mt-0.5 truncate text-[13px] font-semibold text-black">
                     {selectedServices.map((s) => s.name).join(' + ')}
                   </p>
                 ) : null}
@@ -735,9 +738,9 @@ export function SalonBookingModal({
             ) : null}
 
             {step === 3 && paymentType !== 'none' && (
-              <div className="mb-2.5 space-y-1.5 text-center">
-                <p className="flex items-center justify-center gap-1.5 text-[12px] font-semibold text-black">
-                  <svg width="13" height="13" viewBox="0 0 60 60" fill="none" aria-hidden>
+              <div className="mb-2.5 space-y-1 text-center">
+                <p className="flex items-center justify-center gap-1.5 text-[13px] font-semibold text-[#635BFF]">
+                  <svg width="14" height="14" viewBox="0 0 60 60" fill="none" aria-hidden>
                     <rect width="60" height="60" rx="8" fill="#635BFF"/>
                     <path d="M27.5 22.5c0-1.7 1.4-2.4 3.6-2.4 3.2 0 7.3 1 10.4 2.7v-9.8c-3.5-1.4-7-2-10.4-2C23.1 11 18 15.2 18 22.9c0 12.1 16.6 10.2 16.6 15.4 0 2-1.7 2.7-4.1 2.7-3.5 0-8-1.5-11.5-3.5v9.9c3.9 1.7 7.9 2.4 11.5 2.4 8.8 0 14.8-4.3 14.8-12.2C45.3 25.4 27.5 27.6 27.5 22.5z" fill="white"/>
                   </svg>
@@ -746,12 +749,8 @@ export function SalonBookingModal({
                     : <>Плащане от <strong className="mx-0.5">€{totalPrice.toFixed(2)}</strong></>
                   }
                 </p>
-                <p className="flex items-center justify-center gap-1 text-[11px] text-black/40">
-                  <svg viewBox="0 0 14 14" className="h-3 w-3 shrink-0" fill="none" aria-hidden>
-                    <path d="M7 1C3.69 1 1 3.69 1 7s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-.5 3h1v4h-1V4zm0 5h1v1h-1V9z" fill="currentColor" opacity=".5"/>
-                  </svg>
-                  Защитено плащане чрез
-                  <svg viewBox="0 0 60 25" className="ml-0.5 h-2.5 w-auto" aria-label="Stripe" fill="#635BFF"><path d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a8.33 8.33 0 0 1-4.56 1.1c-4.01 0-6.83-2.03-6.83-7.18 0-4.51 2.49-7.19 6.27-7.19 3.73 0 5.93 2.68 5.93 7.19v1.16zm-5.93-5.15c-1.08 0-2.29.81-2.29 3.01h4.47c0-2.2-1.14-3.01-2.18-3.01zm-22.36 9.2c-1.06 0-1.67-.43-1.67-1.46V9.03h-1.94V5.85h1.94V2.17l4.01-.97v4.65h2.69v3.18h-2.69v6.5c0 .84.42 1.18 1.15 1.18.58 0 1.08-.16 1.62-.4v3.25c-.68.34-1.62.57-2.67.57a4.8 4.8 0 0 1-.44-.01zM28.24 5.7c0-1.27 1.04-2.3 2.32-2.3s2.32 1.03 2.32 2.3-1.04 2.31-2.32 2.31-2.32-1.04-2.32-2.31zm.16 14.57V6.81h4.32v13.46h-4.32zm-5.86 0L18.7 12.9l-3.84 7.37h-4.87l6.26-11.07-5.97-8.56h4.93l3.49 6.62 3.48-6.62h4.93l-5.97 8.56 6.26 11.07h-4.87zM0 20.27V.97L4.09 0v20.27H0z"/></svg>
+                <p className="text-[11px] text-black/35">
+                  Защитено плащане чрез <span className="font-bold text-[#635BFF]">Stripe</span>
                 </p>
               </div>
             )}
