@@ -2001,7 +2001,7 @@ export default function SalonPublicParity({
 
       <div className="fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 lg:hidden" style={{ background: primary }}>
         <div className="mx-auto w-full max-w-[min(100%,1180px)]">
-          <p className="mb-0.5 truncate text-center text-[13px] font-semibold text-white/80">{salonName}</p>
+          <p className="mb-0.5 truncate text-center text-[13px] font-semibold text-white/80">{name}</p>
           <button
             type="button"
             onClick={() => openBookingModal()}
