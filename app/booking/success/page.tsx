@@ -1,7 +1,11 @@
 'use client';
+import { useSearchParams } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function BookingSuccessPage() {
+  const params = useSearchParams();
+  const returnUrl = params.get('return') ?? '/';
+
   return (
     <div
       style={{
@@ -34,7 +38,7 @@ export default function BookingSuccessPage() {
           Резервацията ти е потвърдена. Ще получиш имейл с подробностите.
         </p>
         <button
-          onClick={() => window.history.back()}
+          onClick={() => window.location.href = returnUrl}
           style={{
             padding: '12px 28px',
             borderRadius: 12,
@@ -46,7 +50,7 @@ export default function BookingSuccessPage() {
             cursor: 'pointer',
           }}
         >
-          Назад
+          Към сайта
         </button>
       </div>
     </div>

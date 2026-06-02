@@ -5,6 +5,7 @@ import { XCircle } from 'lucide-react';
 
 export default function BookingCancelPage() {
   const params = useSearchParams();
+  const returnUrl = params.get('return') ?? '/';
   useEffect(() => {
     const bookingId = params.get('booking_id');
     if (bookingId) {
@@ -48,7 +49,7 @@ export default function BookingCancelPage() {
           Резервацията не беше потвърдена. Можеш да опиташ отново.
         </p>
         <button
-          onClick={() => window.history.back()}
+          onClick={() => window.location.href = returnUrl}
           style={{
             padding: '12px 28px',
             borderRadius: 12,

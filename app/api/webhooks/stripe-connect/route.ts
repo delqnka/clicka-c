@@ -41,12 +41,23 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as {
+    let session = event.data.object as {
       id: string;
       amount_total: number | null;
       metadata?: Record<string, string> | null;
       payment_status: string;
     };
+
+    // Thin payload — fetch full session to get metadata
+    if (!session.metadata?.bookingId && event.account) {
+      try {
+        const full = await stripe.checkout.sessions.retrieve(session.id, {}, { stripeAccount: event.account });
+        session = { ...session, metadata: full.metadata ?? {}, amount_total: full.amount_total };
+      } catch (err) {
+        console.error('[stripe-connect webhook] failed to fetch full session', err);
+      }
+    }
+
     if (session.payment_status === 'paid') {
       const bookingId = session.metadata?.bookingId;
       if (bookingId) {

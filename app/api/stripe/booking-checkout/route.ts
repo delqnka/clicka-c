@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
         salonSlug,
         paymentType: paymentType ?? 'full',
       },
-      success_url: `${origin}/booking/success?booking_id=${bookingId}`,
-      cancel_url:  `${origin}/booking/cancel?booking_id=${bookingId}`,
+      success_url: `${origin}/booking/success?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`,
+      cancel_url:  `${origin}/booking/cancel?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`,
     },
     {
       // Make the checkout session on behalf of the connected account
