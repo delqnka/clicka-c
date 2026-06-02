@@ -65,6 +65,10 @@ export async function insertBookingIfNoOverlap(
         AND lower(trim(coalesce(b.status, ''))) NOT IN (
           'cancelled', 'canceled', 'отказана', 'анулирана'
         )
+        AND NOT (
+          b.payment_status = 'pending'
+          AND b.created_at < now() - interval '35 minutes'
+        )
         AND (
           (
             COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60

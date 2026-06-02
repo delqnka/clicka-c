@@ -88,6 +88,10 @@ export async function GET(request: NextRequest) {
       FROM bookings
       WHERE salon_id = ${salonId}
         AND date IN (${date}, ${legacyDate ?? date})
+        AND NOT (
+          payment_status = 'pending'
+          AND created_at < now() - interval '35 minutes'
+        )
       ORDER BY time ASC
     `;
     const occupied: { time: string; duration: number }[] = occupiedRows
