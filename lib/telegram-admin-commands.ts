@@ -920,10 +920,26 @@ ${servicesJson}
       await sendTelegramMessage(chatId, blockMsg);
       return true;
     }
-    case 'day_off':
+    case 'day_off': {
+      // Check for existing bookings on that day before blocking
+      const existingBookings = await sql`
+        SELECT client_name, time FROM bookings
+        WHERE salon_id = CAST(${salon.salonId} AS uuid)
+          AND date = ${intent.date}
+          AND status NOT IN ('cancelled', 'completed')
+        ORDER BY time ASC
+      `;
       await blockAllDay(salon.salonId, salon.slug, intent.date);
-      await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без резервации.`);
+      let dayOffMsg = `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без нови резервации.`;
+      if (existingBookings.length > 0) {
+        const names = (existingBookings as { client_name: string; time: string }[])
+          .map((b) => `• ${b.time} ${b.client_name}`)
+          .join('\n');
+        dayOffMsg += `\n\n⚠️ Имаш <b>${existingBookings.length} резервации</b> за този ден:\n${names}\nОбади им се да ги пренасрочиш.`;
+      }
+      await sendTelegramMessage(chatId, dayOffMsg);
       return true;
+    }
     case 'day_hours':
       await updateSingleDayHours(salon.salonId, salon.slug, intent.day_key, { open: intent.open, close: intent.close });
       await sendTelegramMessage(chatId, `✅ <b>${intent.day_key}</b>: ${intent.open} – ${intent.close}`);
