@@ -518,11 +518,6 @@ export function SalonBookingModal({
 
               {step === 2 ? (
                 <div className="space-y-4">
-                  {selectedServices.length > 0 && (
-                    <p className="truncate text-[17px] font-bold text-black">
-                      {selectedServices.map((s) => s.name).join(' + ')}
-                    </p>
-                  )}
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="text-[13px] font-semibold text-black">
                       Дата и час
@@ -538,7 +533,7 @@ export function SalonBookingModal({
                   </div>
 
                   {hasServices ? (
-                    <p className="text-sm text-black/45">
+                    <p className="text-[15px] font-semibold text-black">
                       {selectedServices.map((s) => s.name).join(' + ')}
                     </p>
                   ) : null}
