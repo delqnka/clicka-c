@@ -1413,7 +1413,7 @@ async function handleRescheduleBooking(
 
   await sql`
     UPDATE bookings
-    SET date = ${toDate}, time = ${resolvedTime}, updated_at = now()
+    SET date = ${toDate}, time = ${resolvedTime}
     WHERE CAST(id AS text) = ${r.id}
   `;
 
