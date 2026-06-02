@@ -18,36 +18,10 @@ type Props = {
   className?: string;
 };
 
-/**
- * Server-rendered LCP hero.
- * Prefers pre-generated `-lcp-640.webp` sidecar (direct R2, no optimizer hop).
- */
+/** Server-rendered LCP hero image via next/image optimizer. */
 export function SalonHeroLcp({ src, alt, className }: Props) {
   const trimmed = src.trim();
   if (!trimmed || trimmed.startsWith('data:')) return null;
-
-  const sidecarUrl = heroLcpVariantUrl(trimmed);
-
-  if (sidecarUrl) {
-    return (
-      <>
-        <style dangerouslySetInnerHTML={{ __html: HERO_CRITICAL_CSS }} />
-        <div className={`salon-hero-lcp ${className ?? ''}`.trim()}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={sidecarUrl}
-            alt={alt}
-            width={HERO_LCP_WIDTH}
-            height={HERO_HEIGHT}
-            className="salon-hero-lcp-img"
-            fetchPriority="high"
-            loading="eager"
-            decoding="async"
-          />
-        </div>
-      </>
-    );
-  }
 
   const imageSrc = heroImageSourceUrl(trimmed);
   if (!imageSrc) return null;
