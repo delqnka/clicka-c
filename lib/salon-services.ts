@@ -24,6 +24,8 @@ export type ParsedSalonService = {
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
   assignedTeamMemberIds?: string[];
+  payment_type?: PaymentType;
+  deposit_amount?: number;
 };
 
 function pickFirstNonEmptyString(...values: unknown[]): string {
@@ -101,6 +103,13 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
           .filter(Boolean))]
       : undefined;
 
+    const paymentTypeRaw = String(row.payment_type ?? '');
+    const paymentType: PaymentType | undefined = ['none', 'deposit', 'full'].includes(paymentTypeRaw)
+      ? (paymentTypeRaw as PaymentType)
+      : undefined;
+    const depositAmountRaw = Number(row.deposit_amount ?? NaN);
+    const depositAmount = Number.isFinite(depositAmountRaw) ? Math.max(0, depositAmountRaw) : undefined;
+
     out.push({
       id,
       name,
@@ -120,6 +129,8 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
       ...(assignedTeamMemberIds && assignedTeamMemberIds.length > 0
         ? { assignedTeamMemberIds }
         : {}),
+      ...(paymentType !== undefined ? { payment_type: paymentType } : {}),
+      ...(depositAmount !== undefined ? { deposit_amount: depositAmount } : {}),
     });
   });
 
