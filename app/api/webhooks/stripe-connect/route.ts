@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
       payouts_enabled: boolean;
       details_submitted: boolean;
     };
-
     await sql`
       UPDATE salons SET
         stripe_charges_enabled   = ${account.charges_enabled},
@@ -38,6 +37,44 @@ export async function POST(request: NextRequest) {
         stripe_onboarding_complete = ${account.charges_enabled && account.details_submitted}
       WHERE stripe_account_id = ${account.id}
     `;
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as {
+      id: string;
+      amount_total: number | null;
+      metadata?: Record<string, string> | null;
+      payment_status: string;
+    };
+    if (session.payment_status === 'paid') {
+      const bookingId = session.metadata?.bookingId;
+      if (bookingId) {
+        await sql`
+          UPDATE bookings SET
+            status         = 'confirmed',
+            payment_status = 'paid',
+            amount_paid    = ${session.amount_total ?? 0}
+          WHERE id = ${bookingId}
+            AND payment_status != 'paid'
+        `;
+      }
+    }
+  }
+
+  if (event.type === 'checkout.session.expired') {
+    const session = event.data.object as {
+      metadata?: Record<string, string> | null;
+    };
+    const bookingId = session.metadata?.bookingId;
+    if (bookingId) {
+      await sql`
+        UPDATE bookings SET
+          status         = 'cancelled',
+          payment_status = 'failed'
+        WHERE id = ${bookingId}
+          AND payment_status = 'pending'
+      `;
+    }
   }
 
   return NextResponse.json({ received: true });

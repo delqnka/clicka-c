@@ -1,3 +1,5 @@
+export type PaymentType = 'none' | 'deposit' | 'full';
+
 export type ServiceItem = {
   id?: string;
   name: string;
@@ -8,6 +10,8 @@ export type ServiceItem = {
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
   assignedTeamMemberIds?: string[];
+  payment_type?: PaymentType;
+  deposit_amount?: number; // euros (e.g. 20 = €20)
 };
 
 export type ParsedSalonService = {
@@ -157,6 +161,12 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
       ...(normalizedVariants.length > 0 ? { variants: normalizedVariants } : {}),
       ...(Array.isArray(s.assignedTeamMemberIds) && s.assignedTeamMemberIds.length > 0
         ? { assignedTeamMemberIds: s.assignedTeamMemberIds }
+        : {}),
+      ...(['none', 'deposit', 'full'].includes(String((s as unknown as ServiceItem).payment_type ?? ''))
+        ? { payment_type: (s as unknown as ServiceItem).payment_type }
+        : {}),
+      ...((s as unknown as ServiceItem).deposit_amount != null && Number.isFinite(Number((s as unknown as ServiceItem).deposit_amount))
+        ? { deposit_amount: Math.max(0, Number((s as unknown as ServiceItem).deposit_amount)) }
         : {}),
     };
   });

@@ -51,6 +51,8 @@ type SalonBookingModalProps = {
   minDate: string;
   maxDate: string;
   timeSlots: string[] | 'closed' | null;
+  paymentType?: 'none' | 'deposit' | 'full';
+  depositAmount?: number;
   isSubmitting: boolean;
   bookingError: string;
   bookingSuccess: string;
@@ -118,6 +120,8 @@ export function SalonBookingModal({
   minDate,
   maxDate,
   timeSlots,
+  paymentType = 'none',
+  depositAmount,
   isSubmitting,
   bookingError,
   bookingSuccess,
@@ -757,16 +761,27 @@ export function SalonBookingModal({
                   Продължи
                 </button>
               ) : (
-                <button
-                  type="submit"
-                  form="salon-booking-form"
-                  disabled={isSubmitting || !selectedTime || !hasServices}
-                  className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                  style={CLICKA_MARKETING_GRADIENT_STYLE}
-                >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                  Изпрати заявка
-                </button>
+                <>
+                  {paymentType !== 'none' && (
+                    <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+                      {paymentType === 'deposit' && depositAmount && depositAmount > 0 ? (
+                        <>💳 Тази услуга изисква <strong>депозит от €{depositAmount}</strong>. Ще бъдеш пренасочена към Stripe за плащане.</>
+                      ) : (
+                        <>💳 Тази услуга изисква <strong>пълно плащане от €{totalPrice.toFixed(2)}</strong>. Ще бъдеш пренасочена към Stripe за плащане.</>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    form="salon-booking-form"
+                    disabled={isSubmitting || !selectedTime || !hasServices}
+                    className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                    style={CLICKA_MARKETING_GRADIENT_STYLE}
+                  >
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                    {paymentType !== 'none' ? 'Плати и резервирай' : 'Изпрати заявка'}
+                  </button>
+                </>
               )}
             </div>
           </div>

@@ -357,6 +357,50 @@ const ServiceCardRow = memo(function ServiceCardRow({
           />
         </div>
 
+        {/* Payment */}
+        <div style={{ marginTop: 8, marginBottom: 4 }}>
+          <FieldLabel>Плащане при резервация</FieldLabel>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {(['none', 'deposit', 'full'] as const).map((pt) => (
+              <button
+                key={pt}
+                type="button"
+                onClick={() => updateDraft((s) => ({ ...s, payment_type: pt, ...(pt !== 'deposit' ? { deposit_amount: undefined } : {}) }))}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  borderRadius: 20,
+                  border: `1.5px solid ${(draft.payment_type ?? 'none') === pt ? '#000' : T.border}`,
+                  background: (draft.payment_type ?? 'none') === pt ? '#000' : '#fff',
+                  color: (draft.payment_type ?? 'none') === pt ? '#fff' : T.muted,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {pt === 'none' ? 'Без плащане' : pt === 'deposit' ? 'Депозит' : 'Пълна сума'}
+              </button>
+            ))}
+          </div>
+          {(draft.payment_type ?? 'none') === 'deposit' && (
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FieldLabel>Сума на депозита (€)</FieldLabel>
+              <div style={{ position: 'relative', width: 90 }}>
+                <input
+                  type="number"
+                  min={1}
+                  value={draft.deposit_amount ?? ''}
+                  onChange={(e) => updateDraft((s) => ({ ...s, deposit_amount: Math.max(1, Number(e.target.value) || 0) }))}
+                  style={{ ...fieldInp, paddingRight: 22, width: '100%' }}
+                  placeholder="20"
+                  aria-label="Сума на депозита"
+                />
+                <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#666', pointerEvents: 'none' }}>€</span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Variants */}
         <details style={{ marginTop: 8 }}>
           <summary

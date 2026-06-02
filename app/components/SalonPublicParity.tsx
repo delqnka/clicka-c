@@ -216,6 +216,8 @@ type ServiceRow = {
   category?: string;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
+  payment_type?: 'none' | 'deposit' | 'full';
+  deposit_amount?: number;
 };
 
 type ServiceVariant = NonNullable<ServiceRow['variants']>[number];
@@ -1093,14 +1095,25 @@ export default function SalonPublicParity({
     setBookingError('');
     setBookingSuccess('');
     if (bookingServiceIdxs.length === 0) return setBookingError('Моля, изберете поне една услуга.');
-    if (!clientName.trim()) return setBookingError('Моля, въведете вашето име.');
+    if (!clientName.trim()) return setBookingError('Моля, въведете вашето ime.');
     if (!clientPhone.trim()) return setBookingError('Моля, въведете телефонен номер.');
     if (!clientEmail.trim()) return setBookingError('Моля, въведете имейл.');
     if (!selectedDate) return setBookingError('Моля, изберете дата.');
     if (!selectedTime) return setBookingError('Моля, изберете час.');
     if (selectedBookingServices.length === 0) return setBookingError('Невалидна услуга.');
+
     const combinedServiceName = selectedBookingServices.map((s) => s.name).join(' + ');
     const combinedDuration = bookingTotalDuration || 30;
+
+    // Determine payment requirement from the first selected service
+    const firstService = selectedBookingServices[0];
+    const paymentType = firstService?.payment_type ?? 'none';
+    const depositAmount = firstService?.deposit_amount ?? 0;
+    const amountEuros =
+      paymentType === 'deposit' ? depositAmount :
+      paymentType === 'full' ? (bookingTotalPrice ?? 0) : 0;
+    const requiresPayment = paymentType !== 'none' && amountEuros > 0;
+
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/bookings?slug=${encodeURIComponent(salonSlug)}`, {
@@ -1119,7 +1132,7 @@ export default function SalonPublicParity({
           smsReminderConsent,
         }),
       });
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      const json = (await res.json().catch(() => ({}))) as { error?: string; id?: string; bookingId?: string };
       if (!res.ok) {
         const fallback =
           res.status === 500
@@ -1127,6 +1140,29 @@ export default function SalonPublicParity({
             : `Грешка ${res.status}`;
         throw new Error(json.error || fallback);
       }
+
+      const createdBookingId = json.bookingId ?? json.id;
+      if (requiresPayment && createdBookingId) {
+        // Redirect to Stripe Checkout
+        const payRes = await fetch('/api/stripe/booking-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: createdBookingId,
+            salonSlug,
+            serviceName: combinedServiceName,
+            amountEuros,
+            paymentType,
+          }),
+        });
+        const payJson = (await payRes.json().catch(() => ({}))) as { checkoutUrl?: string; error?: string };
+        if (!payRes.ok || !payJson.checkoutUrl) {
+          throw new Error(payJson.error ?? 'Грешка при инициализиране на плащането.');
+        }
+        window.location.href = payJson.checkoutUrl;
+        return; // stop — page will redirect
+      }
+
       const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('bg-BG', {
         weekday: 'long',
         day: 'numeric',
@@ -2065,6 +2101,8 @@ export default function SalonPublicParity({
         minDate={minDate}
         maxDate={maxDate}
         timeSlots={timeSlots}
+        paymentType={selectedBookingServices[0]?.payment_type ?? 'none'}
+        depositAmount={selectedBookingServices[0]?.deposit_amount}
         isSubmitting={isSubmitting}
         bookingError={bookingError}
         bookingSuccess={bookingSuccess}
