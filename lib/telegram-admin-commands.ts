@@ -543,6 +543,9 @@ type AIIntent =
   | { action: 'confirm_booking'; client_name: string }
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
+  | { action: 'client_phone'; client_name: string }
+  | { action: 'reschedule_booking'; client_name: string; from_date: string; to_date: string; to_time: string }
+  | { action: 'confirm_day_off'; date: string }
   | { action: 'chat'; reply: string };
 
 async function handleWithAI(chatId: number, text: string, salon: SalonRef): Promise<boolean> {
@@ -602,6 +605,18 @@ ${servicesJson}
 
 УТОЧНЯВАНЕ (clarify) — само при реална двусмисленост:
   → { "action": "clarify", "question": "Имаш предвид X или Y?" }
+
+ТЕЛЕФОН НА КЛИЕНТ (client_phone):
+  "дай ми номера на Мария", "какъв е телефонът на Иван", "номера на Деляна", "телефон на клиента"
+  → { "action": "client_phone", "client_name": "Мария" }
+
+ПРЕМЕСТВАНЕ НА РЕЗЕРВАЦИЯ (reschedule_booking):
+  "премести резервацията на Деляна от петък за вторник в 13", "мести Иван за утре в 15:30", "смени часа на Мария за сряда в 10"
+  → { "action": "reschedule_booking", "client_name": "Деляна", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
+
+ПОТВЪРЖДЕНИЕ НА БЛОКИРАНЕ (confirm_day_off) — само когато ботът е предупредил за резервации и чака потвърждение:
+  "да, блокирай", "да", "потвърждавам", "ок блокирай"
+  → { "action": "confirm_day_off", "date": "YYYY-MM-DD" }  ← датата от предишния контекст
 
 ПОТВЪРЖДАВАНЕ на запис (confirm_booking):
   "потвърди Мария", "окей записа на Иван", "да, потвърди", "ок потвърждавам"
@@ -675,6 +690,9 @@ ${servicesJson}
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
+- { "action": "client_phone", "client_name": "..." }
+- { "action": "reschedule_booking", "client_name": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
+- { "action": "confirm_day_off", "date": "YYYY-MM-DD" }
 - { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "..." }
 - { "action": "update_service", "service_name": "...", "price_eur": 35, "duration_min": 60, "category": "...", "new_name": "..." }  ← подавай само полетата, които се променят
@@ -921,23 +939,32 @@ ${servicesJson}
       return true;
     }
     case 'day_off': {
-      // Check for existing bookings on that day before blocking
       const existingBookings = await sql`
-        SELECT client_name, time FROM bookings
+        SELECT client_name, client_phone, time FROM bookings
         WHERE CAST(salon_id AS text) = ${salon.salonId}
           AND date = ${intent.date}
           AND status NOT IN ('cancelled', 'completed')
         ORDER BY time ASC
-      `;
-      await blockAllDay(salon.salonId, salon.slug, intent.date);
-      let dayOffMsg = `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без нови резервации.`;
+      ` as { client_name: string; client_phone: string; time: string }[];
+
       if (existingBookings.length > 0) {
-        const names = (existingBookings as { client_name: string; time: string }[])
-          .map((b) => `• ${b.time} ${b.client_name}`)
-          .join('\n');
-        dayOffMsg += `\n\n⚠️ Имаш <b>${existingBookings.length} резервации</b> за този ден:\n${names}\nОбади им се да ги пренасрочиш.`;
+        const lines = [
+          `⚠️ Имаш <b>${existingBookings.length} резервации</b> за <b>${formatDateBg(intent.date)}</b>:`,
+          '',
+        ];
+        for (const b of existingBookings) {
+          lines.push(`• ${b.time} — <b>${b.client_name}</b>`);
+          if (b.client_phone) lines.push(`  ${b.client_phone}`);
+        }
+        lines.push('', `Напиши <b>да, блокирай</b> за да потвърдиш почивния ден.`);
+        const warningMsg = lines.join('\n');
+        await appendHistory(chatId, 'assistant', `[чакам потвърждение за блокиране на ${intent.date}]`);
+        await sendTelegramMessage(chatId, warningMsg);
+        return true;
       }
-      await sendTelegramMessage(chatId, dayOffMsg);
+
+      await blockAllDay(salon.salonId, salon.slug, intent.date);
+      await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без нови резервации.`);
       return true;
     }
     case 'day_hours':
@@ -1026,6 +1053,16 @@ ${servicesJson}
       return true;
     case 'remind_tomorrow':
       await handleRemindTomorrow(chatId, salon);
+      return true;
+    case 'client_phone':
+      await handleClientPhone(chatId, salon, intent.client_name);
+      return true;
+    case 'confirm_day_off':
+      await blockAllDay(salon.salonId, salon.slug, intent.date);
+      await sendTelegramMessage(chatId, `🔒 <b>${formatDateBg(intent.date)}</b> е блокиран — без нови резервации.`);
+      return true;
+    case 'reschedule_booking':
+      await handleRescheduleBooking(chatId, salon, intent.client_name, intent.from_date, intent.to_date, intent.to_time);
       return true;
     case 'chat':
       if (intent.reply) {
@@ -1331,6 +1368,74 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
   }
   lines.push('', '💡 За потвърждение: <code>потвърди резервацията на [Име]</code>');
   await sendTelegramMessage(chatId, lines.join('\n'));
+}
+
+async function handleRescheduleBooking(
+  chatId: number,
+  salon: SalonRef,
+  clientName: string,
+  fromDate: string,
+  toDate: string,
+  toTime: string,
+): Promise<void> {
+  const rows = await sql`
+    SELECT CAST(id AS text) AS id, client_name, date, time, service_name, service_duration
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
+      AND date = ${fromDate}
+      AND status NOT IN ('cancelled', 'completed')
+    ORDER BY time ASC
+    LIMIT 1
+  ` as { id: string; client_name: string; date: string; time: string; service_name: string; service_duration: number | null }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `❌ Не намерих резервация на <b>${clientName}</b> за ${formatDateBg(fromDate)}.`);
+    return;
+  }
+
+  const r = rows[0]!;
+  const duration = r.service_duration ?? 60;
+  const [hh, mm] = toTime.split(':').map(Number);
+  const startMin = (hh ?? 0) * 60 + (mm ?? 0);
+  const endMin = startMin + duration;
+  const endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+
+  await sql`
+    UPDATE bookings
+    SET date = ${toDate}, time = ${toTime}, start_time = ${toTime}, end_time = ${endTime}, updated_at = now()
+    WHERE CAST(id AS text) = ${r.id}
+  `;
+
+  await sendTelegramMessage(
+    chatId,
+    `✅ Резервацията е преместена:\n👤 <b>${r.client_name}</b> — ${r.service_name}\n📅 ${formatDateBg(toDate)} в <b>${toTime}</b>`,
+  );
+}
+
+async function handleClientPhone(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
+  const rows = await sql`
+    SELECT client_name, client_phone, date, time, service_name
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
+      AND client_phone IS NOT NULL
+      AND client_phone != ''
+    ORDER BY date DESC, time DESC
+    LIMIT 1
+  ` as { client_name: string; client_phone: string; date: string; time: string; service_name: string }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `❌ Не намерих клиент с телефон за <b>${clientName}</b>.`);
+    return;
+  }
+
+  const r = rows[0]!;
+  await sendTelegramMessage(
+    chatId,
+    `👤 <b>${r.client_name}</b>\n<i>Последен запис: ${formatDateBg(r.date)} в ${r.time} — ${r.service_name}</i>`,
+  );
+  await sendTelegramMessage(chatId, r.client_phone);
 }
 
 async function handleRemindTomorrow(chatId: number, salon: SalonRef): Promise<void> {
