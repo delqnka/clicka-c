@@ -5,10 +5,6 @@ import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
-  return Response.json({ ok: true, route: 'stripe-connect-webhook' });
-}
-
 // Must use raw body for Stripe signature verification
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
