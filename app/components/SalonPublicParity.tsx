@@ -1544,14 +1544,7 @@ export default function SalonPublicParity({
                     >
                       <div className="flex flex-row items-start gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-[15px] font-medium leading-snug text-[#1a1a1a]">{service.name}</p>
-                            {service.payment_type === 'deposit' && (
-                              <span className="inline-flex items-center rounded-full bg-[#007AFF]/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#007AFF]">
-                                Изисква се депозит
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-[15px] font-medium leading-snug text-[#1a1a1a]">{service.name}</p>
                           {variants && variants.length > 0 ? (
                             <div className="relative mt-1.5 max-w-full sm:max-w-md">
                               <button
@@ -1603,7 +1596,7 @@ export default function SalonPublicParity({
                             ) : null}
                           </p>
                         </div>
-                        <div className="flex shrink-0 self-center">
+                        <div className="flex shrink-0 flex-col items-center gap-1.5 self-center">
                           <button
                             type="button"
                             onClick={() => openBookingModal(effective.id)}
@@ -1611,6 +1604,12 @@ export default function SalonPublicParity({
                           >
                             Резервирай
                           </button>
+                          {service.payment_type === 'deposit' && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-medium text-black/40">
+                              <svg viewBox="0 0 60 25" className="h-3 w-auto" aria-hidden fill="#635BFF"><path d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a8.33 8.33 0 0 1-4.56 1.1c-4.01 0-6.83-2.03-6.83-7.18 0-4.51 2.49-7.19 6.27-7.19 3.73 0 5.93 2.68 5.93 7.19v1.16zm-5.93-5.15c-1.08 0-2.29.81-2.29 3.01h4.47c0-2.2-1.14-3.01-2.18-3.01zm-22.36 9.2c-1.06 0-1.67-.43-1.67-1.46V9.03h-1.94V5.85h1.94V2.17l4.01-.97v4.65h2.69v3.18h-2.69v6.5c0 .84.42 1.18 1.15 1.18.58 0 1.08-.16 1.62-.4v3.25c-.68.34-1.62.57-2.67.57a4.8 4.8 0 0 1-.44-.01zM28.24 5.7c0-1.27 1.04-2.3 2.32-2.3s2.32 1.03 2.32 2.3-1.04 2.31-2.32 2.31-2.32-1.04-2.32-2.31zm.16 14.57V6.81h4.32v13.46h-4.32zm-5.86 0L18.7 12.9l-3.84 7.37h-4.87l6.26-11.07-5.97-8.56h4.93l3.49 6.62 3.48-6.62h4.93l-5.97 8.56 6.26 11.07h-4.87zM0 20.27V.97L4.09 0v20.27H0z"/></svg>
+                              Изисква се депозит
+                            </span>
+                          )}
                         </div>
                       </div>
                     </li>
