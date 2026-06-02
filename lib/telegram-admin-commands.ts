@@ -65,7 +65,8 @@ type ConvState =
   | { type: 'waiting_reschedule_time'; booking_id: string; client_name: string; from_date: string; to_date: string; created_at: string }
   | { type: 'waiting_block_confirm'; date: string; created_at: string }
   | { type: 'waiting_block_and_reschedule'; block_date: string; booking_id: string; client_name: string; to_date: string; to_time: string; created_at: string }
-  | { type: 'last_context'; entity_type: 'booking' | 'service' | 'client' | 'review'; entities: LastContextEntity[]; created_at: string };
+  | { type: 'last_context'; entity_type: 'booking' | 'service' | 'client' | 'review'; entities: LastContextEntity[]; selected_entity?: LastContextEntity; created_at: string }
+  | { type: 'waiting_entity_clarification'; pending_command: string; entities: LastContextEntity[]; created_at: string };
 
 async function getState(chatId: number): Promise<ConvState | null> {
   try {
@@ -73,8 +74,8 @@ async function getState(chatId: number): Promise<ConvState | null> {
     const row = rows[0] as { bot_conversation_state: ConvState | null } | undefined;
     const state = row?.bot_conversation_state ?? null;
     if (!state) return null;
-    // last_context lives 2 hours; multi-step flow states expire after 30 min
-    const ttl = state.type === 'last_context' ? CTX_TTL_MS : STATE_TTL_MS;
+    // last_context and waiting_entity_clarification live 2 hours; other states expire after 30 min
+    const ttl = (state.type === 'last_context' || state.type === 'waiting_entity_clarification') ? CTX_TTL_MS : STATE_TTL_MS;
     if (Date.now() - new Date(state.created_at).getTime() > ttl) {
       await clearStateRaw(chatId);
       return null;
@@ -742,8 +743,26 @@ const CTX_CONFIRM_NTH_RE = /^потвърди\s+(\d+|първ\w+|втор\w+|т�
 // "премести 2 за утре в 15" — resolves index, rewrites, re-routes to AI
 const CTX_MOVE_NTH_RE = /^(?:премест[ии]|мест[ии])\s+(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)\b(.*)/i;
 
+// "премести часа ѝ / нея / него за вторник в 12" — pronoun ref to selected_entity
+const CTX_MOVE_PRONOUN_RE = /^(?:премест[ии]|мест[ии])\s+(?:часа?\s+)?(?:й\b|и́|нея|него|я\b|го\b|тя\b|той\b|тази\b|този\b|му\b)(.*)/i;
+
+// "откажи я / го / нея / него"
+const CTX_CANCEL_PRONOUN_RE = /^(?:откажи|анулирай)\s+(?:я\b|го\b|нея\b|него\b|тя\b|той\b|тази\b|този\b)$/i;
+
+// "потвърди я / го / нея / него"
+const CTX_CONFIRM_PRONOUN_RE = /^потвърди\s+(?:я\b|го\b|нея\b|него\b|тя\b|той\b|тази\b|този\b)$/i;
+
+// "дай телефона й / му / и́"
+const CTX_PHONE_PRONOUN_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?(?:номер[а]?|телефон[а]?)\s+(?:й\b|и́|му\b|нея\b|него\b|й\b)$/i;
+
+// "дай имейла й / му"
+const CTX_EMAIL_PRONOUN_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?имейл\w*\s+(?:й\b|и́|му\b|нея\b|него\b)$/i;
+
 // "кой е първия" / "втория" / "3" / "3-ти" — shows entity info
 const CTX_NTH_INFO_RE = /^(?:кой\s+е\s+)?(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)(?:\s+(?:клиент|от\s+тях|запис))?[?]?$/i;
+
+// "2" / "за 2" / "втория" — disambiguation reply when bot asked "Кой клиент?"
+const CTX_DISAMBIGUATION_RE = /^(?:за\s+)?(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)[.\s]*$/i;
 
 function resolveOrdinalToIndex(token: string): number | null {
   const t = token.toLowerCase().trim();
@@ -832,6 +851,87 @@ async function handleContextReference(
     return true;
   }
 
+  // ── Pronoun references → selected_entity ────────────────────────────────
+  // Helper: resolve the "selected" entity — explicit selection or single entity
+  const resolveSelected = (): LastContextEntity | null => {
+    if (ctx.selected_entity) return ctx.selected_entity;
+    if (entities.length === 1) return entities[0]!;
+    return null;
+  };
+
+  // Helper: ask user to pick when ambiguous
+  const askToPickEntity = async (pendingCommand: string): Promise<void> => {
+    const lines = ['❓ За кой клиент?', ''];
+    entities.forEach((e, i) => {
+      lines.push(`${i + 1}. <b>${e.name}</b>${e.time ? ` — ${e.time}` : ''}`);
+    });
+    await sendTelegramMessage(chatId, lines.join('\n'));
+    await setState(chatId, { type: 'waiting_entity_clarification', pending_command: pendingCommand, entities, created_at: new Date().toISOString() });
+  };
+
+  // ── Move pronoun: "премести часа ѝ за вторник в 12" ──────────────────────
+  const movePronounMatch = text.match(CTX_MOVE_PRONOUN_RE);
+  if (movePronounMatch) {
+    const e = resolveSelected();
+    if (!e) { await askToPickEntity(text); return true; }
+    const rest = (movePronounMatch[1] ?? '').trim();
+    const rewritten = `Премести резервацията на ${e.name}${e.date ? ` от ${e.date}` : ''}${rest ? ` ${rest}` : ''}`;
+    await clearState(chatId);
+    return await handleWithAI(chatId, rewritten, salon);
+  }
+
+  // ── Cancel pronoun: "откажи я" ────────────────────────────────────────────
+  if (CTX_CANCEL_PRONOUN_RE.test(text)) {
+    const e = resolveSelected();
+    if (!e) { await askToPickEntity(text); return true; }
+    if (!e.date || !e.time) {
+      await sendTelegramMessage(chatId, `❌ Нямам дата/час за резервацията на <b>${e.name}</b>.`);
+      return true;
+    }
+    await clearState(chatId);
+    await handleCancelBooking(chatId, salon, e.date, e.time);
+    return true;
+  }
+
+  // ── Confirm pronoun: "потвърди я" ─────────────────────────────────────────
+  if (CTX_CONFIRM_PRONOUN_RE.test(text)) {
+    const e = resolveSelected();
+    if (!e) { await askToPickEntity(text); return true; }
+    await clearState(chatId);
+    await handleConfirmBooking(chatId, salon, e.name);
+    return true;
+  }
+
+  // ── Phone pronoun: "дай телефона й" ──────────────────────────────────────
+  if (CTX_PHONE_PRONOUN_RE.test(text)) {
+    const e = resolveSelected();
+    if (!e) { await askToPickEntity(text); return true; }
+    if (!e.phone) {
+      await sendTelegramMessage(chatId, `ℹ️ <b>${e.name}</b> няма записан телефон.`);
+    } else {
+      await sendTelegramMessage(chatId, `👤 <b>${e.name}</b>\n<code>${e.phone}</code>`);
+    }
+    return true;
+  }
+
+  // ── Email pronoun: "дай имейла й" ────────────────────────────────────────
+  if (CTX_EMAIL_PRONOUN_RE.test(text)) {
+    const e = resolveSelected();
+    if (!e) { await askToPickEntity(text); return true; }
+    try {
+      const rows = await sql`SELECT client_email FROM bookings WHERE id = ${e.id}::uuid LIMIT 1` as { client_email: string }[];
+      const email = rows[0]?.client_email;
+      if (!email) {
+        await sendTelegramMessage(chatId, `ℹ️ <b>${e.name}</b> няма записан имейл.`);
+      } else {
+        await sendTelegramMessage(chatId, `📧 <b>${e.name}</b>\n<code>${email}</code>`);
+      }
+    } catch {
+      await sendTelegramMessage(chatId, `ℹ️ Не намерих имейл за <b>${e.name}</b>.`);
+    }
+    return true;
+  }
+
   // ── Phone by index: "дай телефона на 2" ───────────────────────────────────
   const phoneNMatch = text.match(CTX_PHONE_NTH_RE);
   if (phoneNMatch) {
@@ -846,6 +946,8 @@ async function handleContextReference(
     } else {
       await sendTelegramMessage(chatId, `👤 <b>${e.name}</b>\n<code>${e.phone}</code>`);
     }
+    // Remember selected entity for follow-up pronoun commands
+    await setState(chatId, { ...ctx, selected_entity: e });
     return true;
   }
 
@@ -860,6 +962,8 @@ async function handleContextReference(
       if (e.service_name) lines.push(`✂️ ${e.service_name}`);
       if (e.phone) lines.push(`📞 <code>${e.phone}</code>`);
       await sendTelegramMessage(chatId, lines.join('\n'));
+      // Remember selected entity for follow-up pronoun commands
+      await setState(chatId, { ...ctx, selected_entity: e });
       return true;
     }
   }
@@ -979,10 +1083,45 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
     }
   }
 
+  // ── waiting_entity_clarification: user answered "2" / "за 2" / "втория" ───
+  // Bot had asked "За кой клиент?" — resolve index and replay pending command.
+  const freshState = convState ?? await getState(chatId);
+  if (freshState?.type === 'waiting_entity_clarification') {
+    const disambigMatch = text.trim().match(CTX_DISAMBIGUATION_RE);
+    if (disambigMatch) {
+      const idx = resolveOrdinalToIndex(disambigMatch[1]!);
+      const entities = freshState.entities;
+      if (idx !== null && idx >= 0 && idx < entities.length) {
+        const e = entities[idx]!;
+        const pending = freshState.pending_command;
+        // Build a synthetic last_context with selected_entity, then re-run handleContextReference
+        const syntheticCtx: Extract<ConvState, { type: 'last_context' }> = {
+          type: 'last_context',
+          entity_type: 'booking',
+          entities,
+          selected_entity: e,
+          created_at: freshState.created_at,
+        };
+        await setState(chatId, syntheticCtx);
+        // Re-run the original pronoun command against the now-resolved context
+        const handled = await handleContextReference(chatId, salon, pending, syntheticCtx);
+        if (handled) return true;
+        // Fallback: rewrite as explicit name and send to AI
+        const rewritten = pending.replace(/(?:й\b|и́|нея|него|я\b|го\b|тя\b|той\b|тази\b|този\b|му\b)/gi, e.name);
+        await clearState(chatId);
+        return await handleWithAI(chatId, rewritten, salon);
+      } else {
+        await sendTelegramMessage(chatId, `❌ Нямам запис с номер ${disambigMatch[1]}. Показаните са ${freshState.entities.length}.`);
+        return true;
+      }
+    }
+    // User sent something else — clear clarification state and fall through
+    await clearState(chatId);
+  }
+
   // ── last_context: programmatic reference resolution (no AI needed) ─────────
   // Checked AFTER waiting_* states so multi-step flows always take priority.
   // If not recognized as a reference, falls through to the AI.
-  const freshState = convState ?? await getState(chatId);
   if (freshState?.type === 'last_context') {
     const handled = await handleContextReference(chatId, salon, text, freshState);
     if (handled) return true;
