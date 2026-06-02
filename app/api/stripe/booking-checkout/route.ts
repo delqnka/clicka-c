@@ -50,8 +50,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       payment_intent_data: {
-        // Money goes directly to the connected account — Clicka takes no cut
-        transfer_data: { destination: salon.stripe_account_id },
+        metadata: { bookingId, salonSlug, paymentType: paymentType ?? 'full' },
       },
       metadata: {
         bookingId,
