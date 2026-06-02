@@ -49,11 +49,23 @@ async function appendHistory(chatId: number, role: 'user' | 'assistant', content
 // Gemini is used ONLY for intent detection. All multi-step flows are managed here.
 
 const STATE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const CTX_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours for last_context
+
+// Entity stored in last_context — data snapshotted at list-show time, no extra DB round-trip
+type LastContextEntity = {
+  id: string;
+  name: string;
+  phone?: string;
+  time?: string;
+  date?: string;
+  service_name?: string;
+};
 
 type ConvState =
   | { type: 'waiting_reschedule_time'; booking_id: string; client_name: string; from_date: string; to_date: string; created_at: string }
   | { type: 'waiting_block_confirm'; date: string; created_at: string }
-  | { type: 'waiting_block_and_reschedule'; block_date: string; booking_id: string; client_name: string; to_date: string; to_time: string; created_at: string };
+  | { type: 'waiting_block_and_reschedule'; block_date: string; booking_id: string; client_name: string; to_date: string; to_time: string; created_at: string }
+  | { type: 'last_context'; entity_type: 'booking' | 'service' | 'client' | 'review'; entities: LastContextEntity[]; created_at: string };
 
 async function getState(chatId: number): Promise<ConvState | null> {
   try {
@@ -61,8 +73,9 @@ async function getState(chatId: number): Promise<ConvState | null> {
     const row = rows[0] as { bot_conversation_state: ConvState | null } | undefined;
     const state = row?.bot_conversation_state ?? null;
     if (!state) return null;
-    // Expire stale states so old context never bleeds into new conversations
-    if (Date.now() - new Date(state.created_at).getTime() > STATE_TTL_MS) {
+    // last_context lives 2 hours; multi-step flow states expire after 30 min
+    const ttl = state.type === 'last_context' ? CTX_TTL_MS : STATE_TTL_MS;
+    if (Date.now() - new Date(state.created_at).getTime() > ttl) {
       await clearStateRaw(chatId);
       return null;
     }
@@ -706,6 +719,201 @@ function parseTimeOnly(text: string): string | null {
 const CONFIRM_RE = /^(да|yes|ок|okay|потвърди|потвърждавам|блокирай|добре|разбира\s+се)$/i;
 const DENY_RE = /^(не|no|отказвам|откажи|стоп|cancel)$/i;
 
+// ─── last_context reference resolution ───────────────────────────────────────
+
+// "дай ми номерата им" / "телефоните им" / "номерата на всичките"
+const CTX_PHONES_ALL_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?(?:номер[аитe]{0,4}|телефон[иитe]{0,4})\s*(?:им|на\s+(?:всичк\w+|тях))?$/i;
+
+// "имейлите им" / "имейл адресите им"
+const CTX_EMAILS_ALL_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?имейл\w*\s*(?:им|на\s+(?:всичк\w+|тях))?$/i;
+
+// "изпрати им SMS" / "напомни им" / "прати им съобщение"
+const CTX_SMS_ALL_RE = /^(?:изпрати|прати|напомни)\s+(?:им|на\s+всичк\w+|тях)/i;
+
+// "дай телефона на 2" / "номера на 3"
+const CTX_PHONE_NTH_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?(?:номер[а]?|телефон[а]?)\s+(?:на\s+)?(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)$/i;
+
+// "откажи 2" / "откажи втория"
+const CTX_CANCEL_NTH_RE = /^(?:откажи|анулирай)\s+(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)\b/i;
+
+// "потвърди 2" / "потвърди първия"
+const CTX_CONFIRM_NTH_RE = /^потвърди\s+(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)$/i;
+
+// "премести 2 за утре в 15" — resolves index, rewrites, re-routes to AI
+const CTX_MOVE_NTH_RE = /^(?:премест[ии]|мест[ии])\s+(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)\b(.*)/i;
+
+// "кой е първия" / "втория" / "3" / "3-ти" — shows entity info
+const CTX_NTH_INFO_RE = /^(?:кой\s+е\s+)?(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)(?:\s+(?:клиент|от\s+тях|запис))?[?]?$/i;
+
+function resolveOrdinalToIndex(token: string): number | null {
+  const t = token.toLowerCase().trim();
+  const numMatch = t.match(/^(\d+)/);
+  if (numMatch) return parseInt(numMatch[1]!, 10) - 1; // 1-based → 0-based
+  if (t.startsWith('първ')) return 0;
+  if (t.startsWith('втор')) return 1;
+  if (t.startsWith('трет')) return 2;
+  if (t.startsWith('четвърт')) return 3;
+  if (t.startsWith('пет')) return 4;
+  if (t.startsWith('шест')) return 5;
+  if (t.startsWith('сед')) return 6;
+  if (t.startsWith('осм')) return 7;
+  if (t.startsWith('дев')) return 8;
+  if (t.startsWith('десет')) return 9;
+  return null;
+}
+
+type LastContextState = Extract<ConvState, { type: 'last_context' }>;
+
+async function handleContextReference(
+  chatId: number,
+  salon: SalonRef,
+  text: string,
+  ctx: LastContextState,
+): Promise<boolean> {
+  if (ctx.entity_type !== 'booking') return false;
+  const entities = ctx.entities;
+  if (entities.length === 0) return false;
+
+  // ── All phones ─────────────────────────────────────────────────────────────
+  if (CTX_PHONES_ALL_RE.test(text)) {
+    const withPhone = entities.filter(e => e.phone);
+    if (withPhone.length === 0) {
+      await sendTelegramMessage(chatId, 'ℹ️ Никой от тези клиенти няма записан телефон.');
+    } else {
+      const lines = ['📞 <b>Телефони:</b>', ''];
+      withPhone.forEach((e, i) => lines.push(`${i + 1}. <b>${e.name}</b>: <code>${e.phone}</code>`));
+      await sendTelegramMessage(chatId, lines.join('\n'));
+    }
+    return true;
+  }
+
+  // ── All emails ─────────────────────────────────────────────────────────────
+  if (CTX_EMAILS_ALL_RE.test(text)) {
+    try {
+      // Query by booking IDs — safe since IDs are our own UUIDs
+      const rows = await sql`
+        SELECT client_name, client_email FROM bookings
+        WHERE id = ANY(${entities.map(e => e.id)}::uuid[])
+          AND client_email IS NOT NULL AND client_email != ''
+        ORDER BY time ASC
+      ` as { client_name: string; client_email: string }[];
+      if (rows.length === 0) {
+        await sendTelegramMessage(chatId, 'ℹ️ Никой от тези клиенти няма записан имейл.');
+      } else {
+        const lines = ['📧 <b>Имейли:</b>', ''];
+        rows.forEach((r, i) => lines.push(`${i + 1}. <b>${r.client_name}</b>: <code>${r.client_email}</code>`));
+        await sendTelegramMessage(chatId, lines.join('\n'));
+      }
+    } catch {
+      await sendTelegramMessage(chatId, 'ℹ️ Не намерих имейл адреси за тези клиенти.');
+    }
+    return true;
+  }
+
+  // ── SMS to all ─────────────────────────────────────────────────────────────
+  if (CTX_SMS_ALL_RE.test(text)) {
+    const date = entities[0]?.date;
+    if (!date) {
+      await sendTelegramMessage(chatId, 'ℹ️ Не мога да изпратя SMS без дата на резервациите.');
+      return true;
+    }
+    // Delegate to the standard remind handler for this date
+    const salonRows = await sql`SELECT name, phone FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1` as { name: string; phone: string }[];
+    const salonInfo = salonRows[0] ?? { name: salon.name, phone: '' };
+    let sent = 0;
+    let skipped = 0;
+    for (const e of entities) {
+      if (!e.phone) { skipped++; continue; }
+      const { sendSmsReminder } = await import('@/lib/smsapi');
+      const result = await sendSmsReminder(e.phone, e.name, salonInfo.name, salonInfo.phone, e.service_name ?? '', date, e.time ?? '');
+      if (result.success) sent++; else skipped++;
+    }
+    await sendTelegramMessage(chatId, `📲 SMS до списъка:\n✅ Изпратени: ${sent}\n⏭ Пропуснати: ${skipped}`);
+    return true;
+  }
+
+  // ── Phone by index: "дай телефона на 2" ───────────────────────────────────
+  const phoneNMatch = text.match(CTX_PHONE_NTH_RE);
+  if (phoneNMatch) {
+    const idx = resolveOrdinalToIndex(phoneNMatch[1]!);
+    if (idx === null || idx < 0 || idx >= entities.length) {
+      await sendTelegramMessage(chatId, `❌ Нямам запис с номер ${phoneNMatch[1]}. Показаните са ${entities.length}.`);
+      return true;
+    }
+    const e = entities[idx]!;
+    if (!e.phone) {
+      await sendTelegramMessage(chatId, `ℹ️ <b>${e.name}</b> няма записан телефон.`);
+    } else {
+      await sendTelegramMessage(chatId, `👤 <b>${e.name}</b>\n<code>${e.phone}</code>`);
+    }
+    return true;
+  }
+
+  // ── Full info by ordinal: "първия", "втория", "3" ─────────────────────────
+  const nthInfoMatch = text.match(CTX_NTH_INFO_RE);
+  if (nthInfoMatch) {
+    const idx = resolveOrdinalToIndex(nthInfoMatch[1]!);
+    if (idx !== null && idx >= 0 && idx < entities.length) {
+      const e = entities[idx]!;
+      const lines = [`👤 <b>${e.name}</b>`];
+      if (e.date && e.time) lines.push(`📅 ${formatDateBg(e.date)} в ${e.time}`);
+      if (e.service_name) lines.push(`✂️ ${e.service_name}`);
+      if (e.phone) lines.push(`📞 <code>${e.phone}</code>`);
+      await sendTelegramMessage(chatId, lines.join('\n'));
+      return true;
+    }
+  }
+
+  // ── Cancel by index: "откажи 2" / "откажи втория" ────────────────────────
+  const cancelNMatch = text.match(CTX_CANCEL_NTH_RE);
+  if (cancelNMatch) {
+    const idx = resolveOrdinalToIndex(cancelNMatch[1]!);
+    if (idx === null || idx < 0 || idx >= entities.length) {
+      await sendTelegramMessage(chatId, `❌ Нямам запис с номер ${cancelNMatch[1]}.`);
+      return true;
+    }
+    const e = entities[idx]!;
+    if (!e.date || !e.time) {
+      await sendTelegramMessage(chatId, `❌ Нямам дата/час за резервацията на <b>${e.name}</b>.`);
+      return true;
+    }
+    await clearState(chatId);
+    await handleCancelBooking(chatId, salon, e.date, e.time);
+    return true;
+  }
+
+  // ── Confirm by index: "потвърди 2" / "потвърди първия" ───────────────────
+  const confirmNMatch = text.match(CTX_CONFIRM_NTH_RE);
+  if (confirmNMatch) {
+    const idx = resolveOrdinalToIndex(confirmNMatch[1]!);
+    if (idx === null || idx < 0 || idx >= entities.length) {
+      await sendTelegramMessage(chatId, `❌ Нямам запис с номер ${confirmNMatch[1]}.`);
+      return true;
+    }
+    await clearState(chatId);
+    await handleConfirmBooking(chatId, salon, entities[idx]!.name);
+    return true;
+  }
+
+  // ── Reschedule by index: "премести 2 за утре в 15" ───────────────────────
+  const moveNMatch = text.match(CTX_MOVE_NTH_RE);
+  if (moveNMatch) {
+    const idx = resolveOrdinalToIndex(moveNMatch[1]!);
+    if (idx === null || idx < 0 || idx >= entities.length) {
+      await sendTelegramMessage(chatId, `❌ Нямам запис с номер ${moveNMatch[1]}.`);
+      return true;
+    }
+    const e = entities[idx]!;
+    // Rewrite with resolved name and re-route to AI (state cleared to avoid loop)
+    const rest = (moveNMatch[2] ?? '').trim();
+    const rewritten = `Премести резервацията на ${e.name}${e.date ? ` от ${e.date}` : ''}${rest ? ` ${rest}` : ''}`;
+    await clearState(chatId);
+    return await handleWithAI(chatId, rewritten, salon);
+  }
+
+  return false;
+}
+
 async function handleWithAI(chatId: number, text: string, salon: SalonRef): Promise<boolean> {
   const apiKey = getOpenRouterApiKey();
   console.log('[AI] handleWithAI called, text:', text, 'hasApiKey:', !!apiKey);
@@ -769,6 +977,15 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
       // Not a yes/no — clear state and fall through to AI
       await clearState(chatId);
     }
+  }
+
+  // ── last_context: programmatic reference resolution (no AI needed) ─────────
+  // Checked AFTER waiting_* states so multi-step flows always take priority.
+  // If not recognized as a reference, falls through to the AI.
+  const freshState = convState ?? await getState(chatId);
+  if (freshState?.type === 'last_context') {
+    const handled = await handleContextReference(chatId, salon, text, freshState);
+    if (handled) return true;
   }
 
   const today = new Date();
@@ -1482,13 +1699,13 @@ async function handleBookingsForDay(
   label: string,
 ): Promise<void> {
   const rows = await sql`
-    SELECT client_name, time, service_name, status
+    SELECT CAST(id AS text) AS id, client_name, client_phone, time, service_name, status
     FROM bookings
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date = ${date}
       AND status NOT IN ('cancelled')
     ORDER BY time ASC
-  ` as { client_name: string; time: string; service_name: string; status: string }[];
+  ` as { id: string; client_name: string; client_phone: string; time: string; service_name: string; status: string }[];
 
   const dateStr = formatDateBg(date);
   if (rows.length === 0) {
@@ -1497,11 +1714,27 @@ async function handleBookingsForDay(
   }
 
   const lines = [`📅 <b>${dateStr} — ${rows.length} ${pluralBooking(rows.length)}:</b>`, ''];
-  for (const r of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i]!;
     const icon = r.status === 'confirmed' ? '✅' : '⏳';
-    lines.push(`${icon} ${r.time} — <b>${r.client_name}</b> (${r.service_name})`);
+    lines.push(`${i + 1}. ${icon} ${r.time} — <b>${r.client_name}</b> (${r.service_name})`);
   }
   await sendTelegramMessage(chatId, lines.join('\n'));
+
+  // Snapshot the list so follow-up references like "им", "втория", "номера на 2" resolve programmatically
+  await setState(chatId, {
+    type: 'last_context',
+    entity_type: 'booking',
+    entities: rows.map(r => ({
+      id: r.id,
+      name: r.client_name,
+      phone: r.client_phone || undefined,
+      time: r.time,
+      date,
+      service_name: r.service_name,
+    })),
+    created_at: new Date().toISOString(),
+  });
 }
 
 async function handleNextClient(chatId: number, salon: SalonRef): Promise<void> {
@@ -1510,14 +1743,14 @@ async function handleNextClient(chatId: number, salon: SalonRef): Promise<void> 
   const currentTime = now.toTimeString().slice(0, 5);
 
   const rows = await sql`
-    SELECT client_name, client_phone, time, service_name, service_duration, date
+    SELECT CAST(id AS text) AS id, client_name, client_phone, time, service_name, service_duration, date
     FROM bookings
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status NOT IN ('cancelled', 'completed')
       AND (date > ${todayStr} OR (date = ${todayStr} AND time >= ${currentTime}))
     ORDER BY date ASC, time ASC
     LIMIT 1
-  ` as { client_name: string; client_phone: string; time: string; service_name: string; service_duration: number | null; date: string }[];
+  ` as { id: string; client_name: string; client_phone: string; time: string; service_name: string; service_duration: number | null; date: string }[];
 
   if (rows.length === 0) {
     await sendTelegramMessage(chatId, 'ℹ️ Няма предстоящи записи.');
@@ -1537,6 +1770,13 @@ async function handleNextClient(chatId: number, salon: SalonRef): Promise<void> 
     `✂️ ${r.service_name}${r.service_duration ? ` (${r.service_duration} мин)` : ''}`,
   ];
   await sendTelegramMessage(chatId, lines.join('\n'));
+
+  await setState(chatId, {
+    type: 'last_context',
+    entity_type: 'booking',
+    entities: [{ id: r.id, name: r.client_name, phone: r.client_phone || undefined, time: r.time, date: r.date, service_name: r.service_name }],
+    created_at: new Date().toISOString(),
+  });
 }
 
 async function handleConfirmBooking(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
@@ -1591,14 +1831,14 @@ async function handleCancelBooking(chatId: number, salon: SalonRef, date: string
 
 async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<void> {
   const rows = await sql`
-    SELECT client_name, date, time, service_name
+    SELECT CAST(id AS text) AS id, client_name, client_phone, date, time, service_name
     FROM bookings
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status = 'pending'
       AND date >= ${todayISO()}
     ORDER BY date ASC, time ASC
     LIMIT 10
-  ` as { client_name: string; date: string; time: string; service_name: string }[];
+  ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string }[];
 
   if (rows.length === 0) {
     await sendTelegramMessage(chatId, '✅ Няма незатвърдени резервации.');
@@ -1606,11 +1846,26 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
   }
 
   const lines = [`⏳ <b>Незатвърдени резервации (${rows.length}):</b>`, ''];
-  for (const r of rows) {
-    lines.push(`• ${formatDateBg(r.date, { weekday: 'short', day: 'numeric', month: 'short' })} ${r.time} — ${r.client_name} (${r.service_name})`);
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i]!;
+    lines.push(`${i + 1}. ${formatDateBg(r.date, { weekday: 'short', day: 'numeric', month: 'short' })} ${r.time} — <b>${r.client_name}</b> (${r.service_name})`);
   }
-  lines.push('', '💡 За потвърждение: <code>потвърди резервацията на [Име]</code>');
+  lines.push('', '💡 Потвърди с <code>потвърди 1</code> или <code>потвърди резервацията на [Име]</code>');
   await sendTelegramMessage(chatId, lines.join('\n'));
+
+  await setState(chatId, {
+    type: 'last_context',
+    entity_type: 'booking',
+    entities: rows.map(r => ({
+      id: r.id,
+      name: r.client_name,
+      phone: r.client_phone || undefined,
+      time: r.time,
+      date: r.date,
+      service_name: r.service_name,
+    })),
+    created_at: new Date().toISOString(),
+  });
 }
 
 async function handleRescheduleBooking(
