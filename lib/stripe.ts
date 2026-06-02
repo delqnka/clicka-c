@@ -52,4 +52,53 @@ export async function createCheckoutSession(
   return session.url!;
 }
 
+// ─── Stripe Connect helpers ────────────────────────────────────────────────
+
+export async function createConnectedAccount(email: string): Promise<string> {
+  const account = await stripe.accounts.create({
+    type: 'express',
+    email,
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    },
+    business_type: 'individual',
+    settings: {
+      payouts: { schedule: { interval: 'daily' } },
+    },
+  });
+  return account.id;
+}
+
+export async function createAccountLink(
+  accountId: string,
+  salonSlug: string,
+): Promise<string> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://clicka.bg';
+  const link = await stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: `${appUrl}/admin/stripe-return?slug=${salonSlug}&refresh=1`,
+    return_url:  `${appUrl}/admin/stripe-return?slug=${salonSlug}`,
+    type: 'account_onboarding',
+  });
+  return link.url;
+}
+
+export type ConnectedAccountStatus = {
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+};
+
+export async function getConnectedAccountStatus(
+  accountId: string,
+): Promise<ConnectedAccountStatus> {
+  const account = await stripe.accounts.retrieve(accountId);
+  return {
+    chargesEnabled:  account.charges_enabled,
+    payoutsEnabled:  account.payouts_enabled,
+    detailsSubmitted: account.details_submitted,
+  };
+}
+
 export { stripe };

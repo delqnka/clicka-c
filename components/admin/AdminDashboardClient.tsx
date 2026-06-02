@@ -31,6 +31,7 @@ import {
   Menu,
   X,
   KeyRound,
+  CreditCard,
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -39,6 +40,7 @@ import {
   LazyImagesTabPanel,
   LazyIntegrationsTabPanel,
   LazyLegalTabPanel,
+  LazyPaymentsTabPanel,
   LazySiteTabPanel,
   LazySmsTabPanel,
   LazySpecialistTabPanel,
@@ -123,6 +125,7 @@ const TABS = [
   { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
   { id: 'clients',       label: 'Клиенти',        Icon: Users },
   { id: 'domain',        label: 'Домейн',         Icon: Globe },
+  { id: 'payments',     label: 'Плащания',       Icon: CreditCard },
   { id: 'integrations', label: 'Интеграции',     Icon: Plug },
   { id: 'sms',          label: 'SMS',            Icon: MessageSquare },
   { id: 'legal',         label: 'Правни',         Icon: FileText },
@@ -2970,6 +2973,10 @@ export default function AdminDashboardClient({
 
           {activeTab === 'account' && initialAccount ? (
             <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} />
+          ) : null}
+
+          {activeTab === 'payments' ? (
+            <LazyPaymentsTabPanel slug={slug} btn={btn} />
           ) : null}
 
           {activeTab === 'integrations' ? (
