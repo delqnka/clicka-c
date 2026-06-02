@@ -614,6 +614,9 @@ ${servicesJson}
   "премести резервацията на Деляна от петък за вторник в 13", "мести Иван за утре в 15:30", "смени часа на Мария за сряда в 10"
   → { "action": "reschedule_booking", "client_name": "Деляна", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
 
+  Ако в историята има [чакам час за reschedule: client_name="X", from_date="...", to_date="..."] и потребителят отговаря само с час ("в 09:30", "09:30", "в 10", "14:00"):
+  → { "action": "reschedule_booking", "client_name": "X", "from_date": "...", "to_date": "...", "to_time": "HH:mm" }  ← вземи данните от историята
+
 ПОТВЪРЖДЕНИЕ НА БЛОКИРАНЕ (confirm_day_off) — само когато ботът е предупредил за резервации и чака потвърждение:
   "да, блокирай", "да", "потвърждавам", "ок блокирай"
   → { "action": "confirm_day_off", "date": "YYYY-MM-DD" }  ← датата от предишния контекст
@@ -1401,6 +1404,11 @@ async function handleRescheduleBooking(
     await sendTelegramMessage(
       chatId,
       `⏰ В колко часа да преместя резервацията на <b>${r.client_name}</b> за ${formatDateBg(toDate)}?\nМоментален час: <b>${r.time}</b>`,
+    );
+    await appendHistory(
+      chatId,
+      'assistant',
+      `[чакам час за reschedule: client_name="${r.client_name}", from_date="${fromDate}", to_date="${toDate}"]`,
     );
     return;
   }
