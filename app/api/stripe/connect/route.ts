@@ -31,6 +31,11 @@ export async function POST(request: NextRequest) {
     `;
   }
 
-  const onboardingUrl = await createAccountLink(accountId, salonSlug);
+  // Build return URL from the actual host of the request (custom domain or subdomain)
+  const host = request.headers.get('host') ?? '';
+  const proto = host.includes('localhost') ? 'http' : 'https';
+  const adminBase = `${proto}://${host}/admin?tab=payments`;
+
+  const onboardingUrl = await createAccountLink(accountId, adminBase);
   return NextResponse.json({ url: onboardingUrl });
 }

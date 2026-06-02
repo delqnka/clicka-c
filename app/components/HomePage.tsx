@@ -13,6 +13,7 @@ import {
   MarketingFounderSection,
 } from '@/components/marketing/marketing-home-sections';
 import { ClickaHero } from '@/components/ui/clicka-hero';
+import { IPhoneMockup } from '@/components/ui/iphone-mockup';
 import { MARKETING_PRICING } from '@/lib/marketing-home-copy';
 import type { MarketingActivity } from '@/lib/marketing-activity-shared';
 
@@ -329,11 +330,73 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       {/* ── HERO ──────────────────────────────────────── */}
       <ClickaHero activity={activity} />
 
+      {/* ── CLIENT SITE PREVIEW ───────────────────────── */}
+      <section
+        aria-label="Клиентски сайт"
+        style={{
+          background: 'linear-gradient(180deg, #fff1f2 0%, #fff 100%)',
+          padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,60px)',
+        }}
+      >
+        <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
+              Твоят сайт
+            </p>
+            <h2
+              className="hp-heading"
+              style={{ fontSize: 'clamp(22px,4.5vw,38px)', marginBottom: 12 }}
+            >
+              Ето какво виждат твоите клиенти
+            </h2>
+            <p style={{ fontSize: 'clamp(14px,1.8vw,16px)', color: 'var(--muted-foreground)', maxWidth: 520, margin: '0 auto' }}>
+              Готов сайт с онлайн резервации, галерия и пълна информация за салона.
+            </p>
+          </div>
+
+          {/* mobile-first: big on phone, constrained on desktop */}
+          <div style={{ width: '100%', maxWidth: 'min(72vw, 280px)' }}>
+            <IPhoneMockup src="/client-demo.mp4" />
+          </div>
+        </div>
+      </section>
+
       {/* ── FOR WHOM ──────────────────────────────────── */}
       <MarketingAudienceSection />
 
       {/* ── WHAT YOU GET ──────────────────────────────── */}
       <MarketingFeaturesSection />
+
+      {/* ── DASHBOARD PREVIEW ─────────────────────────── */}
+      <section
+        aria-label="Дашборд за собственика"
+        style={{
+          background: 'var(--card)',
+          borderTop: '1px solid var(--border)',
+          padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,60px)',
+        }}
+      >
+        <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
+              Твоят дашборд
+            </p>
+            <h2
+              className="hp-heading"
+              style={{ fontSize: 'clamp(22px,4.5vw,38px)', marginBottom: 12 }}
+            >
+              Управляваш всичко от телефона
+            </h2>
+            <p style={{ fontSize: 'clamp(14px,1.8vw,16px)', color: 'var(--muted-foreground)', maxWidth: 520, margin: '0 auto' }}>
+              Резервации, услуги, клиенти и настройки — всичко на едно място, само с няколко докосвания.
+            </p>
+          </div>
+
+          <div style={{ width: '100%', maxWidth: 'min(72vw, 280px)' }}>
+            <IPhoneMockup src="/dashboard-demo.mp4" />
+          </div>
+        </div>
+      </section>
 
       {/* ── HOW IT WORKS ──────────────────────────────── */}
       <MarketingStepsSection />

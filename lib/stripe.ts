@@ -70,13 +70,12 @@ export async function createConnectedAccount(
 
 export async function createAccountLink(
   accountId: string,
-  salonSlug: string,
+  returnUrl: string,
 ): Promise<string> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://clicka.bg';
   const link = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${appUrl}/admin/stripe-return?slug=${salonSlug}&refresh=1`,
-    return_url:  `${appUrl}/admin/stripe-return?slug=${salonSlug}`,
+    refresh_url: returnUrl,
+    return_url:  returnUrl,
     type: 'account_onboarding',
   });
   return link.url;

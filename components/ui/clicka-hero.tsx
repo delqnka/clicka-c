@@ -45,20 +45,41 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
         </div>
 
         <h1
-          className="mb-6 w-full bg-clip-text text-center text-[clamp(2.35rem,9.2vw,3.85rem)] font-bold leading-[1.05] tracking-[-0.02em] text-transparent"
+          className="mb-4 w-full bg-clip-text text-center text-[clamp(2.35rem,9.2vw,3.85rem)] font-bold leading-[1.05] tracking-[-0.02em] text-transparent"
           style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)' }}
         >
-          Собствен сайт с резервации за твоя салон
+          Собствен сайт с резервации
         </h1>
 
-        <p className="mb-3 text-center text-[clamp(1rem,2.8vw,1.3rem)] font-medium leading-snug text-[var(--foreground)]">
-          Готов <span className="font-extrabold">ВЕДНАГА</span>.
-          {' '}Твоят бранд с <span className="font-extrabold text-[var(--primary)]">0%</span> комисионна.
+        <p className="mb-3 text-center text-[clamp(1.25rem,4vw,1.75rem)] font-bold leading-snug">
+          <span
+            className="bg-clip-text text-transparent"
+            style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)' }}
+          >
+            Управлявай всичко от
+          </span>
+          {' '}
+          <span
+            className="bg-clip-text text-transparent"
+            style={{ backgroundImage: 'linear-gradient(135deg, #1575bb, #0d5490)' }}
+          >
+            Telegram
+          </span>
+          .
         </p>
 
-        <p className="mb-8 text-center text-[clamp(0.875rem,2vw,1rem)] font-semibold" style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-          от 0,82 € на ден. Без скрити такси.
+        <p className="mb-5 text-center text-[clamp(0.9rem,2.4vw,1.1rem)] font-medium leading-relaxed text-[var(--muted-foreground)]">
+          Получавай резервации, качвай снимки и променяй услуги с едно съобщение към AI асистента си.
         </p>
+
+        <div className="mb-8 flex flex-col items-center gap-1" style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+          <p className="text-center text-[clamp(0.875rem,2vw,1rem)] font-semibold">
+            0% комисионна. Запазваш 100% от приходите си.
+          </p>
+          <p className="text-center text-[clamp(0.8rem,1.8vw,0.95rem)] font-semibold">
+            От 0,82 € на ден • Само годишен абонамент
+          </p>
+        </div>
 
         <div className="mb-10 flex w-full max-w-md flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:justify-center">
           <ButtonColorful
