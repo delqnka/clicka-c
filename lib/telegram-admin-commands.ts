@@ -924,7 +924,7 @@ ${servicesJson}
       // Check for existing bookings on that day before blocking
       const existingBookings = await sql`
         SELECT client_name, time FROM bookings
-        WHERE salon_id = CAST(${salon.salonId} AS uuid)
+        WHERE CAST(salon_id AS text) = ${salon.salonId}
           AND date = ${intent.date}
           AND status NOT IN ('cancelled', 'completed')
         ORDER BY time ASC
