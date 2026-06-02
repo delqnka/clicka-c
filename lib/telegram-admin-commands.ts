@@ -547,6 +547,7 @@ type AIIntent =
 
 async function handleWithAI(chatId: number, text: string, salon: SalonRef): Promise<boolean> {
   const apiKey = getOpenRouterApiKey();
+  console.log('[AI] handleWithAI called, text:', text, 'hasApiKey:', !!apiKey);
   if (!apiKey) return false;
 
   const today = new Date();
@@ -727,13 +728,16 @@ ${servicesJson}
 
     const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
     const raw = (data.choices?.[0]?.message?.content ?? '').trim();
+    console.log('[AI] raw response:', raw);
     const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
     intent = JSON.parse(jsonStr) as AIIntent;
+    console.log('[AI] parsed intent:', JSON.stringify(intent));
     // Record the action taken so future messages have context
     if (intent.action !== 'chat') {
       await appendHistory(chatId, 'assistant', `[изпълнено действие: ${intent.action}]`);
     }
-  } catch {
+  } catch (err) {
+    console.log('[AI] error:', err);
     await sendTelegramMessage(chatId, '⚠️ Грешка при свързване с AI. Пробвай отново.');
     return true;
   }
