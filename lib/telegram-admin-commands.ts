@@ -520,8 +520,10 @@ type AIIntent =
   | { action: 'sort_services'; by: 'price_asc' | 'price_desc' | 'duration_asc' | 'name_asc' }
   | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string }
   | { action: 'update_price'; service_name: string; price_eur: number }
+  | { action: 'update_service'; service_name: string; price_eur?: number; duration_min?: number; category?: string; new_name?: string }
   | { action: 'update_category'; service_name: string; category: string }
   | { action: 'delete_service'; service_name: string }
+  | { action: 'clarify'; question: string }
   | { action: 'block_hours'; date: string; start: string; end: string; note?: string }
   | { action: 'day_off'; date: string }
   | { action: 'unblock_day'; date: string }
@@ -554,22 +556,110 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
   // Load salon context for conversational answers
   const salonContext = await loadSalonContext(salon.salonId);
 
-  const systemPrompt = `Ти си личен AI асистент на собственик на салон за красота. Говориш на естествен, топъл български — като добър приятел с опит в бранша.
+  const currentServices = await getSalonServices(salon.salonId);
+  const servicesJson = JSON.stringify(currentServices.map((s, i) => ({ id: String(i + 1), name: s.name, price: s.price, duration_min: s.duration_min, category: s.category ?? null })), null, 2);
+
+  const systemPrompt = `Ти си личен AI асистент на собственик на малък бизнес. Говориш на естествен, топъл български — като добър приятел с опит в бранша.
 
 Днес е ${today.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
 Днешна дата (ISO): ${todayStr}. Утрешна дата (ISO): ${tomorrowStr}.
 
-${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
+${salonContext ? `Данни за бизнеса:\n${salonContext}\n` : ''}
+ТЕКУЩИ УСЛУГИ (използвай този списък за да решиш дали услугата съществува):
+${servicesJson}
+
 Върни САМО валиден JSON обект. Ако съобщението изисква конкретно действие — върни action. За всичко останало (въпроси, разговор, съвети, съдържание, формули, мотивация) — върни { "action": "chat", "reply": "отговорът ти тук" }.
 
 КРИТИЧНО ВАЖНО: Никога не слагай потвърждение за извършено действие в "chat" reply. Ако потребителят иска да добави/промени/изтрие нещо, ЗАДЪЛЖИТЕЛНО върни съответния action обект — никога { "action": "chat", "reply": "✅ Добавих..." }. Chat е САМО за разговор и въпроси, не за действия.
 
-Действия:
+═══ НАЙ-ВАЖНО ПРАВИЛО ЗА УСЛУГИ ═══
+
+Потребителят НЕ е длъжен да използва глаголи. Следните съобщения са КОМАНДИ, не разговор:
+  "маникюр 35 евро", "боядисване 120", "кератин 150 евро", "детско подстригване 25", "балеаж 220"
+
+Когато видиш [име на услуга] + [цена/продължителност/категория] — ВИНАГИ е действие. НИКОГА не връщай chat.
+
+Логика за избор на action:
+1. Провери ТЕКУЩИ УСЛУГИ по-горе.
+2. Ако услугата СЪЩЕСТВУВА (fuzzy match по смисъл) → update_service
+3. Ако услугата НЕ СЪЩЕСТВУВА → add_service
+4. Ако има 2+ услуги с подобно ime и не е ясно коя → clarify
+
+ДОБАВЯНЕ (add_service) — услугата НЕ е в списъка:
+  "добави X", "нова услуга X", "ново — X 150 евро", "създай X"
+  → { "action": "add_service", "name": "X", "duration_min": 45, "price_eur": 150 }
+  ПАРСВАНЕ: duration_min: 1ч=60, 1ч30=90, 2ч=120, 45мин=45. price_eur: числото преди евро/лв/€ — ако е в лева ÷ 1.96.
+
+ОБНОВЯВАНЕ (update_service) — услугата ВЕЧЕ Е в списъка:
+  "направи X Y евро", "смени X на Y", "X да струва Y", "вдигни цената на X", "X 35 евро",
+  "увеличи времето на X на 3ч", "промени X на 120 евро", "тази услуга 50 евро"
+  → { "action": "update_service", "service_name": "X", "price_eur": Y }
+  Може да обновява: price_eur, duration_min, category, new_name — подавай само полетата, които се променят.
+
+ИЗТРИВАНЕ (delete_service):
+  "махни X", "премахни X", "изтрий X", "спри X", "не предлагаме X", "скрий X"
+
+УТОЧНЯВАНЕ (clarify) — само при реална двусмисленост:
+  → { "action": "clarify", "question": "Имаш предвид X или Y?" }
+
+ПОТВЪРЖДАВАНЕ на запис (confirm_booking):
+  "потвърди Мария", "окей записа на Иван", "да, потвърди", "ок потвърждавам"
+
+ПРИКЛЮЧВАНЕ на запис (complete_booking):
+  "готово с Мария", "Мария приключи", "отбележи като готова", "done с клиента"
+
+ОТКАЗВАНЕ на запис (cancel_booking):
+  "откажи записа в 14:00", "анулирай в понеделник в 10", "изтрий часа за утре в 15:30"
+
+БЛОКИРАНЕ НА ЧАС (block_hours):
+  "блокирай от 13 до 15 в сряда", "запази ми 14-16 за лични неща", "занят съм утре 10-12"
+
+ПОЧИВЕН ДЕН (day_off):
+  "в неделя не работя", "петък е почивен", "блокирай цял ден 12 юни", "утре съм болна"
+
+РАБОТНО ВРЕМЕ (day_hours / work_until):
+  "вторник от 9 до 18", "сряда 10-19", "работя до 20 днес", "утре свършвам в 17"
+
+РАЗГОВОР (chat) — само когато НЕ може да се изпълни никакво действие:
+  въпроси, съвети, идеи за бизнес, текстове за публикации, мотивация, общи разговори
+
+═══ РАЗПОЗНАВАНЕ НА ДАТА И ЧАС ═══
+
+Преобразувай разговорни изрази в точни стойности спрямо днешна дата ${todayStr}:
+- "утре" → ${tomorrowStr}
+- "в понеделник" / "следващия понеделник" → намери следващата такава дата
+- "след 2 дни" → изчисли ISO датата
+- "сутринта" → 09:00, "на обяд" → 13:00, "следобед" → 15:00, "вечерта" → 18:00
+- "и половина" след час → добави :30 (напр. "в 3 и половина" → 15:30)
+- Ако часът е без AM/PM и е между 7 и 21 → приеми го директно; ако е под 7 → добави 12
+
+═══ ИМЕНА НА УСЛУГИ ═══
+
+Хората пишат имена на услуги с грешки, съкращения или на разговорен език. Бизнесът може да е всякакъв — салон за красота, барбер, грийминг за домашни любимци, козметик, маникюрист, коуч, масажист, фотограф или нещо съвсем различно.
+
+Принципи за разпознаване:
+- Търси най-близкото съвпадение по смисъл спрямо РЕАЛНИЯ списък с услуги на салона (от данните за салона по-горе).
+- Съкращения, разговорни форми и правописни грешки са нормални — разбери намерението.
+- Ако услугата я има в списъка — match-вай към нея, дори да е написана различно.
+- Ако НЕ е ясно коя точно услуга се има предвид и в списъка има няколко сходни — избери най-логичната спрямо контекста на разговора.
+- Използвай историята на разговора: ако преди беше спомената услуга и сега се казва "я", "тя", "тази", "горната" — имат предвид същата.
+- При съмнение — предпочитай действие пред въпрос; ако грешиш леко, потребителят ще коригира.
+
+═══ КОНТЕКСТ НА РАЗГОВОРА ═══
+
+Използвай историята на съобщенията за да разбереш препратки:
+- "тя", "я", "тази услуга", "горната", "последната" → последно споменатата услуга
+- "него", "този клиент", "тази резервация" → последно споменатия клиент/запис
+- "пак същото", "още един път" → повтори последното действие
+- Никога не питай "коя услуга?" или "кой клиент?" ако отговорът е ясен от контекста.
+
+═══ ДЕЙСТВИЯ ═══
+
 - { "action": "bookings_day", "date": "YYYY-MM-DD" }
 - { "action": "next_client" }
 - { "action": "revenue_week" }
 - { "action": "revenue_month" }
-- { "action": "revenue_months", "months": 6 }  ← приход по месеци (последните N месеца, по подразбиране 6)
+- { "action": "revenue_months", "months": 6 }
 - { "action": "revenue_range", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD" }
 - { "action": "revenue_compare" }
 - { "action": "avg_booking_value" }
@@ -584,13 +674,15 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
-- { "action": "sort_services", "by": "price_asc" }  ← by може да е: price_asc, price_desc, duration_asc, name_asc
-- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "Колористика" }  ← ПАРСВАНЕ ПРАВИЛА: name е САМО името на услугата (без цена/продължителност/категория). duration_min: "1ч"=60, "1ч30"/"1.5ч"=90, "2ч"=120, "45мин"=45, "30мин"=30. price_eur: числото ПРЕДИ "евро"/"лв"/"€/лв" — ако е в лева раздели на 1.96. category: текстът СЛЕД "в категория". Пример: "Боядисване 2ч 80 евро в категория Колористика" → name="Боядисване", duration_min=120, price_eur=80, category="Колористика"
-- { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← цената ВИНАГИ в евро (€)
-- { "action": "update_category", "service_name": "...", "category": "Колористика" }  ← смяна/добавяне на категория на услуга
+- { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
+- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "..." }
+- { "action": "update_service", "service_name": "...", "price_eur": 35, "duration_min": 60, "category": "...", "new_name": "..." }  ← подавай само полетата, които се променят
+- { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← само ако се променя ЕДИНСТВЕНО цена (legacy, предпочитай update_service)
+- { "action": "update_category", "service_name": "...", "category": "..." }
 - { "action": "delete_service", "service_name": "..." }
-- { "action": "block_hours", "date": "YYYY-MM-DD", "start": "HH:mm", "end": "HH:mm", "note": "незадължително" }  ← блокира конкретни часове (не целия ден)
-- { "action": "day_off", "date": "YYYY-MM-DD" }  ← блокира ЦЕЛИЯ ден
+- { "action": "clarify", "question": "Имаш предвид X или Y?" }  ← само при реална двусмисленост
+- { "action": "block_hours", "date": "YYYY-MM-DD", "start": "HH:mm", "end": "HH:mm", "note": "..." }
+- { "action": "day_off", "date": "YYYY-MM-DD" }
 - { "action": "unblock_day", "date": "YYYY-MM-DD" }
 - { "action": "day_hours", "day_key": "monday", "open": "09:00", "close": "18:00" }
 - { "action": "day_closed", "day_key": "sunday" }
@@ -604,9 +696,7 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
 - { "action": "update_bio", "bio": "..." }
 - { "action": "update_owner_bio", "bio": "..." }
 - { "action": "toggle_sms", "enabled": true }
-- { "action": "chat", "reply": "естествен отговор на български" } — за разговор, въпроси, съвети, писане на текстове, формули, всичко друго
-
-КОНТЕКСТ НА РАЗГОВОРА: Когато потребителят казва "тази услуга", "тя", "горната", "последната" — имат предвид последно споменатата или добавена услуга от историята на разговора. Използвай историята на съобщенията за да разбереш за коя услуга/резервация/клиент говорят. Никога не питай "коя услуга?" ако отговорът е ясен от контекста.
+- { "action": "chat", "reply": "естествен отговор на български" }
 
 Само JSON, без обяснения извън полето reply.`;
 
@@ -739,6 +829,45 @@ ${salonContext ? `Данни за салона:\n${salonContext}\n` : ''}
       services[idx]!.price = Math.round(intent.price_eur);
       await saveSalonServices(salon.salonId, salon.slug, services);
       await sendTelegramMessage(chatId, `✅ Цената на <b>${services[idx]!.name}</b> е <b>${Math.round(intent.price_eur)} €</b>`);
+      return true;
+    }
+    case 'update_service': {
+      const services = await getSalonServices(salon.salonId);
+      const idx = findServiceIndex(services, intent.service_name);
+      if (idx === -1) {
+        await sendTelegramMessage(chatId, `❌ Не намерих услуга <b>${intent.service_name}</b>.`);
+        return true;
+      }
+      const svc = services[idx]!;
+      const changes: string[] = [];
+      if (intent.price_eur !== undefined) {
+        svc.price = Math.round(intent.price_eur);
+        changes.push(`цена: <b>${svc.price} €</b>`);
+      }
+      if (intent.duration_min !== undefined) {
+        svc.duration_min = intent.duration_min;
+        changes.push(`продължителност: <b>${svc.duration_min} мин</b>`);
+      }
+      if (intent.category !== undefined) {
+        svc.category = intent.category;
+        changes.push(`категория: <b>${svc.category}</b>`);
+      }
+      if (intent.new_name !== undefined) {
+        changes.push(`ново име: <b>${intent.new_name}</b>`);
+        svc.name = intent.new_name;
+      }
+      if (changes.length === 0) {
+        await sendTelegramMessage(chatId, `⚠️ Не открих какво да променя за <b>${svc.name}</b>.`);
+        return true;
+      }
+      await saveSalonServices(salon.salonId, salon.slug, services);
+      const updateReply = `✅ <b>${intent.new_name ?? intent.service_name}</b> обновена:\n${changes.join('\n')}`;
+      await appendHistory(chatId, 'assistant', updateReply);
+      await sendTelegramMessage(chatId, updateReply);
+      return true;
+    }
+    case 'clarify': {
+      await sendTelegramMessage(chatId, `🤔 ${intent.question}`);
       return true;
     }
     case 'update_category': {
