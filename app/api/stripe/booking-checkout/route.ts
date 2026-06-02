@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   const origin = `${proto}://${host}`;
 
   const amountCents = Math.round(amountEuros * 100);
-  const label = paymentType === 'deposit' ? `Депозит — ${serviceName}` : serviceName ?? 'Услуга';
+  const label = paymentType === 'deposit' ? `Депозит: ${serviceName}` : serviceName ?? 'Услуга';
 
   const session = await stripe.checkout.sessions.create(
     {
