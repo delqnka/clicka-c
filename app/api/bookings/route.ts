@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
         AND date IN (${date}, ${legacyDate ?? date})
         AND NOT (
           payment_status = 'pending'
-          AND created_at < now() - interval '35 minutes'
+          AND created_at < now() - interval '5 minutes'
         )
       ORDER BY time ASC
     `;

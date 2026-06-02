@@ -67,7 +67,7 @@ export async function insertBookingIfNoOverlap(
         )
         AND NOT (
           b.payment_status = 'pending'
-          AND b.created_at < now() - interval '35 minutes'
+          AND b.created_at < now() - interval '5 minutes'
         )
         AND (
           (
