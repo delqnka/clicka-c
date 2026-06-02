@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
 
         if (rows.length > 0) {
           const row = rows[0] as Record<string, unknown>;
+          const amountPaidEuros = session.amount_total != null ? session.amount_total / 100 : undefined;
           const bookingDetails = {
             bookingId: String(row.id ?? ''),
             manageToken: String(row.manage_token ?? ''),
@@ -108,6 +109,8 @@ export async function POST(request: NextRequest) {
                 .map((v) => String(v ?? '').trim())
                 .filter(Boolean)
                 .join(', ') || undefined,
+            amountPaid: amountPaidEuros,
+            paymentType: session.metadata?.paymentType ?? undefined,
           };
           const clientEmail = String(row.client_email ?? '').trim();
           const salonEmail = row.salon_email ? String(row.salon_email).trim() : null;

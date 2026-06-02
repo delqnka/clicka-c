@@ -97,6 +97,8 @@ export interface BookingDetails {
   salonEmail?: string;
   salonPhone?: string;
   salonAddress?: string;
+  amountPaid?: number | null;
+  paymentType?: string | null;
 }
 
 function escapeHtml(value: string) {
@@ -350,11 +352,16 @@ export async function sendBookingConfirmation(
     booking.salonAddress,
   );
 
+  const depositPaid = booking.paymentType === 'deposit' && booking.amountPaid != null ? booking.amountPaid : null;
+  const remaining = depositPaid != null && booking.servicePrice != null ? booking.servicePrice - depositPaid : null;
+
   const clientRows = [
     renderRow('Име', booking.clientName),
     renderRow('Услуга', booking.serviceName),
     booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
     booking.servicePrice != null ? renderRow('Цена', formatSalonPrice(booking.servicePrice)) : '',
+    depositPaid != null ? renderRow('Платен депозит', formatSalonPrice(depositPaid)) : '',
+    remaining != null && remaining > 0 ? renderRow('Доплащане на място', formatSalonPrice(remaining)) : '',
     renderRow('Дата', formattedDate),
     renderRow('Час', booking.time),
     booking.salonPhone ? renderRow('Телефон на салона', booking.salonPhone) : '',
