@@ -718,6 +718,7 @@ ${servicesJson}
           { role: 'user', content: text },
         ],
         temperature: 0.4,
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -727,7 +728,9 @@ ${servicesJson}
     }
 
     const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    const raw = (data.choices?.[0]?.message?.content ?? '').trim();
+    // Strip thinking tokens (<think>...</think>) that Gemini 2.5 Flash may prepend
+    const rawContent = (data.choices?.[0]?.message?.content ?? '').trim();
+    const raw = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
     const parsed = JSON.parse(jsonStr) as AIIntent;
     // Guard: if parse gave us garbage (no valid action), reset history and bail
