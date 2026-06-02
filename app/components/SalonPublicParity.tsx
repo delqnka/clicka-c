@@ -1237,7 +1237,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className={`client-site min-h-screen overflow-x-hidden bg-white text-[#1a1a1a] lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}${showStickySectionTabs ? ' pb-20' : ''}`}
+      className={`client-site min-h-screen overflow-x-hidden bg-white text-[#1a1a1a] pb-20 lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -1999,17 +1999,11 @@ export default function SalonPublicParity({
 
       {!disableStickySectionTabs ? (
         <div
-          className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-3 transition-opacity duration-150 lg:hidden ${
-            showStickySectionTabs
-              ? 'pointer-events-auto opacity-100 visible'
-              : 'pointer-events-none opacity-0 invisible'
-          }`}
-          aria-hidden={!showStickySectionTabs}
+          className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-3 lg:hidden"
         >
           <div className="mx-auto w-full max-w-[min(100%,1180px)]">
             <button
               type="button"
-              tabIndex={showStickySectionTabs ? 0 : -1}
               onClick={() => openBookingModal()}
               className="block w-full rounded-full py-3.5 text-[16px] font-semibold text-white"
               style={{ background: primary }}
