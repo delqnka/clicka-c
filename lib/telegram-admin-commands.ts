@@ -728,17 +728,17 @@ ${servicesJson}
 
     const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
     const raw = (data.choices?.[0]?.message?.content ?? '').trim();
-    console.log('[AI] raw response:', raw);
+    // DEBUG — изпраща raw response в Telegram (временно)
+    await sendTelegramMessage(chatId, `🔍 DEBUG raw:\n<code>${raw.slice(0, 500)}</code>`);
     const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
     intent = JSON.parse(jsonStr) as AIIntent;
-    console.log('[AI] parsed intent:', JSON.stringify(intent));
+    await sendTelegramMessage(chatId, `🔍 DEBUG action: <code>${intent.action}</code>`);
     // Record the action taken so future messages have context
     if (intent.action !== 'chat') {
       await appendHistory(chatId, 'assistant', `[изпълнено действие: ${intent.action}]`);
     }
   } catch (err) {
-    console.log('[AI] error:', err);
-    await sendTelegramMessage(chatId, '⚠️ Грешка при свързване с AI. Пробвай отново.');
+    await sendTelegramMessage(chatId, `⚠️ AI грешка: <code>${String(err).slice(0, 200)}</code>`);
     return true;
   }
 
