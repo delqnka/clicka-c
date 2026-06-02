@@ -734,12 +734,24 @@ export function SalonBookingModal({
               </div>
             ) : null}
 
+            {step === 3 && paymentType !== 'none' && (
+              <div className="mb-2.5 flex items-center justify-center gap-1.5 text-[12px] font-medium text-[#007AFF]">
+                <svg width="14" height="14" viewBox="0 0 60 60" fill="none" aria-hidden>
+                  <rect width="60" height="60" rx="8" fill="#635BFF"/>
+                  <path d="M27.5 22.5c0-1.7 1.4-2.4 3.6-2.4 3.2 0 7.3 1 10.4 2.7v-9.8c-3.5-1.4-7-2-10.4-2C23.1 11 18 15.2 18 22.9c0 12.1 16.6 10.2 16.6 15.4 0 2-1.7 2.7-4.1 2.7-3.5 0-8-1.5-11.5-3.5v9.9c3.9 1.7 7.9 2.4 11.5 2.4 8.8 0 14.8-4.3 14.8-12.2C45.3 25.4 27.5 27.6 27.5 22.5z" fill="white"/>
+                </svg>
+                {paymentType === 'deposit' && depositAmount && depositAmount > 0
+                  ? <>Изисква се депозит от <strong className="mx-0.5">€{depositAmount}</strong> · плащане чрез Stripe</>
+                  : <>Изисква се плащане от <strong className="mx-0.5">€{totalPrice.toFixed(2)}</strong> · чрез Stripe</>
+                }
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
                 disabled={step === 1}
-                className={`rounded-full border border-black/[0.04] bg-white py-3.5 text-[15px] font-semibold text-black/75 transition disabled:opacity-25 active:scale-[0.98] active:shadow-[0_2px_8px_rgba(0,0,0,0.14)] ${backButtonShadow}`}
+                className="rounded-full border border-black/10 bg-white py-2.5 text-[14px] font-medium text-black/60 transition disabled:opacity-25 active:scale-[0.98]"
               >
                 Назад
               </button>
@@ -761,27 +773,16 @@ export function SalonBookingModal({
                   Продължи
                 </button>
               ) : (
-                <>
-                  {paymentType !== 'none' && (
-                    <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-                      {paymentType === 'deposit' && depositAmount && depositAmount > 0 ? (
-                        <>💳 Тази услуга изисква <strong>депозит от €{depositAmount}</strong>. Ще бъдеш пренасочена към Stripe за плащане.</>
-                      ) : (
-                        <>💳 Тази услуга изисква <strong>пълно плащане от €{totalPrice.toFixed(2)}</strong>. Ще бъдеш пренасочена към Stripe за плащане.</>
-                      )}
-                    </div>
-                  )}
-                  <button
-                    type="submit"
-                    form="salon-booking-form"
-                    disabled={isSubmitting || !selectedTime || !hasServices}
-                    className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                    style={CLICKA_MARKETING_GRADIENT_STYLE}
-                  >
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                    {paymentType !== 'none' ? 'Плати и резервирай' : 'Изпрати заявка'}
-                  </button>
-                </>
+                <button
+                  type="submit"
+                  form="salon-booking-form"
+                  disabled={isSubmitting || !selectedTime || !hasServices}
+                  className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                  style={CLICKA_MARKETING_GRADIENT_STYLE}
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                  {paymentType !== 'none' ? 'Плати и резервирай' : 'Изпрати заявка'}
+                </button>
               )}
             </div>
           </div>
