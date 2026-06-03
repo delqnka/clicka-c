@@ -2379,24 +2379,24 @@ async function handleSaveClientNote(chatId: number, salon: SalonRef, clientName:
   const next = await getNextBookingForClient(salon.salonId, clientName);
   const dateLabel = next ? ` (${formatDateBg(next.date)} в ${next.time.slice(0, 5)})` : '';
 
-  await sendTelegramMessage(chatId, `📝 Запазих бележка за <b>${clientName}</b>:\n<i>${note}</i>`);
+  const reminderQ = next
+    ? `🔔 Искаш ли напомняне преди следващия й час${dateLabel}?`
+    : `🔔 Искаш ли напомняне преди бъдещи часове на <b>${clientName}</b>?`;
 
-  if (next) {
-    await sendTelegramInlineKeyboard(
-      chatId,
-      `🔔 Искаш ли напомняне преди следващия й час${dateLabel}?`,
+  await sendTelegramInlineKeyboard(
+    chatId,
+    `📝 Запазих бележка за <b>${clientName}</b>:\n<i>${note}</i>\n\n${reminderQ}`,
+    [
       [
-        [
-          { text: '📅 1 ден преди', callback_data: `client_remind:day:${salon.salonId}:${clientName}` },
-          { text: '⏰ 1 час преди', callback_data: `client_remind:hour:${salon.salonId}:${clientName}` },
-        ],
-        [
-          { text: '✅ И двете', callback_data: `client_remind:both:${salon.salonId}:${clientName}` },
-          { text: '❌ Не', callback_data: `client_remind:none:${salon.salonId}:${clientName}` },
-        ],
+        { text: '📅 1 ден преди', callback_data: `client_remind:day:${salon.salonId}:${clientName}` },
+        { text: '⏰ 1 час преди', callback_data: `client_remind:hour:${salon.salonId}:${clientName}` },
       ],
-    );
-  }
+      [
+        { text: '✅ И двете', callback_data: `client_remind:both:${salon.salonId}:${clientName}` },
+        { text: '❌ Не', callback_data: `client_remind:none:${salon.salonId}:${clientName}` },
+      ],
+    ],
+  );
 }
 
 async function handleGetClientNote(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
