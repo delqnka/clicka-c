@@ -1850,11 +1850,21 @@ export async function handlePriceListPhoto(
 
   await sendTelegramMessage(chatId, '🔍 Анализирам ценоразписа...');
 
-  const systemPrompt = `Ти си асистент, който извлича информация за услуги и цени от снимки на ценоразписи.
-Върни САМО валиден JSON масив без markdown. Форматът: [{"name":string,"price":number,"duration_min":number,"category":string}]
-КРИТИЧНО: Извлечи ВСИЧКИ услуги без изключение. НЕ дедублирай — "Дамско подстригване", "Мъжко подстригване" и "Детско подстригване" са три РАЗЛИЧНИ услуги. Преброй редовете и се увери че JSON-ът има точно толкова елементи.
+  const systemPrompt = `Ти си асистент, който извлича информация за услуги и цени от снимки на ценоразписи на салони.
+Върни САМО валиден JSON масив без markdown.
+
+Има два формата в зависимост от ценоразписа:
+
+1. ОБИКНОВЕН (една цена на услуга):
+[{"name":string,"price":number,"duration_min":number,"category":string}]
+
+2. С ВАРИАНТИ (ако има колони за различни нива/специалисти като Barber/Senior/Master или Junior/Senior или подобни):
+[{"name":string,"price":number,"duration_min":number,"category":string,"variants":[{"label":string,"price":number},{"label":string,"price":number}]}]
+В този случай "price" = цената на първия (най-евтин) вариант. Всеки вариант има "label" (напр. "Barber", "Senior Barber", "Master") и "price".
+
+КРИТИЧНО: Извлечи ВСИЧКИ услуги без изключение. НЕ дедублирай — подобни имена са различни услуги. Преброй редовете и се увери че JSON-ът има точно толкова елементи.
 Цените да са в евро (EUR). Ако са в лева, раздели на 1.95583 и закръгли до цяло число.
-Ако продължителността не е посочена, прецени я по типа услуга.`;
+Ако продължителността не е посочена, прецени я по типа услуга (подстригване 30мин, боядисване 90мин, маникюр 45мин и т.н.).`;
 
   const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
@@ -1883,7 +1893,7 @@ export async function handlePriceListPhoto(
   const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
   const raw = (data.choices?.[0]?.message?.content ?? '').trim();
 
-  let parsed: { name: string; price: number; duration_min: number; category?: string }[] = [];
+  let parsed: { name: string; price: number; duration_min: number; category?: string; variants?: { label: string; price: number }[] }[] = [];
   try {
     const jsonStr = raw.startsWith('[') ? raw : (raw.match(/\[[\s\S]*\]/) ?? ['[]'])[0]!;
     parsed = JSON.parse(jsonStr);
@@ -1904,11 +1914,20 @@ export async function handlePriceListPhoto(
   for (const item of parsed) {
     const name = String(item.name ?? '').trim();
     if (!name || existingNames.has(name.toLowerCase())) continue;
+
+    // Parse variants if present
+    const variants = Array.isArray(item.variants)
+      ? item.variants
+          .map((v) => ({ label: String(v.label ?? '').trim(), price: Math.max(0, Math.round(Number(v.price) || 0)) }))
+          .filter((v) => v.label)
+      : undefined;
+
     const svc: ServiceItem = {
       name,
-      price: Math.max(0, Math.round(Number(item.price) || 0)),
+      price: variants?.[0]?.price ?? Math.max(0, Math.round(Number(item.price) || 0)),
       duration_min: Math.max(5, Number(item.duration_min) || 30),
       ...(item.category ? { category: String(item.category).trim() } : {}),
+      ...(variants && variants.length > 1 ? { variants } : {}),
     };
     added.push(svc);
     existingNames.add(name.toLowerCase());
@@ -1923,7 +1942,12 @@ export async function handlePriceListPhoto(
 
   const lines = [`✅ <b>Добавени ${added.length} услуги от ценоразписа:</b>`, ''];
   for (const s of added) {
-    lines.push(`• ${s.name} — ${s.duration_min} мин — ${s.price} €${s.category ? ` (${s.category})` : ''}`);
+    if (s.variants && s.variants.length > 1) {
+      const variantStr = s.variants.map(v => `${v.label} ${v.price}€`).join(' / ');
+      lines.push(`• ${s.name} — ${s.duration_min} мин — ${variantStr}${s.category ? ` (${s.category})` : ''}`);
+    } else {
+      lines.push(`• ${s.name} — ${s.duration_min} мин — ${s.price} €${s.category ? ` (${s.category})` : ''}`);
+    }
   }
   lines.push('', '💡 Ако искаш да ги изтриеш, напиши <code>изтрий добавените услуги</code>');
   await sendTelegramMessage(chatId, lines.join('\n'));
