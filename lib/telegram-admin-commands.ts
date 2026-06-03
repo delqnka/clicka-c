@@ -2394,8 +2394,8 @@ async function handleSaveClientNote(chatId: number, salon: SalonRef, clientName:
     `📝 Запазих бележка за <b>${clientName}</b>:\n<i>${note}</i>\n\n${reminderQ}`,
     [
       [
-        { text: '✅ Да, напомни ми', callback_data: `client_remind:day:${salon.salonId}:${clientName}` },
-        { text: '❌ Не', callback_data: `client_remind:none:${salon.salonId}:${clientName}` },
+        { text: '✅ Да, напомни ми', callback_data: `cnr:day:${clientName}` },
+        { text: '❌ Не', callback_data: `cnr:none:${clientName}` },
       ],
     ],
   );
@@ -3051,19 +3051,12 @@ async function handleCreateBooking(
 /** Called from telegram-webhook when user taps a client_remind:* inline button. */
 export async function handleClientRemindCallback(
   chatId: number,
-  data: string,
+  type: string,
+  salonId: string,
+  clientName: string,
 ): Promise<void> {
-  // data format: client_remind:<type>:<salonId>:<clientName>
-  const parts = data.split(':');
-  const type = parts[1]!;       // day | hour | both | none
-  const salonId = parts[2]!;
-  const clientName = parts.slice(3).join(':');
-
   const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
   await ensureSalonClientsSchema();
-
-  const dayBefore = type === 'day' || type === 'both';
-  const hourBefore = type === 'hour' || type === 'both';
 
   if (type === 'none') {
     await sendTelegramMessage(chatId, '👍 Разбрано — няма да те безпокоя.');
@@ -3072,12 +3065,11 @@ export async function handleClientRemindCallback(
 
   await sql`
     UPDATE salon_clients
-    SET remind_day_before = ${dayBefore}, remind_hour_before = ${hourBefore}, updated_at = now()
+    SET remind_day_before = true, updated_at = now()
     WHERE salon_id = ${salonId} AND lower(name) = lower(${clientName})
   `;
 
   const labels: string[] = [];
-  if (dayBefore) labels.push('1 ден преди');
-  if (hourBefore) labels.push('1 час преди');
+  labels.push('1 ден преди');
   await sendTelegramMessage(chatId, `🔔 Ще те напомня <b>${labels.join(' и ')}</b> преди следващия час на <b>${clientName}</b>.`);
 }

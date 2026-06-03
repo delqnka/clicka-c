@@ -139,8 +139,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const cbChatId = cbq.message?.chat.id ?? cbq.from.id;
     await answerCallbackQuery(cbq.id);
 
-    if (cbq.data.startsWith('client_remind:')) {
-      await handleClientRemindCallback(cbChatId, cbq.data);
+    if (cbq.data.startsWith('cnr:')) {
+      const parts = cbq.data.split(':');
+      const type = parts[1]!;
+      const clientName = parts.slice(2).join(':');
+      const salonForCallback = await findSalonByChatId(cbChatId);
+      if (salonForCallback) {
+        await handleClientRemindCallback(cbChatId, type, salonForCallback.salonId, clientName);
+      }
       return NextResponse.json({ ok: true });
     }
 
