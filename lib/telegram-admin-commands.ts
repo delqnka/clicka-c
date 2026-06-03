@@ -68,7 +68,8 @@ type ConvState =
   | { type: 'waiting_block_confirm'; date: string; created_at: string }
   | { type: 'waiting_block_and_reschedule'; block_date: string; booking_id: string; client_name: string; to_date: string; to_time: string; created_at: string }
   | { type: 'last_context'; entity_type: 'booking' | 'service' | 'client' | 'review'; entities: LastContextEntity[]; selected_entity?: LastContextEntity; created_at: string }
-  | { type: 'waiting_entity_clarification'; pending_command: string; entities: LastContextEntity[]; created_at: string };
+  | { type: 'waiting_entity_clarification'; pending_command: string; entities: LastContextEntity[]; created_at: string }
+  | { type: 'last_photo'; url: string; created_at: string };
 
 async function getState(chatId: number): Promise<ConvState | null> {
   try {
@@ -176,6 +177,9 @@ const CLIENT_COUNT_MONTH_RE =
 
 const TOP_SERVICES_RE =
   /^(?:кои\s+са\s+)?(?:най-популярни(?:те)?|топ)\s+(?:ми\s+)?услуги\b/i;
+
+const DELETE_PHOTO_RE =
+  /^(?:изтри[йи]|махни|премахни)\s+(?:последната\s+)?снимк[аaата]+$/i;
 
 const LIST_SERVICES_RE =
   /^(?:покажи|виж|изброй)\s+(?:всички\s+)?услуги(?:те)?$/i;
@@ -580,6 +584,25 @@ export async function handleAdminCommand(
         `⏱ Възраст: ${age}с | Изтича след: ${expiresIn}с`,
       ];
       await sendTelegramMessage(chatId, lines.join('\n'));
+    }
+    return true;
+  }
+
+  // ── Delete last photo ────────────────────────────────────────────────────
+  if (DELETE_PHOTO_RE.test(text)) {
+    const state = await getState(chatId);
+    if (state?.type === 'last_photo') {
+      const url = state.url;
+      // Remove from gallery_images and portfolio_images
+      const rows = await sql`SELECT gallery_images, portfolio_images FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
+      const gallery = normalizeImageList(rows[0]?.gallery_images).filter((u: string) => u !== url);
+      const portfolio = normalizeImageList(rows[0]?.portfolio_images).filter((u: string) => u !== url);
+      await sql`UPDATE salons SET gallery_images = ${JSON.stringify(gallery)}::jsonb, portfolio_images = ${JSON.stringify(portfolio)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      revalidateTag(`salon-public-${salon.slug}`);
+      await clearState(chatId);
+      await sendTelegramMessage(chatId, '🗑 Снимката е изтрита.');
+    } else {
+      await sendTelegramMessage(chatId, '⚠️ Не намерих последно качена снимка. Изтриването работи веднага след качване.');
     }
     return true;
   }
@@ -2692,7 +2715,9 @@ export async function handleGalleryPhoto(
   await sql`UPDATE salons SET gallery_images = ${JSON.stringify(merged)}::jsonb, portfolio_images = ${JSON.stringify(merged)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
 
   revalidateTag(`salon-public-${salon.slug}`);
-  await sendTelegramMessage(chatId, `✅ Снимката е добавена в ${target === 'portfolio' ? 'портфолиото' : 'галерията'}! (${updatedCount} общо)`);
+  await sendTelegramMessage(chatId, `✅ Снимката е добавена в ${target === 'portfolio' ? 'портфолиото' : 'галерията'}! (${updatedCount} общо)\n💡 Ако искаш да я изтриеш, напиши <code>изтрий снимката</code>`);
+  // Remember last uploaded photo so the owner can delete it immediately
+  await setState(chatId, { type: 'last_photo', url: publicUrl, created_at: new Date().toISOString() });
 }
 
 export function photoTargetFromCaption(caption: string): 'gallery' | 'cover' | 'portfolio' | 'price_list' | 'booking' {
