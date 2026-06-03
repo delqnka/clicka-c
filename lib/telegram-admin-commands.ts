@@ -1860,7 +1860,7 @@ export async function handlePriceListPhoto(
     method: 'POST',
     headers: openRouterHeaders(),
     body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         {
