@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
-const VISION_MODEL = 'anthropic/claude-3.5-sonnet';
+const VISION_MODEL = 'openai/gpt-4o-mini';
 
 const SYSTEM_PROMPT = `Ти си асистент, който извлича информация за услуги и цени от снимки на ценоразписи на салони за красота.
 Върни САМО валиден JSON масив без никакъв допълнителен текст, обяснения или markdown.
