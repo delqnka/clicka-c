@@ -2388,11 +2388,7 @@ async function handleSaveClientNote(chatId: number, salon: SalonRef, clientName:
     `📝 Запазих бележка за <b>${clientName}</b>:\n<i>${note}</i>\n\n${reminderQ}`,
     [
       [
-        { text: '📅 1 ден преди', callback_data: `client_remind:day:${salon.salonId}:${clientName}` },
-        { text: '⏰ 1 час преди', callback_data: `client_remind:hour:${salon.salonId}:${clientName}` },
-      ],
-      [
-        { text: '✅ И двете', callback_data: `client_remind:both:${salon.salonId}:${clientName}` },
+        { text: '✅ Да, напомни ми', callback_data: `client_remind:day:${salon.salonId}:${clientName}` },
         { text: '❌ Не', callback_data: `client_remind:none:${salon.salonId}:${clientName}` },
       ],
     ],
