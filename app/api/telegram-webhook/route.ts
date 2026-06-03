@@ -14,6 +14,7 @@ import {
   handlePriceListPhoto,
   handleGalleryPhoto,
   photoTargetFromCaption,
+  handleClientRemindCallback,
 } from '@/lib/telegram-admin-commands';
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
@@ -137,6 +138,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const cbq = update.callback_query;
     const cbChatId = cbq.message?.chat.id ?? cbq.from.id;
     await answerCallbackQuery(cbq.id);
+
+    if (cbq.data.startsWith('client_remind:')) {
+      await handleClientRemindCallback(cbChatId, cbq.data);
+      return NextResponse.json({ ok: true });
+    }
 
     if (cbq.data.startsWith('photo_action:')) {
       const action = cbq.data.split(':')[1];

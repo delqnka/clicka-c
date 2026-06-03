@@ -686,6 +686,9 @@ type AIIntent =
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
   | { action: 'client_phone'; client_name: string }
+  | { action: 'save_client_contact'; client_name: string; phone?: string; email?: string }
+  | { action: 'save_client_note'; client_name: string; note: string }
+  | { action: 'client_note'; client_name: string }
   | { action: 'client_bookings'; client_name: string }
   | { action: 'reschedule_booking'; client_name: string; from_date: string; to_date: string; to_time?: string }
   | { action: 'confirm_day_off'; date: string }
@@ -1287,6 +1290,20 @@ ${servicesJson}
   "дай ми номера на Мария", "какъв е телефонът на Иван", "номера на Деляна", "телефон на клиента"
   → { "action": "client_phone", "client_name": "Мария" }
 
+ЗАПАЗИ КОНТАКТ НА КЛИЕНТ (save_client_contact):
+  "телефонът на Мария е 0888123456", "Иван има имейл ivan@mail.com", "добави тел на Деляна 0877000111", "Мария 0888123456"
+  → { "action": "save_client_contact", "client_name": "Мария", "phone": "0888123456" }
+  → { "action": "save_client_contact", "client_name": "Иван", "email": "ivan@mail.com" }
+
+БЕЛЕЖКА ЗА КЛИЕНТ (save_client_note):
+  "бележка за Виолета: не искаше да е много руса", "запомни за Мария че иска фризура без сешоар", "Виолета предпочита продукти без амоняк", "отбележи за Иван"
+  → { "action": "save_client_note", "client_name": "Виолета", "note": "не искаше да е много руса" }
+  ВАЖНО: Никога не питай допълнителни въпроси — подай директно action-а. Системата ще попита за напомняне.
+
+ПРОЧЕТИ БЕЛЕЖКА ЗА КЛИЕНТ (client_note):
+  "каква е бележката за Виолета", "какво знаем за Мария", "покажи бележката за Иван"
+  → { "action": "client_note", "client_name": "Виолета" }
+
 ПРЕМЕСТВАНЕ НА РЕЗЕРВАЦИЯ (reschedule_booking):
   "премести резервацията на Деляна от петък за вторник в 13", "мести Иван за утре в 15:30", "смени часа на Мария за сряда в 10"
   → { "action": "reschedule_booking", "client_name": "Деляна", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
@@ -1376,6 +1393,9 @@ ${servicesJson}
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
 - { "action": "client_phone", "client_name": "..." }
+- { "action": "save_client_contact", "client_name": "...", "phone": "...", "email": "..." }
+- { "action": "save_client_note", "client_name": "...", "note": "..." }
+- { "action": "client_note", "client_name": "..." }
 - { "action": "client_bookings", "client_name": "..." }
 - { "action": "reschedule_booking", "client_name": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
 - { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
@@ -1767,6 +1787,15 @@ ${servicesJson}
       return true;
     case 'client_phone':
       await handleClientPhone(chatId, salon, intent.client_name);
+      return true;
+    case 'save_client_contact':
+      await handleSaveClientContact(chatId, salon, intent.client_name, intent.phone, intent.email);
+      return true;
+    case 'save_client_note':
+      await handleSaveClientNote(chatId, salon, intent.client_name, intent.note);
+      return true;
+    case 'client_note':
+      await handleGetClientNote(chatId, salon, intent.client_name);
       return true;
     case 'client_bookings':
       await handleClientBookings(chatId, salon, intent.client_name);
@@ -2290,6 +2319,104 @@ async function handleClientPhone(chatId: number, salon: SalonRef, clientName: st
     `👤 <b>${r.client_name}</b>\n<i>Последен запис: ${formatDateBg(r.date)} в ${r.time} — ${r.service_name}</i>`,
   );
   await sendTelegramMessage(chatId, r.client_phone);
+}
+
+async function upsertSalonClient(
+  salonId: string,
+  name: string,
+  fields: { phone?: string; email?: string; notes?: string },
+): Promise<void> {
+  const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
+  await ensureSalonClientsSchema();
+
+  const existing = await sql`
+    SELECT id FROM salon_clients WHERE salon_id = ${salonId} AND lower(name) = lower(${name}) LIMIT 1
+  ` as { id: string }[];
+
+  if (existing.length === 0) {
+    await sql`
+      INSERT INTO salon_clients (salon_id, name, phone, email, notes)
+      VALUES (${salonId}, ${name}, ${fields.phone ?? null}, ${fields.email ?? null}, ${fields.notes ?? null})
+      ON CONFLICT (salon_id, name) DO UPDATE SET
+        phone = COALESCE(EXCLUDED.phone, salon_clients.phone),
+        email = COALESCE(EXCLUDED.email, salon_clients.email),
+        notes = COALESCE(EXCLUDED.notes, salon_clients.notes),
+        updated_at = now()
+    `;
+  } else {
+    if (fields.phone !== undefined) await sql`UPDATE salon_clients SET phone = ${fields.phone}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
+    if (fields.email !== undefined) await sql`UPDATE salon_clients SET email = ${fields.email}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
+    if (fields.notes !== undefined) await sql`UPDATE salon_clients SET notes = ${fields.notes}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
+  }
+}
+
+async function getNextBookingForClient(salonId: string, clientName: string): Promise<{ date: string; time: string } | null> {
+  const today = todayISO();
+  const rows = await sql`
+    SELECT date, time FROM bookings
+    WHERE CAST(salon_id AS text) = ${salonId}
+      AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
+      AND date >= ${today}
+      AND status NOT IN ('cancelled', 'completed')
+    ORDER BY date ASC, time ASC
+    LIMIT 1
+  ` as { date: string; time: string }[];
+  return rows[0] ?? null;
+}
+
+async function handleSaveClientContact(chatId: number, salon: SalonRef, clientName: string, phone?: string, email?: string): Promise<void> {
+  await upsertSalonClient(salon.salonId, clientName, { phone, email });
+  const parts: string[] = [];
+  if (phone) parts.push(`телефон: <b>${phone}</b>`);
+  if (email) parts.push(`имейл: <b>${email}</b>`);
+  await sendTelegramMessage(chatId, `✅ Запазих за <b>${clientName}</b> — ${parts.join(', ')}.`);
+}
+
+async function handleSaveClientNote(chatId: number, salon: SalonRef, clientName: string, note: string): Promise<void> {
+  const { sendTelegramInlineKeyboard } = await import('@/lib/telegram');
+  await upsertSalonClient(salon.salonId, clientName, { notes: note });
+
+  const next = await getNextBookingForClient(salon.salonId, clientName);
+  const dateLabel = next ? ` (${formatDateBg(next.date)} в ${next.time.slice(0, 5)})` : '';
+
+  await sendTelegramMessage(chatId, `📝 Запазих бележка за <b>${clientName}</b>:\n<i>${note}</i>`);
+
+  if (next) {
+    await sendTelegramInlineKeyboard(
+      chatId,
+      `🔔 Искаш ли напомняне преди следващия й час${dateLabel}?`,
+      [
+        [
+          { text: '📅 1 ден преди', callback_data: `client_remind:day:${salon.salonId}:${clientName}` },
+          { text: '⏰ 1 час преди', callback_data: `client_remind:hour:${salon.salonId}:${clientName}` },
+        ],
+        [
+          { text: '✅ И двете', callback_data: `client_remind:both:${salon.salonId}:${clientName}` },
+          { text: '❌ Не', callback_data: `client_remind:none:${salon.salonId}:${clientName}` },
+        ],
+      ],
+    );
+  }
+}
+
+async function handleGetClientNote(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
+  const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
+  await ensureSalonClientsSchema();
+  const rows = await sql`
+    SELECT name, notes, phone, email FROM salon_clients
+    WHERE salon_id = ${salon.salonId} AND lower(name) LIKE ${`%${clientName.toLowerCase()}%`}
+    LIMIT 1
+  ` as { name: string; notes: string | null; phone: string | null; email: string | null }[];
+
+  if (rows.length === 0 || !rows[0]!.notes) {
+    await sendTelegramMessage(chatId, `📭 Нямам бележки за <b>${clientName}</b>.`);
+    return;
+  }
+  const r = rows[0]!;
+  const lines = [`👤 <b>${r.name}</b>`, '', `📝 ${r.notes}`];
+  if (r.phone) lines.push(`📞 ${r.phone}`);
+  if (r.email) lines.push(`✉️ ${r.email}`);
+  await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
 async function handleClientBookings(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
@@ -2915,4 +3042,40 @@ async function handleCreateBooking(
     chatId,
     `✅ <b>Резервация записана:</b>\n👤 ${clientName}\n✂️ ${resolvedServiceName}${priceStr}\n📅 ${formatDateBg(date)} в ${time}`,
   );
+}
+
+// ─── Client remind callback handler ──────────────────────────────────────────
+
+/** Called from telegram-webhook when user taps a client_remind:* inline button. */
+export async function handleClientRemindCallback(
+  chatId: number,
+  data: string,
+): Promise<void> {
+  // data format: client_remind:<type>:<salonId>:<clientName>
+  const parts = data.split(':');
+  const type = parts[1]!;       // day | hour | both | none
+  const salonId = parts[2]!;
+  const clientName = parts.slice(3).join(':');
+
+  const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
+  await ensureSalonClientsSchema();
+
+  const dayBefore = type === 'day' || type === 'both';
+  const hourBefore = type === 'hour' || type === 'both';
+
+  if (type === 'none') {
+    await sendTelegramMessage(chatId, '👍 Разбрано — няма да те безпокоя.');
+    return;
+  }
+
+  await sql`
+    UPDATE salon_clients
+    SET remind_day_before = ${dayBefore}, remind_hour_before = ${hourBefore}, updated_at = now()
+    WHERE salon_id = ${salonId} AND lower(name) = lower(${clientName})
+  `;
+
+  const labels: string[] = [];
+  if (dayBefore) labels.push('1 ден преди');
+  if (hourBefore) labels.push('1 час преди');
+  await sendTelegramMessage(chatId, `🔔 Ще те напомня <b>${labels.join(' и ')}</b> преди следващия час на <b>${clientName}</b>.`);
 }
