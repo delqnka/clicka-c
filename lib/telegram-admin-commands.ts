@@ -2295,15 +2295,15 @@ async function handleClientPhone(chatId: number, salon: SalonRef, clientName: st
 async function handleClientBookings(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
   const today = todayISO();
   const rows = await sql`
-    SELECT client_name, date, start_time, service_name, status
+    SELECT client_name, date, time, service_name, status
     FROM bookings
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
       AND date >= ${today}
       AND status NOT IN ('cancelled', 'completed')
-    ORDER BY date ASC, start_time ASC
+    ORDER BY date ASC, time ASC
     LIMIT 5
-  ` as { client_name: string; date: string; start_time: string; service_name: string; status: string }[];
+  ` as { client_name: string; date: string; time: string; service_name: string; status: string }[];
 
   if (rows.length === 0) {
     await sendTelegramMessage(chatId, `📭 Нямам предстоящи записи за <b>${clientName}</b>.`);
@@ -2313,7 +2313,7 @@ async function handleClientBookings(chatId: number, salon: SalonRef, clientName:
   const name = rows[0]!.client_name;
   const lines = [`📅 Предстоящи записи на <b>${name}</b>:`, ''];
   for (const r of rows) {
-    lines.push(`• ${formatDateBg(r.date)} в ${r.start_time.slice(0, 5)} — ${r.service_name}`);
+    lines.push(`• ${formatDateBg(r.date)} в ${r.time.slice(0, 5)} — ${r.service_name}`);
   }
   await sendTelegramMessage(chatId, lines.join('\n'));
 }
