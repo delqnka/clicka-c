@@ -16,6 +16,7 @@ import {
   Scissors,
   Tag,
   UserRound,
+  UsersRound,
   Users,
   ExternalLink,
   LogOut,
@@ -44,6 +45,7 @@ import {
   LazySiteTabPanel,
   LazySmsTabPanel,
   LazySpecialistTabPanel,
+  LazyStaffTabPanel,
 } from '@/components/admin/lazy-admin-tabs';
 import { AccountTabPanel } from '@/components/admin/tabs/account-tab-panel';
 import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
@@ -118,6 +120,7 @@ const TABS = [
   { id: 'site',          label: 'Сайт',          Icon: BriefcaseBusiness },
   { id: 'images',        label: 'Снимки',         Icon: ImageIcon },
   { id: 'specialist',    label: 'Специалист',     Icon: UserRound },
+  { id: 'staff',         label: 'Служители',      Icon: UsersRound },
   { id: 'services',      label: 'Услуги',         Icon: Scissors },
   { id: 'offers',        label: 'Оферти',         Icon: Tag },
   { id: 'blog',          label: 'Блог',           Icon: Newspaper },
@@ -335,6 +338,8 @@ export default function AdminDashboardClient({
   siteRef.current = site;
   const [bookings, setBookings]   = useState<BookingRecord[]>([]);
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
+  const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
+  const [staffLoaded, setStaffLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('site');
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
@@ -915,6 +920,26 @@ export default function AdminDashboardClient({
     void run();
     return () => { cancelled = true; };
   }, [bookingsLoaded, slug]);
+
+  useEffect(() => {
+    if (activeTab !== 'staff') return;
+    if (staffLoaded) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/admin/staff?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { staff?: import('@/lib/staff-members').StaffMember[] };
+        if (cancelled) return;
+        if (Array.isArray(data.staff)) {
+          setStaffMembers(data.staff);
+          setStaffLoaded(true);
+        }
+      } catch { /* ignore */ }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [activeTab, staffLoaded, slug]);
 
   useEffect(() => {
     if (activeTab !== 'blog') return;
@@ -2637,6 +2662,78 @@ export default function AdminDashboardClient({
           {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
           {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
 
+          {/* ── Plan renewal banner ── */}
+          {(() => {
+            const expiresAt = site.planExpiresAt ? new Date(site.planExpiresAt) : null;
+            if (!expiresAt || isNaN(expiresAt.getTime())) return null;
+            const now = new Date();
+            const msLeft = expiresAt.getTime() - now.getTime();
+            const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+            const expired = msLeft <= 0;
+            const nearExpiry = !expired && daysLeft <= 30;
+            if (!expired && !nearExpiry) return null;
+
+            const planLabel = site.plan === 'team' ? 'TEAM' : 'SOLO';
+            const periodLabel = site.billingPeriod === '6m' ? '6 месеца' : '12 месеца';
+            const renewKey: string = `${site.plan}_${site.billingPeriod ?? '12m'}`;
+            const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+            const renewUrl = `${appUrl}/create?plan=${encodeURIComponent(renewKey)}`;
+
+            return (
+              <div
+                style={{
+                  marginBottom: 20,
+                  padding: '14px 18px',
+                  borderRadius: 14,
+                  border: `1.5px solid ${expired ? '#fca5a5' : '#fcd34d'}`,
+                  background: expired ? '#fff5f5' : '#fffbeb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <CreditCard size={18} style={{ color: expired ? '#ef4444' : '#d97706', flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: expired ? '#b91c1c' : '#92400e', margin: 0 }}>
+                      {expired
+                        ? `Планът ${planLabel} е изтекъл`
+                        : `Планът ${planLabel} изтича след ${daysLeft} ${daysLeft === 1 ? 'ден' : 'дни'}`}
+                    </p>
+                    <p style={{ fontSize: 12, color: expired ? '#dc2626' : '#b45309', margin: '2px 0 0' }}>
+                      {expired
+                        ? 'Подновете, за да запазите достъпа до всички функции.'
+                        : `Текущ период: ${periodLabel}. Подновете навреме, за да нямате прекъсване.`}
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={renewUrl}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 999,
+                    background: expired
+                      ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                      : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <RefreshCw size={14} />
+                  Поднови абонамента
+                </a>
+              </div>
+            );
+          })()}
+
           {activeTab === 'site' ? (
             <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} />
           ) : null}
@@ -2668,6 +2765,15 @@ export default function AdminDashboardClient({
               busyKey={busyKey}
               saveSpecialist={saveSpecialist}
               onOwnerPhotoUpload={(file) => void handleOwnerPhotoUpload(file)}
+            />
+          ) : null}
+
+          {activeTab === 'staff' ? (
+            <LazyStaffTabPanel
+              salonSlug={slug}
+              initialStaff={staffMembers}
+              planLimit={site.plan === 'team' ? 3 : 1}
+              salonServices={site.services}
             />
           ) : null}
 

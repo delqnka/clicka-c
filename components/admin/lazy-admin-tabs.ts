@@ -40,3 +40,7 @@ export const LazyPaymentsTabPanel = dynamic(
   () => import('@/components/admin/tabs/payments-tab-panel').then((m) => m.PaymentsTabPanel),
   { ssr: false }
 );
+export const LazyStaffTabPanel = dynamic(
+  () => import('@/components/admin/tabs/staff-tab-panel').then((m) => m.StaffTabPanel),
+  { ssr: false }
+);

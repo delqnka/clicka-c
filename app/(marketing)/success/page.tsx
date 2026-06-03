@@ -96,6 +96,8 @@ export default async function SuccessPage({
         if (session.payment_status === 'paid') {
           const email = session.customer_details?.email ?? '';
           const planType = session.metadata?.planType ?? 'solo';
+          const billingPeriod = session.metadata?.billingPeriod ?? '12m';
+          const billingMonths = billingPeriod === '6m' ? 6 : 12;
 
           if (email) {
             const emailPrefix = email.split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 16) || 'salon';
@@ -111,7 +113,8 @@ export default async function SuccessPage({
                 google_maps_url,
                 working_hours, services,
                 template_id, primary_color, primary_color_light,
-                plan_type, is_active, site_status,
+                plan_type, plan, is_active, site_status,
+                billing_period, plan_expires_at,
                 onboarding_code, stripe_session_id
               ) VALUES (
                 ${salonId}, ${slug}, ${''}, ${''}, ${''}, ${email},
@@ -121,7 +124,8 @@ export default async function SuccessPage({
                 ${''},
                 ${JSON.stringify(DEFAULT_HOURS)}::jsonb, ${'[]'}::jsonb,
                 ${1}, ${'#111111'}, ${'#f3f4f6'},
-                ${planType}, true, ${'setup'},
+                ${planType}, ${planType === 'ekip' ? 'team' : planType}, true, ${'setup'},
+                ${billingPeriod}, now() + (${String(billingMonths)} || ' months')::interval,
                 ${crypto.randomBytes(4).toString('hex').toUpperCase()},
                 ${sessionId}
               )

@@ -7,16 +7,18 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: '2024-06-20' });
 }
 
-const PLAN_PRICES: Record<string, number> = {
-  solo:   29900,
-  ekip:   39900,
-  studio: 59900,
+type PlanOption = {
+  amount: number;       // cents
+  plan: string;         // canonical: 'solo' | 'team'
+  billingPeriod: string; // '6m' | '12m'
+  name: string;
 };
 
-const PLAN_NAMES: Record<string, string> = {
-  solo:   'SOLO — 1 специалист',
-  ekip:   'ЕКИП — до 3 специалисти',
-  studio: 'СТУДИО — неограничени специалисти',
+const PLAN_OPTIONS: Record<string, PlanOption> = {
+  solo_12m: { amount: 29900, plan: 'solo', billingPeriod: '12m', name: 'SOLO — Годишен (12 месеца)' },
+  solo_6m:  { amount: 16900, plan: 'solo', billingPeriod: '6m',  name: 'SOLO — 6 месеца' },
+  team_12m: { amount: 49900, plan: 'team', billingPeriod: '12m', name: 'TEAM — Годишен (12 месеца)' },
+  team_6m:  { amount: 27900, plan: 'team', billingPeriod: '6m',  name: 'TEAM — 6 месеца' },
 };
 
 interface BillingInfo {
@@ -26,7 +28,7 @@ interface BillingInfo {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { planType: string; smsAddon?: boolean; billingInfo?: BillingInfo };
+  let body: { planKey: string; smsAddon?: boolean; billingInfo?: BillingInfo };
 
   try {
     body = await request.json();
@@ -34,9 +36,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
   }
 
-  const { planType, smsAddon, billingInfo } = body;
+  const { planKey, smsAddon, billingInfo } = body;
+  const option = PLAN_OPTIONS[planKey];
 
-  if (!PLAN_PRICES[planType]) {
+  if (!option) {
     return NextResponse.json({ error: 'Невалиден план' }, { status: 400 });
   }
 
@@ -51,16 +54,17 @@ export async function POST(request: NextRequest) {
           quantity: 1,
           price_data: {
             currency: 'eur',
-            unit_amount: PLAN_PRICES[planType],
+            unit_amount: option.amount,
             product_data: {
-              name: `Clicka.bg — ${PLAN_NAMES[planType]}`,
+              name: `Clicka.bg — ${option.name}`,
             },
           },
         },
       ],
       billing_address_collection: billingInfo ? 'required' : 'auto',
       metadata: {
-        planType,
+        planType: option.plan,
+        billingPeriod: option.billingPeriod,
         smsAddon: smsAddon ? '1' : '0',
         ...(billingInfo && {
           invoiceCompanyName: billingInfo.companyName,

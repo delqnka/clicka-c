@@ -514,6 +514,20 @@ export default function SalonPublicParity({
     time: string;
   } | null>(null);
 
+  // TEAM plan: staff members fetched once when the booking modal first opens.
+  type PublicStaffMember = { id: string; name: string; slug: string; bio: string | null; avatarUrl: string | null; serviceIds: string[] };
+  const [staffMembers, setStaffMembers] = useState<PublicStaffMember[]>([]);
+  const [selectedStaffMemberId, setSelectedStaffMemberId] = useState<string | null>(null);
+  const staffFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!bookingOpen || staffFetchedRef.current) return;
+    staffFetchedRef.current = true;
+    fetch(`/api/staff?slug=${encodeURIComponent(salonSlug)}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { staff?: PublicStaffMember[] }) => { if (Array.isArray(d.staff)) setStaffMembers(d.staff); })
+      .catch(() => {});
+  }, [bookingOpen, salonSlug]);
+
   const isValidImageUri = useCallback((uri: string | null | undefined) => uri != null && String(uri).trim().length > 0, []);
 
   /** Снимки на помещението — hero галерия (качени в „Снимки на салона“). */
@@ -912,6 +926,9 @@ export default function SalonPublicParity({
   function closeBookingModal() {
     setBookingOpen(false);
     setBookingSuccessDetails(null);
+    setSelectedStaffMemberId(null);
+    setSelectedDate('');
+    setSelectedTime('');
   }
 
   function openOfferBooking(offer: SalonOfferRow) {
@@ -1000,7 +1017,8 @@ export default function SalonPublicParity({
     if (isDateBlockedAllDay(bookingBlocks, date)) return 'closed';
     if (!h.open || !h.close) return [];
     const totalDuration = Math.max(5, durationMin || 30);
-    const occupied = occupiedSlotsByDate[date] ?? [];
+    const slotCacheKey = selectedStaffMemberId ? `${date}:${selectedStaffMemberId}` : date;
+    const occupied = occupiedSlotsByDate[slotCacheKey] ?? [];
     const [oh, om] = h.open.split(':').map(Number);
     const [ch, cm] = h.close.split(':').map(Number);
     const start = oh * 60 + om;
@@ -1038,8 +1056,9 @@ export default function SalonPublicParity({
     let cancelled = false;
     (async () => {
       try {
+        const staffParam = selectedStaffMemberId ? `&staffMemberId=${encodeURIComponent(selectedStaffMemberId)}` : '';
         const res = await fetch(
-          `/api/bookings?public=1&slug=${encodeURIComponent(salonSlug)}&date=${encodeURIComponent(selectedDate)}`,
+          `/api/bookings?public=1&slug=${encodeURIComponent(salonSlug)}&date=${encodeURIComponent(selectedDate)}${staffParam}`,
           { cache: 'no-store' },
         );
         const data = (await res.json().catch(() => ({}))) as {
@@ -1054,7 +1073,8 @@ export default function SalonPublicParity({
               }))
               .filter((x) => x.time.length >= 4)
           : [];
-        if (!cancelled) setOccupiedSlotsByDate((prev) => ({ ...prev, [selectedDate]: occupied }));
+        const cacheKey = selectedStaffMemberId ? `${selectedDate}:${selectedStaffMemberId}` : selectedDate;
+        if (!cancelled) setOccupiedSlotsByDate((prev) => ({ ...prev, [cacheKey]: occupied }));
       } catch {
         if (cancelled) return;
       }
@@ -1062,7 +1082,7 @@ export default function SalonPublicParity({
     return () => {
       cancelled = true;
     };
-  }, [salonSlug, selectedDate]);
+  }, [salonSlug, selectedDate, selectedStaffMemberId]);
 
   useEffect(() => {
     const toLocalISODate = (date: Date) => {
@@ -1131,6 +1151,7 @@ export default function SalonPublicParity({
           notes: notes.trim() || undefined,
           smsReminderConsent,
           requiresPayment,
+          staffMemberId: selectedStaffMemberId ?? undefined,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string; id?: string; bookingId?: string };
@@ -2127,6 +2148,13 @@ export default function SalonPublicParity({
         onNotesChange={setNotes}
         onSmsReminderConsentChange={setSmsReminderConsent}
         onSubmit={submitBooking}
+        staffMembers={staffMembers}
+        selectedStaffMemberId={selectedStaffMemberId}
+        onStaffMemberChange={(id) => {
+          setSelectedStaffMemberId(id);
+          setSelectedDate('');
+          setSelectedTime('');
+        }}
         />
       ) : null}
 

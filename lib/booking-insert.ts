@@ -5,6 +5,7 @@ import { bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/bo
 export type InsertBookingRow = {
   id: string;
   salonId: string;
+  staffMemberId?: string | null;
   clientName: string;
   clientPhone: string;
   clientEmail: string;
@@ -32,20 +33,25 @@ export async function insertBookingIfNoOverlap(
   const manageToken = crypto.randomBytes(32).toString('hex');
   const manageTokenHash = crypto.createHash('sha256').update(manageToken).digest('hex');
 
-  // Cancel stale pending-payment bookings for the same date before inserting.
-  // Matches both 'pending' and 'unpaid' — older inserts used 'unpaid' as the default.
+  const staffMemberId = row.staffMemberId ?? null;
+
+  // Cancel stale pending-payment bookings for the exact same slot before inserting.
+  // Scoped to the same staff member (or unassigned) and exact time so that one staff
+  // member's abandoned payment cannot cancel another staff member's pending booking.
   await sql`
     UPDATE bookings
     SET status = 'cancelled', payment_status = 'failed'
     WHERE salon_id = ${row.salonId}
       AND date IN (${row.date}, ${legacyDate})
+      AND time = ${row.time}
       AND payment_status IN ('pending', 'unpaid')
       AND created_at < now() - interval '5 minutes'
+      AND (staff_member_id IS NOT DISTINCT FROM ${staffMemberId}::uuid)
   `.catch(() => {});
 
   const inserted = await sql`
     INSERT INTO bookings (
-      id, salon_id, client_name, client_phone, client_email,
+      id, salon_id, staff_member_id, client_name, client_phone, client_email,
       service_name, service_price, service_duration,
       date, time, status, notes,
       sms_reminder_consent, sms_reminder_consent_at,
@@ -54,6 +60,7 @@ export async function insertBookingIfNoOverlap(
     SELECT
       ${row.id},
       ${row.salonId},
+      ${staffMemberId}::uuid,
       ${row.clientName},
       ${row.clientPhone},
       ${row.clientEmail},
@@ -79,6 +86,16 @@ export async function insertBookingIfNoOverlap(
         AND NOT (
           b.payment_status IN ('pending', 'unpaid')
           AND b.created_at < now() - interval '5 minutes'
+        )
+        -- Scope overlap check to the same staff member.
+        -- When staffMemberId is NULL (solo / unassigned), match all bookings regardless
+        -- of their staff_member_id so legacy null-staff bookings still block the slot.
+        -- When staffMemberId is set, match only that staff member's bookings so two
+        -- different staff members can independently hold the same time slot.
+        AND (
+          ${staffMemberId}::uuid IS NULL
+          OR b.staff_member_id = ${staffMemberId}::uuid
+          OR b.staff_member_id IS NULL
         )
         AND (
           (

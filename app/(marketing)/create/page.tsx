@@ -5,46 +5,95 @@ import { useSearchParams } from 'next/navigation';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 
-const PLANS = [
-  { id: 'solo',   name: 'Solo',   price: 299, daily: '0.82', desc: '1 специалист' },
-  { id: 'ekip',   name: 'Екип',   price: 399, daily: '1.09', desc: 'до 3 специалисти', popular: true },
-  { id: 'studio', name: 'Студио', price: 599, daily: '1.64', desc: 'без ограничения' },
+type Plan   = 'solo' | 'team';
+type Period = '12m'  | '6m';
+type Expanded = { solo: boolean; team: boolean };
+
+const PRICES: Record<Plan, Record<Period, number>> = {
+  solo: { '12m': 299, '6m': 169 },
+  team: { '12m': 499, '6m': 279 },
+};
+
+const DAYS: Record<Period, number> = { '12m': 365, '6m': 183 };
+
+const SOLO_HIGHLIGHTS = [
+  'Сайт за резервации',
+  'AI асистент в Telegram',
+  'Онлайн плащания',
+  '0% комисионна',
 ];
 
-const PLAN_FEATURES = [
-  'Готов сайт за 15 минути',
-  'Резервационна система',
-  'Google Calendar sync',
-  'Telegram нотификации',
-  'Email потвърждения',
-  'Собствен домейн с 1 клик',
+const SOLO_ALL = [
+  'Собствен сайт за резервации',
   'Хостинг включен',
+  'SSL сертификат включен',
+  'Поддръжка включена',
+  'Неограничени резервации',
+  'Неограничени посещения на сайта',
+  'Онлайн плащания чрез Stripe',
+  'Неограничени имейл известия',
+  'Възможност за SMS напомняния',
+  'Неограничена галерия',
+  'Блог система',
+  'AI асистент в Telegram',
+  '0% комисионна върху резервациите',
 ];
 
-function IconCheck({ color = 'var(--primary)' }: { color?: string }) {
+const TEAM_HIGHLIGHTS = [
+  'Всичко от SOLO',
+  'До 3 служители',
+  'До 3 AI асистента',
+  '0% комисионна',
+];
+
+const TEAM_ALL = [
+  'Всичко от SOLO',
+  'До 3 служители',
+  'До 3 AI асистента в Telegram',
+  'Отделни графици за всеки служител',
+  'Отделни линкове за резервации',
+  'Отделни календари',
+  'Отделни известия за всеки служител',
+  'Управление на екип до 3 специалиста',
+];
+
+function IconCheck({ color = 'currentColor' }: { color?: string }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
       <path d="M20 6L9 17l-5-5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
+function resolveInitial(param: string | null): { plan: Plan; period: Period } {
+  if (!param) return { plan: 'solo', period: '12m' };
+  if (param === 'solo_6m')  return { plan: 'solo', period: '6m' };
+  if (param === 'team_12m') return { plan: 'team', period: '12m' };
+  if (param === 'team_6m')  return { plan: 'team', period: '6m' };
+  if (param === 'ekip' || param === 'team') return { plan: 'team', period: '12m' };
+  return { plan: 'solo', period: '12m' };
+}
+
 function CreatePageContent() {
-  const searchParams = useSearchParams();
-  const planParam = searchParams.get('plan');
-  const initialPlan = planParam || 'ekip';
-  const [planId, setPlanId]             = useState(() => PLANS.some(p => p.id === initialPlan) ? initialPlan : 'ekip');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError]               = useState('');
+  const searchParams  = useSearchParams();
+  const initial       = resolveInitial(searchParams.get('plan'));
+  const [plan,   setPlan]   = useState<Plan>(initial.plan);
+  const [period, setPeriod] = useState<Period>(initial.period);
+
+  const [expanded, setExpanded] = useState<Expanded>({ solo: false, team: false });
+  const [isSubmitting,  setIsSubmitting]  = useState(false);
+  const [error,         setError]         = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [showPlanPicker, setShowPlanPicker] = useState(!planParam);
-  const [wantsInvoice, setWantsInvoice] = useState(false);
-  const [companyName, setCompanyName] = useState('');
-  const [eik, setEik] = useState('');
-  const [vatNumber, setVatNumber] = useState('');
+  const [wantsInvoice,  setWantsInvoice]  = useState(false);
+  const [companyName,   setCompanyName]   = useState('');
+  const [eik,           setEik]           = useState('');
+  const [vatNumber,     setVatNumber]     = useState('');
+
+  const price    = PRICES[plan][period];
+  const daily    = (price / DAYS[period]).toFixed(2);
+  const planKey  = `${plan}_${period}` as const;
 
   async function handlePay() {
-    if (!planId) { setError('Избери план.'); return; }
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
     if (wantsInvoice) {
       if (!companyName.trim()) { setError('Въведи наименование на фирмата.'); return; }
@@ -56,26 +105,23 @@ function CreatePageContent() {
     setIsSubmitting(true);
     setError('');
     try {
-      const res = await fetch('/api/create-checkout', {
-        method: 'POST',
+      const res  = await fetch('/api/create-checkout', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planType: planId,
+        body:    JSON.stringify({
+          planKey,
           ...(wantsInvoice && {
             billingInfo: {
               companyName: companyName.trim(),
-              eik: eik.trim(),
-              vatNumber: vatNumber.trim() || null,
+              eik:         eik.trim(),
+              vatNumber:   vatNumber.trim() || null,
             },
           }),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-        return;
-      }
+      if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
       throw new Error('Няма линк за плащане');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Грешка при пренасочване');
@@ -83,10 +129,11 @@ function CreatePageContent() {
     }
   }
 
-  const selectedPlan = PLANS.find(p => p.id === planId);
-
   return (
-    <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}>
+    <div
+      className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]"
+      style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}
+    >
       <style>{`
         .cp-grad-text {
           background: linear-gradient(135deg, #e11d48, #db2777, #a855f7);
@@ -95,18 +142,55 @@ function CreatePageContent() {
           background-clip: text;
         }
         .cp-grad-bg {
-          background: linear-gradient(135deg, #e11d48, #db2777, #a855f7);
-          border-color: #e11d48 !important;
+          background: linear-gradient(135deg, #e11d48, #db2777, #a855f7) !important;
         }
-        .cp-card {
-          box-shadow: 0 4px 14px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.06);
+        .cp-plan-card {
+          position: relative;
+          border-radius: 20px;
+          border: 1.5px solid #e5e7eb;
+          background: #ffffff;
+          padding: 20px 22px;
+          cursor: pointer;
+          transition: border-color 180ms, box-shadow 180ms;
+          text-align: left;
+          width: 100%;
+          box-shadow: 0 2px 0 rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.10);
         }
-        .cp-card-selected {
-          border-color: #e11d48 !important;
-          box-shadow: 0 0 0 1.5px #e11d48, 0 6px 24px rgba(225,29,72,0.18), 0 2px 8px rgba(0,0,0,0.08);
+        .cp-plan-card.selected {
+          border-color: #e11d48;
+          background: linear-gradient(180deg, #ffffff 0%, #fdf0f4 100%);
+          box-shadow: 0 0 0 1px #e11d48, 0 2px 0 rgba(0,0,0,0.10);
         }
-        .cp-card-popular {
-          border-color: rgba(219,39,119,0.35) !important;
+        .cp-period-btn {
+          flex: 1;
+          padding: 9px 0;
+          border: 1.5px solid #e5e7eb;
+          background: #ffffff;
+          border-radius: 12px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: border-color 120ms;
+          color: var(--muted-foreground);
+        }
+        .cp-period-btn.selected {
+          border-color: #e11d48;
+          color: var(--foreground);
+        }
+        .cp-period-btn.selected .cp-period-badge {
+          display: inline-flex;
+        }
+        .cp-period-badge {
+          display: none;
+          margin-left: 6px;
+          background: linear-gradient(135deg, #e11d48, #a855f7);
+          color: #fff;
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 999px;
+          letter-spacing: .04em;
+          vertical-align: middle;
         }
         .cp-input-focus:focus {
           border-color: #db2777 !important;
@@ -124,212 +208,252 @@ function CreatePageContent() {
             padding: 12px 16px 20px;
             z-index: 40;
           }
-          .cp-sticky-spacer { height: 88px; }
+          .cp-sticky-spacer { height: 96px; }
         }
       `}</style>
+
       {/* NAV */}
       <nav
         className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[var(--border)] px-[clamp(16px,5vw,60px)]"
         style={{
-          background: 'color-mix(in srgb, var(--background) 93%, transparent)',
-          backdropFilter: 'blur(24px) saturate(180%)',
+          background:           'color-mix(in srgb, var(--background) 93%, transparent)',
+          backdropFilter:       'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
         }}
-        aria-label="Навигация"
       >
         <ClickaLogo size="nav" />
-        <a href="/" className="text-[13px] font-semibold text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]">← Начало</a>
+        <a href="/" className="text-[13px] font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+          ← Начало
+        </a>
       </nav>
 
-      {/* CONTENT */}
-      <div className="mx-auto max-w-[680px] px-4 pb-6 pt-7 sm:px-5 sm:pb-24 sm:pt-10">
+      <div className="mx-auto max-w-[600px] px-4 pb-6 pt-8 sm:px-5 sm:pb-24 sm:pt-12">
 
-        {/* ── Pre-selected plan summary (when coming from homepage) ── */}
-        {!showPlanPicker && selectedPlan && (
-          <>
-            <h1
-              className="mb-3 bg-clip-text text-[clamp(1.75rem,5vw,2.75rem)] font-bold leading-[1.08] tracking-[-0.03em] text-transparent"
-              style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)' }}
-            >
-              Избрахте план {selectedPlan.name}
-            </h1>
-            <p className="mb-8 text-[clamp(0.875rem,2vw,1.05rem)] leading-relaxed text-[var(--muted-foreground)]">
-              След плащане ще получиш код на имейла си и ще можеш да създадеш сайта.
-            </p>
+        <h1
+          className="mb-2 text-[clamp(1.75rem,5vw,2.5rem)] font-bold leading-[1.08] tracking-[-0.03em]"
+          style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+        >
+          Избери план
+        </h1>
+        <p className="mb-8 text-[15px] text-[var(--muted-foreground)]">
+          Еднократно плащане. Без абонамент. Без скрити такси.
+        </p>
 
-            {/* Selected plan card */}
-            <div className="cp-card cp-card-selected rounded-2xl border-2 bg-[var(--card)] p-5 sm:p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[19px] font-extrabold tracking-[-0.02em] text-[var(--foreground)]">{selectedPlan.name}</p>
-                  <p className="mt-0.5 text-[13px] text-[var(--muted-foreground)]">{selectedPlan.desc}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[26px] font-bold tabular-nums tracking-[-0.04em] text-[var(--foreground)]">{selectedPlan.price} €</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">от {selectedPlan.daily} € / ден</p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--border)] pt-4">
-                {PLAN_FEATURES.map(f => (
-                  <span key={f} className="flex items-center gap-1.5 text-[12px] text-[var(--muted-foreground)]">
-                    <IconCheck />
-                    {f}
-                  </span>
-                ))}
-              </div>
-            </div>
-
+        {/* ── Period toggle ── */}
+        <div className="mb-6 flex gap-3">
+          {(['12m', '6m'] as Period[]).map(p => (
             <button
+              key={p}
               type="button"
-              onClick={() => setShowPlanPicker(true)}
-              className="cp-grad-text mt-3 text-[13px] font-semibold transition-opacity hover:opacity-75"
+              onClick={() => setPeriod(p)}
+              className={`cp-period-btn${period === p ? ' selected' : ''}`}
             >
-              Промени плана →
+              {p === '12m' ? 'Годишно' : '6 месеца'}
+              {p === '12m' && <span className="cp-period-badge">Най-изгодно</span>}
             </button>
-          </>
-        )}
+          ))}
+        </div>
 
-        {/* ── Plan picker (default or expanded) ── */}
-        {showPlanPicker && (
-          <>
-            <h1
-              className="mb-3 bg-clip-text text-[clamp(1.75rem,5vw,2.75rem)] font-bold leading-[1.08] tracking-[-0.03em] text-transparent"
-              style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)' }}
-            >
-              Избери план
-            </h1>
-            <p className="mb-10 text-[clamp(0.875rem,2vw,1.05rem)] leading-relaxed text-[var(--muted-foreground)]">
-              След плащане ще получиш код на имейла си и ще можеш да създадеш сайта.
-            </p>
+        {/* ── Plan cards ── */}
+        <div className="flex flex-col gap-4">
 
-            {/* Plan cards */}
-            <div className="flex flex-col gap-3">
-              {PLANS.map(p => {
-                const isSelected = planId === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPlanId(p.id)}
-                    className={`cp-card relative rounded-2xl border-[1.5px] bg-[var(--card)] p-5 text-left transition-all duration-200 active:scale-[0.99] sm:p-6 ${
-                      isSelected
-                        ? 'cp-card-selected'
-                        : p.popular
-                          ? 'cp-card-popular border-[var(--border)]'
-                          : 'border-[var(--border)]'
-                    }`}
-                    role="radio"
-                    aria-checked={isSelected}
-                  >
-                    {p.popular && (
-                      <span className="cp-grad-bg absolute -top-3 right-5 rounded-full px-4 py-1 text-[10px] font-bold uppercase tracking-[.08em] text-white">
-                        Най-популярен
-                      </span>
-                    )}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3.5">
-                        {/* Radio dot */}
-                        <span
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
-                            isSelected
-                              ? 'cp-grad-bg'
-                              : 'border-[var(--border)] bg-[var(--card)]'
-                          }`}
-                        >
-                          {isSelected && <span className="h-[7px] w-[7px] rounded-full bg-white" />}
-                        </span>
-                        <div>
-                          <p className="text-[17px] font-extrabold tracking-[-0.02em] text-[var(--foreground)]">{p.name}</p>
-                          <p className="mt-0.5 text-[13px] text-[var(--muted-foreground)]">{p.desc}</p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-[22px] font-bold tabular-nums tracking-[-0.04em] text-[var(--foreground)]">{p.price} €</p>
-                        <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">от {p.daily} € / ден</p>
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--border)] pt-4">
-                        {PLAN_FEATURES.map(f => (
-                          <span key={f} className="flex items-center gap-1.5 text-[12px] text-[var(--muted-foreground)]">
-                            <IconCheck />
-                            {f}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+          {/* SOLO */}
+          <button
+            type="button"
+            onClick={() => setPlan('solo')}
+            className={`cp-plan-card${plan === 'solo' ? ' selected' : ''}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span
+                  style={{
+                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                    border: plan === 'solo' ? 'none' : '2px solid var(--border)',
+                    background: plan === 'solo' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  {plan === 'solo' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                </span>
+                <div>
+                  <p style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>SOLO</p>
+                  <p style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>За самостоятелни специалисти</p>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {PRICES.solo[period]} €
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>
+                  {period === '12m' ? '/ година' : '/ 6 месеца'}
+                </p>
+              </div>
             </div>
-          </>
-        )}
 
-        {/* ── Terms checkbox ── */}
+            {plan === 'solo' && (
+              <>
+                <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, margin: '10px 0 10px' }}>
+                  Само {(PRICES.solo[period] / DAYS[period]).toFixed(2)} € на ден
+                </p>
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                  {/* Key highlights — always visible */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginBottom: 10 }}>
+                    {SOLO_HIGHLIGHTS.map(f => {
+                      const isZero = f === '0% комисионна';
+                      return (
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: isZero ? '#16a34a' : 'var(--foreground)' }}>
+                          <IconCheck color="#16a34a" /> {f}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {/* Expanded full list */}
+                  {expanded.solo && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 16px', marginBottom: 10 }}>
+                      {SOLO_ALL.map(f => (
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted-foreground)' }}>
+                          <IconCheck /> {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setExpanded(v => ({ ...v, solo: !v.solo })); }}
+                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    {expanded.solo ? 'Скрий функциите ↑' : 'Виж всички функции ↓'}
+                  </button>
+                </div>
+              </>
+            )}
+          </button>
+
+          {/* TEAM */}
+          <button
+            type="button"
+            onClick={() => setPlan('team')}
+            className={`cp-plan-card${plan === 'team' ? ' selected' : ''}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span
+                  style={{
+                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                    border: plan === 'team' ? 'none' : '2px solid var(--border)',
+                    background: plan === 'team' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  {plan === 'team' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                </span>
+                <div>
+                  <p style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>TEAM</p>
+                  <p style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>За салони с екип</p>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {PRICES.team[period]} €
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>
+                  {period === '12m' ? '/ година' : '/ 6 месеца'}
+                </p>
+              </div>
+            </div>
+
+            {plan === 'team' && (
+              <>
+                <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, margin: '10px 0 10px' }}>
+                  Само {(PRICES.team[period] / DAYS[period]).toFixed(2)} € на ден
+                </p>
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                  {/* Key highlights — always visible */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginBottom: 10 }}>
+                    {TEAM_HIGHLIGHTS.map(f => {
+                      const isZero = f === '0% комисионна';
+                      return (
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: isZero ? '#16a34a' : 'var(--foreground)' }}>
+                          <IconCheck color="#16a34a" /> {f}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {/* Expanded full list */}
+                  {expanded.team && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 16px', marginBottom: 10 }}>
+                      {TEAM_ALL.map(f => (
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted-foreground)' }}>
+                          <IconCheck /> {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setExpanded(v => ({ ...v, team: !v.team })); }}
+                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    {expanded.team ? 'Скрий функциите ↑' : 'Виж всички функции ↓'}
+                  </button>
+                </div>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* ── Terms ── */}
         <label className="mt-8 flex cursor-pointer items-start gap-3">
           <span
-            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] transition-all ${
-              termsAccepted
-                ? 'cp-grad-bg'
-                : 'border-[var(--border)] bg-[var(--card)]'
-            }`}
             onClick={() => setTermsAccepted(v => !v)}
             role="checkbox"
             aria-checked={termsAccepted}
             tabIndex={0}
             onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setTermsAccepted(v => !v); } }}
+            style={{
+              marginTop: 1, flexShrink: 0, width: 20, height: 20,
+              borderRadius: 6, border: termsAccepted ? 'none' : '1.5px solid var(--border)',
+              background: termsAccepted ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
           >
             {termsAccepted && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}
           </span>
-          <span
-            className="text-[13px] leading-snug text-[var(--muted-foreground)]"
-            onClick={() => setTermsAccepted(v => !v)}
-          >
+          <span className="text-[13px] leading-snug text-[var(--muted-foreground)]" onClick={() => setTermsAccepted(v => !v)}>
             Съгласявам се с{' '}
-            <a
-              href="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75"
-              onClick={e => e.stopPropagation()}
-            >
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75" onClick={e => e.stopPropagation()}>
               Общите условия
             </a>{' '}
             и{' '}
-            <a
-              href="/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75"
-              onClick={e => e.stopPropagation()}
-            >
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75" onClick={e => e.stopPropagation()}>
               Политиката за поверителност
             </a>{' '}
             на Clicka.bg
           </span>
         </label>
 
-        {/* ── Invoice section ── */}
-        <div className="mt-5">
+        {/* ── Invoice ── */}
+        <div className="mt-4">
           <label className="flex cursor-pointer items-center gap-3">
             <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] transition-all ${
-                wantsInvoice
-                  ? 'cp-grad-bg'
-                  : 'border-[var(--border)] bg-[var(--card)]'
-              }`}
               onClick={() => setWantsInvoice(v => !v)}
               role="checkbox"
               aria-checked={wantsInvoice}
               tabIndex={0}
               onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setWantsInvoice(v => !v); } }}
+              style={{
+                flexShrink: 0, width: 20, height: 20,
+                borderRadius: 6, border: wantsInvoice ? 'none' : '1.5px solid var(--border)',
+                background: wantsInvoice ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
             >
               {wantsInvoice && (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
@@ -340,85 +464,57 @@ function CreatePageContent() {
           </label>
 
           {wantsInvoice && (
-            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+            <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
               <div>
-                <label className="mb-1.5 block text-[12px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
                   Фирма / Търговско наименование <span className="cp-grad-text">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={e => setCompanyName(e.target.value)}
-                  placeholder="ПРИМЕРНА ФИРМА ЕООД"
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none cp-input-focus transition-all"
-                />
+                <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="ПРИМЕРНА ФИРМА ЕООД"
+                  className="cp-input-focus w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] outline-none transition-all" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
                     ЕИК <span className="cp-grad-text">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={eik}
-                    onChange={e => setEik(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                    placeholder="123456789"
-                    maxLength={9}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none cp-input-focus transition-all font-mono"
-                  />
+                  <input type="text" value={eik} onChange={e => setEik(e.target.value.replace(/\D/g, '').slice(0, 9))} placeholder="123456789" maxLength={9}
+                    className="cp-input-focus w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
-                    ДДС номер <span className="text-[var(--muted-foreground)] normal-case font-normal">(по желание)</span>
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
+                    ДДС номер <span className="normal-case font-normal">(по желание)</span>
                   </label>
-                  <input
-                    type="text"
-                    value={vatNumber}
-                    onChange={e => setVatNumber(e.target.value.toUpperCase())}
-                    placeholder="BG123456789"
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none cp-input-focus transition-all font-mono"
-                  />
+                  <input type="text" value={vatNumber} onChange={e => setVatNumber(e.target.value.toUpperCase())} placeholder="BG123456789"
+                    className="cp-input-focus w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
                 </div>
               </div>
-              <p className="text-[11px] text-[var(--muted-foreground)]">
-                Адресът за фактуриране ще бъде попълнен на следващата стъпка при плащането.
-              </p>
+              <p className="text-[11px] text-[var(--muted-foreground)]">Адресът за фактуриране се попълва на следващата стъпка при плащането.</p>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
-            {error}
-          </div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{error}</div>
         )}
 
-        <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
-          <p className="text-[13px] font-semibold text-[var(--foreground)]">
-            Домейн (по желание)
-          </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
-            Техническа администрация и конфигуриране: <strong>25 EUR</strong> (еднократно). Цената на домейна е отделно за 1 година:
-            {' '}
-            <strong>.com 12 EUR</strong>, <strong>.bg 30 EUR</strong>, <strong>.org 8 EUR</strong>, <strong>.info 8 EUR</strong>.
-          </p>
-        </div>
-
-        {/* Sticky spacer — mobile only */}
         <div className="cp-sticky-spacer" aria-hidden />
 
-        {/* Pay button — sticky on mobile, inline on desktop */}
+        {/* Pay button */}
         <div className="cp-sticky-bar mt-6">
           <ButtonColorful
-            label={isSubmitting ? 'Пренасочване към Stripe…' : `Плати ${selectedPlan?.price ?? 399} € →`}
+            label={isSubmitting
+              ? 'Пренасочване към Stripe…'
+              : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
             onClick={handlePay}
-            disabled={isSubmitting || !planId || !termsAccepted}
-            className="h-14 w-full rounded-full text-[16px] font-bold sm:h-12 sm:text-[15px]"
+            disabled={isSubmitting || !termsAccepted}
+            className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-4 sm:gap-5">
-            {['0% комисионна', 'Сигурно плащане', 'Готов веднага'].map(t => (
-              <span key={t} className="flex items-center gap-1.5 text-[11px] text-[var(--muted-foreground)] sm:text-[12px]">
-                <IconCheck color="#22C55E" />
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-4">
+            {['Еднократно плащане', 'Без абонамент', 'Готов веднага'].map(t => (
+              <span key={t} className="flex items-center gap-1.5 text-[11px] text-[var(--muted-foreground)]">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M20 6L9 17l-5-5" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
                 {t}
               </span>
             ))}
@@ -428,9 +524,7 @@ function CreatePageContent() {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
             Сигурно плащане чрез{' '}
-            <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2">
-              Stripe
-            </a>. Можеш да смениш плана по всяко време.
+            <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2">Stripe</a>.
           </p>
         </div>
       </div>
@@ -438,20 +532,14 @@ function CreatePageContent() {
   );
 }
 
-function CreatePageFallback() {
-  return (
-    <div
-      className="flex min-h-dvh items-center justify-center bg-[var(--background)] text-[var(--muted-foreground)]"
-      style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}
-    >
-      Зареждане…
-    </div>
-  );
-}
-
 export default function CreatePage() {
   return (
-    <Suspense fallback={<CreatePageFallback />}>
+    <Suspense fallback={
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--background)] text-[var(--muted-foreground)]"
+        style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}>
+        Зареждане…
+      </div>
+    }>
       <CreatePageContent />
     </Suspense>
   );

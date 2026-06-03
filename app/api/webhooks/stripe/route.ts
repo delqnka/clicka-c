@@ -219,6 +219,12 @@ export async function POST(request: NextRequest) {
 
     await ensurePlatformSubdomain(String(salonSlug));
 
+    // Normalize planType to the canonical `plan` column value.
+    const canonicalPlan = planType === 'ekip' ? 'team' : (planType ?? null);
+
+    const billingPeriod = String(session.metadata?.billingPeriod ?? '12m');
+    const billingMonths = billingPeriod === '6m' ? 6 : 12;
+
     await sql`
       UPDATE salons
       SET
@@ -226,6 +232,9 @@ export async function POST(request: NextRequest) {
         site_status = 'active',
         template_id = ${templateId ?? null},
         plan_type = ${planType ?? null},
+        plan = ${canonicalPlan},
+        billing_period = ${billingPeriod},
+        plan_expires_at = now() + (${String(billingMonths)} || ' months')::interval,
         stripe_session_id = ${session.id},
         stripe_customer_id = ${(session.customer as string) ?? null}
       WHERE slug = ${salonSlug}

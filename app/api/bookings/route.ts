@@ -30,6 +30,7 @@ import {
 import { sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { getStaffMemberById } from '@/lib/staff-members';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
@@ -83,6 +84,8 @@ export async function GET(request: NextRequest) {
     const date = String(requestSearchParams.get('date') ?? '').trim();
     if (!date) return NextResponse.json({ occupied: [] });
     const legacyDate = formatLegacyDateDMY(date);
+    // For TEAM salons the widget passes staffMemberId so slots are scoped per staff.
+    const staffMemberId = requestSearchParams.get('staffMemberId')?.trim() || null;
     const occupiedRows = await sql`
       SELECT time, service_duration, status
       FROM bookings
@@ -92,6 +95,7 @@ export async function GET(request: NextRequest) {
           payment_status IN ('pending', 'unpaid')
           AND created_at < now() - interval '5 minutes'
         )
+        AND (${staffMemberId}::uuid IS NULL OR staff_member_id = ${staffMemberId}::uuid)
       ORDER BY time ASC
     `;
     const occupied: { time: string; duration: number }[] = occupiedRows
@@ -188,6 +192,7 @@ export async function POST(request: NextRequest) {
     smsReminderConsent?: boolean;
     offerId?: string;
     requiresPayment?: boolean;
+    staffMemberId?: string;
   };
 
   try {
@@ -209,7 +214,9 @@ export async function POST(request: NextRequest) {
     smsReminderConsent,
     offerId,
     requiresPayment,
+    staffMemberId: rawStaffMemberId,
   } = body;
+  const staffMemberId = rawStaffMemberId?.trim() || null;
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
   const hasSmsReminderConsent = smsReminderConsent === true;
   const normalizedOfferId = typeof offerId === 'string' ? offerId.trim() : '';
@@ -312,6 +319,7 @@ export async function POST(request: NextRequest) {
     insertedBooking = await insertBookingIfNoOverlap({
       id: bookingId,
       salonId,
+      staffMemberId,
       clientName,
       clientPhone,
       clientEmail: normalizedClientEmail,
@@ -400,6 +408,9 @@ export async function POST(request: NextRequest) {
   const telegramChatId = String((resolved.salon as Record<string, unknown>).telegram_chat_id ?? '').trim();
 
   if (!skipNotifications) {
+    // Load staff member contacts so notifications route to the right person.
+    const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
+
     runAfterResponse(
       dispatchBookingNotifications({
         salonEmail: resolved.salon.email ? String(resolved.salon.email) : null,
@@ -410,6 +421,8 @@ export async function POST(request: NextRequest) {
           ...bookingDetails,
           clientEmail: normalizedClientEmail,
         },
+        staffEmail: staffMember?.email ?? null,
+        staffTelegramChatId: staffMember?.telegramChatId ?? null,
       }),
     );
   }

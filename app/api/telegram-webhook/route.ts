@@ -31,7 +31,28 @@ type TelegramUpdate = {
   };
 };
 
-async function findSalonByChatId(chatId: number): Promise<{ salonId: string; slug: string; name: string } | null> {
+async function findSalonByChatId(
+  chatId: number,
+): Promise<{ salonId: string; slug: string; name: string; staffMemberId: string | null } | null> {
+  // 1. Look up non-owner staff members first (TEAM plan).
+  // Owners are excluded here so they always fall through to the salons lookup
+  // and get staffMemberId: null — preserving their "sees all bookings" access.
+  const staffRows = await sql`
+    SELECT sm.id AS staff_member_id, sm.salon_id,
+           s.slug, s.name
+    FROM staff_members sm
+    JOIN salons s ON CAST(s.id AS text) = sm.salon_id
+    WHERE sm.telegram_chat_id = ${String(chatId)}
+      AND sm.is_owner = false
+    LIMIT 1
+  `.catch(() => []);
+
+  if (staffRows.length > 0) {
+    const r = staffRows[0] as { staff_member_id: string; salon_id: string; slug: string; name: string };
+    return { salonId: r.salon_id, slug: r.slug, name: r.name, staffMemberId: r.staff_member_id };
+  }
+
+  // 2. Fall back to legacy salon-level telegram_chat_id (pre-migration salons).
   const rows = await sql`
     SELECT CAST(id AS text) AS salon_id, slug, name
     FROM salons
@@ -40,7 +61,7 @@ async function findSalonByChatId(chatId: number): Promise<{ salonId: string; slu
   `;
   if (rows.length === 0) return null;
   const row = rows[0] as { salon_id: string; slug: string; name: string };
-  return { salonId: row.salon_id, slug: row.slug, name: row.name };
+  return { salonId: row.salon_id, slug: row.slug, name: row.name, staffMemberId: null };
 }
 
 async function addBookingBlock(salonId: string, slug: string, block: BookingBlock): Promise<void> {
@@ -125,6 +146,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: true });
     }
 
+    // Try staff member onboarding code first (TEAM plan — each staff has own code).
+    const staffRows = await sql`
+      SELECT sm.id AS staff_member_id, sm.name AS staff_name,
+             s.name AS salon_name
+      FROM staff_members sm
+      JOIN salons s ON CAST(s.id AS text) = sm.salon_id
+      WHERE upper(sm.onboarding_code) = ${code}
+      LIMIT 1
+    `.catch(() => []);
+
+    if (staffRows.length > 0) {
+      const sr = staffRows[0] as { staff_member_id: string; staff_name: string; salon_name: string };
+      await sql`
+        UPDATE staff_members
+        SET telegram_chat_id = ${String(chatId)}
+        WHERE id = ${sr.staff_member_id}::uuid
+      `;
+      await sendTelegramMessage(
+        chatId,
+        `✅ <b>${sr.staff_name}</b> от <b>${sr.salon_name}</b> е свързан успешно${firstName ? `, ${firstName}` : ''}!\n\nОтсега насетне ще получаваш известия за твоите резервации тук.`,
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // Fall back to salon-level onboarding code (SOLO plan / owner).
     const salons = await sql`
       SELECT CAST(id AS text) AS salon_id, name, slug
       FROM salons
@@ -142,11 +188,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const salon = salons[0] as Record<string, unknown>;
 
+    // Update the salon row.
     await sql`
       UPDATE salons
       SET telegram_chat_id = ${String(chatId)}
       WHERE CAST(id AS text) = ${String(salon.salon_id ?? '')}
     `;
+    // Update the owner staff_member row — clear any other row that holds this chatId first
+    // to avoid violating the UNIQUE constraint on staff_members.telegram_chat_id.
+    await sql`
+      UPDATE staff_members SET telegram_chat_id = NULL
+      WHERE telegram_chat_id = ${String(chatId)}
+        AND NOT (salon_id = ${String(salon.salon_id ?? '')} AND is_owner = true)
+    `.catch(() => {});
+    await sql`
+      UPDATE staff_members
+      SET telegram_chat_id = ${String(chatId)}
+      WHERE salon_id = ${String(salon.salon_id ?? '')} AND is_owner = true
+    `.catch(() => {});
 
     await sendTelegramMessage(
       chatId,
@@ -298,7 +357,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (text) {
     const salon = await findSalonByChatId(chatId);
     if (salon) {
-      const handled = await handleAdminCommand(chatId, text, salon);
+      const handled = await handleAdminCommand(chatId, text, {
+        salonId: salon.salonId,
+        slug: salon.slug,
+        name: salon.name,
+        staffMemberId: salon.staffMemberId,
+      });
       if (handled) return NextResponse.json({ ok: true });
 
       // Admin command not recognised — try booking-block parser ("зает 14:00-16:00")

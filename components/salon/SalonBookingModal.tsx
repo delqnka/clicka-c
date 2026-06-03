@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, Loader2, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, Loader2, Plus, User, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CLICKA_MARKETING_GRADIENT_BORDER_STYLE,
@@ -15,6 +15,15 @@ import {
 import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-service-categories';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { BookingSuccessView } from '@/components/salon/BookingSuccessView';
+
+export type PublicStaffMember = {
+  id: string;
+  name: string;
+  slug: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  serviceIds: string[];
+};
 
 export type BookingServiceOption = {
   id: string;
@@ -67,6 +76,12 @@ type SalonBookingModalProps = {
   onNotesChange: (v: string) => void;
   onSmsReminderConsentChange: (v: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
+  /** TEAM plan: pass all non-owner staff members. Empty = SOLO flow (no staff step). */
+  staffMembers?: PublicStaffMember[];
+  selectedStaffMemberId?: string | null;
+  onStaffMemberChange?: (id: string) => void;
+  /** Direct staff link: pre-filters catalog and skips staff step. */
+  directStaffName?: string;
 };
 
 const cardShadow =
@@ -136,8 +151,15 @@ export function SalonBookingModal({
   onNotesChange,
   onSmsReminderConsentChange,
   onSubmit,
+  staffMembers = [],
+  selectedStaffMemberId,
+  onStaffMemberChange,
+  directStaffName,
 }: SalonBookingModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // isTeam = TEAM salon with multiple staff members; direct = pre-selected staff link
+  const isTeam = staffMembers.length > 0 && !directStaffName;
+  // Steps: 1=service, 2=staff(team only), 3=datetime, 4=contact
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [browseAllServices, setBrowseAllServices] = useState(true);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
@@ -156,6 +178,27 @@ export function SalonBookingModal({
     }
     setSelectedVariantByServiceId(initial);
   }, [open, serviceCatalog]);
+
+  // Compute which staff members can perform ALL currently selected services.
+  const selectedServiceIds = useMemo(() => {
+    return selectedServiceIdxs
+      .map((idx) => services[idx]?.id)
+      .filter((id): id is string => Boolean(id));
+  }, [selectedServiceIdxs, services]);
+
+  const eligibleStaff = useMemo(() => {
+    if (!isTeam) return [];
+    if (selectedServiceIds.length === 0) return staffMembers;
+    return staffMembers.filter((sm) =>
+      selectedServiceIds.every((sid) => sm.serviceIds.includes(sid)),
+    );
+  }, [isTeam, staffMembers, selectedServiceIds]);
+
+  // Auto-select when exactly 1 eligible staff member.
+  useEffect(() => {
+    if (!isTeam || eligibleStaff.length !== 1) return;
+    onStaffMemberChange?.(eligibleStaff[0]!.id);
+  }, [isTeam, eligibleStaff, onStaffMemberChange]);
 
   useEffect(() => {
     if (open && !prevOpenRef.current) {
@@ -221,11 +264,31 @@ export function SalonBookingModal({
     return out;
   }, [minDate, maxDate]);
 
-  function goToStep(target: 1 | 2 | 3) {
-    if (target === 2 && !hasServices) return;
-    if (target === 3 && (!hasServices || !selectedTime)) return;
+  function goToStep(target: 1 | 2 | 3 | 4) {
+    if (isTeam) {
+      if (target >= 2 && !hasServices) return;
+      if (target >= 3 && !selectedStaffMemberId) return;
+      if (target >= 4 && (!hasServices || !selectedTime)) return;
+    } else {
+      if (target >= 2 && !hasServices) return;  // step 2 = datetime for solo
+      if (target >= 3 && (!hasServices || !selectedTime)) return;
+    }
     setStep(target);
   }
+
+  // Step label definitions differ between SOLO and TEAM.
+  const stepLabels = isTeam
+    ? [
+        { n: 1 as const, label: 'Услуга' },
+        { n: 2 as const, label: 'Специалист' },
+        { n: 3 as const, label: 'Час' },
+        { n: 4 as const, label: 'Данни' },
+      ]
+    : [
+        { n: 1 as const, label: 'Услуга' },
+        { n: 2 as const, label: 'Час' },
+        { n: 3 as const, label: 'Данни' },
+      ];
 
   function requestClose() {
     if (typeof window !== 'undefined') {
@@ -276,19 +339,16 @@ export function SalonBookingModal({
 
         <div className="relative z-[1] flex shrink-0 items-center justify-between gap-2 bg-white px-4 pb-3 pt-3.5 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <h3 className="text-[17px] font-semibold tracking-tight text-black">Резервация</h3>
+            <h3 className="text-[17px] font-semibold tracking-tight text-black">
+              {directStaffName ? `при ${directStaffName}` : 'Резервация'}
+            </h3>
             <div className="flex items-center gap-1.5">
-              {(
-                [
-                  { n: 1 as const, label: 'Услуги' },
-                  { n: 2 as const, label: 'Дата' },
-                  { n: 3 as const, label: 'Данни' },
-                ] as const
-              ).map(({ n, label }) => {
+              {stepLabels.map(({ n, label }) => {
                 const active = step === n;
                 const complete = step > n;
-                const disabled =
-                  (n === 2 && !hasServices) || (n === 3 && (!hasServices || !selectedTime));
+                const disabled = isTeam
+                  ? (n >= 2 && !hasServices) || (n >= 3 && !selectedStaffMemberId) || (n >= 4 && (!hasServices || !selectedTime))
+                  : (n >= 2 && !hasServices) || (n >= 3 && (!hasServices || !selectedTime));
                 return (
                   <button
                     key={`header-step-${n}`}
@@ -516,11 +576,80 @@ export function SalonBookingModal({
                 </div>
               ) : null}
 
-              {step === 2 ? (
+              {/* Staff selection step — TEAM only, step 2 */}
+              {step === 2 && isTeam ? (
+                <div className="space-y-3">
+                  <p className="text-[13px] font-semibold text-black">Избери специалист</p>
+                  {selectedServiceIds.length > 0 && (
+                    <p className="text-[12px] text-black/45">
+                      Налични за&nbsp;
+                      <span className="font-medium text-black/70">
+                        {selectedServiceIds
+                          .map((sid) => serviceCatalog.find((s) => s.id === sid)?.name ?? sid)
+                          .join(' + ')}
+                      </span>
+                    </p>
+                  )}
+                  {eligibleStaff.length === 0 ? (
+                    <div className={`rounded-2xl bg-white px-4 py-5 text-center ${cardShadow}`}>
+                      <p className="text-[14px] font-medium text-black/50">
+                        Тази услуга не е налична за резервация в момента.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setStep(1)}
+                        className="mt-3 text-[13px] font-semibold text-[color:var(--salon-primary)] underline underline-offset-2"
+                      >
+                        Избери друга услуга
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {eligibleStaff.map((sm) => {
+                        const selected = selectedStaffMemberId === sm.id;
+                        return (
+                          <button
+                            key={sm.id}
+                            type="button"
+                            onClick={() => onStaffMemberChange?.(sm.id)}
+                            className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition ${
+                              selected
+                                ? `p-px ${gradientRingShadow}`
+                                : `bg-white ${cardShadow}`
+                            }`}
+                            style={selected ? CLICKA_MARKETING_GRADIENT_BORDER_STYLE : undefined}
+                          >
+                            {selected ? (
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white" style={CLICKA_MARKETING_GRADIENT_STYLE}>
+                                <Check className="h-4 w-4" aria-hidden />
+                              </div>
+                            ) : (
+                              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-black/30 ${cardShadow}`}>
+                                <User className="h-4 w-4" aria-hidden />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[15px] font-semibold text-black">{sm.name}</p>
+                              {sm.bio && (
+                                <p className="mt-0.5 truncate text-[12px] text-black/45">{sm.bio}</p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Date/time step — step 2 for SOLO/direct, step 3 for TEAM */}
+              {((isTeam && step === 3) || (!isTeam && step === 2)) ? (
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="text-[13px] font-semibold text-black">
-                      Дата и час
+                      {selectedStaffMemberId
+                        ? `Час при ${staffMembers.find((s) => s.id === selectedStaffMemberId)?.name ?? ''}`
+                        : 'Дата и час'}
                     </p>
                     <button
                       type="button"
@@ -605,7 +734,8 @@ export function SalonBookingModal({
                 </div>
               ) : null}
 
-              {step === 3 ? (
+              {/* Contact step — step 3 for SOLO/direct, step 4 for TEAM */}
+              {((isTeam && step === 4) || (!isTeam && step === 3)) ? (
                 <div className="space-y-3.5">
                   <p className="text-[13px] font-semibold text-black">
                     Данни за контакт
@@ -756,45 +886,50 @@ export function SalonBookingModal({
                 </p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
-                disabled={step === 1}
-                className="rounded-full border border-black/10 bg-white py-2.5 text-[14px] font-medium text-black/60 transition disabled:opacity-25 active:scale-[0.98]"
-              >
-                Назад
-              </button>
-              {step < 3 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (step === 1 && !hasServices) return;
-                    if (step === 2 && !selectedTime) return;
-                    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
-                  }}
-                  disabled={
-                    (step === 1 && !hasServices) ||
-                    (step === 2 && (!selectedDate || !selectedTime))
-                  }
-                  className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                  style={CLICKA_MARKETING_GRADIENT_STYLE}
-                >
-                  Продължи
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  form="salon-booking-form"
-                  disabled={isSubmitting || !selectedTime || !hasServices}
-                  className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                  style={CLICKA_MARKETING_GRADIENT_STYLE}
-                >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                  {paymentType !== 'none' ? 'Плати и резервирай' : 'Изпрати заявка'}
-                </button>
-              )}
-            </div>
+            {(() => {
+              const maxStep = isTeam ? 4 : 3;
+              const isLastStep = step === maxStep;
+              const nextDisabled =
+                (step === 1 && !hasServices) ||
+                (isTeam && step === 2 && (!selectedStaffMemberId || eligibleStaff.length === 0)) ||
+                (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime);
+              return (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4) : s))}
+                    disabled={step === 1}
+                    className="rounded-full border border-black/10 bg-white py-2.5 text-[14px] font-medium text-black/60 transition disabled:opacity-25 active:scale-[0.98]"
+                  >
+                    Назад
+                  </button>
+                  {!isLastStep ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!nextDisabled) setStep((s) => (s < maxStep ? ((s + 1) as 1 | 2 | 3 | 4) : s));
+                      }}
+                      disabled={nextDisabled}
+                      className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                      style={CLICKA_MARKETING_GRADIENT_STYLE}
+                    >
+                      Продължи
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      form="salon-booking-form"
+                      disabled={isSubmitting || !selectedTime || !hasServices}
+                      className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                      style={CLICKA_MARKETING_GRADIENT_STYLE}
+                    >
+                      {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                      {paymentType !== 'none' ? 'Плати и резервирай' : 'Изпрати заявка'}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ) : null}
       </div>

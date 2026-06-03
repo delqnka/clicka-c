@@ -93,6 +93,9 @@ export type AdminSitePayload = {
   smsBalance: number;
   smsEnabled: boolean;
   smsReminderMode: SmsReminderMode;
+  plan: string;
+  billingPeriod: string | null;
+  planExpiresAt: string | null;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -216,7 +219,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       google_place_id, telegram_chat_id, onboarding_code,
       site_status, legal_info, latitude, longitude,
       faq_items, visitor_info, visitor_additional_info, venue_extras,
-      sms_balance, sms_enabled, sms_reminder_mode
+      sms_balance, sms_enabled, sms_reminder_mode, plan,
+      billing_period, plan_expires_at
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -284,6 +288,9 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     smsBalance: Math.max(0, Number(row.sms_balance ?? 0) || 0),
     smsEnabled: row.sms_enabled === true,
     smsReminderMode: normalizeSmsReminderMode(row.sms_reminder_mode),
+    plan: String(row.plan ?? 'solo'),
+    billingPeriod: row.billing_period ? String(row.billing_period) : null,
+    planExpiresAt: row.plan_expires_at ? String(row.plan_expires_at) : null,
   };
 }
 

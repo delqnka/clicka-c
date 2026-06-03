@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
+import { getStaffMemberById } from '@/lib/staff-members';
 
 export const runtime = 'nodejs';
 
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
           SELECT
             b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration,
-            b.date, b.time, b.notes, b.manage_token,
+            b.date, b.time, b.notes, b.manage_token, b.staff_member_id,
             s.name AS salon_name, s.email AS salon_email,
             s.phone AS salon_phone, s.address AS salon_address,
             s.city AS salon_city, s.slug AS salon_slug,
@@ -115,6 +116,8 @@ export async function POST(request: NextRequest) {
           const clientEmail = String(row.client_email ?? '').trim();
           const salonEmail = row.salon_email ? String(row.salon_email).trim() : null;
           const telegramChatId = row.telegram_chat_id ? String(row.telegram_chat_id).trim() : null;
+          const staffMemberId = row.staff_member_id ? String(row.staff_member_id) : null;
+          const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
 
           await dispatchBookingNotifications({
             salonEmail,
@@ -122,6 +125,8 @@ export async function POST(request: NextRequest) {
             telegramChatId,
             bookingDetails,
             telegramDetails: { ...bookingDetails, clientEmail },
+            staffEmail: staffMember?.email ?? null,
+            staffTelegramChatId: staffMember?.telegramChatId ?? null,
           }).catch((err) => console.error('[stripe-connect webhook] notifications', err));
         }
       }

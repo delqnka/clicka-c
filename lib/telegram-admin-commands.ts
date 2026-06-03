@@ -264,7 +264,13 @@ async function saveSalonServices(salonId: string, slug: string, services: Servic
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
-export type SalonRef = { salonId: string; slug: string; name: string };
+export type SalonRef = {
+  salonId: string;
+  slug: string;
+  name: string;
+  /** Set for TEAM staff members — scopes all Telegram queries to this staff member only. */
+  staffMemberId?: string | null;
+};
 
 export function isPriceListPhoto(caption: string): boolean {
   return PRICE_LIST_CAPTION_RE.test(caption);
@@ -1158,20 +1164,17 @@ ${servicesJson}
 
 ═══ НАЙ-ВАЖНО ПРАВИЛО ЗА УСЛУГИ ═══
 
-Потребителят НЕ е длъжен да използва глаголи. Следните съобщения са КОМАНДИ, не разговор:
-  "маникюр 35 евро", "боядисване 120", "кератин 150 евро", "детско подстригване 25", "балеаж 220"
-
-Когато видиш [име на услуга] + [цена/продължителност/категория] — ВИНАГИ е действие. НИКОГА не връщай chat.
-
 Логика за избор на action:
 1. Провери ТЕКУЩИ УСЛУГИ по-горе.
-2. Ако услугата СЪЩЕСТВУВА (fuzzy match по смисъл) → update_service
-3. Ако услугата НЕ СЪЩЕСТВУВА → add_service
-4. Ако има 2+ услуги с подобно ime и не е ясно коя → clarify
+2. Ако услугата СЪЩЕСТВУВА (fuzzy match по смисъл) → update_service (дори без глагол — "маникюр 35 евро" = промяна на цената)
+3. Ако услугата НЕ СЪЩЕСТВУВА → add_service САМО ако има изричен глагол (добави, нова услуга, създай, add)
+4. Ако услугата НЕ СЪЩЕСТВУВА и НЯМА глагол → clarify ("Не намерих тази услуга. Искаш ли да я добавя?")
+5. Ако има 2+ услуги с подобно ime и не е ясно коя → clarify
 
-ДОБАВЯНЕ (add_service) — услугата НЕ е в списъка:
-  "добави X", "нова услуга X", "ново — X 150 евро", "създай X"
+ДОБАВЯНЕ (add_service) — услугата НЕ е в списъка И има изричен глагол:
+  "добави X", "нова услуга X", "ново — X 150 евро", "създай X", "add X"
   → { "action": "add_service", "name": "X", "duration_min": 45, "price_eur": 150 }
+  БЕЗ глагол + услугата НЕ съществува → { "action": "clarify", "question": "Не намерих \"X\" в услугите ти. Искаш ли да я добавя?" }
   ПАРСВАНЕ: duration_min: 1ч=60, 1ч30=90, 2ч=120, 45мин=45. price_eur: числото преди евро/лв/€ — ако е в лева ÷ 1.96.
 
 ОБНОВЯВАНЕ (update_service) — услугата ВЕЧЕ Е в списъка:
@@ -1195,6 +1198,8 @@ ${servicesJson}
   → { "action": "reschedule_booking", "client_name": "Деляна", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
 
   ВАЖНО: from_date и to_date ЗАДЪЛЖИТЕЛНО трябва да са валидни ISO дати (YYYY-MM-DD). Ако не можеш да определиш точна дата, НЕ използвай reschedule_booking — върни { "action": "chat", "reply": "Уточни от коя дата на коя дата." }
+  КОНТЕКСТ: Ако в историята на разговора си задал въпрос за дата/час и потребителят отговаря с кратко "следващия", "следващата", "същия", "да", "не" и т.н. — разгледай предишния въпрос и реши кое имат предвид. Например ако си питал "за кой вторник — 2 юни или 9 юни?" и отговорът е "следващия/следващата" → избери по-далечната дата.
+  to_time е незадължително — пропусни го ако потребителят не е споменал час.
 
 ПОТВЪРЖДАВАНЕ на запис (confirm_booking):
   "потвърди Мария", "окей записа на Иван", "да, потвърди", "ок потвърждавам"
@@ -1837,27 +1842,48 @@ async function handleBookingsForDay(
   date: string,
   label: string,
 ): Promise<void> {
-  const rows = await sql`
-    SELECT CAST(id AS text) AS id, client_name, client_phone, time, service_name, status
-    FROM bookings
-    WHERE CAST(salon_id AS text) = ${salon.salonId}
-      AND date = ${date}
-      AND status NOT IN ('cancelled')
-    ORDER BY time ASC
-  ` as { id: string; client_name: string; client_phone: string; time: string; service_name: string; status: string }[];
+  const [rows, salonRows] = await Promise.all([
+    sql`
+      SELECT CAST(id AS text) AS id, client_name, client_phone, time, service_name, status
+      FROM bookings
+      WHERE CAST(salon_id AS text) = ${salon.salonId}
+        AND date = ${date}
+        AND status NOT IN ('cancelled')
+        AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
+      ORDER BY time ASC
+    ` as Promise<{ id: string; client_name: string; client_phone: string; time: string; service_name: string; status: string }[]>,
+    sql`SELECT opening_hours FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`,
+  ]);
+
+  const openingHours = (salonRows[0]?.opening_hours && typeof salonRows[0].opening_hours === 'object'
+    ? salonRows[0].opening_hours : {}) as Record<string, unknown>;
+  const dayBlocks = normalizeBookingBlocks(openingHours.booking_blocks).filter(b => b.date === date && !b.allDay);
 
   const dateStr = formatDateBg(date);
-  if (rows.length === 0) {
+
+  if (rows.length === 0 && dayBlocks.length === 0) {
     await sendTelegramMessage(chatId, `📅 <b>${dateStr}</b>\n\nНяма записи за ${label}.`);
     return;
   }
 
-  const lines = [`📅 <b>${dateStr} — ${rows.length} ${pluralBooking(rows.length)}:</b>`, ''];
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i]!;
-    const icon = r.status === 'confirmed' ? '✅' : '⏳';
-    lines.push(`${i + 1}. ${icon} ${r.time} — <b>${r.client_name}</b> (${r.service_name})`);
-  }
+  const totalCount = rows.length + dayBlocks.length;
+  const lines = [`📅 <b>${dateStr} — ${totalCount} ${pluralBooking(totalCount)}:</b>`, ''];
+
+  // Merge bookings and blocks sorted by time
+  type Entry = { time: string; label: string };
+  const entries: Entry[] = [
+    ...rows.map(r => ({
+      time: r.time,
+      label: `${r.status === 'confirmed' ? '✅' : '⏳'} ${r.time} — <b>${r.client_name}</b> (${r.service_name})`,
+    })),
+    ...dayBlocks.map(b => ({
+      time: b.start!,
+      label: `🔒 ${b.start}–${b.end} — <b>Зает час</b>${b.note ? ` (${b.note})` : ''}`,
+    })),
+  ].sort((a, b) => a.time.localeCompare(b.time));
+
+  entries.forEach((e, i) => lines.push(`${i + 1}. ${e.label}`));
+
   await sendTelegramMessage(chatId, lines.join('\n'));
 
   // Snapshot the list so follow-up references like "им", "втория", "номера на 2" resolve programmatically
@@ -1887,6 +1913,7 @@ async function handleNextClient(chatId: number, salon: SalonRef): Promise<void> 
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status NOT IN ('cancelled', 'completed')
       AND (date > ${todayStr} OR (date = ${todayStr} AND time >= ${currentTime}))
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ORDER BY date ASC, time ASC
     LIMIT 1
   ` as { id: string; client_name: string; client_phone: string; time: string; service_name: string; service_duration: number | null; date: string }[];
@@ -1927,6 +1954,7 @@ async function handleConfirmBooking(chatId: number, salon: SalonRef, clientName:
       AND status = 'pending'
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
       AND date >= ${todayISO()}
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ORDER BY date ASC, time ASC
     LIMIT 1
   ` as { id: string; client_name: string; date: string; time: string; service_name: string }[];
@@ -1952,6 +1980,7 @@ async function handleCancelBooking(chatId: number, salon: SalonRef, date: string
       AND date = ${date}
       AND time = ${time}
       AND status NOT IN ('cancelled', 'completed')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     LIMIT 1
   ` as { id: string; client_name: string; service_name: string }[];
 
@@ -1975,6 +2004,7 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status = 'pending'
       AND date >= ${todayISO()}
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ORDER BY date ASC, time ASC
     LIMIT 10
   ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string }[];
@@ -2022,6 +2052,7 @@ async function handleRescheduleBooking(
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
       AND date = ${fromDate}
       AND status NOT IN ('cancelled', 'completed')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ORDER BY time ASC
     LIMIT 1
   ` as { id: string; client_name: string; date: string; time: string; service_name: string; service_duration: number | null }[];
@@ -2034,16 +2065,7 @@ async function handleRescheduleBooking(
   const r = rows[0]!;
   const duration = r.service_duration ?? 60;
 
-  if (!toTime) {
-    await setState(chatId, { type: 'waiting_reschedule_time', booking_id: r.id, client_name: r.client_name, from_date: fromDate, to_date: toDate, created_at: new Date().toISOString() });
-    await sendTelegramMessage(
-      chatId,
-      `⏰ В колко часа да преместя резервацията на <b>${r.client_name}</b> за ${formatDateBg(toDate)}?\nМоментален час: <b>${r.time}</b>`,
-    );
-    return;
-  }
-
-  const resolvedTime = toTime;
+  const resolvedTime = toTime ?? r.time;
 
   await sql`
     UPDATE bookings
@@ -2126,6 +2148,7 @@ async function handleRemindTomorrow(chatId: number, salon: SalonRef): Promise<vo
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date = ${tomorrow}
       AND status NOT IN ('cancelled', 'completed')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ORDER BY time ASC
   ` as { client_name: string; client_phone: string; time: string; service_name: string; sms_reminder_consent: boolean }[];
 
@@ -2192,6 +2215,7 @@ async function handleRevenue(chatId: number, salon: SalonRef, period: 'week' | '
       AND date >= ${periodStart}
       AND date <= ${periodEnd}
       AND status NOT IN ('cancelled')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
   ` as { total: number; completed: number; revenue: number; completed_revenue: number }[];
 
   const r = rows[0]!;
@@ -2225,12 +2249,14 @@ async function handleClientRevenue(chatId: number, salon: SalonRef, clientName: 
         WHERE CAST(b2.salon_id AS text) = ${salon.salonId}
           AND lower(b2.client_name) LIKE ${`%${clientName.toLowerCase()}%`}
           AND b2.status NOT IN ('cancelled')
+          AND (${salon.staffMemberId ?? null}::uuid IS NULL OR b2.staff_member_id = ${salon.staffMemberId ?? null}::uuid)
         GROUP BY service_name ORDER BY COUNT(*) DESC LIMIT 1
       ) AS top_service
     FROM bookings
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
       AND status NOT IN ('cancelled')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
   ` as { total: number; revenue: number; first_visit: string; last_visit: string; top_service: string }[];
 
   const r = rows[0]!;
@@ -2268,6 +2294,7 @@ async function handleClientCountMonth(chatId: number, salon: SalonRef): Promise<
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND date >= ${monthStart}
       AND status NOT IN ('cancelled')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
   ` as { total: number; unique_clients: number }[];
 
   const r = rows[0]!;
@@ -2285,6 +2312,7 @@ async function handleTopServices(chatId: number, salon: SalonRef): Promise<void>
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status NOT IN ('cancelled')
       AND date >= ${offsetDayISO(-90)}
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     GROUP BY service_name
     ORDER BY cnt DESC
     LIMIT 5
@@ -2392,6 +2420,7 @@ async function handleCompleteBooking(chatId: number, salon: SalonRef, clientName
       AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
       AND status NOT IN ('cancelled', 'completed')
       AND date >= ${offsetDayISO(-1)}
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ORDER BY date ASC, time ASC
     LIMIT 1
   ` as { id: string; client_name: string; date: string; time: string; service_name: string }[];
@@ -2426,6 +2455,7 @@ async function handleRevenueMonths(chatId: number, salon: SalonRef, numMonths: n
         AND date >= ${periodStart}
         AND date <= ${periodEnd}
         AND status NOT IN ('cancelled')
+        AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ` as { total: number; completed: number; revenue: number }[];
 
     const r = rows[0]!;

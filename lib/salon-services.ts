@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 export type PaymentType = 'none' | 'deposit' | 'full';
 
 export type ServiceItem = {
@@ -36,10 +38,21 @@ function pickFirstNonEmptyString(...values: unknown[]): string {
   return '';
 }
 
-function assignUniqueServiceId(candidate: string, index: number, usedIds: Set<string>): string {
-  let id = candidate.trim();
-  if (!id || usedIds.has(id)) id = `svc-${index}`;
-  while (usedIds.has(id)) id = `svc-${index}-${usedIds.size}`;
+/** Returns true for index-based IDs that are positionally unstable (svc-0, svc-1, svc-2-3, …). */
+function isUnstableId(id: string): boolean {
+  return /^svc-\d/.test(id);
+}
+
+function assignUniqueServiceId(candidate: string, usedIds: Set<string>): string {
+  const trimmed = candidate.trim();
+  // Keep the candidate if it exists, is not a positional svc-N id, and is unique.
+  if (trimmed && !isUnstableId(trimmed) && !usedIds.has(trimmed)) {
+    usedIds.add(trimmed);
+    return trimmed;
+  }
+  // Generate a stable random ID (8 hex chars, same pattern as onboarding_code).
+  let id = randomBytes(4).toString('hex');
+  while (usedIds.has(id)) id = randomBytes(4).toString('hex');
   usedIds.add(id);
   return id;
 }
@@ -70,7 +83,7 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
     const name = pickFirstNonEmptyString(row.name, row.service_name, row.serviceName, row.title);
     if (!name) return;
 
-    const id = assignUniqueServiceId(String(row.id ?? ''), index, usedIds);
+    const id = assignUniqueServiceId(String(row.id ?? ''), usedIds);
     const duration = Number(row.duration ?? row.duration_min ?? row.durationMin ?? 30) || 30;
     const priceRaw = row.price ?? row.service_price ?? row.servicePrice;
     const price = priceRaw != null ? Number(priceRaw) : undefined;
