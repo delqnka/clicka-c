@@ -2020,7 +2020,7 @@ export default function SalonPublicParity({
         </div>
       </footer>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[max(6px,env(safe-area-inset-bottom))] pt-2 lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[max(6px,env(safe-area-inset-bottom))] pt-2 lg:hidden" style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden', willChange: 'transform' }}>
         <div className="mx-auto w-full max-w-[min(100%,1180px)]">
           <button
             type="button"
