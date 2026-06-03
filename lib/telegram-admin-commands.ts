@@ -69,7 +69,8 @@ type ConvState =
   | { type: 'waiting_block_and_reschedule'; block_date: string; booking_id: string; client_name: string; to_date: string; to_time: string; created_at: string }
   | { type: 'last_context'; entity_type: 'booking' | 'service' | 'client' | 'review'; entities: LastContextEntity[]; selected_entity?: LastContextEntity; created_at: string }
   | { type: 'waiting_entity_clarification'; pending_command: string; entities: LastContextEntity[]; created_at: string }
-  | { type: 'last_photo'; url: string; created_at: string };
+  | { type: 'last_photo'; url: string; created_at: string }
+  | { type: 'last_imported_services'; serviceNames: string[]; created_at: string };
 
 async function getState(chatId: number): Promise<ConvState | null> {
   try {
@@ -183,6 +184,9 @@ const DELETE_PHOTO_RE =
 
 const LIST_SERVICES_RE =
   /^(?:покажи|виж|изброй)\s+(?:всички\s+)?услуги(?:те)?$/i;
+
+const DELETE_IMPORTED_SERVICES_RE =
+  /^(?:изтри[йи]|махни|премахни|изчисти)\s+(?:тези\s+)?(?:всички\s+)?(?:добавените?|внесените?|импортираните?|тези)\s+услуги(?:те)?$/i;
 
 const PRICE_LIST_CAPTION_RE = /ценоразпис|прайс\s*лист|услуги\s+цени|price\s*list/i;
 
@@ -413,6 +417,23 @@ export async function handleAdminCommand(
       lines.push(`• ${s.name} — ${s.duration_min} мин — ${s.price} €`);
     }
     await sendTelegramMessage(chatId, lines.join('\n'));
+    return true;
+  }
+
+  // ── Delete last imported services (from price list) ─────────────────────
+  if (DELETE_IMPORTED_SERVICES_RE.test(text)) {
+    const state = await getState(chatId);
+    if (state?.type !== 'last_imported_services' || !state.serviceNames?.length) {
+      await sendTelegramMessage(chatId, '⚠️ Не намерих последно добавени услуги от ценоразпис. Тази команда работи веднага след качване на ценоразпис.');
+      return true;
+    }
+    const namesToRemove = new Set(state.serviceNames.map((n: string) => n.toLowerCase()));
+    const services = await getSalonServices(salon.salonId);
+    const remaining = services.filter(s => !namesToRemove.has(s.name.toLowerCase()));
+    const removed = services.length - remaining.length;
+    await saveSalonServices(salon.salonId, salon.slug, remaining);
+    await clearState(chatId);
+    await sendTelegramMessage(chatId, `🗑 Изтрити ${removed} услуги от последния ценоразпис.`);
     return true;
   }
 
@@ -1903,7 +1924,15 @@ export async function handlePriceListPhoto(
   for (const s of added) {
     lines.push(`• ${s.name} — ${s.duration_min} мин — ${s.price} €${s.category ? ` (${s.category})` : ''}`);
   }
+  lines.push('', '💡 Ако искаш да ги изтриеш, напиши <code>изтрий добавените услуги</code>');
   await sendTelegramMessage(chatId, lines.join('\n'));
+
+  // Remember imported service names so owner can undo the import
+  await setState(chatId, {
+    type: 'last_imported_services',
+    serviceNames: added.map(s => s.name),
+    created_at: new Date().toISOString(),
+  });
 }
 
 // ─── Booking handlers ────────────────────────────────────────────────────────
