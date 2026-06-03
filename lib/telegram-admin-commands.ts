@@ -686,6 +686,7 @@ type AIIntent =
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
   | { action: 'client_phone'; client_name: string }
+  | { action: 'client_bookings'; client_name: string }
   | { action: 'reschedule_booking'; client_name: string; from_date: string; to_date: string; to_time?: string }
   | { action: 'confirm_day_off'; date: string }
   | { action: 'chat'; reply: string };
@@ -1277,6 +1278,11 @@ ${servicesJson}
 УТОЧНЯВАНЕ (clarify) — само при реална двусмисленост:
   → { "action": "clarify", "question": "Имаш предвид X или Y?" }
 
+ПРЕДСТОЯЩИ РЕЗЕРВАЦИИ НА КЛИЕНТ (client_bookings):
+  "Стоянка кога има час", "кога е следващия запис на Мария", "следващ час на Иван", "кога идва Деляна", "записи на Мария", "Виолета кога е"
+  → { "action": "client_bookings", "client_name": "Стоянка" }
+  ВАЖНО: Никога не питай "коя Стоянка?" или "имаш предвид X или Y?" — подай директно каквото е написано. Системата сама ще намери по частично съвпадение на първото или пълното ime.
+
 ТЕЛЕФОН НА КЛИЕНТ (client_phone):
   "дай ми номера на Мария", "какъв е телефонът на Иван", "номера на Деляна", "телефон на клиента"
   → { "action": "client_phone", "client_name": "Мария" }
@@ -1370,6 +1376,7 @@ ${servicesJson}
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "remind_tomorrow" }
 - { "action": "client_phone", "client_name": "..." }
+- { "action": "client_bookings", "client_name": "..." }
 - { "action": "reschedule_booking", "client_name": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
 - { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "...", "variants": [{"label":"Barber","price":15},{"label":"Master","price":25}] }
@@ -1760,6 +1767,9 @@ ${servicesJson}
       return true;
     case 'client_phone':
       await handleClientPhone(chatId, salon, intent.client_name);
+      return true;
+    case 'client_bookings':
+      await handleClientBookings(chatId, salon, intent.client_name);
       return true;
     case 'confirm_day_off':
       // Handled by state machine above; AI may still emit this if confused — treat as block
@@ -2280,6 +2290,32 @@ async function handleClientPhone(chatId: number, salon: SalonRef, clientName: st
     `👤 <b>${r.client_name}</b>\n<i>Последен запис: ${formatDateBg(r.date)} в ${r.time} — ${r.service_name}</i>`,
   );
   await sendTelegramMessage(chatId, r.client_phone);
+}
+
+async function handleClientBookings(chatId: number, salon: SalonRef, clientName: string): Promise<void> {
+  const today = todayISO();
+  const rows = await sql`
+    SELECT client_name, date, start_time, service_name, status
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
+      AND date >= ${today}
+      AND status NOT IN ('cancelled', 'completed')
+    ORDER BY date ASC, start_time ASC
+    LIMIT 5
+  ` as { client_name: string; date: string; start_time: string; service_name: string; status: string }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `📭 Нямам предстоящи записи за <b>${clientName}</b>.`);
+    return;
+  }
+
+  const name = rows[0]!.client_name;
+  const lines = [`📅 Предстоящи записи на <b>${name}</b>:`, ''];
+  for (const r of rows) {
+    lines.push(`• ${formatDateBg(r.date)} в ${r.start_time.slice(0, 5)} — ${r.service_name}`);
+  }
+  await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
 async function handleRemindTomorrow(chatId: number, salon: SalonRef): Promise<void> {
