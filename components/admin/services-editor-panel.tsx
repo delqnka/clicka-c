@@ -401,6 +401,20 @@ const ServiceCardRow = memo(function ServiceCardRow({
           )}
         </div>
 
+        {/* Requires confirmation */}
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="checkbox"
+            id="requires_confirmation"
+            checked={draft.requires_confirmation === true}
+            onChange={(e) => updateDraft((s) => ({ ...s, requires_confirmation: e.target.checked || undefined }))}
+            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#000' }}
+          />
+          <label htmlFor="requires_confirmation" style={{ fontSize: 13, color: '#333', cursor: 'pointer' }}>
+            Изисква потвърждение от мен преди клиентът да получи потвърждение
+          </label>
+        </div>
+
         {/* Variants */}
         <details style={{ marginTop: 8 }}>
           <summary

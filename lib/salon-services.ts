@@ -14,6 +14,7 @@ export type ServiceItem = {
   assignedTeamMemberIds?: string[];
   payment_type?: PaymentType;
   deposit_amount?: number; // euros (e.g. 20 = €20)
+  requires_confirmation?: boolean;
 };
 
 export type ParsedSalonService = {
@@ -28,6 +29,7 @@ export type ParsedSalonService = {
   assignedTeamMemberIds?: string[];
   payment_type?: PaymentType;
   deposit_amount?: number;
+  requires_confirmation?: boolean;
 };
 
 function pickFirstNonEmptyString(...values: unknown[]): string {
@@ -144,6 +146,7 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
         : {}),
       ...(paymentType !== undefined ? { payment_type: paymentType } : {}),
       ...(depositAmount !== undefined ? { deposit_amount: depositAmount } : {}),
+      ...(row.requires_confirmation === true ? { requires_confirmation: true } : {}),
     });
   });
 
@@ -192,6 +195,7 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
       ...((s as unknown as ServiceItem).deposit_amount != null && Number.isFinite(Number((s as unknown as ServiceItem).deposit_amount))
         ? { deposit_amount: Math.max(0, Number((s as unknown as ServiceItem).deposit_amount)) }
         : {}),
+      ...((s as unknown as ServiceItem).requires_confirmation === true ? { requires_confirmation: true } : {}),
     };
   });
 }

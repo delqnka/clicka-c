@@ -17,6 +17,7 @@ export type InsertBookingRow = {
   notes: string;
   smsReminderConsent: boolean;
   offerId: string | null;
+  status?: 'pending' | 'confirmed';
 };
 
 /** Atomically insert only when no active booking overlaps the requested time range. */
@@ -69,7 +70,7 @@ export async function insertBookingIfNoOverlap(
       ${row.serviceDuration},
       ${row.date},
       ${row.time},
-      'pending',
+      ${row.status ?? 'pending'},
       ${row.notes || ''},
       ${row.smsReminderConsent},
       ${consentAt},

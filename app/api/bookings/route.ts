@@ -17,6 +17,7 @@ import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { offerHasSpotsLeft, offerVisibleToClient } from '@/lib/salon-offers';
 import type { SalonOfferRow } from '@/lib/salon-offers';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
+import { normalizeServices } from '@/lib/salon-services';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { runAfterResponse } from '@/lib/run-after-response';
 import {
@@ -314,6 +315,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Determine booking status: check if the matched service requires manual confirmation
+  const salonServicesRaw = await sql`SELECT services FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
+  const salonServices = normalizeServices((salonServicesRaw[0] as Record<string, unknown> | undefined)?.services ?? []);
+  const matchedService = salonServices.find(
+    (s) => s.name.toLowerCase() === resolvedServiceName.toLowerCase() ||
+           resolvedServiceName.toLowerCase().includes(s.name.toLowerCase()),
+  );
+  const bookingStatus = matchedService?.requires_confirmation === true ? 'pending' : 'confirmed';
+
   let insertedBooking: { id: string; manageToken: string } | null = null;
   try {
     insertedBooking = await insertBookingIfNoOverlap({
@@ -331,6 +341,7 @@ export async function POST(request: NextRequest) {
       notes: normalizedNotes,
       smsReminderConsent: hasSmsReminderConsent,
       offerId: bookingOfferId,
+      status: bookingStatus,
     });
   } catch (err) {
     const dbErr = err as { code?: string } | null;
