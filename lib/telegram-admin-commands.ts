@@ -1852,6 +1852,7 @@ export async function handlePriceListPhoto(
 
   const systemPrompt = `Ти си асистент, който извлича информация за услуги и цени от снимки на ценоразписи.
 Върни САМО валиден JSON масив без markdown. Форматът: [{"name":string,"price":number,"duration_min":number,"category":string}]
+КРИТИЧНО: Извлечи ВСИЧКИ услуги без изключение. НЕ дедублирай — "Дамско подстригване", "Мъжко подстригване" и "Детско подстригване" са три РАЗЛИЧНИ услуги. Преброй редовете и се увери че JSON-ът има точно толкова елементи.
 Цените да са в евро (EUR). Ако са в лева, раздели на 1.95583 и закръгли до цяло число.
 Ако продължителността не е посочена, прецени я по типа услуга.`;
 
@@ -1859,7 +1860,7 @@ export async function handlePriceListPhoto(
     method: 'POST',
     headers: openRouterHeaders(),
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'anthropic/claude-3.5-sonnet',
       messages: [
         { role: 'system', content: systemPrompt },
         {
