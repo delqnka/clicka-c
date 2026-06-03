@@ -660,7 +660,7 @@ type AIIntent =
   | { action: 'create_booking'; client_name: string; service_name: string; date: string; time: string }
   | { action: 'complete_booking'; client_name: string }
   | { action: 'sort_services'; by: 'price_asc' | 'price_desc' | 'duration_asc' | 'name_asc' }
-  | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string }
+  | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string; variants?: { label: string; price: number }[] }
   | { action: 'update_price'; service_name: string; price_eur: number }
   | { action: 'update_service'; service_name: string; price_eur?: number; duration_min?: number; category?: string; new_name?: string }
   | { action: 'update_category'; service_name: string; category: string }
@@ -1250,6 +1250,12 @@ ${servicesJson}
   → { "action": "add_service", "name": "X", "duration_min": 45, "price_eur": 150 }
   БЕЗ глагол + услугата НЕ съществува → { "action": "clarify", "question": "Не намерих \"X\" в услугите ти. Искаш ли да я добавя?" }
 
+  С ВАРИАНТИ — ако са изброени нива/специалисти с различни цени:
+  "добави Мъжко подстригване с варианти: Barber 15€, Senior 20€, Master 25€"
+  "добави подстригване — Junior 20лв, Senior 30лв, Master 40лв"
+  → { "action": "add_service", "name": "Мъжко подстригване", "duration_min": 30, "price_eur": 15, "variants": [{"label":"Barber","price":15},{"label":"Senior Barber","price":20},{"label":"Master","price":25}] }
+  price_eur = цената на ПЪРВИЯ (най-евтин) вариант.
+
   ПАРСВАНЕ НА ПОЛЕТАТА — много важно:
   - name: САМО името на услугата — спри преди цифри, "евро", "лв", "€", "за X ч", "X мин", "категория"
     Примери: "Грим вечерен 100 евро за 2 ч" → name="Грим вечерен"; "Маникюр гел 45мин 35лв" → name="Маникюр гел"
@@ -1365,7 +1371,7 @@ ${servicesJson}
 - { "action": "client_phone", "client_name": "..." }
 - { "action": "reschedule_booking", "client_name": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
 - { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
-- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "..." }
+- { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "...", "variants": [{"label":"Barber","price":15},{"label":"Master","price":25}] }
 - { "action": "update_service", "service_name": "...", "price_eur": 35, "duration_min": 60, "category": "...", "new_name": "..." }  ← подавай само полетата, които се променят
 - { "action": "update_price", "service_name": "...", "price_eur": 18 }  ← само ако се променя ЕДИНСТВЕНО цена (legacy, предпочитай update_service)
 - { "action": "update_category", "service_name": "...", "category": "..." }
@@ -1514,12 +1520,22 @@ ${servicesJson}
         await sendTelegramMessage(chatId, `⚠️ Услугата <b>${intent.name}</b> вече съществува.`);
         return true;
       }
-      services.push({ name: intent.name, price: Math.round(intent.price_eur), duration_min: intent.duration_min, ...(intent.category ? { category: intent.category } : {}) });
+      const variants = Array.isArray(intent.variants) && intent.variants.length > 1
+        ? intent.variants.map(v => ({ label: String(v.label).trim(), price: Math.round(Number(v.price) || 0) })).filter(v => v.label)
+        : undefined;
+      services.push({
+        name: intent.name,
+        price: Math.round(intent.price_eur),
+        duration_min: intent.duration_min,
+        ...(intent.category ? { category: intent.category } : {}),
+        ...(variants ? { variants } : {}),
+      });
       await saveSalonServices(salon.salonId, salon.slug, services);
       const catLine = intent.category ? ` (${intent.category})` : '';
-      const addReply = `✅ Добавена в ${salon.name}:\n${intent.name}${catLine} — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`;
+      const variantLine = variants ? `\n${variants.map(v => `  • ${v.label} — ${v.price} €`).join('\n')}` : ` — ${Math.round(intent.price_eur)} €`;
+      const addReply = `✅ Добавена в ${salon.name}:\n${intent.name}${catLine}${variantLine}`;
       await appendHistory(chatId, 'assistant', addReply);
-      await sendTelegramMessage(chatId, `✅ Добавена в <b>${salon.name}</b>:\n<b>${intent.name}</b>${catLine} — ${intent.duration_min} мин — ${Math.round(intent.price_eur)} €`);
+      await sendTelegramMessage(chatId, `✅ Добавена в <b>${salon.name}</b>:\n<b>${intent.name}</b>${catLine}${variantLine}`);
       return true;
     }
     case 'update_price': {
