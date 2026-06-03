@@ -2,6 +2,7 @@
  * Telegram admin commands — service management, working hours, booking management, and queries.
  * Called from the Telegram webhook when the message is from the salon owner.
  */
+import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { revalidateTag } from 'next/cache';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -59,6 +60,7 @@ type LastContextEntity = {
   time?: string;
   date?: string;
   service_name?: string;
+  price?: number;
 };
 
 type ConvState =
@@ -289,7 +291,9 @@ export async function handleAdminCommand(
   const addMatch = text.match(ADD_SERVICE_RE);
   const hasServiceKeyword = /услуг[аa]/i.test(text);
   const hasDurationOrPrice = /\d+\s*(?:ч|мин|часа|евро|лв|€|eur|bgn|лев)/i.test(text);
-  if (addMatch && (hasServiceKeyword || hasDurationOrPrice)) {
+  const hasCategoryPhrase = /категори[яа]/i.test(text);
+  // If the message mentions a category, let AI parse it — regex can't reliably handle "в нова/специална категория X"
+  if (addMatch && (hasServiceKeyword || hasDurationOrPrice) && !hasCategoryPhrase) {
     const rawFull = addMatch[1]!.trim();
 
     // Parse duration — all formats:
@@ -321,14 +325,14 @@ export async function handleAdminCommand(
       price = /€|eur|евро/.test(anyPriceMatch[0]!.toLowerCase()) ? Math.round(val) : lvToEur(val);
     }
 
-    // Parse category: "в категория X" OR "категория: X"
+    // Parse category: "в категория X" | "в нова категория X" | "категория: X"
     let category: string | undefined;
-    const catMatch = rawFull.match(/(?:в\s+)?(?:категория|cat)[:：]?\s+([^—\-–\d]+?)(?:\s*[—\-–]|\s*\d|\s*$)/i);
+    const catMatch = rawFull.match(/(?:в\s+)?(?:\w+\s+)?(?:категория|cat)[:：]?\s+([^—\-–\d]+?)(?:\s*[—\-–]|\s*\d|\s*$)/i);
     if (catMatch) category = catMatch[1]!.trim();
 
     // Extract clean service name (strip price/duration/category suffixes)
     const rawName = rawFull
-      .replace(/\s*в\s+(?:категория|cat)\s+.+$/i, '')
+      .replace(/\s*в\s+(?:\w+\s+)?(?:категория|cat)\s+.+$/i, '')
       .replace(/\s*(?:категория|cat)[:：]\s*.+$/i, '')
       .replace(/\s*[—\-–]\s*\d+\s*мин[^\s]*/gi, '')
       .replace(/\s*[—\-–]\s*\d+(?:[.,]\d+)?\s*(?:лв|bgn|€|eur|лев)/gi, '')
@@ -602,6 +606,7 @@ type AIIntent =
   | { action: 'top_services' }
   | { action: 'list_services' }
   | { action: 'pending_bookings' }
+  | { action: 'create_booking'; client_name: string; service_name: string; date: string; time: string }
   | { action: 'complete_booking'; client_name: string }
   | { action: 'sort_services'; by: 'price_asc' | 'price_desc' | 'duration_asc' | 'name_asc' }
   | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string }
@@ -1147,7 +1152,18 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
   const pendingBlockDate = (convState?.type === 'waiting_block_confirm') ? convState.date : null;
   const lastCtxEntities = (freshState?.type === 'last_context') ? freshState.entities : null;
   const lastCtxContext = lastCtxEntities && lastCtxEntities.length > 0
-    ? `\n\n[ПОСЛЕДНО ПОКАЗАНИ ЗАПИСИ: ${lastCtxEntities.map(e => `${e.name}${e.date ? ` (${e.date}` : ''}${e.time ? ` ${e.time})` : e.date ? ')' : ''}`).join(', ')}. Ако потребителят използва "я", "го", "нея", "него", "тя", "той", "тази", "този" — имат предвид ${lastCtxEntities.length === 1 ? lastCtxEntities[0]!.name : 'някой от тези хора'}. ЗАДЪЛЖИТЕЛНО използвай точното им пълно ime от този списък — НЕ измисляй или съкращавай имена.]`
+    ? (() => {
+        const entityLines = lastCtxEntities.map(e => {
+          let s = e.name;
+          if (e.date || e.time) s += ` (${[e.date, e.time].filter(Boolean).join(' ')})`;
+          if (e.service_name) s += ` — ${e.service_name}`;
+          if (e.price != null) s += ` — ${e.price} €`;
+          return s;
+        }).join('; ');
+        const totalPrice = lastCtxEntities.reduce((sum, e) => sum + (e.price ?? 0), 0);
+        const hasPrices = lastCtxEntities.some(e => e.price != null);
+        return `\n\n[ПОСЛЕДНО ПОКАЗАНИ ЗАПИСИ (${lastCtxEntities.length} бр.): ${entityLines}. ${hasPrices ? `Обща стойност: ${totalPrice} €. Ако потребителят пита "за колко пари", "обща сума", "колко струват" — отговори директно с тази сума.` : ''} Ако потребителят използва "я", "го", "нея", "него", "тя", "той", "тази", "този" — имат предвид ${lastCtxEntities.length === 1 ? lastCtxEntities[0]!.name : 'някой от тези хора'}. ЗАДЪЛЖИТЕЛНО използвай точното им пълно ime от този списък — НЕ измисляй или съкращавай имена.]`;
+      })()
     : '';
   const stateContext = [
     pendingBlockDate ? `\n\n[КОНТЕКСТ: Преди това потребителят искаше да блокира ${formatDateBg(pendingBlockDate)} (${pendingBlockDate}). Ако сега казва "блокирай деня" или "блокирай" без дата, имат предвид тази дата.]` : '',
@@ -1214,6 +1230,12 @@ ${servicesJson}
   КОНТЕКСТ: Ако в историята на разговора си задал въпрос за дата/час и потребителят отговаря с кратко "следващия", "следващата", "същия", "да", "не" и т.н. — разгледай предишния въпрос и реши кое имат предвид. Например ако си питал "за кой вторник — 2 юни или 9 юни?" и отговорът е "следващия/следващата" → избери по-далечната дата.
   to_time е незадължително — пропусни го ако потребителят не е споменал час.
 
+НОВА РЕЗЕРВАЦИЯ ОТ СОБСТВЕНИКА (create_booking):
+  "нов клиент Виолета утре подстригване 13ч", "създай нов клиент Виолета подстригване утре 13:00",
+  "запиши Виолета утре 13 подстригване", "Виолета подстригване утре 13ч"
+  → { "action": "create_booking", "client_name": "Виолета", "service_name": "подстригване", "date": "YYYY-MM-DD", "time": "13:00" }
+  Важно: date и time ЗАДЪЛЖИТЕЛНО са точни стойности. Резервацията се записва директно — без потвърждение.
+
 ПОТВЪРЖДАВАНЕ на запис (confirm_booking):
   "потвърди Мария", "окей записа на Иван", "да, потвърди", "ок потвърждавам"
 
@@ -1267,6 +1289,7 @@ ${servicesJson}
 
 ═══ ДЕЙСТВИЯ ═══
 
+- { "action": "create_booking", "client_name": "Виолета", "service_name": "подстригване", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "bookings_day", "date": "YYYY-MM-DD" }
 - { "action": "next_client" }
 - { "action": "revenue_week" }
@@ -1386,6 +1409,10 @@ ${servicesJson}
     case 'top_services':
       await handleTopServices(chatId, salon);
       return true;
+    case 'create_booking':
+      await handleCreateBooking(chatId, salon, intent.client_name, intent.service_name, intent.date, intent.time);
+      return true;
+
     case 'list_services': {
       const services = await getSalonServices(salon.salonId);
       if (services.length === 0) {
@@ -2012,7 +2039,7 @@ async function handleCancelBooking(chatId: number, salon: SalonRef, date: string
 
 async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<void> {
   const rows = await sql`
-    SELECT CAST(id AS text) AS id, client_name, client_phone, date, time, service_name
+    SELECT CAST(id AS text) AS id, client_name, client_phone, date, time, service_name, service_price
     FROM bookings
     WHERE CAST(salon_id AS text) = ${salon.salonId}
       AND status = 'pending'
@@ -2020,7 +2047,7 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
       AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
     ORDER BY date ASC, time ASC
     LIMIT 10
-  ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string }[];
+  ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string; service_price: number | null }[];
 
   if (rows.length === 0) {
     await sendTelegramMessage(chatId, '✅ Няма незатвърдени резервации.');
@@ -2030,9 +2057,12 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
   const lines = [`⏳ <b>Незатвърдени резервации (${rows.length}):</b>`, ''];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]!;
-    lines.push(`${i + 1}. ${formatDateBg(r.date, { weekday: 'short', day: 'numeric', month: 'short' })} ${r.time} — <b>${r.client_name}</b> (${r.service_name})`);
+    const priceStr = r.service_price != null ? ` — ${r.service_price} €` : '';
+    lines.push(`${i + 1}. ${formatDateBg(r.date, { weekday: 'short', day: 'numeric', month: 'short' })} ${r.time} — <b>${r.client_name}</b> (${r.service_name}${priceStr})`);
   }
-  lines.push('', '💡 Потвърди с <code>потвърди 1</code> или <code>потвърди резервацията на [Име]</code>');
+  const total = rows.reduce((sum, r) => sum + (r.service_price ?? 0), 0);
+  if (total > 0) lines.push('', `💰 <b>Общо: ${total} €</b>`);
+  lines.push('', '💡 Напиши <code>потвърди 1</code> (или <code>потвърди Деляна</code>) — клиентът получава потвърждение по имейл.');
   await sendTelegramMessage(chatId, lines.join('\n'));
 
   await setState(chatId, {
@@ -2045,6 +2075,7 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
       time: r.time,
       date: r.date,
       service_name: r.service_name,
+      price: r.service_price ?? undefined,
     })),
     created_at: new Date().toISOString(),
   });
@@ -2688,4 +2719,58 @@ function listServicesText(services: ServiceItem[]): string {
 
 function pluralBooking(n: number): string {
   return n === 1 ? 'запис' : 'записа';
+}
+
+// ─── Create booking from bot ─────────────────────────────────────────────────
+
+async function handleCreateBooking(
+  chatId: number,
+  salon: SalonRef,
+  clientName: string,
+  serviceName: string,
+  date: string,
+  time: string,
+): Promise<void> {
+  const { insertBookingIfNoOverlap } = await import('@/lib/booking-insert');
+
+  // Find matching service for price + duration
+  const services = await getSalonServices(salon.salonId);
+  const svcIdx = findServiceIndex(services, serviceName);
+  const svc = svcIdx !== -1 ? services[svcIdx]! : null;
+  const servicePrice = svc?.price ?? null;
+  const serviceDuration = svc?.duration_min ?? 60;
+  const resolvedServiceName = svc?.name ?? serviceName;
+
+  const id = crypto.randomUUID();
+  const result = await insertBookingIfNoOverlap({
+    id,
+    salonId: salon.salonId,
+    staffMemberId: salon.staffMemberId ?? null,
+    clientName,
+    clientPhone: '',
+    clientEmail: '',
+    serviceName: resolvedServiceName,
+    servicePrice,
+    serviceDuration,
+    date,
+    time,
+    notes: 'Записан от собственика',
+    smsReminderConsent: false,
+    offerId: null,
+  });
+
+  if (!result) {
+    await sendTelegramMessage(chatId, `⚠️ Часът ${time} на ${formatDateBg(date)} вече е зает. Провери календара.`);
+    return;
+  }
+
+  // Auto-confirm owner-created bookings
+  await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${result.id}`;
+  revalidateTag(`salon-public-${salon.slug}`);
+
+  const priceStr = servicePrice != null ? ` — ${servicePrice} €` : '';
+  await sendTelegramMessage(
+    chatId,
+    `✅ <b>Резервация записана:</b>\n👤 ${clientName}\n✂️ ${resolvedServiceName}${priceStr}\n📅 ${formatDateBg(date)} в ${time}`,
+  );
 }
