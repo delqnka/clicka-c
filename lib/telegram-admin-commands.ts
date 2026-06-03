@@ -1145,9 +1145,14 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
 
   // If there was a pending block_confirm state, inject the date as context for AI
   const pendingBlockDate = (convState?.type === 'waiting_block_confirm') ? convState.date : null;
-  const stateContext = pendingBlockDate
-    ? `\n\n[КОНТЕКСТ: Преди това потребителят искаше да блокира ${formatDateBg(pendingBlockDate)} (${pendingBlockDate}). Ако сега казва "блокирай деня" или "блокирай" без дата, имат предвид тази дата.]`
+  const lastCtxEntities = (freshState?.type === 'last_context') ? freshState.entities : null;
+  const lastCtxContext = lastCtxEntities && lastCtxEntities.length > 0
+    ? `\n\n[ПОСЛЕДНО ПОКАЗАНИ ЗАПИСИ: ${lastCtxEntities.map(e => `${e.name}${e.date ? ` (${e.date}` : ''}${e.time ? ` ${e.time})` : e.date ? ')' : ''}`).join(', ')}. Ако потребителят използва "я", "го", "нея", "него", "тя", "той", "тази", "този" — имат предвид ${lastCtxEntities.length === 1 ? lastCtxEntities[0]!.name : 'някой от тези хора'}. ЗАДЪЛЖИТЕЛНО използвай точното им пълно ime от този списък — НЕ измисляй или съкращавай имена.]`
     : '';
+  const stateContext = [
+    pendingBlockDate ? `\n\n[КОНТЕКСТ: Преди това потребителят искаше да блокира ${formatDateBg(pendingBlockDate)} (${pendingBlockDate}). Ако сега казва "блокирай деня" или "блокирай" без дата, имат предвид тази дата.]` : '',
+    lastCtxContext,
+  ].join('');
 
   const systemPrompt = `Ти си личен AI асистент на собственик на малък бизнес. Говориш на естествен, топъл български — като добър приятел с опит в бранша.${stateContext}
 
