@@ -179,7 +179,7 @@ const TOP_SERVICES_RE =
   /^(?:кои\s+са\s+)?(?:най-популярни(?:те)?|топ)\s+(?:ми\s+)?услуги\b/i;
 
 const DELETE_PHOTO_RE =
-  /^(?:изтри[йи]|махни|премахни)\s+(?:последната\s+)?снимк[аaата]+$/i;
+  /^(?:изтри[йи]|махни|премахни)(?:\s+(?:(?:последната\s+)?снимк[аaата]+|я|го|я))?$/i;
 
 const LIST_SERVICES_RE =
   /^(?:покажи|виж|изброй)\s+(?:всички\s+)?услуги(?:те)?$/i;
@@ -589,8 +589,15 @@ export async function handleAdminCommand(
   }
 
   // ── Delete last photo ────────────────────────────────────────────────────
-  if (DELETE_PHOTO_RE.test(text)) {
+  // For bare "изтрий" / "изтрий я" — only trigger if last_photo state is active
+  const photoDeleteMatch = DELETE_PHOTO_RE.test(text);
+  const isBareDelete = /^(?:изтри[йи]|махни|премахни)(?:\s+(?:я|го))?$/i.test(text.trim());
+  if (photoDeleteMatch) {
     const state = await getState(chatId);
+    if (isBareDelete && state?.type !== 'last_photo') {
+      // Bare "изтрий" without photo context — fall through to AI
+      return await handleWithAI(chatId, text, salon);
+    }
     if (state?.type === 'last_photo') {
       const url = state.url;
       // Remove from gallery_images and portfolio_images
