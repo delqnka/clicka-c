@@ -1856,7 +1856,7 @@ async function handleBookingsForDay(
         AND status NOT IN ('cancelled')
         AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
       ORDER BY time ASC
-    ` as Promise<{ id: string; client_name: string; client_phone: string; time: string; service_name: string; status: string }[]>,
+    ` as unknown as Promise<{ id: string; client_name: string; client_phone: string; time: string; service_name: string; status: string }[]>,
     sql`SELECT opening_hours FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`,
   ]);
 
