@@ -1160,7 +1160,7 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
           if (e.price != null) s += ` — ${e.price} €`;
           return s;
         }).join('; ');
-        const totalPrice = lastCtxEntities.reduce((sum, e) => sum + (e.price ?? 0), 0);
+        const totalPrice = lastCtxEntities.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
         const hasPrices = lastCtxEntities.some(e => e.price != null);
         return `\n\n[ПОСЛЕДНО ПОКАЗАНИ ЗАПИСИ (${lastCtxEntities.length} бр.): ${entityLines}. ${hasPrices ? `Обща стойност: ${totalPrice} €. Ако потребителят пита "за колко пари", "обща сума", "колко струват" — отговори директно с тази сума.` : ''} Ако потребителят използва "я", "го", "нея", "него", "тя", "той", "тази", "този" — имат предвид ${lastCtxEntities.length === 1 ? lastCtxEntities[0]!.name : 'някой от тези хора'}. ЗАДЪЛЖИТЕЛНО използвай точното им пълно ime от този списък — НЕ измисляй или съкращавай имена.]`;
       })()
@@ -2062,7 +2062,7 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
     const priceStr = r.service_price != null ? ` — ${r.service_price} €` : '';
     lines.push(`${i + 1}. ${formatDateBg(r.date, { weekday: 'short', day: 'numeric', month: 'short' })} ${r.time} — <b>${r.client_name}</b> (${r.service_name}${priceStr})`);
   }
-  const total = rows.reduce((sum, r) => sum + (r.service_price ?? 0), 0);
+  const total = rows.reduce((sum, r) => sum + (Number(r.service_price) || 0), 0);
   if (total > 0) lines.push('', `💰 <b>Общо: ${total} €</b>`);
   lines.push('', '💡 Напиши <code>потвърди 1</code> (или <code>потвърди Деляна</code>) — клиентът получава потвърждение по имейл.');
   await sendTelegramMessage(chatId, lines.join('\n'));
