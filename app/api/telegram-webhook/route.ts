@@ -139,10 +139,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await answerCallbackQuery(cbq.id);
 
     if (cbq.data.startsWith('photo_action:')) {
-      const [, action, encodedUrl] = cbq.data.split(':');
-      const imageUrl = decodeURIComponent(encodedUrl ?? '');
+      const action = cbq.data.split(':')[1];
       const salon = await findSalonByChatId(cbChatId);
       if (!salon) return NextResponse.json({ ok: true });
+
+      // Retrieve URL from DB state
+      const stateRows = await sql`SELECT bot_conversation_state FROM salons WHERE telegram_chat_id = ${String(cbChatId)} LIMIT 1`;
+      const state = stateRows[0]?.bot_conversation_state as { type?: string; url?: string } | null;
+      const imageUrl = state?.type === 'last_photo' ? state.url : null;
+      if (!imageUrl) {
+        await sendTelegramMessage(cbChatId, '⚠️ Снимката е изтекла. Изпрати я отново.');
+        return NextResponse.json({ ok: true });
+      }
 
       if (action === 'price_list') {
         await handlePriceListPhoto(cbChatId, imageUrl, salon);
@@ -374,15 +382,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // Forwarded but no bookings found — fall through to gallery
     }
 
-    // No caption → ask what to do with the photo
+    // No caption → save URL in DB state, ask what to do via inline buttons
     if (!caption) {
-      const encoded = encodeURIComponent(imageUrl);
+      // Store the image URL in last_photo state so callback can retrieve it
+      await sql`
+        UPDATE salons SET bot_conversation_state = ${JSON.stringify({ type: 'last_photo', url: imageUrl, created_at: new Date().toISOString() })}::jsonb
+        WHERE telegram_chat_id = ${String(chatId)}
+      `;
       await sendTelegramInlineKeyboard(
         chatId,
         '📸 Какво да направя с тази снимка?',
         [[
-          { text: '📋 Ценоразпис', callback_data: `photo_action:price_list:${encoded}` },
-          { text: '🖼️ Портфолио', callback_data: `photo_action:gallery:${encoded}` },
+          { text: '📋 Ценоразпис', callback_data: 'photo_action:price_list' },
+          { text: '🖼️ Портфолио', callback_data: 'photo_action:gallery' },
         ]],
       );
       return NextResponse.json({ ok: true });
