@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { sql } from '@/lib/db';
-import { sendTelegramMessage, getTelegramFilePath, getTelegramFileUrl } from '@/lib/telegram';
+import { sendTelegramMessage, getTelegramFilePath, getTelegramFileUrl, sendTelegramInlineKeyboard, answerCallbackQuery } from '@/lib/telegram';
 import {
   parseBlockFromMessage,
   parsedBlockToBookingBlock,
@@ -28,6 +28,12 @@ type TelegramUpdate = {
     forward_date?: number;
     forward_from?: { first_name?: string };
     forward_sender_name?: string;
+  };
+  callback_query?: {
+    id: string;
+    from: { id: number };
+    data: string;
+    message?: { chat: { id: number } };
   };
 };
 
@@ -123,6 +129,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     update = (await request.json()) as TelegramUpdate;
   } catch {
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Callback query (inline button press) ────────────────────────────────
+  if (update.callback_query) {
+    const cbq = update.callback_query;
+    const cbChatId = cbq.message?.chat.id ?? cbq.from.id;
+    await answerCallbackQuery(cbq.id);
+
+    if (cbq.data.startsWith('photo_action:')) {
+      const [, action, encodedUrl] = cbq.data.split(':');
+      const imageUrl = decodeURIComponent(encodedUrl ?? '');
+      const salon = await findSalonByChatId(cbChatId);
+      if (!salon) return NextResponse.json({ ok: true });
+
+      if (action === 'price_list') {
+        await handlePriceListPhoto(cbChatId, imageUrl, salon);
+      } else {
+        await handleGalleryPhoto(cbChatId, imageUrl, salon, 'gallery');
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -345,6 +372,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ ok: true });
       }
       // Forwarded but no bookings found — fall through to gallery
+    }
+
+    // No caption → ask what to do with the photo
+    if (!caption) {
+      const encoded = encodeURIComponent(imageUrl);
+      await sendTelegramInlineKeyboard(
+        chatId,
+        '📸 Какво да направя с тази снимка?',
+        [[
+          { text: '📋 Ценоразпис', callback_data: `photo_action:price_list:${encoded}` },
+          { text: '🖼️ Портфолио', callback_data: `photo_action:gallery:${encoded}` },
+        ]],
+      );
+      return NextResponse.json({ ok: true });
     }
 
     // Default: upload to gallery / cover / portfolio

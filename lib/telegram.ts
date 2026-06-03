@@ -50,6 +50,23 @@ export async function sendTelegramMessage(chatId: string | number, text: string)
   await telegramPost('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML' });
 }
 
+export async function sendTelegramInlineKeyboard(
+  chatId: string | number,
+  text: string,
+  buttons: { text: string; callback_data: string }[][],
+): Promise<void> {
+  await telegramPost('sendMessage', {
+    chat_id: chatId,
+    text,
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: buttons },
+  });
+}
+
+export async function answerCallbackQuery(callbackQueryId: string): Promise<void> {
+  await telegramPost('answerCallbackQuery', { callback_query_id: callbackQueryId });
+}
+
 export interface BookingTelegramDetails {
   clientName: string;
   clientPhone: string;
