@@ -11,6 +11,7 @@ import {
   MarketingStepsSection,
   MarketingComparisonSection,
   MarketingFounderSection,
+  PriceListImportSection,
 } from '@/components/marketing/marketing-home-sections';
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { IPhoneMockup } from '@/components/ui/iphone-mockup';
@@ -329,6 +330,9 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       <main id="main-content">
       {/* ── HERO ──────────────────────────────────────── */}
       <ClickaHero activity={activity} />
+
+      {/* ── PRICE LIST AI IMPORT ──────────────────────── */}
+      <PriceListImportSection />
 
       {/* ── CLIENT SITE PREVIEW ───────────────────────── */}
       <section

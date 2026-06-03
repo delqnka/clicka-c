@@ -154,6 +154,165 @@ const FLOW_HEADINGS = [
   'От\nтелефона',
 ] as const;
 
+/* ── Price list AI import section ────────────────────── */
+
+export function PriceListImportSection() {
+  const services = [
+    { cat: 'КОСА', items: ['Дамско подстригване — 40 €', 'Мъжко подстригване — 25 €', 'Боядисване на цяла коса — 95 €', 'Боядисване на корен — 70 €', 'Измиване и сешоар — 35 €'] },
+    { cat: 'МАНИКЮР', items: ['Маникюр — 40 €', 'Педикюр — 55 €', 'Гел маникюр — 45 €', 'Нокт­опластика — 85 €'] },
+  ];
+
+  return (
+    <section
+      aria-label="Качи ценоразпис"
+      style={{
+        background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)',
+        padding: 'clamp(48px,9vw,96px) clamp(20px,5vw,60px)',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,5vw,56px)' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
+            Без ръчно въвеждане
+          </p>
+          <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 14, color: '#0f0f0f' }}>
+            Качи снимка на ценоразписа.<br />
+            <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              AI добавя всичко за секунди.
+            </span>
+          </h2>
+          <p style={{ fontSize: 'clamp(14px,1.8vw,17px)', color: '#666', maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
+            Снимай ценоразписа от стената, изпрати го в Telegram бота и готово — всичките ти услуги са в сайта.
+          </p>
+        </div>
+
+        {/* Two-column layout */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 'clamp(24px,4vw,48px)',
+          alignItems: 'center',
+        }}>
+
+          {/* Left: price list photo */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+            <div style={{
+              background: '#f5f0eb',
+              borderRadius: 16,
+              padding: 'clamp(20px,3vw,32px)',
+              width: '100%',
+              maxWidth: 320,
+              fontFamily: 'serif',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+              position: 'relative',
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <p style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginBottom: 6 }}>Салон Urban</p>
+                <p style={{ fontSize: 'clamp(28px,6vw,42px)', fontWeight: 900, fontStyle: 'italic', color: '#0f0f0f', lineHeight: 1 }}>ЦЕНОРАЗПИС</p>
+              </div>
+              {services.map((group) => (
+                <div key={group.cat} style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', marginBottom: 8, color: '#0f0f0f' }}>{group.cat}:</p>
+                  {group.items.map((item) => {
+                    const [name, price] = item.split(' — ');
+                    return (
+                      <div key={item} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#333', marginBottom: 4 }}>
+                        <span>{name}</span>
+                        <span style={{ fontWeight: 600 }}>{price}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>Снимка на ценоразписа</p>
+          </div>
+
+          {/* Middle: arrow */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 60 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#e11d48,#a855f7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(219,39,119,0.35)',
+              flexShrink: 0,
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#db2777', letterSpacing: '0.05em', textAlign: 'center' }}>AI парсира</span>
+          </div>
+
+          {/* Right: Telegram bot mockup */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+            <div style={{
+              background: '#1a1a2e',
+              borderRadius: 20,
+              padding: 'clamp(16px,2.5vw,24px)',
+              width: '100%',
+              maxWidth: 320,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            }}>
+              {/* Bot header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#e11d48,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff' }}>C</div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: 0 }}>@clickabot</p>
+                  <p style={{ fontSize: 10, color: '#888', margin: 0 }}>bot</p>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* User sends photo */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ background: '#7c3aed', borderRadius: '12px 12px 2px 12px', padding: '8px 12px', maxWidth: '75%' }}>
+                    <div style={{ width: 80, height: 56, background: '#f5f0eb', borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 18 }}>🖼️</span>
+                    </div>
+                    <p style={{ fontSize: 11, color: '#e0d7ff', margin: 0 }}>ценоразпис</p>
+                  </div>
+                </div>
+
+                {/* Bot typing */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#e11d48,#a855f7)', flexShrink: 0 }} />
+                  <div style={{ background: '#2a2a3e', borderRadius: '12px 12px 12px 2px', padding: '10px 14px', maxWidth: '85%' }}>
+                    <p style={{ fontSize: 12, color: '#e2e8f0', margin: 0, lineHeight: 1.5 }}>
+                      🔍 Анализирам ценоразписа...
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bot result */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#e11d48,#a855f7)', flexShrink: 0 }} />
+                  <div style={{ background: '#2a2a3e', borderRadius: '12px 12px 12px 2px', padding: '10px 14px', maxWidth: '85%' }}>
+                    <p style={{ fontSize: 12, color: '#4ade80', fontWeight: 700, margin: '0 0 6px' }}>✅ Добавени 9 услуги:</p>
+                    {['✂️ Дамско подстригване — 40 €', '✂️ Боядисване — 95 €', '💅 Маникюр — 40 €', '💅 Гел маникюр — 45 €'].map(line => (
+                      <p key={line} style={{ fontSize: 11, color: '#94a3b8', margin: '2px 0' }}>{line}</p>
+                    ))}
+                    <p style={{ fontSize: 11, color: '#64748b', margin: '4px 0 0', fontStyle: 'italic' }}>и още 5...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>Telegram бот — @clickabot</p>
+          </div>
+        </div>
+
+        {/* Bottom CTA */}
+        <div style={{ textAlign: 'center', marginTop: 'clamp(32px,5vw,52px)' }}>
+          <p style={{ fontSize: 14, color: '#888', marginBottom: 4 }}>
+            Работи с всякакъв ценоразпис — ръкописен, принтиран, на табло или в Excel.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── Features (FlowArt fullscreen scroll) ────────────── */
 
 export function MarketingFeaturesSection() {
