@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
         'HTTP-Referer': 'https://clicka.bg',
       },
       body: JSON.stringify({
-        model: 'google/gemini-flash-1.5',
+        model: 'google/gemini-2.5-flash',
         max_tokens: 300,
         messages: [
           { role: 'system', content: systemPrompt },
