@@ -19,7 +19,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
   const [nameEntered, setNameEntered] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [lastAt, setLastAt] = useState('1970-01-01');
+  const lastAtRef = useRef('1970-01-01');
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -29,19 +29,19 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
 
   const poll = useCallback(async (sid: string) => {
     try {
-      const res = await fetch(`/api/salon-chat/${sid}?after=${encodeURIComponent(lastAt)}`);
+      const res = await fetch(`/api/salon-chat/${sid}?after=${encodeURIComponent(lastAtRef.current)}`);
       const data = await res.json() as { messages: { id: string; role: string; content: string; created_at: string }[] };
       if (data.messages.length > 0) {
         const newMsgs: Message[] = data.messages
           .filter((m) => m.role === 'salon')
           .map((m) => ({ role: 'salon', content: m.content, createdAt: m.created_at }));
         if (newMsgs.length > 0) {
+          lastAtRef.current = newMsgs[newMsgs.length - 1]!.createdAt;
           setMessages((prev) => [...prev, ...newMsgs]);
-          setLastAt(newMsgs[newMsgs.length - 1]!.createdAt);
         }
       }
     } catch { /* ignore */ }
-  }, [lastAt]);
+  }, []);
 
   useEffect(() => {
     if (!sessionId || !open) return;
