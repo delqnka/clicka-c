@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         ? `💬 Имате нов чат с <b>${clientName ?? 'Клиент'}</b>\n\n`
         : `💬 <b>${clientName ?? 'Клиент'}:</b>\n`;
 
-      const text = `${header}${message.trim()}\n\n<i>↩️ Reply на това съобщение за да отговориш на клиента</i>`;
+      const text = `${header}${message.trim()}`;
 
       const result = await telegramPost('sendMessage', {
         chat_id: salon.telegram_chat_id,
