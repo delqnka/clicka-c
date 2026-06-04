@@ -21,12 +21,11 @@ export function ButtonColorful({
 
   if (variant === 'outline') {
     const outlineClass = cn(
-      'inline-flex rounded-full p-[2px] transition-all duration-200',
-      'hover:brightness-90',
+      'inline-flex rounded-full p-[2px] transition-all duration-200 group',
       className,
     );
     const inner = (
-      <span className="inline-flex h-full min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[var(--background)] px-7 text-base font-medium text-[var(--foreground)]">
+      <span className="inline-flex h-full min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[var(--background)] px-7 text-base font-medium text-[var(--foreground)] transition-all duration-200 group-hover:bg-[#a855f7] group-hover:text-white">
         {label}
       </span>
     );

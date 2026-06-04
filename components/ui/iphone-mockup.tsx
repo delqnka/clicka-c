@@ -1,12 +1,36 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 type IPhoneMockupProps = {
   src: string;
-  /** e.g. "cover" or "contain" */
   objectFit?: 'cover' | 'contain';
+  playbackRate?: number;
+  blurQuickType?: boolean;
+  blurTimeRange?: [number, number];
 };
 
-export function IPhoneMockup({ src, objectFit = 'cover' }: IPhoneMockupProps) {
+export function IPhoneMockup({ src, objectFit = 'cover', playbackRate = 1, blurQuickType = false, blurTimeRange }: IPhoneMockupProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const overlay = overlayRef.current;
+    if (!video) return;
+    video.playbackRate = playbackRate;
+
+    if (!blurQuickType || !blurTimeRange || !overlay) return;
+
+    const onTimeUpdate = () => {
+      const t = video.currentTime;
+      const visible = t >= blurTimeRange[0] && t <= blurTimeRange[1];
+      overlay.style.display = visible ? 'block' : 'none';
+    };
+    video.addEventListener('timeupdate', onTimeUpdate);
+    return () => video.removeEventListener('timeupdate', onTimeUpdate);
+  }, [playbackRate, blurQuickType, blurTimeRange]);
+
   return (
     <div
       style={{
@@ -51,6 +75,7 @@ export function IPhoneMockup({ src, objectFit = 'cover' }: IPhoneMockupProps) {
         />
 
         <video
+          ref={videoRef}
           src={src}
           autoPlay
           loop
@@ -64,6 +89,25 @@ export function IPhoneMockup({ src, objectFit = 'cover' }: IPhoneMockupProps) {
             objectFit,
           }}
         />
+
+        {/* Blur overlay for QuickType bar — shown/hidden via DOM ref */}
+        {blurQuickType && (
+          <div
+            ref={overlayRef}
+            style={{
+              display: 'none',
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: '33%',
+              height: '7%',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              backgroundColor: 'rgba(60,60,65,0.95)',
+              zIndex: 20,
+            }}
+          />
+        )}
       </div>
     </div>
   );

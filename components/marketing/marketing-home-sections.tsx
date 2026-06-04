@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
@@ -58,42 +59,31 @@ export function MarketingAudienceSection() {
     <section
       id="audience"
       data-home-section="audience"
-      className="relative overflow-hidden bg-rose-50"
-      style={{ padding: 'clamp(24px,4vw,40px) 0 clamp(56px,10vw,96px)' }}
+      className="bg-rose-50"
+      style={{ padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)' }}
       aria-label="За кого е"
     >
-      <style>{`
-        @keyframes aud-marquee   { from { transform: translateX(0) }    to { transform: translateX(-50%) } }
-        @keyframes aud-marquee-r { from { transform: translateX(-50%) } to { transform: translateX(0) } }
-      `}</style>
-
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white pointer-events-none" />
-
-      <div className="relative mx-auto max-w-3xl px-5 text-center">
+      <div className="mx-auto max-w-3xl text-center">
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-rose-700 md:text-sm">
-          За кого е?
+          За кого е Clicka?
         </p>
         <h2
           className={`mt-5 text-balance text-[clamp(1.75rem,5vw,3.25rem)] font-bold leading-[1.08] tracking-[-0.03em] ${GRADIENT_HEADING}`}
           style={GRADIENT_BG}
         >
-          {MARKETING_AUDIENCE.headline}
+          Работиш с часове?
         </h2>
-        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.95rem,2vw,1.1rem)] leading-relaxed text-[var(--muted-foreground)]">
-          {MARKETING_AUDIENCE.subtitle}
+        <p
+          className="mx-auto mt-3 max-w-xl text-[clamp(1.1rem,2.5vw,1.4rem)] font-bold leading-relaxed"
+          style={{ color: '#0f0f0f' }}
+        >
+          Значи{' '}
+          <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>Clicka</span>
+          {' '}е за теб.
         </p>
-      </div>
-
-      <div
-        className="relative mt-10 space-y-3 overflow-hidden"
-        aria-hidden="true"
-        style={{
-          maskImage: 'linear-gradient(to right, transparent 2%, black 12%, black 88%, transparent 98%)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 2%, black 12%, black 88%, transparent 98%)',
-        }}
-      >
-        <MarqueeRow tags={TAGS_ROW_1} duration={35} />
-        <MarqueeRow tags={TAGS_ROW_2} duration={28} reverse />
+        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.95rem,2vw,1.1rem)] leading-relaxed text-[var(--muted-foreground)]">
+          Независимо дали си самостоятелен специалист или имаш екип, получаваш собствен сайт, онлайн резервации и AI асистент в Telegram.
+        </p>
       </div>
     </section>
   );
@@ -282,25 +272,26 @@ export function TelegramManagementSection() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,5vw,52px)' }}>
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
-            Telegram бот
+            Твоят AI асистент
           </p>
           <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 14, color: '#0f0f0f' }}>
-            Управляваш всичко с едно съобщение.
+            <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Управляваш всичко с едно съобщение.</span>
           </h2>
           <p style={{ fontSize: 'clamp(14px,1.8vw,17px)', color: '#666', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
-            Добавяй услуги, снимки, променяй работното си време, записвай часове и виждай резервациите си директно в Telegram, веднага.
+            Добавяй услуги, снимки, променяй работното си време, записвай часове и виждай резервациите си директно в <span style={{ color: '#229ED9', fontWeight: 700 }}>Telegram</span>, веднага.
           </p>
         </div>
 
         {/* Screenshots grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: 'clamp(10px,2.5vw,24px)',
           alignItems: 'start',
         }}>
           {[
             { src: '/images/IMG_1821.jpg', alt: 'Записване на клиент и добавяне на услуга' },
+            { src: '/images/IMG_1826 2.jpg', alt: 'Преместване на резервация и бележки за клиент' },
             { src: '/images/IMG_1822.jpg', alt: 'Качване на снимки за портфолио' },
             { src: '/images/IMG_1823.jpg', alt: 'Снимките добавени в галерията' },
           ].map((img) => (
@@ -321,71 +312,70 @@ export function TelegramManagementSection() {
   );
 }
 
+const MAIN_FEATURES = [
+  'Собствен сайт, а не профил в платформа',
+  '0% комисионна върху резервациите',
+  'AI асистент в Telegram',
+  'Онлайн плащания и депозити',
+  'Автоматични имейли и известия',
+  'Google ревюта, които работят за твоя бранд',
+  'Хостинг, SSL и поддръжка включени',
+  'Всичко управляваш от телефона си',
+];
+
+const EXTRA_BADGES = [
+  'SEO 100/100', 'Блог', 'Собствен домейн', 'Неограничени посещения',
+  'Неограничена галерия', 'Google Calendar sync', 'SMS напомняния',
+];
+
 export function MarketingFeaturesSection() {
-  const items = MARKETING_FEATURES.items;
-  const total = items.length;
-
   return (
-    <section id="features" data-home-section="features" aria-label="Какво получаваш">
-      <div className="bg-[var(--background)] px-5 pb-3 pt-7 sm:px-[5vw] sm:pt-9">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
-          Какво получаваш?
-        </p>
+    <section
+      id="features"
+      data-home-section="features"
+      aria-label="Какво получаваш"
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)' }}
+    >
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 'clamp(32px,5vw,48px)' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
+            Какво получаваш
+          </p>
+          <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.12, marginBottom: 10, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Защо салоните избират Clicka?
+          </h2>
+          <p style={{ fontSize: 'clamp(15px,1.8vw,17px)', color: '#555', lineHeight: 1.6, maxWidth: 520 }}>
+            Всичко необходимо, за да работи салонът ти онлайн.
+          </p>
+        </div>
+
+        {/* Main features */}
+        <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 clamp(28px,4vw,40px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {MAIN_FEATURES.map((f, i) => (
+            <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 3 }}>
+                <defs><linearGradient id={`fg${i}`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e11d48"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
+                <path d="M20 6L9 17l-5-5" stroke={`url(#fg${i})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{ fontSize: 'clamp(15px,1.8vw,17px)', fontWeight: 600, color: '#0f0f0f', lineHeight: 1.5 }}>{f}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Extra badges */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {EXTRA_BADGES.map((b) => (
+            <span key={b} style={{
+              fontSize: 12, fontWeight: 600, padding: '5px 12px',
+              borderRadius: 999,
+              background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg,#e11d48,#a855f7) border-box',
+              border: '1.5px solid transparent',
+              color: '#db2777',
+            }}>{b}</span>
+          ))}
+        </div>
       </div>
-
-      <FlowArt aria-label="Какво получаваш">
-        {items.map((item, i) => {
-          const s = FLOW_STYLE[i];
-          return (
-            <FlowSection
-              key={item.title}
-              index={i}
-              aria-label={item.title}
-              style={{ backgroundColor: s.bg, color: s.fg }}
-            >
-              <div>
-                <p
-                  className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]"
-                  style={{
-                    color: s.accent,
-                    background:
-                      s.fg === '#fff'
-                        ? 'rgba(0,0,0,0.12)'
-                        : 'rgba(255,255,255,0.6)',
-                  }}
-                >
-                  {String(i + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
-                </p>
-
-                <hr
-                  className="mt-[4vw] sm:mt-[2vw]"
-                  style={{ border: 'none', borderTop: `1px solid ${s.line}` }}
-                />
-
-                <h2
-                  className="mt-[4vw] sm:mt-[2vw] text-[clamp(3rem,12vw,10rem)] font-bold leading-[0.85] uppercase tracking-tight"
-                  style={{ whiteSpace: 'pre-line' }}
-                >
-                  {FLOW_HEADINGS[i]}
-                </h2>
-              </div>
-
-              <div className="mt-auto">
-                <hr
-                  className="mb-[4vw] sm:mb-[2vw]"
-                  style={{ border: 'none', borderTop: `1px solid ${s.line}` }}
-                />
-                <p
-                  className="max-w-[45ch] text-[clamp(1rem,3.5vw,1.35rem)] leading-relaxed"
-                  style={{ color: s.sub }}
-                >
-                  {item.body}
-                </p>
-              </div>
-            </FlowSection>
-          );
-        })}
-      </FlowArt>
     </section>
   );
 }
@@ -397,8 +387,7 @@ export function MarketingStepsSection() {
     <section
       id="steps"
       data-home-section="steps"
-      className="border-t border-[var(--border)] bg-[var(--card)]"
-      style={{ padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)' }}
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)' }}
       aria-labelledby="steps-h"
     >
       <div className="mx-auto max-w-[900px]">
@@ -456,7 +445,7 @@ export function MarketingComparisonSection() {
   return (
     <section
       id="comparison"
-      className="border-t border-[var(--border)] bg-[var(--background)]"
+      className="bg-[var(--background)]"
       style={{ padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)' }}
       aria-labelledby="comparison-h"
     >
@@ -470,18 +459,32 @@ export function MarketingComparisonSection() {
           {MARKETING_COMPARISON.title}
         </h2>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {/* Carousel on mobile, side-by-side on desktop */}
+        <div style={{
+          display: 'flex',
+          overflowX: 'auto',
+          gap: 16,
+          scrollSnapType: 'x mandatory',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          paddingBottom: 8,
+        }}>
           {/* Left: platforms */}
           <div
             data-reveal
-            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-7"
+            style={{
+              flex: '0 0 82%',
+              scrollSnapAlign: 'start',
+              maxWidth: 420,
+            }}
+            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5"
           >
-            <h3 className="mb-5 text-lg font-bold text-[var(--foreground)]">
+            <h3 className="mb-4 text-base font-bold text-[var(--foreground)]">
               {MARKETING_COMPARISON.left.title}
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {MARKETING_COMPARISON.left.items.map((item) => (
-                <li key={item} className="flex items-start gap-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
+                <li key={item} className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
                   <span className="mt-0.5 shrink-0 text-red-500" aria-hidden>&#10005;</span>
                   {item}
                 </li>
@@ -492,22 +495,32 @@ export function MarketingComparisonSection() {
           {/* Right: clicka */}
           <div
             data-reveal
-            className="rounded-2xl border-2 border-[var(--primary)] bg-[var(--card)] p-7"
-            style={{ transitionDelay: '0.1s' }}
+            style={{
+              flex: '0 0 82%',
+              scrollSnapAlign: 'start',
+              maxWidth: 420,
+              background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #e11d48, #db2777, #a855f7) border-box',
+              border: '2px solid transparent',
+              borderRadius: 16,
+              padding: 20,
+            }}
           >
-            <h3 className="mb-5 flex items-center gap-2 text-lg font-bold text-[var(--foreground)]">
+            <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-[var(--foreground)]">
               <ClickaLogo size="compact" href={null} className="inline-flex shrink-0" />
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {MARKETING_COMPARISON.right.items.map((item) => (
-                <li key={item} className="flex items-start gap-3 text-sm leading-relaxed text-[var(--foreground)]">
-                  <span className="mt-0.5 shrink-0 text-emerald-500" aria-hidden>&#10003;</span>
+                <li key={item} className="flex items-start gap-2 text-xs leading-relaxed text-[var(--foreground)]">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 2 }}><defs><linearGradient id="chk" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e11d48"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs><path d="M20 6L9 17l-5-5" stroke="url(#chk)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   {item}
                 </li>
               ))}
             </ul>
           </div>
         </div>
+        <p style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, marginTop: 10, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }} className="sm:hidden">
+          Плъзни за сравнение →
+        </p>
       </div>
     </section>
   );
@@ -515,11 +528,121 @@ export function MarketingComparisonSection() {
 
 /* ── Founder section ──────────────────────────────────── */
 
+const FAQ_ITEMS = [
+  { q: 'Мога ли да използвам Clicka без технически умения?', a: 'Да. Clicka е създадена за хора, които не искат да учат сложни системи. Ако можеш да изпратиш съобщение в Telegram, можеш да управляваш сайта си.' },
+  { q: 'Колко време отнема създаването на сайта?', a: 'Повечето сайтове са готови за по-малко от 15 минути. Добавяш информацията си и сайтът е онлайн.' },
+  { q: 'Трябва ли да въвеждам услугите си ръчно?', a: 'Не. Просто качи снимка на ценоразписа си в Telegram и AI ще създаде услугите автоматично.' },
+  { q: 'Как получавам известия за нови резервации?', a: 'Получаваш известия директно в Telegram и по имейл веднага след всяка нова резервация.' },
+  { q: 'Мога ли да приемам депозити и онлайн плащания?', a: 'Да. Clicka работи със Stripe и ти позволява да приемаш депозити и плащания с карта директно от клиентите си.' },
+  { q: 'Мога ли да използвам собствен домейн?', a: 'Да. Можеш да свържеш съществуващ домейн или да закупим и настроим нов за теб.' },
+  { q: 'Какво се случва, ако вече имам сайт?', a: 'Можеш да продължиш да използваш сегашния си домейн и да го свържем към Clicka.' },
+  { q: 'Мога ли да променям услугите и цените си по всяко време?', a: 'Да. Можеш да добавяш, редактираш или премахваш услуги директно от Telegram.' },
+  { q: 'Как да редактирам цени и имена на услугите си?', a: 'Много лесно — просто кажи на Telegram бота "Редактирай ми услуга Х" и той ще се погрижи веднага!' },
+  { q: 'Какво става, ако клиент отмени час?', a: 'Резервацията се обновява автоматично и ще получиш известие. При използване на депозити можеш да приложиш собствена политика за анулиране.' },
+  { q: 'Мога ли да качвам снимки на работата си?', a: 'Да. Изпращаш снимките на Telegram бота и те автоматично се появяват в галерията на сайта ти.' },
+  { q: 'Има ли ограничение за броя резервации?', a: 'Не. Няма ограничение за броя резервации или посещения на сайта.' },
+  { q: 'Има ли комисионна върху резервациите?', a: 'Не. Clicka не взима комисионна. Запазваш 100% от приходите си.' },
+  { q: 'Къде отиват плащанията от клиентите?', a: 'Директно в твоя Stripe акаунт. Clicka не задържа парите ти и не взима комисионна от плащанията.' },
+  { q: 'Какво става ако загубя достъп до Telegram?', a: 'Можеш да свържеш нов Telegram акаунт и да продължиш да управляваш сайта си.' },
+  { q: 'Трябва ли ми Google Calendar?', a: 'Не. Clicka има собствена система за управление на резервации и не изисква Google Calendar или Apple Calendar.' },
+  { q: 'Колко специалисти мога да добавя?', a: 'SOLO поддържа 1 специалист. TEAM поддържа до 3 специалисти с отделни графици, резервационни линкове, Telegram акаунти и Google календари.' },
+  { q: 'Обвързан ли съм с дългосрочен договор?', a: 'Не. Избираш план за 6 или 12 месеца. В края на периода сам решаваш дали да подновиш.' },
+  { q: 'Плаща ли се всеки месец?', a: 'Не. Clicka не е месечен абонамент. Избираш план за 6 или 12 месеца и плащаш еднократно за целия период. Няма месечни такси и няма автоматично подновяване. Преди изтичането на периода ще получиш напомняне и сам ще решиш дали да продължиш.' },
+  { q: 'Как се извършва плащането?', a: 'Плащането се извършва сигурно чрез Stripe – една от най-използваните платформи за онлайн плащания в света. Данните на картата ти не се съхраняват от Clicka.' },
+  { q: 'Какво става след изтичане на периода?', a: 'Ще получиш напомняне преди изтичането. Сам решаваш дали да подновиш за нов период.' },
+  { q: 'Мога ли да използвам Clicka, ако вече приемам резервации по телефон?', a: 'Да. Просто добавяй телефонните резервации през Telegram и часовете автоматично ще се блокират за онлайн записване.' },
+  { q: 'Какво става, ако клиент ми пише в Instagram или Facebook?', a: 'Изпрати скрийншот или напиши резервацията на Telegram бота. Той ще я добави в системата и ще направи часа недостъпен за нови резервации.' },
+  { q: 'Мога ли да затворя определени дни или часове?', a: 'Да. Кажи на Telegram бота кога не работиш и графикът ще се актуализира автоматично.' },
+  { q: 'Мога ли да качвам нови снимки по всяко време?', a: 'Да. Изпращаш снимките на Telegram бота и те автоматично се появяват в галерията на сайта ти.' },
+  { q: 'Какво става, ако променя цените си?', a: 'Просто изпрати новите цени на Telegram бота. Сайтът се обновява автоматично.' },
+  { q: 'Мога ли да използвам собствено лого и цветове?', a: 'Да. Сайтът се персонализира с твоето лого, снимки и стил.' },
+  { q: 'Ще виждат ли клиентите ми други салони?', a: 'Не. Сайтът е само за твоя бизнес. Няма конкуренти до теб.' },
+  { q: 'Мога ли да използвам Clicka без Stripe?', a: 'Да. Онлайн плащанията и депозитите са по желание.' },
+  { q: 'Има ли ограничение за броя клиенти?', a: 'Не. Няма ограничение за броя клиенти, резервации или посещения на сайта.' },
+  { q: 'Какво става ако забравя да подновя?', a: 'Ще получиш напомняне преди изтичането на периода, за да решиш дали искаш да продължиш.' },
+  { q: 'Мога ли да премина от SOLO към TEAM по-късно?', a: 'Да. Можеш да започнеш самостоятелно и когато екипът ти се разрасне, да преминеш към TEAM план.' },
+];
+
+const FAQ_INITIAL_COUNT = 5;
+
+export function MarketingFaqSection() {
+  const [open, setOpen] = useState<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? FAQ_ITEMS : FAQ_ITEMS.slice(0, FAQ_INITIAL_COUNT);
+
+  return (
+    <section
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,9vw,96px) clamp(20px,5vw,60px)' }}
+      aria-label="Честo задавани въпроси"
+    >
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
+          FAQ
+        </p>
+        <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.12, marginBottom: 36, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          Често задавани въпроси
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {visible.map((item, i) => (
+            <div
+              key={i}
+              style={{ borderBottom: '1px solid #f0e6f6' }}
+            >
+              <button
+                onClick={() => setOpen(open === i ? null : i)}
+                style={{
+                  width: '100%', background: 'none', border: 'none', padding: '16px 0',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  cursor: 'pointer', textAlign: 'left', gap: 12,
+                }}
+              >
+                <span style={{ fontSize: 'clamp(14px,1.8vw,16px)', fontWeight: 600, color: '#0f0f0f', lineHeight: 1.4 }}>{item.q}</span>
+                <svg
+                  width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  style={{ flexShrink: 0, transform: open === i ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
+                >
+                  <path d="M6 9l6 6 6-6" stroke="#db2777" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {open === i && (
+                <p style={{ fontSize: 'clamp(13px,1.6vw,15px)', color: '#666', lineHeight: 1.7, paddingBottom: 16, margin: 0 }}>
+                  {item.a}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => { setShowAll(v => !v); setOpen(null); }}
+          style={{
+            marginTop: 20, width: '100%', padding: '14px',
+            background: 'none', border: '1.5px solid',
+            borderImageSource: 'linear-gradient(135deg,#e11d48,#a855f7)',
+            borderImageSlice: 1,
+            borderRadius: 12,
+            cursor: 'pointer',
+            fontSize: 14, fontWeight: 700,
+            backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          {showAll
+            ? 'Скрий въпросите ↑'
+            : `Виж всички въпроси (${FAQ_ITEMS.length - FAQ_INITIAL_COUNT} още) ↓`}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function MarketingFounderSection() {
   return (
     <section
       id="founder"
-      className="border-t border-[var(--border)] bg-[var(--card)] text-center"
+      className="text-center"
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)' }}
       style={{ padding: 'clamp(56px,8vw,88px) clamp(20px,5vw,60px)' }}
       aria-labelledby="founder-h"
     >
