@@ -39,12 +39,14 @@ export function AdminSection({
   action,
   children,
   compact = false,
+  icon,
 }: {
-  title: string;
+  title: ReactNode;
   desc?: string;
   action?: ReactNode;
   children: ReactNode;
   compact?: boolean;
+  icon?: ReactNode;
 }) {
   const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
@@ -68,8 +70,12 @@ export function AdminSection({
               letterSpacing: compact ? '-0.02em' : '-0.025em',
               color: ADMIN_T.text,
               lineHeight: 1.2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
             }}
           >
+            {icon}
             {title}
           </h2>
           {desc ? (

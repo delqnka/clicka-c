@@ -225,8 +225,17 @@ type ServiceRow = {
 
 type ServiceVariant = NonNullable<ServiceRow['variants']>[number];
 
+const LOGO_SOURCES = (domain: string) => [
+  `https://img.logo.dev/${domain}?token=pk_free&size=128`,
+  `https://logo.clearbit.com/${domain}`,
+  `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+];
+
 function SalonBrandLogo({ domain, name }: { domain: string; name: string }) {
-  const [failed, setFailed] = useState(false);
+  const [srcIndex, setSrcIndex] = useState(0);
+  const sources = LOGO_SOURCES(domain);
+  const failed = srcIndex >= sources.length;
+
   if (failed) {
     return (
       <span className="inline-flex items-center rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm">
@@ -237,19 +246,38 @@ function SalonBrandLogo({ domain, name }: { domain: string; name: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`https://logo.clearbit.com/${domain}`}
+      src={sources[srcIndex]}
       alt={name}
       title={name}
       width={48}
       height={48}
-      onError={() => setFailed(true)}
+      onError={() => setSrcIndex((i) => i + 1)}
       className="h-10 w-auto max-w-[80px] object-contain opacity-70 grayscale transition-all hover:opacity-100 hover:grayscale-0"
     />
   );
 }
 
+const CUSTOM_PREFIX = 'custom|';
+
+function resolveBrandEntries(ids: string[]) {
+  const predefined = getBrandsByIds(ids.filter((id) => !id.startsWith(CUSTOM_PREFIX)));
+  const custom = ids
+    .filter((id) => id.startsWith(CUSTOM_PREFIX))
+    .map((raw) => {
+      const rest = raw.slice(CUSTOM_PREFIX.length);
+      const idx = rest.indexOf('|');
+      if (idx === -1) return null;
+      return { id: raw, name: rest.slice(0, idx), domain: rest.slice(idx + 1) };
+    })
+    .filter(Boolean) as { id: string; name: string; domain: string }[];
+  return [
+    ...predefined.map((b) => ({ id: b.id, name: b.name, domain: b.domain })),
+    ...custom,
+  ];
+}
+
 function SalonBrandsSection({ brandIds }: { brandIds: string[] }) {
-  const brands = getBrandsByIds(brandIds);
+  const brands = resolveBrandEntries(brandIds);
   if (brands.length === 0) return null;
   return (
     <div className="pt-10">

@@ -155,7 +155,7 @@ const FLOW_HEADINGS = [
   'Твоят\nдомейн',
   'Google\nревюта',
   'SEO\n100/100',
-  'Calendar\nsync',
+  'AI\nрецепционист',
   'От\nтелефона',
 ] as const;
 
@@ -339,7 +339,7 @@ const MAIN_FEATURES = [
 
 const EXTRA_BADGES = [
   'SEO 100/100', 'Блог', 'Собствен домейн', 'Неограничени посещения',
-  'Неограничена галерия', 'Google Calendar sync', 'SMS напомняния',
+  'Неограничена галерия', 'AI рецепционист', 'SMS напомняния',
 ];
 
 export function MarketingFeaturesSection() {
