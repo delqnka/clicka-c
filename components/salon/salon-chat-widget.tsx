@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { CLICKA_MARKETING_GRADIENT } from '@/lib/clicka-marketing-site';
 
 type Message = { role: 'client' | 'salon'; content: string; createdAt: string };
 
@@ -101,8 +102,8 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
     finally { setSending(false); }
   }
 
-  const GRAD = `linear-gradient(135deg, ${primaryColor}, #a855f7)`;
-  const PINK_GRAD = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
+  const GRAD = CLICKA_MARKETING_GRADIENT;
+  const PINK_GRAD = CLICKA_MARKETING_GRADIENT;
 
   // Panel dimensions
   // Mobile: fullscreen, shifted up by keyboard height
