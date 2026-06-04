@@ -299,7 +299,10 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const data = await res.json() as { choices?: { message?: { content?: string } }[] };
+    const data = await res.json() as { choices?: { message?: { content?: string } }[]; error?: unknown };
+    if (!res.ok || data.error) {
+      console.error('[salon-ai-chat] OpenRouter error', res.status, JSON.stringify(data));
+    }
     const reply = data.choices?.[0]?.message?.content ?? 'Нещо се обърка. Опитай пак.';
 
     return NextResponse.json({ message: reply });
