@@ -135,6 +135,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true });
   }
 
+  // Always return ok:true so Telegram never retries (retries cause duplicate inserts).
+  try {
+    return await handleUpdate(update);
+  } catch (e) {
+    console.error('[telegram-webhook]', e);
+    return NextResponse.json({ ok: true });
+  }
+}
+
+async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
+
   // ── Callback query (inline button press) ────────────────────────────────
   if (update.callback_query) {
     const cbq = update.callback_query;

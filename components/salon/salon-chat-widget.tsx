@@ -20,6 +20,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const lastAtRef = useRef('1970-01-01');
+  const seenIdsRef = useRef(new Set<string>());
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -33,8 +34,11 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
       const data = await res.json() as { messages: { id: string; role: string; content: string; created_at: string }[] };
       if (data.messages.length > 0) {
         const newMsgs: Message[] = data.messages
-          .filter((m) => m.role === 'salon')
-          .map((m) => ({ role: 'salon', content: m.content, createdAt: m.created_at }));
+          .filter((m) => m.role === 'salon' && !seenIdsRef.current.has(m.id))
+          .map((m) => {
+            seenIdsRef.current.add(m.id);
+            return { role: 'salon' as const, content: m.content, createdAt: String(m.created_at) };
+          });
         if (newMsgs.length > 0) {
           lastAtRef.current = newMsgs[newMsgs.length - 1]!.createdAt;
           setMessages((prev) => [...prev, ...newMsgs]);
