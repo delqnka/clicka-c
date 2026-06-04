@@ -76,6 +76,7 @@ function resolveInitial(param: string | null): { plan: Plan; period: Period } {
 
 function CreatePageContent() {
   const searchParams  = useSearchParams();
+  const grantToken    = searchParams.get('grant');
   const initial       = resolveInitial(searchParams.get('plan'));
   const [plan,   setPlan]   = useState<Plan>(initial.plan);
   const [period, setPeriod] = useState<Period>(initial.period);
@@ -94,6 +95,26 @@ function CreatePageContent() {
   const planKey  = `${plan}_${period}` as const;
 
   async function handlePay() {
+    if (grantToken) {
+      setIsSubmitting(true);
+      setError('');
+      try {
+        const res = await fetch('/api/grant-activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: grantToken }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Грешка');
+        if (data.slug) { window.location.href = `/success?salon=${data.slug}`; return; }
+        throw new Error('Грешка при активиране');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Грешка');
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
     if (wantsInvoice) {
       if (!companyName.trim()) { setError('Въведи наименование на фирмата.'); return; }
@@ -503,10 +524,12 @@ function CreatePageContent() {
         <div className="cp-sticky-bar mt-6">
           <ButtonColorful
             label={isSubmitting
-              ? 'Пренасочване към Stripe…'
-              : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
+              ? (grantToken ? 'Активира…' : 'Пренасочване към Stripe…')
+              : grantToken
+                ? 'Активирай безплатния абонамент'
+                : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
             onClick={handlePay}
-            disabled={isSubmitting || !termsAccepted}
+            disabled={isSubmitting || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
           <div className="mt-3 flex flex-wrap items-center justify-center gap-4">

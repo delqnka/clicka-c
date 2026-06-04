@@ -35,7 +35,17 @@ type PaymentRow = {
   salonSlug: string | null;
 };
 
-type Tab = 'salons' | 'bookings' | 'payments';
+type Tab = 'salons' | 'bookings' | 'payments' | 'grants';
+
+type GrantRow = {
+  id: string;
+  email: string;
+  plan_type: string;
+  token: string;
+  created_at: string;
+  used_at: string | null;
+  salon_id: string | null;
+};
 
 /* ── SVG Icons ─────────────────────────────────────────────── */
 function IconSearch({ className = '' }: { className?: string }) {
@@ -101,6 +111,13 @@ function IconExternalLink({ className = '' }: { className?: string }) {
     </svg>
   );
 }
+function IconGift({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+    </svg>
+  );
+}
 
 /* ── Helpers ────────────────────────────────────────────────── */
 function formatDate(iso: string) {
@@ -114,7 +131,9 @@ function formatAmount(cents: number, currency: string) {
 }
 function planLabel(plan: string | null) {
   const map: Record<string, string> = {
-    solo: 'SOLO', ekip: 'ЕКИП', studio: 'СТУДИО',
+    solo: 'Solo', team: 'Екип',
+    solo_bonus_12m: 'Solo bonus', solo_bonus_6m: 'Solo bonus',
+    team_bonus_12m: 'Екип bonus', team_bonus_6m: 'Екип bonus',
     custom_domain: 'Домейн', sms_pack: 'SMS',
   };
   return plan ? (map[plan] ?? plan) : null;
@@ -142,6 +161,13 @@ export default function PlatformAdminDashboard({
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const [expandedSalon, setExpandedSalon] = useState<string | null>(null);
+  const [settingPlan, setSettingPlan] = useState<string | null>(null);
+  const [grants, setGrants] = useState<GrantRow[] | null>(null);
+  const [grantsLoading, setGrantsLoading] = useState(false);
+  const [grantEmail, setGrantEmail] = useState('');
+  const [grantPlan, setGrantPlan] = useState('solo_bonus_12m');
+  const [grantSaving, setGrantSaving] = useState(false);
+  const [grantLink, setGrantLink] = useState<string | null>(null);
 
   const filteredSalons = useMemo(() => {
     return salonList.filter((s) => {
@@ -193,6 +219,24 @@ export default function PlatformAdminDashboard({
     }
   }
 
+  async function handleSetPlan(salonId: string, planType: string | null) {
+    setSettingPlan(salonId);
+    try {
+      const res = await fetch('/api/pa/salons', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salonId, planType }),
+      });
+      if (res.ok) {
+        setSalonList((prev) =>
+          prev.map((s) => s.salon_id === salonId ? { ...s, plan_type: planType } : s)
+        );
+      }
+    } finally {
+      setSettingPlan(null);
+    }
+  }
+
   async function handleLoadPayments() {
     if (payments !== null) return;
     setPaymentsLoading(true);
@@ -204,6 +248,49 @@ export default function PlatformAdminDashboard({
     } finally {
       setPaymentsLoading(false);
     }
+  }
+
+  async function handleLoadGrants() {
+    if (grants !== null) return;
+    setGrantsLoading(true);
+    try {
+      const res = await fetch('/api/pa/grants');
+      const data = await res.json();
+      setGrants(data.grants ?? []);
+    } finally {
+      setGrantsLoading(false);
+    }
+  }
+
+  async function handleCreateGrant() {
+    if (!grantEmail.trim()) return;
+    setGrantSaving(true);
+    setGrantLink(null);
+    try {
+      const res = await fetch('/api/pa/grants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: grantEmail.trim(), planType: grantPlan }),
+      });
+      const data = await res.json();
+      if (data.ok && data.token) {
+        const link = `${window.location.origin}/create?grant=${data.token}`;
+        setGrantLink(link);
+        setGrantEmail('');
+        setGrants(null); // refresh list next time
+      }
+    } finally {
+      setGrantSaving(false);
+    }
+  }
+
+  async function handleDeleteGrant(id: string) {
+    await fetch('/api/pa/grants', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    setGrants((prev) => prev ? prev.filter((g) => g.id !== id) : null);
   }
 
   async function handleLogout() {
@@ -220,6 +307,7 @@ export default function PlatformAdminDashboard({
     { id: 'salons',   label: 'Салони',      icon: <IconBuilding className="w-4 h-4" /> },
     { id: 'bookings', label: 'Резервации',  icon: <IconCalendar className="w-4 h-4" /> },
     { id: 'payments', label: 'Плащания',    icon: <IconCreditCard className="w-4 h-4" /> },
+    { id: 'grants',   label: 'Подаръци',    icon: <IconGift className="w-4 h-4" /> },
   ];
 
   return (
@@ -290,8 +378,9 @@ export default function PlatformAdminDashboard({
                   onClick={() => {
                     setTab(t.id);
                     if (t.id === 'payments') handleLoadPayments();
+                    if (t.id === 'grants') handleLoadGrants();
                   }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-base font-medium
                                transition-colors duration-150 cursor-pointer min-h-[48px]
                                ${active
                                  ? 'text-gray-900 border-b-2'
@@ -433,6 +522,35 @@ export default function PlatformAdminDashboard({
                             </div>
                           </div>
 
+                          {/* Set Plan */}
+                          <div className="pt-1">
+                            <p className="text-xs text-gray-400 mb-1.5">Bonus абонамент</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {([
+                                { value: 'solo_bonus_12m', label: 'Solo · 1 год' },
+                                { value: 'solo_bonus_6m',  label: 'Solo · 6 мес' },
+                                { value: 'team_bonus_12m', label: 'Екип · 1 год' },
+                                { value: 'team_bonus_6m',  label: 'Екип · 6 мес' },
+                              ] as { value: string; label: string }[]).map((p) => {
+                                const active = salon.plan_type === p.value;
+                                return (
+                                  <button
+                                    key={p.value}
+                                    onClick={() => !active && handleSetPlan(salon.salon_id, p.value)}
+                                    disabled={settingPlan === salon.salon_id || active}
+                                    className={`py-2 rounded-xl text-xs font-semibold border transition-colors duration-150 cursor-pointer disabled:cursor-default min-h-[36px]
+                                      ${active
+                                        ? 'text-white border-transparent'
+                                        : 'text-gray-500 border-gray-200 bg-white hover:border-indigo-300 hover:text-indigo-600'}`}
+                                    style={active ? { background: 'linear-gradient(135deg,#6366f1,#ec4899)' } : {}}
+                                  >
+                                    {settingPlan === salon.salon_id && !active ? '…' : p.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
                           {/* Actions */}
                           <div className="flex gap-2 pt-1">
                             {/* Impersonate */}
@@ -566,6 +684,108 @@ export default function PlatformAdminDashboard({
               )}
             </div>
           )}
+          {/* ── TAB: Подаръци ──────────────────────────────── */}
+          {tab === 'grants' && (
+            <div className="p-4 space-y-4">
+
+              {/* Create grant form */}
+              <div className="rounded-2xl border border-gray-100 p-4 space-y-3">
+                <p className="text-sm font-semibold text-gray-900">Нов подарен абонамент</p>
+
+                <input
+                  type="email"
+                  placeholder="имейл на получателя"
+                  value={grantEmail}
+                  onChange={(e) => { setGrantEmail(e.target.value); setGrantLink(null); }}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl
+                             focus:outline-none focus:ring-2 focus:border-transparent"
+                  style={{ '--tw-ring-color': '#6366f1' } as React.CSSProperties}
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: 'solo_bonus_12m', label: 'Solo · 1 год' },
+                    { value: 'solo_bonus_6m',  label: 'Solo · 6 мес' },
+                    { value: 'team_bonus_12m', label: 'Екип · 1 год' },
+                    { value: 'team_bonus_6m',  label: 'Екип · 6 мес' },
+                  ] as { value: string; label: string }[]).map((p) => (
+                    <button
+                      key={p.value}
+                      onClick={() => setGrantPlan(p.value)}
+                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer min-h-[36px]
+                        ${grantPlan === p.value
+                          ? 'text-white border-transparent'
+                          : 'text-gray-500 border-gray-200 bg-white hover:border-indigo-300 hover:text-indigo-600'}`}
+                      style={grantPlan === p.value ? { background: 'linear-gradient(135deg,#6366f1,#ec4899)' } : {}}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleCreateGrant}
+                  disabled={grantSaving || !grantEmail.trim()}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white
+                             transition-opacity cursor-pointer disabled:opacity-40 min-h-[44px]"
+                  style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
+                >
+                  {grantSaving ? 'Генерира…' : 'Генерирай линк'}
+                </button>
+
+                {grantLink && (
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-emerald-700">Линк за активиране:</p>
+                    <p className="text-xs text-emerald-800 break-all font-mono">{grantLink}</p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(grantLink)}
+                      className="text-xs font-semibold text-emerald-700 underline cursor-pointer"
+                    >
+                      Копирай
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Grants list */}
+              {grantsLoading && (
+                <div className="flex items-center justify-center py-8 gap-2 text-gray-400 text-sm">
+                  <span className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-indigo-500 animate-spin" />
+                  Зарежда…
+                </div>
+              )}
+
+              {grants && grants.length === 0 && (
+                <p className="text-center py-8 text-sm text-gray-400">Няма гrantове</p>
+              )}
+
+              {grants && grants.map((g) => (
+                <div key={g.id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                    style={{ background: g.used_at ? 'linear-gradient(135deg,#10b981,#34d399)' : 'linear-gradient(135deg,#6366f1,#ec4899)' }}
+                    aria-hidden="true"
+                  >
+                    <IconGift className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{g.email}</p>
+                    <p className="text-xs text-gray-400">{planLabel(g.plan_type)} · {formatDate(g.created_at)}</p>
+                  </div>
+                  {g.used_at
+                    ? <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 shrink-0">Използван</span>
+                    : <button
+                        onClick={() => handleDeleteGrant(g.id)}
+                        className="text-xs text-red-400 hover:text-red-600 cursor-pointer shrink-0"
+                      >
+                        Изтрий
+                      </button>
+                  }
+                </div>
+              ))}
+            </div>
+          )}
+
         </div>
       </div>
 

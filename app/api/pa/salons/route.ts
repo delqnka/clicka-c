@@ -50,17 +50,29 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { salonId, isActive } = body as { salonId?: string; isActive?: boolean };
+  const { salonId, isActive, planType } = body as { salonId?: string; isActive?: boolean; planType?: string | null };
 
   if (!salonId) {
     return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
   }
 
-  await sql`
-    UPDATE salons
-    SET is_active = ${isActive ?? false}, updated_at = now()
-    WHERE CAST(id AS text) = ${salonId}
-  `;
+  if (planType !== undefined) {
+    const allowed = ['solo_bonus_12m', 'solo_bonus_6m', 'team_bonus_12m', 'team_bonus_6m', null];
+    if (!allowed.includes(planType ?? null)) {
+      return NextResponse.json({ error: 'Невалиден план' }, { status: 400 });
+    }
+    await sql`
+      UPDATE salons
+      SET plan_type = ${planType ?? null}, updated_at = now()
+      WHERE CAST(id AS text) = ${salonId}
+    `;
+  } else {
+    await sql`
+      UPDATE salons
+      SET is_active = ${isActive ?? false}, updated_at = now()
+      WHERE CAST(id AS text) = ${salonId}
+    `;
+  }
 
   return NextResponse.json({ ok: true });
 }
