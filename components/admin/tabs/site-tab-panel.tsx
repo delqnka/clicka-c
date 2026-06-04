@@ -5,10 +5,12 @@ import { AddressAutocompleteField } from '@/components/admin/address-autocomplet
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminSaveBtn, AdminSection } from '@/components/admin/admin-ui';
 import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
+import { SlugEditor } from '@/components/admin/SlugEditor';
 import type { AdminSitePayload } from '@/lib/admin-site';
 
 const SITE_SECTIONS = [
   { id: 'basics', label: 'Контакти' },
+  { id: 'address', label: 'Адрес' },
   { id: 'about', label: 'За салона' },
   { id: 'faq', label: 'FAQ' },
   { id: 'amenities', label: 'Удобства' },
@@ -29,6 +31,9 @@ export function SiteTabPanel({
   busyKey,
   saveSiteSettings,
   isMobile,
+  currentSlug,
+  rootDomain,
+  onSlugSaved,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -37,6 +42,9 @@ export function SiteTabPanel({
   busyKey: string;
   saveSiteSettings: () => void;
   isMobile: boolean;
+  currentSlug: string;
+  rootDomain: string;
+  onSlugSaved: (newSlug: string) => void;
 }) {
   const [section, setSection] = useState<SiteSectionId>('basics');
   const fieldInp: CSSProperties = { ...inp, padding: '7px 10px', fontSize: 14 };
@@ -138,6 +146,15 @@ export function SiteTabPanel({
             <input value={site.tiktok} onChange={(e) => setSite((p) => ({ ...p, tiktok: e.target.value }))} style={fieldInp} />
           </AdminField>
         </div>
+      ) : null}
+
+      {section === 'address' ? (
+        <SlugEditor
+          currentSlug={currentSlug}
+          rootDomain={rootDomain}
+          inp={inp}
+          onSaved={onSlugSaved}
+        />
       ) : null}
 
       {section === 'about' ? (

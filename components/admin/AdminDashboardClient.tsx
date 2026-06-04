@@ -72,6 +72,7 @@ import {
   getPlatformPublicUrl,
   getPrimaryPublicUrl,
   isSalonCustomDomainLive,
+  ROOT_DOMAIN,
   type LegalDocumentPath,
 } from '@/lib/domain-routing';
 import { defaultLegalInfoStored, type LegalInfoStored } from '@/lib/legal-custom-documents';
@@ -1143,6 +1144,12 @@ export default function AdminDashboardClient({
       setSite(prev => ({ ...prev, siteStatus: 'active' }));
       setNotice('Сайтът е публикуван успешно!');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
+  }
+
+  function handleSlugSaved(newSlug: string) {
+    // Redirect to the new subdomain admin page
+    const newHost = `${newSlug}.${ROOT_DOMAIN}`;
+    window.location.href = `https://${newHost}/admin`;
   }
 
   async function saveSiteSettings() {
@@ -2735,7 +2742,7 @@ export default function AdminDashboardClient({
           })()}
 
           {activeTab === 'site' ? (
-            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} />
+            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} />
           ) : null}
 
           {activeTab === 'images' ? (
