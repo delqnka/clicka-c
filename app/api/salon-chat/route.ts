@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const bookingUrl = salon.custom_domain
       ? `https://${salon.custom_domain}/#rezerviraj`
       : `https://${salon.slug}.${ROOT_DOMAIN}/#rezerviraj`;
-    const autoReply = `Свободните часове и записването можете да направите директно тук:\n${bookingUrl}`;
+    const autoReply = `Запишете се директно:\n${bookingUrl}`;
     await sql`
       INSERT INTO salon_chat_messages (session_id, role, content)
       VALUES (${activeSessionId}, 'salon', ${autoReply})

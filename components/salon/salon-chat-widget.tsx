@@ -142,7 +142,41 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
                     Здравей, {clientName}! Напиши съобщението си и ще ти отговорим скоро.
                   </p>
                 )}
-                {messages.map((m, i) => (
+                {messages.map((m, i) => {
+                  // Detect booking auto-reply: salon message containing #rezerviraj URL
+                  const bookingMatch = m.role === 'salon' && m.content.match(/https?:\/\/\S+#rezerviraj/);
+                  if (bookingMatch) {
+                    const bookingUrl = bookingMatch[0];
+                    const textBefore = m.content.slice(0, m.content.indexOf(bookingUrl)).trim();
+                    return (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                        <div style={{
+                          maxWidth: '85%', padding: '10px 14px', borderRadius: 14,
+                          fontSize: 13, lineHeight: 1.5,
+                          background: '#f3f4f6', color: '#111',
+                          display: 'flex', flexDirection: 'column', gap: 10,
+                        }}>
+                          {textBefore && <span>{textBefore}</span>}
+                          <a
+                            href={bookingUrl}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              window.location.hash = 'rezerviraj';
+                            }}
+                            style={{
+                              display: 'block', padding: '10px 16px', borderRadius: 12,
+                              background: GRAD, color: '#fff', fontWeight: 700,
+                              fontSize: 13, textAlign: 'center', textDecoration: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            📅 Виж свободни часове
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
                   <div key={i} style={{ display: 'flex', justifyContent: m.role === 'client' ? 'flex-end' : 'flex-start' }}>
                     <div style={{
                       maxWidth: '80%', padding: '8px 12px', borderRadius: 14,
@@ -150,25 +184,13 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
                       background: m.role === 'client' ? GRAD : '#f3f4f6',
                       color: m.role === 'client' ? '#fff' : '#111',
                     }}>
-                      {m.content.split(/\n/).map((line, j) => {
-                        const urlMatch = line.match(/https?:\/\/\S+/);
-                        if (urlMatch) {
-                          const url = urlMatch[0];
-                          const before = line.slice(0, urlMatch.index);
-                          return (
-                            <span key={j}>{before && <>{before}<br /></>}
-                              <a href={url} target="_blank" rel="noopener noreferrer"
-                                style={{ color: '#6366f1', textDecoration: 'underline', wordBreak: 'break-all' }}>
-                                {url}
-                              </a>
-                            </span>
-                          );
-                        }
-                        return <span key={j}>{line}{j < m.content.split(/\n/).length - 1 && <br />}</span>;
-                      })}
+                      {m.content.split(/\n/).map((line, j) => (
+                        <span key={j}>{line}{j < m.content.split(/\n/).length - 1 && <br />}</span>
+                      ))}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {sending && (
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Loader2 size={14} style={{ color: primaryColor, animation: 'spin 1s linear infinite' }} />
