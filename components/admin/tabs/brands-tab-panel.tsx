@@ -89,6 +89,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
   const categories = Object.keys(BRAND_CATEGORY_LABELS) as BrandCategory[];
 
   return (
+    <div style={{ maxWidth: 560 }}>
     <AdminSection
       compact
       title="Брандове"
@@ -104,6 +105,69 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
       <p style={{ fontSize: 13, color: '#888', marginBottom: 20, ...font }}>
         Избери брандовете, с които работиш. Ще се показват на публичната ти страница.
       </p>
+
+      {/* Custom brands — най-горе */}
+      <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#0f0f0f', marginBottom: 12, ...font }}>
+          Добави ръчно
+        </p>
+
+        {customNames.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {customNames.map((name) => (
+              <div
+                key={name}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 10px', borderRadius: 8,
+                  border: '2px solid #0f0f0f', background: '#0f0f0f', ...font,
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.3 }}>{name}</span>
+                <button
+                  onClick={() => removeCustom(name)}
+                  title="Премахни"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.2)', border: 'none', cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  <X size={9} color="#fff" strokeWidth={3} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={customInput}
+            onChange={(e) => { setCustomInput(e.target.value); setCustomError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+            placeholder="Ime на бранда..."
+            style={{
+              height: 36, padding: '0 10px', borderRadius: 8,
+              border: '1.5px solid #e5e7eb', fontSize: 13, outline: 'none', flex: 1, ...font,
+            }}
+          />
+          <button
+            onClick={addCustom}
+            style={{
+              height: 36, padding: '0 14px', borderRadius: 8,
+              background: '#0f0f0f', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 13, fontWeight: 600, color: '#fff', flexShrink: 0, ...font,
+            }}
+          >
+            <Plus size={14} />
+            Добави
+          </button>
+        </div>
+        {customError && (
+          <p style={{ fontSize: 12, color: '#e11d48', marginTop: 6, ...font }}>{customError}</p>
+        )}
+      </div>
 
       {categories.map((cat) => {
         const brands = ALL_BRANDS.filter((b) => b.category === cat);
@@ -142,78 +206,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
         );
       })}
 
-      {/* Custom brands */}
-      <div style={{ marginTop: 8, paddingTop: 24, borderTop: '1px solid #e5e7eb' }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: '#0f0f0f', marginBottom: 12, ...font }}>
-          Добави ръчно
-        </p>
-
-        {customNames.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-            {customNames.map((name) => (
-              <div
-                key={name}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '6px 10px',
-                  borderRadius: 8,
-                  border: '2px solid #0f0f0f',
-                  background: '#0f0f0f',
-                  ...font,
-                }}
-              >
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.3 }}>
-                  {name}
-                </span>
-                <button
-                  onClick={() => removeCustom(name)}
-                  title="Премахни"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 16, height: 16, borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.2)', border: 'none', cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                >
-                  <X size={9} color="#fff" strokeWidth={3} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-          <input
-            value={customInput}
-            onChange={(e) => { setCustomInput(e.target.value); setCustomError(''); }}
-            onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-            placeholder="Ime на бранда..."
-            style={{
-              height: 36, padding: '0 10px', borderRadius: 8,
-              border: '1.5px solid #e5e7eb', fontSize: 13, outline: 'none',
-              flex: 1,
-              ...font,
-            }}
-          />
-          <button
-            onClick={addCustom}
-            style={{
-              height: 36, padding: '0 14px', borderRadius: 8,
-              background: '#0f0f0f', border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
-              fontSize: 13, fontWeight: 600, color: '#fff',
-              flexShrink: 0,
-              ...font,
-            }}
-          >
-            <Plus size={14} />
-            Добави
-          </button>
-        </div>
-        {customError && (
-          <p style={{ fontSize: 12, color: '#e11d48', marginTop: 6, ...font }}>{customError}</p>
-        )}
-      </div>
     </AdminSection>
+    </div>
   );
 }
