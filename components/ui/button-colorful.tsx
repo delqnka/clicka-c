@@ -1,3 +1,4 @@
+'use client';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,12 +22,34 @@ export function ButtonColorful({
 
   if (variant === 'outline') {
     const outlineClass = cn(
-      'inline-flex rounded-full p-[2px] transition-all duration-200 group',
+      'inline-flex rounded-full p-[1.5px] transition-all duration-200 group',
+      'hover:scale-[1.03] active:scale-[0.97]',
+      'hover:shadow-[0_6px_24px_rgba(225,29,72,0.18)]',
       className,
     );
     const inner = (
-      <span className="inline-flex h-full min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[var(--background)] px-7 text-base font-medium text-[var(--foreground)] transition-all duration-200 group-hover:bg-[#a855f7] group-hover:text-white">
-        {label}
+      <span className="relative inline-flex h-full min-h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-white px-7 text-base font-medium transition-all duration-200">
+        {/* gradient bg fill on hover */}
+        <span className="absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-10" style={{ background: BRAND_GRADIENT }} />
+        {/* gradient text on hover */}
+        <span
+          className="relative transition-all duration-200"
+          style={{ color: '#111' }}
+          onMouseEnter={e => {
+            const el = e.currentTarget;
+            el.style.backgroundImage = BRAND_GRADIENT;
+            el.style.webkitBackgroundClip = 'text';
+            el.style.webkitTextFillColor = 'transparent';
+            el.style.backgroundClip = 'text';
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget;
+            el.style.backgroundImage = '';
+            el.style.webkitBackgroundClip = '';
+            el.style.webkitTextFillColor = '';
+            el.style.backgroundClip = '';
+          }}
+        >{label}</span>
       </span>
     );
     if (href) {

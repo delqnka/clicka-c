@@ -295,6 +295,15 @@ export async function handleAdminCommand(
   salon: SalonRef,
 ): Promise<boolean> {
 
+  // ── Brands ───────────────────────────────────────────────────────────────
+  const isBrandsQuery = /^брандов[еи]$/i.test(text.trim());
+  const isAddBrand = /(?:добав[ии]|работ[яеи]|ползв[ам]|работим с|ползваме)\s+(?:бранд[а]?\s+)?(.+)/i.test(text);
+  const isRemoveBrand = /(?:махн[иеа]|изтри[й]?|премахн[иеа])\s+(?:бранд[а]?\s+)?(.+)/i.test(text);
+  if (isBrandsQuery || isAddBrand || isRemoveBrand) {
+    await handleBrandsCommand(chatId, text, salon);
+    return true;
+  }
+
   // ── Add service ──────────────────────────────────────────────────────────
   const addMatch = text.match(ADD_SERVICE_RE);
   const hasServiceKeyword = /услуг[аa]/i.test(text);
@@ -2640,6 +2649,109 @@ async function handleTopServices(chatId: number, salon: SalonRef): Promise<void>
   rows.forEach((r, i) => {
     lines.push(`${i + 1}. <b>${r.service_name}</b> — ${r.cnt} пъти — ${Number(r.revenue).toFixed(0)} €`);
   });
+  await sendTelegramMessage(chatId, lines.join('\n'));
+}
+
+// ─── Brands ───────────────────────────────────────────────────────────────────
+
+async function getSalonBrandIds(salonId: string): Promise<string[]> {
+  const rows = await sql`
+    SELECT brand_domains FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1
+  ` as { brand_domains: unknown }[];
+  const raw = rows[0]?.brand_domains;
+  return Array.isArray(raw) ? raw.map(String) : [];
+}
+
+async function saveSalonBrandIds(salonId: string, slug: string, ids: string[]): Promise<void> {
+  await sql`
+    UPDATE salons SET brand_domains = ${JSON.stringify(ids)}::jsonb
+    WHERE CAST(id AS text) = ${salonId}
+  `;
+  revalidateTag(`salon-public-${slug}`);
+}
+
+async function handleBrandsCommand(chatId: number, text: string, salon: SalonRef): Promise<void> {
+  const { ALL_BRANDS } = await import('@/lib/brands');
+
+  const currentIds = await getSalonBrandIds(salon.salonId);
+  const currentSet = new Set(currentIds);
+
+  // ── Show current brands ────────────────────────────────────────
+  if (/^брандов[еи]$/i.test(text.trim())) {
+    if (currentIds.length === 0) {
+      await sendTelegramMessage(
+        chatId,
+        '🏷 Все още нямаш избрани брандове.\n\n' +
+        'Напиши например:\n<code>Работя с Wella, OPI, PhiBrows</code>\n\nили\n<code>Добави бранд Olaplex</code>',
+      );
+    } else {
+      const names = currentIds
+        .map((id) => ALL_BRANDS.find((b) => b.id === id)?.name ?? id)
+        .join(', ');
+      await sendTelegramMessage(
+        chatId,
+        `🏷 <b>Твоите брандове (${currentIds.length}):</b>\n${names}\n\n` +
+        'За да добавиш: <code>Работя с Kerastase, OPI</code>\n' +
+        'За да махнеш: <code>Махни бранд OPI</code>',
+      );
+    }
+    return;
+  }
+
+  // ── Remove brand ───────────────────────────────────────────────
+  const removeMatch = text.match(/(?:махн[иеа]|изтри[й]?|премахн[иеа])\s+(?:бранд[а]?\s+)?(.+)/i);
+  if (removeMatch) {
+    const query = removeMatch[1]!.trim().toLowerCase();
+    const toRemove = ALL_BRANDS.filter(
+      (b) => currentSet.has(b.id) && b.name.toLowerCase().includes(query),
+    );
+    if (toRemove.length === 0) {
+      await sendTelegramMessage(chatId, `⚠️ Не намерих бранд "${removeMatch[1]}" в твоя списък.`);
+      return;
+    }
+    const newIds = currentIds.filter((id) => !toRemove.some((b) => b.id === id));
+    await saveSalonBrandIds(salon.salonId, salon.slug, newIds);
+    const removed = toRemove.map((b) => b.name).join(', ');
+    await sendTelegramMessage(chatId, `✅ Махнах: <b>${removed}</b>`);
+    return;
+  }
+
+  // ── Add brands ─────────────────────────────────────────────────
+  const addMatch = text.match(/(?:добав[ии]|работ[яеи]|ползв[ам]|работим с|ползваме)\s+(?:бранд[а]?\s+)?(.+)/i);
+  if (!addMatch) return;
+
+  const rawNames = addMatch[1]!
+    .split(/[,;и&+\/]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  const found: typeof ALL_BRANDS = [];
+  const notFound: string[] = [];
+
+  for (const q of rawNames) {
+    const match = ALL_BRANDS.find(
+      (b) => b.name.toLowerCase().includes(q) || q.includes(b.name.toLowerCase().split(' ')[0]!),
+    );
+    if (match) found.push(match);
+    else notFound.push(q);
+  }
+
+  if (found.length === 0) {
+    await sendTelegramMessage(
+      chatId,
+      `⚠️ Не разпознах тези брандове: <b>${notFound.join(', ')}</b>\n\n` +
+      'Провери изписването или пиши на support@clicka.bg за добавяне на нов бранд.',
+    );
+    return;
+  }
+
+  const newIds = [...new Set([...currentIds, ...found.map((b) => b.id)])];
+  await saveSalonBrandIds(salon.salonId, salon.slug, newIds);
+
+  const addedNames = found.map((b) => b.name).join(', ');
+  const lines = [`✅ Добавих: <b>${addedNames}</b>`];
+  if (notFound.length > 0) lines.push(`\n⚠️ Не разпознах: ${notFound.join(', ')}`);
+  lines.push('\nЛогата им вече се показват на твоя сайт! 🎉');
   await sendTelegramMessage(chatId, lines.join('\n'));
 }
 

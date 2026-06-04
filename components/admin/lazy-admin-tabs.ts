@@ -1,5 +1,10 @@
 import dynamic from 'next/dynamic';
 
+export const LazyBrandsTabPanel = dynamic(
+  () => import('@/components/admin/tabs/brands-tab-panel').then((m) => m.BrandsTabPanel),
+  { ssr: false }
+);
+
 export const LazySalonOffersSection = dynamic(
   () => import('@/components/admin/SalonOffersSection').then((m) => m.SalonOffersSection),
   { ssr: false }

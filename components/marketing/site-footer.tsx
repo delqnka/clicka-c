@@ -3,7 +3,7 @@ import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/[0.06] bg-[#0a0a0a] py-10">
+    <footer className="border-t border-white/[0.06] bg-[#0a0a0a] py-10" style={{ position: 'relative', zIndex: 2 }}>
       <style>{`
         .footer-link {
           transition: color 0.2s;
@@ -16,9 +16,12 @@ export function SiteFooter() {
         }
       `}</style>
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 sm:flex-row sm:px-6">
-        <p className="text-sm font-medium tracking-[-0.02em] text-white/50">
-          © {new Date().getFullYear()} {clickaMarketingSite.legal}
-        </p>
+        <div className="flex flex-col items-center gap-1 sm:items-start">
+          <p className="text-sm font-medium tracking-[-0.02em] text-white/50">
+            © {new Date().getFullYear()} {clickaMarketingSite.legal}
+          </p>
+          <p className="text-xs text-white/30">Буука ЕООД</p>
+        </div>
         <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/40 sm:gap-6">
           <Link href="/create" className="footer-link text-white/55">
             Създай сайт

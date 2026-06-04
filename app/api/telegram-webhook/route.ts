@@ -21,6 +21,7 @@ const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
 
 type TelegramUpdate = {
   message?: {
+    message_id: number;
     chat: { id: number };
     from?: { first_name?: string };
     text?: string;
@@ -29,6 +30,7 @@ type TelegramUpdate = {
     forward_date?: number;
     forward_from?: { first_name?: string };
     forward_sender_name?: string;
+    reply_to_message?: { message_id: number };
   };
   callback_query?: {
     id: string;
@@ -179,6 +181,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const chatId = message.chat.id;
   const text = (message.text ?? '').trim();
   const firstName = message.from?.first_name ?? '';
+
+  // ── Handle salon reply to client chat message ────────────────────────────
+  if (message.reply_to_message?.message_id && text) {
+    const repliedToId = message.reply_to_message.message_id;
+    // Find chat session via the telegram_message_id we stored when forwarding
+    const sessionRows = await sql`
+      SELECT m.session_id
+      FROM salon_chat_messages m
+      WHERE m.telegram_message_id = ${repliedToId}
+      LIMIT 1
+    ` as { session_id: string }[];
+
+    if (sessionRows.length > 0) {
+      const sessionId = sessionRows[0]!.session_id;
+      await sql`
+        INSERT INTO salon_chat_messages (session_id, role, content)
+        VALUES (${sessionId}, 'salon', ${text})
+      `;
+      await sql`
+        UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${sessionId}
+      `;
+      await sendTelegramMessage(chatId, '✅ Отговорът е изпратен на клиента.');
+      return NextResponse.json({ ok: true });
+    }
+  }
 
   // Handle /start command
   if (text.startsWith('/start')) {

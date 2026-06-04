@@ -60,7 +60,7 @@ export function MarketingAudienceSection() {
       id="audience"
       data-home-section="audience"
       className="bg-rose-50"
-      style={{ padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)' }}
+      style={{ padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
       aria-label="За кого е"
     >
       <div className="mx-auto max-w-3xl text-center">
@@ -81,10 +81,24 @@ export function MarketingAudienceSection() {
           <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>Clicka</span>
           {' '}е за теб.
         </p>
-        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.95rem,2vw,1.1rem)] leading-relaxed text-[var(--muted-foreground)]">
-          Независимо дали си самостоятелен специалист или имаш екип, получаваш собствен сайт, онлайн резервации и AI асистент в Telegram.
+        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.9rem,1.8vw,1.05rem)] leading-relaxed text-[var(--muted-foreground)]">
+          Clicka е създадена за{' '}
+          {['фризьори', 'маникюристи', 'козметици', 'масажисти', 'барбъри', 'гримьори', 'терапевти', 'треньори', 'консултанти', 'груумъри', 'татуисти'].map((p, i, arr) => (
+            <span key={p}>
+              <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 600 }}>{p}</span>
+              {i < arr.length - 1 ? ', ' : ' '}
+            </span>
+          ))}
+          и всички салони, които искат собствен сайт, онлайн резервации и пълен контрол над бизнеса си.
+        </p>
+        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.95rem,2vw,1.1rem)] font-semibold leading-relaxed" style={{ color: '#0f0f0f' }}>
+          И най-важното е{' '}
+          <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>ЛЕСЕН</span>
+          {' '}контрол
         </p>
       </div>
+      <div style={{ position: 'absolute', top: -1, left: 0, right: 0, height: 80, background: 'linear-gradient(to bottom, #ffffff 40%, transparent)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, #ffffff, transparent)', pointerEvents: 'none' }} />
     </section>
   );
 }
@@ -334,8 +348,9 @@ export function MarketingFeaturesSection() {
       id="features"
       data-home-section="features"
       aria-label="Какво получаваш"
-      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)' }}
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
     >
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom, #ffffff, transparent)', pointerEvents: 'none' }} />
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ marginBottom: 'clamp(32px,5vw,48px)' }}>
@@ -534,8 +549,9 @@ const FAQ_ITEMS = [
   { q: 'Трябва ли да въвеждам услугите си ръчно?', a: 'Не. Просто качи снимка на ценоразписа си в Telegram и AI ще създаде услугите автоматично.' },
   { q: 'Как получавам известия за нови резервации?', a: 'Получаваш известия директно в Telegram и по имейл веднага след всяка нова резервация.' },
   { q: 'Мога ли да приемам депозити и онлайн плащания?', a: 'Да. Clicka работи със Stripe и ти позволява да приемаш депозити и плащания с карта директно от клиентите си.' },
-  { q: 'Мога ли да използвам собствен домейн?', a: 'Да. Можеш да свържеш съществуващ домейн или да закупим и настроим нов за теб.' },
-  { q: 'Какво се случва, ако вече имам сайт?', a: 'Можеш да продължиш да използваш сегашния си домейн и да го свържем към Clicka.' },
+  { q: 'На какъв адрес ще е сайтът ми?', a: 'Веднага получаваш сайта си на безплатен адрес tvoiatsalon.clicka.bg и можеш да приемаш резервации ВЕДНАГА!' },
+  { q: 'Мога ли да свържа собствен домейн?', a: 'Да! Ако вече имаш домейн (например moiatsalon.com или salondidi.bg), можеш да го свържеш самостоятелно БЕЗ допълнителна такса. Инструкциите ще откриеш в дашборда си в меню Интеграции.' },
+  { q: 'Можете ли вие да регистрирате и настроите домейн вместо мен?', a: 'Да. Ако не искаш да се занимаваш с настройките, можем да регистрираме и настроим домейна вместо теб. Услугата се заплаща допълнително и обикновено отнема до 48 часа. Домейнът се регистрира на името на твоята фирма и остава твоя собственост.' },
   { q: 'Мога ли да променям услугите и цените си по всяко време?', a: 'Да. Можеш да добавяш, редактираш или премахваш услуги директно от Telegram.' },
   { q: 'Как да редактирам цени и имена на услугите си?', a: 'Много лесно — просто кажи на Telegram бота "Редактирай ми услуга Х" и той ще се погрижи веднага!' },
   { q: 'Какво става, ако клиент отмени час?', a: 'Резервацията се обновява автоматично и ще получиш известие. При използване на депозити можеш да приложиш собствена политика за анулиране.' },
@@ -572,7 +588,8 @@ export function MarketingFaqSection() {
 
   return (
     <section
-      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,9vw,96px) clamp(20px,5vw,60px)' }}
+      id="faq"
+      style={{ background: 'linear-gradient(180deg, #fdf2f8 0%, #fff 100%)', padding: 'clamp(56px,9vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
       aria-label="Честo задавани въпроси"
     >
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
@@ -633,6 +650,8 @@ export function MarketingFaqSection() {
             : `Виж всички въпроси (${FAQ_ITEMS.length - FAQ_INITIAL_COUNT} още) ↓`}
         </button>
       </div>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom, #ffffff, transparent)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top, #ffffff, transparent)', pointerEvents: 'none' }} />
     </section>
   );
 }
@@ -642,7 +661,7 @@ export function MarketingFounderSection() {
     <section
       id="founder"
       className="text-center"
-      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,8vw,88px) clamp(20px,5vw,60px)' }}
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,8vw,88px) clamp(20px,5vw,60px)', position: 'relative', marginTop: '-1px' }}
       aria-labelledby="founder-h"
     >
       <div className="mx-auto max-w-xl">
@@ -658,9 +677,21 @@ export function MarketingFounderSection() {
           data-reveal
           className="text-[clamp(1rem,2.2vw,1.15rem)] font-medium leading-snug text-[var(--foreground)]"
         >
-          {MARKETING_FOUNDER.body}
+          {'Знаем какво е да работиш с часове, да пазиш стандарта си и да усещаш, че някой друг печели от труда ти. '}
+          <span style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 700 }}>Clicka.bg</span>
+          {' е създаден, за да върне контрола при теб.'}
+        </p>
+        <p
+          data-reveal
+          className="mt-5 text-[clamp(0.95rem,2vw,1.1rem)] italic leading-relaxed text-[var(--muted-foreground)]"
+        >
+          <span style={{ fontStyle: 'normal', fontWeight: 500, color: 'var(--muted-foreground)' }}>с фокус върху кредото: </span><span style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>„Изграждаш собствен бранд, а не чужда платформа."</span>
         </p>
       </div>
+
+      {/* fade borders to white */}
+      <div style={{ position: 'absolute', top: -2, left: 0, right: 0, height: 50, background: 'linear-gradient(to bottom, #ffffff, transparent)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, #ffffff 20%, transparent)', pointerEvents: 'none' }} />
     </section>
   );
 }

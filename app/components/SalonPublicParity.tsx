@@ -63,6 +63,9 @@ import {
   serviceMatchesCategory,
 } from '@/lib/salon-service-categories';
 import { GOOGLE_REVIEWS_INITIAL_VISIBLE } from '@/lib/google-reviews-limits';
+import { getBrandsByIds } from '@/lib/brands';
+import { SalonChatWidget } from '@/components/salon/salon-chat-widget';
+import { SalonAiBotWidget } from '@/components/salon/salon-ai-bot-widget';
 
 const PublicVisitorFaq = dynamic(
   () => import('@/components/salon/public-visitor-faq').then((m) => m.PublicVisitorFaq),
@@ -221,6 +224,44 @@ type ServiceRow = {
 };
 
 type ServiceVariant = NonNullable<ServiceRow['variants']>[number];
+
+function SalonBrandLogo({ domain, name }: { domain: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span className="inline-flex items-center rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm">
+        {name}
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`https://logo.clearbit.com/${domain}`}
+      alt={name}
+      title={name}
+      width={48}
+      height={48}
+      onError={() => setFailed(true)}
+      className="h-10 w-auto max-w-[80px] object-contain opacity-70 grayscale transition-all hover:opacity-100 hover:grayscale-0"
+    />
+  );
+}
+
+function SalonBrandsSection({ brandIds }: { brandIds: string[] }) {
+  const brands = getBrandsByIds(brandIds);
+  if (brands.length === 0) return null;
+  return (
+    <div className="pt-10">
+      <h2 className="mb-5 text-lg font-semibold text-[#1a1a1a]">Работим с</h2>
+      <div className="flex flex-wrap items-center gap-5">
+        {brands.map((b) => (
+          <SalonBrandLogo key={b.id} domain={b.domain} name={b.name} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function SalonGalleryMosaic({
   uris,
@@ -385,6 +426,10 @@ export default function SalonPublicParity({
   const visitorAdditionalInfo = useMemo(
     () => normalizeVisitorAdditionalInfo(rawSalon.visitor_additional_info),
     [rawSalon.visitor_additional_info],
+  );
+  const brandIds: string[] = useMemo(
+    () => (Array.isArray(rawSalon.brand_domains) ? rawSalon.brand_domains.map(String) : []),
+    [rawSalon.brand_domains],
   );
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
@@ -1840,6 +1885,10 @@ export default function SalonPublicParity({
               venueExtrasRaw={rawSalon.venue_extras ?? rawSalon.venueExtras}
             />
 
+            {brandIds.length > 0 && (
+              <SalonBrandsSection brandIds={brandIds} />
+            )}
+
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
               <DeferredSection className="pt-10" minHeight={220}>
                 <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
@@ -2228,6 +2277,21 @@ export default function SalonPublicParity({
           </div>
         </div>
       ) : null}
+
+      {/* Live chat widget — only show if salon has Telegram connected */}
+      {rawSalon.telegram_chat_id ? (
+        <SalonChatWidget
+          salonId={salonId}
+          salonName={name}
+          primaryColor={primary}
+        />
+      ) : (
+        <SalonAiBotWidget
+          salonId={salonId}
+          salonName={name}
+          primaryColor={primary}
+        />
+      )}
     </div>
   );
 }

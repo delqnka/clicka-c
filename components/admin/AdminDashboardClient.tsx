@@ -6,6 +6,7 @@ import {
   BriefcaseBusiness,
   MessageSquare,
   Plug,
+  Sparkles,
   CalendarClock,
   Clock3,
   FileText,
@@ -37,6 +38,7 @@ import {
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  LazyBrandsTabPanel,
   LazyHoursTabPanel,
   LazyImagesTabPanel,
   LazyIntegrationsTabPanel,
@@ -124,6 +126,7 @@ const TABS = [
   { id: 'staff',         label: 'Служители',      Icon: UsersRound },
   { id: 'services',      label: 'Услуги',         Icon: Scissors },
   { id: 'offers',        label: 'Оферти',         Icon: Tag },
+  { id: 'brands',        label: 'Брандове',       Icon: Sparkles },
   { id: 'blog',          label: 'Блог',           Icon: Newspaper },
   { id: 'hours',         label: 'Работно време',  Icon: Clock3 },
   { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
@@ -2903,6 +2906,13 @@ export default function AdminDashboardClient({
                 onUploadImages={handleOfferImagesUpload}
               />
             </Section>
+          )}
+
+          {activeTab === 'brands' && (
+            <LazyBrandsTabPanel
+              initialBrandIds={site.brandIds}
+              isMobile={isMobile}
+            />
           )}
 
           {activeTab === 'blog' && (

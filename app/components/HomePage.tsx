@@ -18,6 +18,7 @@ import {
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { IPhoneMockup } from '@/components/ui/iphone-mockup';
 import { MARKETING_PRICING } from '@/lib/marketing-home-copy';
+import { ContactSection } from '@/components/marketing/contact-section';
 import type { MarketingActivity } from '@/lib/marketing-activity-shared';
 
 type MarketingHomePageProps = {
@@ -29,17 +30,23 @@ const SeoBenefitsAccordion = dynamic(
   { ssr: true },
 );
 
-function IconCheck({ color = 'var(--primary)' }: { color?: string }) {
+function IconCheck() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M20 6L9 17l-5-5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <defs>
+        <linearGradient id="chk" x1="4" y1="12" x2="20" y2="12" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#e11d48"/>
+          <stop offset="1" stopColor="#a855f7"/>
+        </linearGradient>
+      </defs>
+      <path d="M20 6L9 17l-5-5" stroke="url(#chk)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 const PLANS = [
-  { id: 'solo',   name: 'Solo',   price: 299, daily: '0.82', desc: '1 специалист',     popular: false },
-  { id: 'ekip',   name: 'Екип',   price: 399, daily: '1.09', desc: 'до 3 специалисти', popular: true  },
+  { id: 'solo', name: 'Solo', price: { '12m': 299, '6m': 169 }, daily: { '12m': '0.82', '6m': '0.92' }, desc: '1 специалист', popular: false },
+  { id: 'ekip', name: 'Team', price: { '12m': 499, '6m': 279 }, daily: { '12m': '1.37', '6m': '1.52' }, desc: 'До 3 специалисти', popular: true },
 ];
 
 const SEO_BENEFITS = [
@@ -61,15 +68,37 @@ const SEO_BENEFITS = [
   },
 ];
 
-const PLAN_FEATURES = [
-  'Готов сайт за 15 минути',
-  'Резервационна система',
-  'Google Calendar sync',
-  'Telegram нотификации',
-  'Email потвърждения',
-  'Собствен домейн с 1 клик',
-  'Хостинг включен',
+const SOLO_FEATURES = [
+  'Собствен сайт с резервации',
+  'AI асистент в Telegram',
+  'Пълен контрол на сайта от Telegram',
+  'Качване на услуги от ценоразпис със снимка',
+  'Онлайн резервации 24/7',
+  'Email потвърждения за клиентите',
+  'Telegram известия за теб',
+  'Онлайн плащания и депозити',
+  'Автоматично събиране на Google ревюта',
+  'Неограничена галерия',
+  'Хостинг, SSL и поддръжка включени',
+  '0% комисионна върху резервациите ти',
 ];
+
+const EKIP_FEATURES = [
+  'До 3 специалисти в един сайт',
+  'До 3 AI асистента в Telegram',
+  'Отделни графици за всеки специалист',
+  'Отделни линкове за резервации',
+  'Отделни известия за всеки специалист',
+  'Директно резервиране при избран специалист',
+  'По-добра организация на целия екип',
+  'Неограничени известия',
+  '0% комисионна върху резервациите ви',
+];
+
+const PLAN_FEATURES: Record<string, string[]> = {
+  solo: SOLO_FEATURES,
+  ekip: EKIP_FEATURES,
+};
 
 const SECTION_LINKS = [
   { id: 'audience', label: 'За кого е' },
@@ -164,16 +193,20 @@ const CSS = `
   .hp-price-card {
     background: var(--card);
     border: 1.5px solid var(--border);
-    border-radius: calc(var(--radius) * 3);
-    padding: 36px 28px;
+    border-radius: calc(var(--radius) * 2.5);
+    padding: 14px 14px;
     display: flex; flex-direction: column;
     position: relative;
     transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s ease;
   }
   .hp-price-card:hover { transform: translateY(-5px); box-shadow: var(--hp-shadow); }
   .hp-price-card.popular {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 1px var(--primary), 0 8px 32px color-mix(in srgb, var(--primary) 18%, transparent);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    box-shadow: 0 0 0 2px transparent, 0 8px 32px rgba(225,29,72,0.15);
+    background-image: linear-gradient(white, white), linear-gradient(135deg, #e11d48, #db2777, #a855f7);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
   }
 
   .hp-pricing-grid {
@@ -200,15 +233,17 @@ const CSS = `
     position: relative;
     border-radius: calc(var(--radius) * 2.5);
     overflow: hidden;
-    border: 1px solid var(--border);
-    box-shadow: var(--hp-shadow);
-    background: var(--card);
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   }
   .hp-check {
-    display:flex; align-items:center; gap:10px;
-    font-size:14px; font-weight:300;
+    display:flex; align-items:flex-start; gap:6px;
+    font-size:11px; font-weight:400;
     color:var(--secondary-foreground);
-    line-height:1.5; padding:4px 0;
+    line-height:1.35; padding:1.5px 0;
   }
 
   [data-home-section] {
@@ -239,6 +274,8 @@ function getHomeSectionElement(id: string): HTMLElement | null {
 
 export default function HomePage({ activity }: MarketingHomePageProps = {}) {
   const [activeSection, setActiveSection] = useState<string>('audience');
+  const [pricingPeriod, setPricingPeriod] = useState<'12m' | '6m'>('12m');
+  const [featuresExpanded, setFeaturesExpanded] = useState<Record<string, boolean>>({});
   const sectionRatiosRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -345,8 +382,9 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       <section
         aria-label="Клиентски сайт"
         style={{
-          background: 'linear-gradient(180deg, #fff 0%, #fff1f2 30%, #fff1f2 100%)',
+          background: 'linear-gradient(180deg, #fff 0%, #fff1f2 50%, #fff 100%)',
           padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,60px)',
+          position: 'relative',
         }}
       >
         <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
@@ -494,22 +532,25 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
 
           {/* Bottom summary */}
           <div style={{ borderRadius: 16, border: '1.5px solid #eee', padding: '24px 20px', background: '#fff' }}>
-            <h3 style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, color: '#0f0f0f', marginBottom: 12, lineHeight: 1.3 }}>
+            <h3 style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, marginBottom: 12, lineHeight: 1.3, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
               Google ревютата работят за теб
             </h3>
-            <p style={{ fontSize: 'clamp(14px,1.7vw,16px)', color: '#555', lineHeight: 1.65, marginBottom: 10 }}>
-              След всяка завършена резервация клиентът получава покана да остави ревю в Google.
-            </p>
-            <p style={{ fontSize: 'clamp(14px,1.7vw,16px)', color: '#555', lineHeight: 1.65, margin: 0 }}>
-              Новите ревюта автоматично се показват и на сайта ти, за да изграждат доверие и да помагат на повече хора да изберат теб.
-            </p>
+            {[
+              'След всяка завършена резервация, клиентът получава покана да остави ревю в Google профила ти.',
+              'Новите ревюта автоматично се показват и на сайта ти, за да изграждат доверие и да помагат на повече хора да изберат твоя бизнес!',
+            ].map((text, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: i === 0 ? 10 : 0 }}>
+                <span style={{ flexShrink: 0, marginTop: 7, width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #e11d48, #a855f7)', display: 'inline-block' }} />
+                <p style={{ fontSize: 'clamp(13px,1.6vw,15px)', color: '#555', lineHeight: 1.65, margin: 0 }}>{text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ── SEO 100/100 ───────────────────────────────── */}
       <section
-        style={{ background: 'linear-gradient(180deg, #fff 0%, #f9fafb 100%)', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
+        style={{ background: 'linear-gradient(180deg, #fff 0%, #fff 100%)', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)', position: 'relative' }}
         aria-labelledby="seo-h"
       >
         <div className="hp-seo-grid">
@@ -523,7 +564,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             </p>
           </div>
 
-          <figure className="hp-seo-visual" style={{ maxWidth: 220, margin: '0 auto' }}>
+          <figure className="hp-seo-visual" style={{ maxWidth: 160, margin: '0 auto' }}>
             <Image
               src="/images/lighthouse-seo-100.webp"
               alt="Google Lighthouse SEO резултат 100 от 100"
@@ -535,10 +576,8 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             />
           </figure>
         </div>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, #ffffff, transparent)', pointerEvents: 'none' }} />
       </section>
-
-      {/* ── FAQ ───────────────────────────────────────── */}
-      <MarketingFaqSection />
 
       {/* ── FOUNDER ───────────────────────────────────── */}
       <MarketingFounderSection />
@@ -547,19 +586,75 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       <section
         id="pricing"
         data-home-section="pricing"
-        style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)' }}
+        style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(72px,10vw,120px) clamp(20px,5vw,60px)', position: 'relative' }}
         aria-labelledby="pricing-h"
       >
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <h2 id="pricing-h" data-reveal className="hp-heading bg-clip-text" style={{ fontSize: 'clamp(28px,4.2vw,50px)', lineHeight: 1.1, marginBottom: 12, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', color: 'transparent' }}>
-            {MARKETING_PRICING.title}
+          <h2 id="pricing-h" data-reveal className="hp-heading" style={{ fontSize: 'clamp(28px,4.2vw,50px)', lineHeight: 1.15, marginBottom: 12, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            Получаваш веднага сайта си на безплатен адрес{' '}
+            <span style={{ fontSize: 'clamp(18px,2.8vw,32px)' }}>tvoiatsalon.clicka.bg.</span>
           </h2>
-          <p data-reveal style={{ fontSize: 'clamp(15px,1.5vw,17px)', fontWeight: 400, color: 'var(--muted-foreground)', marginBottom: 12, lineHeight: 1.67, maxWidth: 720 }}>
-            {MARKETING_PRICING.subtitle}
+          <p data-reveal style={{ fontSize: 'clamp(15px,1.8vw,18px)', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: 28, lineHeight: 1.6, maxWidth: 720 }}>
+            И можеш да приемаш резервации{' '}
+            <span style={{ fontWeight: 800, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>ВЕДНАГА!</span>
           </p>
-          <p data-reveal style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', marginBottom: 52, lineHeight: 1.6, maxWidth: 720 }}>
-            {MARKETING_PRICING.domainNote}
-          </p>
+          {/* Domain block */}
+          <div style={{ marginBottom: 36, maxWidth: 720 }}>
+            <p style={{ fontSize: 'clamp(16px,2vw,20px)', fontWeight: 600, color: 'var(--foreground)', marginBottom: 10, lineHeight: 1.5 }}>
+              {'Искаш собствен домейн (например '}
+              <span style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 600, fontStyle: 'italic' }}>moiatsalon.com или salondidi.bg</span>
+              {')? Или вече имаш такъв?'}
+            </p>
+
+            {/* Bullet 1 */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+              <span style={{ flexShrink: 0, marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #e11d48, #a855f7)', display: 'inline-block' }} />
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0, lineHeight: 1.6 }}>
+                  {MARKETING_PRICING.domainBullet1main}
+                </p>
+                <p style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted-foreground)', margin: '2px 0 0', lineHeight: 1.5, opacity: 0.75 }}>
+                  {MARKETING_PRICING.domainBullet1sub}
+                </p>
+              </div>
+            </div>
+
+            {/* Bullet 2 */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+              <span style={{ flexShrink: 0, marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #e11d48, #a855f7)', display: 'inline-block' }} />
+              <p style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0, lineHeight: 1.6 }}>
+                {MARKETING_PRICING.domainBullet2}
+              </p>
+            </div>
+
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.6 }}>
+              {MARKETING_PRICING.domainNoteBold}
+            </p>
+          </div>
+
+          {/* Period toggle */}
+          <div data-reveal style={{ display: 'inline-flex', alignItems: 'center', background: '#f3f4f6', borderRadius: 9999, padding: 4, marginBottom: 40, gap: 2 }}>
+            {(['12m', '6m'] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPricingPeriod(p)}
+                style={{
+                  padding: '7px 20px', borderRadius: 9999, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  transition: 'all 0.2s',
+                  background: pricingPeriod === p ? '#fff' : 'transparent',
+                  color: pricingPeriod === p ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  boxShadow: pricingPeriod === p ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                }}
+              >
+                {p === '12m' ? 'Годишно' : '6 месеца'}
+                {p === '12m' && (
+                  <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, background: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                    СПЕСТИ
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
 
           <div className="hp-pricing-grid">
             {PLANS.map((plan, i) => (
@@ -568,7 +663,8 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
                   <div
                     style={{
                       position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
-                      background: 'var(--primary)', color: 'var(--primary-foreground)', borderRadius: 9999,
+                      background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+                      color: '#fff', borderRadius: 9999,
                       padding: '4px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
                     }}
                     aria-label="Най-популярен план"
@@ -577,50 +673,87 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
                   </div>
                 )}
 
-                <div style={{ marginBottom: 20 }}>
-                  <h3 className="hp-heading" style={{ fontSize: 22, margin: '0 0 6px' }}>{plan.name}</h3>
-                  <p style={{ fontSize: 14, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0 }}>{plan.desc}</p>
+                <div style={{ marginBottom: 6 }}>
+                  <h3 className="hp-heading" style={{ fontSize: 14, margin: '0 0 1px', backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>{plan.name}</h3>
+                  <p style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0 }}>{plan.desc}</p>
                 </div>
 
-                <div style={{ marginBottom: 28 }}>
-                  <span className="hp-heading tabular-nums" style={{ fontSize: 44, letterSpacing: '-0.04em', lineHeight: 1 }}>{plan.price} €</span>
-                  <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: 4 }}>/ год.</span>
-                  <p style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', margin: '6px 0 0' }}>от {plan.daily} € на ден</p>
+                <div style={{ marginBottom: 10 }}>
+                  <span className="hp-heading tabular-nums" style={{ fontSize: 22, letterSpacing: '-0.04em', lineHeight: 1 }}>{plan.price[pricingPeriod]} €</span>
+                  <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: 3 }}>
+                    {pricingPeriod === '12m' ? '/ год.' : '/ 6 мес.'}
+                  </span>
+                  <p style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>
+                    от {plan.daily[pricingPeriod]} € на ден
+                  </p>
                 </div>
 
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 28 }}>
-                  {PLAN_FEATURES.map((f, fi) => (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 10 }}>
+                  {plan.id === 'ekip' && (
+                    <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-foreground)', margin: '0 0 6px', fontStyle: 'italic' }}>
+                      Всичко от Solo, плюс:
+                    </p>
+                  )}
+                  {PLAN_FEATURES[plan.id].slice(0, featuresExpanded[plan.id] ? PLAN_FEATURES[plan.id].length : 5).map((f, fi) => (
                     <div key={fi} className="hp-check">
                       <IconCheck />
                       {f}
                     </div>
                   ))}
+                  {PLAN_FEATURES[plan.id].length > 5 && (
+                    <button
+                      onClick={() => setFeaturesExpanded(prev => ({ ...prev, [plan.id]: !prev[plan.id] }))}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6, marginTop: 8,
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                        fontSize: 12, fontWeight: 600,
+                        backgroundImage: 'linear-gradient(135deg, #e11d48, #a855f7)',
+                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                      }}
+                    >
+                      <span>{featuresExpanded[plan.id] ? 'По-малко' : `+${PLAN_FEATURES[plan.id].length - 5} още`}</span>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ transition: 'transform 0.25s', transform: featuresExpanded[plan.id] ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+                        <path d="M2 4.5L7 9.5L12 4.5" stroke="url(#g)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <defs><linearGradient id="g" x1="2" y1="7" x2="12" y2="7" gradientUnits="userSpaceOnUse"><stop stopColor="#e11d48"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
+                      </svg>
+                    </button>
+                  )}
+                  {plan.id === 'ekip' && (
+                    <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted-foreground)', margin: '10px 0 0', lineHeight: 1.5 }}>
+                      Идеален за салони с повече от един специалист.
+                    </p>
+                  )}
                 </div>
 
                 <ButtonColorful
-                  href={`/create?plan=${plan.id}`}
+                  href={`/create?plan=${plan.id}_${pricingPeriod}`}
                   label={`Избери ${plan.name}`}
-                  className="h-12 w-full rounded-full text-[15px] font-semibold"
+                  className="h-8 w-full rounded-full text-[12px] font-semibold"
                 />
               </div>
             ))}
           </div>
         </div>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom, #ffffff, transparent)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, #ffffff, transparent)', pointerEvents: 'none' }} />
       </section>
+
+      {/* ── FAQ ───────────────────────────────────────── */}
+      <MarketingFaqSection />
 
       {/* ── FINAL CTA ─────────────────────────────────── */}
       <section
         id="cta"
         data-home-section="cta"
-        style={{ background: 'var(--hp-cta-bg)', padding: 'clamp(80px,12vw,140px) clamp(20px,5vw,60px)', textAlign: 'center' }}
+        style={{ background: 'linear-gradient(to bottom, #0a0a0a 0%, #0a0a0a 30%, #5a0a20 55%, #8b1040 72%, #c0185a 85%, #e11d60 95%, #fb7185 100%)', padding: 'clamp(80px,12vw,140px) clamp(20px,5vw,60px) 0', textAlign: 'center', overflow: 'hidden', position: 'relative' }}
         aria-labelledby="cta-h"
       >
-        <div data-reveal style={{ maxWidth: 600, margin: '0 auto' }}>
+        <div data-reveal style={{ maxWidth: 600, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <h2 id="cta-h" className="hp-heading bg-clip-text" style={{ fontSize: 'clamp(30px,5vw,52px)', lineHeight: 1.1, marginBottom: 20, backgroundImage: 'linear-gradient(135deg, #fb7185, #e879f9, #c084fc)', color: 'transparent' }}>
-            Готов ли си за собствен сайт?
+            Следващата резервация може да е след 5 минути.
           </h2>
           <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 400, color: 'color-mix(in srgb, var(--hp-cta-fg) 72%, transparent)', marginBottom: 44, lineHeight: 1.67 }}>
-            Попълни данните, избери план и сайтът ти е онлайн за 15 минути.
+            Попълни данните си, избери план и сайтът ти е онлайн веднага.
           </p>
           <ButtonColorful
             href="/create"
@@ -628,10 +761,29 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             className="h-14 rounded-full px-12 text-[17px] font-bold"
           />
           <p style={{ marginTop: 20, fontSize: 13, fontWeight: 600, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            от 0.82 € на ден. 0% комисионна. Без скрити такси.
+            от 0.82 € на ден. 0% комисионна върху резервациите ти. Твоя бранд.
           </p>
         </div>
+        {/* iPhone mockup — стои вляпен в долния борд на секцията */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 48 }}>
+          <div style={{
+            width: '75%',
+            maxWidth: 260,
+            border: '10px solid #1a1a1a',
+            borderBottom: 'none',
+            borderRadius: '44px 44px 0 0',
+            overflow: 'hidden',
+            boxShadow: '0 0 0 2px #333',
+          }}>
+            <div style={{ background: '#000', height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 90, height: 22, background: '#1a1a1a', borderRadius: 20 }} />
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/IMG_1832.jpg" alt="Clicka в действие" style={{ width: '100%', display: 'block' }} />
+          </div>
+        </div>
       </section>
+
 
       </main>
 

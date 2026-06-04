@@ -30,8 +30,8 @@ function formatBgDateDMY(dateStr: string): string {
   return d.toLocaleDateString('bg-BG');
 }
 
-async function telegramPost(method: string, body: Record<string, unknown>): Promise<void> {
-  if (!BOT_TOKEN) return;
+export async function telegramPost(method: string, body: Record<string, unknown>): Promise<unknown> {
+  if (!BOT_TOKEN) return null;
   try {
     const response = await fetchWithRetry(`${TELEGRAM_API}/${method}`, {
       method: 'POST',
@@ -40,9 +40,12 @@ async function telegramPost(method: string, body: Record<string, unknown>): Prom
     });
     if (!response.ok) {
       console.error('[telegram]', method, response.status, await response.text().catch(() => ''));
+      return null;
     }
+    return await response.json();
   } catch (err) {
     console.error('[telegram]', method, err);
+    return null;
   }
 }
 
