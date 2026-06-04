@@ -196,7 +196,8 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   // ── Handle owner plain-text reply when there is an active client chat ────
   // When a client message arrives, we store the session in bot_conversation_state.
   // If the owner just types (without using Telegram Reply), route it here.
-  if (text && !text.startsWith('/') && !message.reply_to_message) {
+  // /стоп exits chat mode so the owner can use admin commands freely.
+  if (text && !message.reply_to_message) {
     const stateRows = await sql`
       SELECT bot_conversation_state FROM salons
       WHERE telegram_chat_id = ${String(chatId)}
@@ -204,15 +205,25 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     `.catch(() => []) as { bot_conversation_state: unknown }[];
     const state = stateRows[0]?.bot_conversation_state as { type?: string; session_id?: string } | null;
     if (state?.type === 'waiting_chat_reply' && state.session_id) {
-      await sql`
-        INSERT INTO salon_chat_messages (session_id, role, content)
-        VALUES (${state.session_id}, 'salon', ${text})
-      `;
-      await sql`
-        UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${state.session_id}
-      `;
-      await sendTelegramMessage(chatId, '✅ Отговорът е изпратен на клиента.');
-      return NextResponse.json({ ok: true });
+      if (/^\/стоп$/i.test(text) || /^\/stop$/i.test(text)) {
+        await sql`
+          UPDATE salons SET bot_conversation_state = NULL
+          WHERE telegram_chat_id = ${String(chatId)}
+        `.catch(() => {});
+        await sendTelegramMessage(chatId, '🔕 Чат режимът е изключен. Вече пишеш командите на бота.');
+        return NextResponse.json({ ok: true });
+      }
+      if (!text.startsWith('/')) {
+        await sql`
+          INSERT INTO salon_chat_messages (session_id, role, content)
+          VALUES (${state.session_id}, 'salon', ${text})
+        `;
+        await sql`
+          UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${state.session_id}
+        `;
+        await sendTelegramMessage(chatId, '✅ Изпратено на клиента. Напиши /стоп за да излезеш от чат режим.');
+        return NextResponse.json({ ok: true });
+      }
     }
   }
 
