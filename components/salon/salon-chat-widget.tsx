@@ -150,7 +150,22 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
                       background: m.role === 'client' ? GRAD : '#f3f4f6',
                       color: m.role === 'client' ? '#fff' : '#111',
                     }}>
-                      {m.content}
+                      {m.content.split(/\n/).map((line, j) => {
+                        const urlMatch = line.match(/https?:\/\/\S+/);
+                        if (urlMatch) {
+                          const url = urlMatch[0];
+                          const before = line.slice(0, urlMatch.index);
+                          return (
+                            <span key={j}>{before && <>{before}<br /></>}
+                              <a href={url} target="_blank" rel="noopener noreferrer"
+                                style={{ color: '#6366f1', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                                {url}
+                              </a>
+                            </span>
+                          );
+                        }
+                        return <span key={j}>{line}{j < m.content.split(/\n/).length - 1 && <br />}</span>;
+                      })}
                     </div>
                   </div>
                 ))}

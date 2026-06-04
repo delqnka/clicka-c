@@ -949,6 +949,15 @@ export default function SalonPublicParity({
     return () => window.removeEventListener('keydown', onKey);
   }, [galleryOpen]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash === '#rezerviraj') {
+      openBookingModal();
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function openBookingModal(serviceId?: string) {
     setBookingError('');
     setBookingSuccess('');
