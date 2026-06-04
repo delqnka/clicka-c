@@ -185,7 +185,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ── Handle salon reply to client chat message ────────────────────────────
   if (message.reply_to_message?.message_id && text) {
     const repliedToId = message.reply_to_message.message_id;
-    // Find chat session via the telegram_message_id we stored when forwarding
+
+    // 1. Try exact match via stored telegram_message_id
     const sessionRows = await sql`
       SELECT m.session_id
       FROM salon_chat_messages m
@@ -193,8 +194,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       LIMIT 1
     ` as { session_id: string }[];
 
-    if (sessionRows.length > 0) {
-      const sessionId = sessionRows[0]!.session_id;
+    let sessionId = sessionRows[0]?.session_id ?? null;
+
+    // 2. Fallback: find the most recent active session for this salon
+    if (!sessionId) {
+      const salonForChat = await findSalonByChatId(chatId);
+      if (salonForChat) {
+        const fallbackRows = await sql`
+          SELECT id FROM salon_chat_sessions
+          WHERE salon_id = ${salonForChat.salonId}
+          ORDER BY last_message_at DESC
+          LIMIT 1
+        ` as { id: string }[];
+        sessionId = fallbackRows[0]?.id ?? null;
+      }
+    }
+
+    if (sessionId) {
       await sql`
         INSERT INTO salon_chat_messages (session_id, role, content)
         VALUES (${sessionId}, 'salon', ${text})
@@ -206,8 +222,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: true });
     }
 
-    // Reply to a bot message that isn't a client chat notification — don't process as admin command
-    await sendTelegramMessage(chatId, '⚠️ Не успях да свържа reply-а с клиентски чат. За да отговориш на клиент, reply-вай директно на нотификацията с неговото съобщение.');
+    // No session found at all — don't fall through to AI
+    await sendTelegramMessage(chatId, '⚠️ Няма активен чат с клиент в момента.');
     return NextResponse.json({ ok: true });
   }
 
