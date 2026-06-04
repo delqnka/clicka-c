@@ -642,8 +642,7 @@ export function MarketingFounderSection() {
     <section
       id="founder"
       className="text-center"
-      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)' }}
-      style={{ padding: 'clamp(56px,8vw,88px) clamp(20px,5vw,60px)' }}
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,8vw,88px) clamp(20px,5vw,60px)' }}
       aria-labelledby="founder-h"
     >
       <div className="mx-auto max-w-xl">
