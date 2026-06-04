@@ -103,7 +103,7 @@ export function SalonAiBotWidget({ salonId, salonName, primaryColor = '#5B21B6' 
   }
 
   return (
-    <div className="fixed bottom-[calc(64px+max(6px,env(safe-area-inset-bottom,0px)))] right-4 lg:bottom-5 lg:right-5 z-[9998] flex flex-col items-end gap-3">
+    <div className="fixed bottom-[76px] right-4 lg:bottom-5 lg:right-5 z-[9998] flex flex-col items-end gap-3">
       {open && (
         <div style={{
           width: 'min(320px, calc(100vw - 32px))', height: 430, borderRadius: 20, overflow: 'hidden',

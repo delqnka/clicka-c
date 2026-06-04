@@ -85,7 +85,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
   const PINK_GRAD = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
 
   return (
-    <div className="fixed bottom-[calc(64px+max(6px,env(safe-area-inset-bottom,0px)))] right-4 lg:bottom-5 lg:right-5 z-[9999] flex flex-col items-end gap-3">
+    <div className="fixed bottom-[76px] right-4 lg:bottom-5 lg:right-5 z-[9999] flex flex-col items-end gap-3">
       {open && (
         <div style={{
           width: 'min(320px, calc(100vw - 32px))', borderRadius: 20, overflow: 'hidden',
