@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         'HTTP-Referer': 'https://clicka.bg',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-lite-001',
+        model: 'google/gemini-flash-1.5',
         max_tokens: 400,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
@@ -56,6 +56,10 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
+    if (!res.ok || data.error) {
+      console.error('OpenRouter error:', JSON.stringify(data));
+      return NextResponse.json({ message: 'Нещо се обърка. Опитай пак.' });
+    }
     const text = data.choices?.[0]?.message?.content ?? 'Нещо се обърка.';
     return NextResponse.json({ message: text });
   } catch {
