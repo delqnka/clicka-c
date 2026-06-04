@@ -67,9 +67,23 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://clicka.bg'),
   title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
   description:
     'Собствен сайт с онлайн резервации за твоя бранд, готов за по-малко от 15 минути. 0% комисионна.',
+  openGraph: {
+    title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
+    description: 'Готов за под 15 минути. 0% комисионна. От 0,82 € на ден.',
+    url: 'https://clicka.bg',
+    siteName: 'clicka.bg',
+    locale: 'bg_BG',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
+    description: 'Готов за под 15 минути. 0% комисионна. От 0,82 € на ден.',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

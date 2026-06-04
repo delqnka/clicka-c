@@ -1,4 +1,5 @@
 import { ButtonColorful } from '@/components/ui/button-colorful';
+
 import { LiveSalonCount } from '@/components/ui/live-salon-count';
 import {
   getMarketingActivityMock,
@@ -95,17 +96,17 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
         </p>
 
         {/* Buttons */}
-        <div className="flex w-full max-w-md flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:justify-center">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <ButtonColorful
             href="/create"
             label="Създай сайт"
-            className="h-10 w-full rounded-full px-7 text-sm font-bold sm:w-auto"
+            className="h-10 rounded-full px-28 text-base font-bold"
           />
           <ButtonColorful
             href="https://salonurban.online/"
-            label="Виж демо"
+            label="Виж готов сайт"
             variant="outline"
-            className="h-10 w-full sm:w-auto"
+            className=""
           />
         </div>
 

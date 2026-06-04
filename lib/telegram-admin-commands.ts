@@ -652,6 +652,7 @@ export async function handleAdminCommand(
 
 type AIIntent =
   | { action: 'bookings_day'; date: string }
+  | { action: 'bookings_week' }
   | { action: 'next_client' }
   | { action: 'revenue_week' }
   | { action: 'revenue_month' }
@@ -1247,6 +1248,8 @@ ${servicesJson}
 
 КРИТИЧНО ВАЖНО: Никога не слагай потвърждение за извършено действие в "chat" reply. Ако потребителят иска да добави/промени/изтрие нещо, ЗАДЪЛЖИТЕЛНО върни съответния action обект — никога { "action": "chat", "reply": "✅ Добавих..." }. Chat е САМО за разговор и въпроси, не за действия.
 
+КРИТИЧНО ВАЖНО: Никога не измисляй резервации, клиенти или данни. Ако не знаеш точните данни, върни съответния action (bookings_day, bookings_week и т.н.) вместо да ги пишеш в chat reply. Никога не слагай списък с резервации в "chat" reply.
+
 КРИТИЧНО ВАЖНО: Никога не измисляй ограничения на системата. Не казвай "системата не може", "нямам функция", "не мога да изчисля" — ако не знаеш нещо, кажи "Не знам" или поискай повторна команда. Никога не лъжи потребителя за възможностите на системата.
 
 ═══ НАЙ-ВАЖНО ПРАВИЛО ЗА УСЛУГИ ═══
@@ -1367,6 +1370,8 @@ ${servicesJson}
 
 ═══ ИМЕНА НА УСЛУГИ ═══
 
+ВАЖНО: "часове", "час", "запис", "записи" са синоними на "резервации". "Колко часа имам утре" = резервации утре. "Часовете ми тази седмица" = bookings_week. "Следващият ми час" = next_client.
+
 Хората пишат имена на услуги с грешки, съкращения или на разговорен език. Бизнесът може да е всякакъв — салон за красота, барбер, грийминг за домашни любимци, козметик, маникюрист, коуч, масажист, фотограф или нещо съвсем различно.
 
 Принципи за разпознаване:
@@ -1389,6 +1394,7 @@ ${servicesJson}
 
 - { "action": "create_booking", "client_name": "Виолета", "service_name": "подстригване", "date": "YYYY-MM-DD", "time": "HH:mm" }
 - { "action": "bookings_day", "date": "YYYY-MM-DD" }
+- { "action": "bookings_week" }  ← за "тази седмица", "следващите дни", "какво имам за правене", "какво имам", "програмата ми", "часовете ми тази седмица"
 - { "action": "next_client" }
 - { "action": "revenue_week" }
 - { "action": "revenue_month" }
@@ -1490,6 +1496,9 @@ ${servicesJson}
   switch (intent.action) {
     case 'bookings_day':
       await handleBookingsForDay(chatId, salon, intent.date, intent.date === todayStr ? 'днес' : intent.date === tomorrowStr ? 'утре' : intent.date);
+      return true;
+    case 'bookings_week':
+      await handleBookingsForWeek(chatId, salon);
       return true;
     case 'next_client':
       await handleNextClient(chatId, salon);
@@ -1840,8 +1849,14 @@ ${servicesJson}
         const looksLikeFakeAction = /добав[ии]|запис[ао]|обнов[ии]|промен[ии]|изтр[ии]|запаз[ии]/i.test(intent.reply)
           && /✅|успешно|добавена|добавен/i.test(intent.reply);
         if (looksLikeFakeAction) return false;
-        await appendHistory(chatId, 'assistant', intent.reply);
-        await sendTelegramMessage(chatId, intent.reply);
+        // Strip Markdown formatting (**, *, __) since Telegram uses HTML parse mode
+        const cleanReply = intent.reply
+          .replace(/\*\*(.+?)\*\*/g, '$1')
+          .replace(/\*(.+?)\*/g, '$1')
+          .replace(/__(.+?)__/g, '$1')
+          .replace(/^[ \t]*\*[ \t]+/gm, '• ');
+        await appendHistory(chatId, 'assistant', cleanReply);
+        await sendTelegramMessage(chatId, cleanReply);
         return true;
       }
       return false;
@@ -2098,6 +2113,45 @@ async function handleBookingsForDay(
     })),
     created_at: new Date().toISOString(),
   });
+}
+
+async function handleBookingsForWeek(chatId: number, salon: SalonRef): Promise<void> {
+  const startDate = todayISO();
+  const endDate = offsetDayISO(6);
+
+  const rows = await sql`
+    SELECT CAST(id AS text) AS id, client_name, client_phone, date, time, service_name, service_price, status
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND date >= ${startDate}
+      AND date <= ${endDate}
+      AND status NOT IN ('cancelled')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
+    ORDER BY date ASC, time ASC
+  ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string; service_price: number | null; status: string }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `📅 Няма резервации за следващите 7 дни.`);
+    return;
+  }
+
+  // Group by date
+  const byDate = new Map<string, typeof rows>();
+  for (const r of rows) {
+    const list = byDate.get(r.date) ?? [];
+    list.push(r);
+    byDate.set(r.date, list);
+  }
+
+  const lines = [`📅 <b>Резервации за тази седмица (${rows.length} ${pluralBooking(rows.length)}):</b>`];
+  for (const [date, dayRows] of byDate) {
+    lines.push('', `<b>${formatDateBg(date)}</b>`);
+    for (const r of dayRows) {
+      const icon = r.status === 'confirmed' ? '✅' : '⏳';
+      lines.push(`  ${icon} ${r.time} — <b>${r.client_name}</b> — ${r.service_name}`);
+    }
+  }
+  await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
 async function handleNextClient(chatId: number, salon: SalonRef): Promise<void> {
