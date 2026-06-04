@@ -40,8 +40,14 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOpenBooking }: Props) {
+export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOpenBooking: onOpenBookingProp }: Props) {
   const [open, setOpen] = useState(false);
+
+  // Close chat first so booking modal (z-110) isn't hidden behind chat overlay (z-9999)
+  function onOpenBooking(serviceName?: string) {
+    setOpen(false);
+    setTimeout(() => onOpenBookingProp?.(serviceName), 50);
+  }
   const [mode, setMode] = useState<Mode>('ai');
 
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
