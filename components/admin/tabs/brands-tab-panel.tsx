@@ -10,43 +10,41 @@ type Props = {
   isMobile: boolean;
 };
 
-type CustomBrand = { name: string; domain: string };
-
 const CUSTOM_PREFIX = 'custom|';
 
-function encodeCustom(b: CustomBrand) {
-  return `${CUSTOM_PREFIX}${b.name}|${b.domain}`;
+function encodeCustom(name: string) {
+  return `${CUSTOM_PREFIX}${name}`;
 }
 
-function decodeCustom(raw: string): CustomBrand | null {
+function decodeCustomName(raw: string): string | null {
   if (!raw.startsWith(CUSTOM_PREFIX)) return null;
   const rest = raw.slice(CUSTOM_PREFIX.length);
-  const idx = rest.indexOf('|');
-  if (idx === -1) return null;
-  return { name: rest.slice(0, idx), domain: rest.slice(idx + 1) };
+  // backward compat: old format was custom|name|domain — take only the name part
+  const pipeIdx = rest.indexOf('|');
+  return pipeIdx === -1 ? rest : rest.slice(0, pipeIdx);
 }
 
-function splitInitialIds(ids: string[]): { predefined: string[]; custom: CustomBrand[] } {
+function splitInitialIds(ids: string[]): { predefined: string[]; customNames: string[] } {
   const predefined: string[] = [];
-  const custom: CustomBrand[] = [];
+  const customNames: string[] = [];
   for (const id of ids) {
-    const c = decodeCustom(id);
-    if (c) custom.push(c);
+    const name = decodeCustomName(id);
+    if (name) customNames.push(name);
     else predefined.push(id);
   }
-  return { predefined, custom };
+  return { predefined, customNames };
 }
 
 export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
   const init = splitInitialIds(initialBrandIds);
   const [selected, setSelected] = useState<Set<string>>(new Set(init.predefined));
-  const [customBrands, setCustomBrands] = useState<CustomBrand[]>(init.custom);
+  const [customNames, setCustomNames] = useState<string[]>(init.customNames);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  const [customName, setCustomName] = useState('');
-  const [customDomain, setCustomDomain] = useState('');
+  const [customInput, setCustomInput] = useState('');
   const [customError, setCustomError] = useState('');
+
+  const font = { fontFamily: "'Manrope', sans-serif" };
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -59,30 +57,24 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
   }
 
   function addCustom() {
-    const name = customName.trim();
-    const domain = customDomain.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const name = customInput.trim();
     if (!name) { setCustomError('Въведи име на бранда'); return; }
-    if (!domain || !domain.includes('.')) { setCustomError('Въведи валиден домейн (пр. mybrand.com)'); return; }
-    if (customBrands.some((b) => b.domain === domain)) { setCustomError('Този домейн вече е добавен'); return; }
-    setCustomBrands((prev) => [...prev, { name, domain }]);
-    setCustomName('');
-    setCustomDomain('');
+    if (customNames.includes(name)) { setCustomError('Вече е добавен'); return; }
+    setCustomNames((prev) => [...prev, name]);
+    setCustomInput('');
     setCustomError('');
     setSaved(false);
   }
 
-  function removeCustom(domain: string) {
-    setCustomBrands((prev) => prev.filter((b) => b.domain !== domain));
+  function removeCustom(name: string) {
+    setCustomNames((prev) => prev.filter((n) => n !== name));
     setSaved(false);
   }
 
   async function save() {
     setBusy(true);
     try {
-      const allIds = [
-        ...selected,
-        ...customBrands.map(encodeCustom),
-      ];
+      const allIds = [...selected, ...customNames.map(encodeCustom)];
       await fetch('/api/salons/brands', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,8 +87,6 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
   }
 
   const categories = Object.keys(BRAND_CATEGORY_LABELS) as BrandCategory[];
-
-  const font = { fontFamily: "'Manrope', sans-serif" };
 
   return (
     <AdminSection
@@ -112,7 +102,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
       }
     >
       <p style={{ fontSize: 13, color: '#888', marginBottom: 20, ...font }}>
-        Избери брандовете, с които работиш. Логата им ще се показват на публичната ти страница.
+        Избери брандовете, с които работиш. Ще се показват на публичната ти страница.
       </p>
 
       {categories.map((cat) => {
@@ -158,11 +148,11 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
           Добави ръчно
         </p>
 
-        {customBrands.length > 0 && (
+        {customNames.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-            {customBrands.map((b) => (
+            {customNames.map((name) => (
               <div
-                key={b.domain}
+                key={name}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '6px 10px',
@@ -173,10 +163,10 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
                 }}
               >
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.3 }}>
-                  {b.name}
+                  {name}
                 </span>
                 <button
-                  onClick={() => removeCustom(b.domain)}
+                  onClick={() => removeCustom(name)}
                   title="Премахни"
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -192,43 +182,24 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#888', ...font }}>Име на бранда</label>
-            <input
-              value={customName}
-              onChange={(e) => { setCustomName(e.target.value); setCustomError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-              placeholder="пр. Londa Professional"
-              style={{
-                height: 36, padding: '0 10px', borderRadius: 8,
-                border: '1.5px solid #e5e7eb', fontSize: 13, outline: 'none',
-                width: isMobile ? '100%' : 180,
-                ...font,
-              }}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#888', ...font }}>Домейн (за лого)</label>
-            <input
-              value={customDomain}
-              onChange={(e) => { setCustomDomain(e.target.value); setCustomError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-              placeholder="пр. londa.com"
-              style={{
-                height: 36, padding: '0 10px', borderRadius: 8,
-                border: '1.5px solid #e5e7eb', fontSize: 13, outline: 'none',
-                width: isMobile ? '100%' : 160,
-                ...font,
-              }}
-            />
-          </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <input
+            value={customInput}
+            onChange={(e) => { setCustomInput(e.target.value); setCustomError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+            placeholder="Ime на бранда..."
+            style={{
+              height: 36, padding: '0 10px', borderRadius: 8,
+              border: '1.5px solid #e5e7eb', fontSize: 13, outline: 'none',
+              flex: 1,
+              ...font,
+            }}
+          />
           <button
             onClick={addCustom}
             style={{
               height: 36, padding: '0 14px', borderRadius: 8,
-              background: '#0f0f0f',
-              border: 'none', cursor: 'pointer',
+              background: '#0f0f0f', border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 6,
               fontSize: 13, fontWeight: 600, color: '#fff',
               flexShrink: 0,
@@ -242,9 +213,6 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
         {customError && (
           <p style={{ fontSize: 12, color: '#e11d48', marginTop: 6, ...font }}>{customError}</p>
         )}
-        <p style={{ fontSize: 11, color: '#bbb', marginTop: 8, lineHeight: 1.5, ...font }}>
-          Домейнът се използва само за зареждане на логото (пр. за Londa — въведи <em>londa.com</em>).
-        </p>
       </div>
     </AdminSection>
   );
