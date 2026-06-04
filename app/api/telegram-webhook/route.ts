@@ -210,7 +210,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
           UPDATE salons SET bot_conversation_state = NULL
           WHERE telegram_chat_id = ${String(chatId)}
         `.catch(() => {});
-        await sendTelegramMessage(chatId, '🔕 Чат режимът е изключен. Вече пишеш командите на бота.');
+        await sendTelegramMessage(chatId, '🔕 Чат режимът е изключен. Пишеш командите на бота.\n\nЗа да се върнеш към клиента напиши <b>/чат</b>');
         return NextResponse.json({ ok: true });
       }
       if (!text.startsWith('/')) {
@@ -433,6 +433,32 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     const d = new Date(`${parsed.date}T12:00:00`);
     const dateStr = d.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
     await sendTelegramMessage(chatId, `🔓 Деблокиран: ${dateStr}, ${parsed.start}`);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Handle /чат — re-enter live chat mode with the most recent active session
+  if (text === '/чат' || text === '/chat') {
+    const salonForChat = await findSalonByChatId(chatId);
+    if (!salonForChat) {
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      return NextResponse.json({ ok: true });
+    }
+    const sessRows = await sql`
+      SELECT id, client_name FROM salon_chat_sessions
+      WHERE salon_id = ${salonForChat.salonId}
+      ORDER BY last_message_at DESC
+      LIMIT 1
+    ` as { id: string; client_name: string }[];
+    if (!sessRows[0]) {
+      await sendTelegramMessage(chatId, '📭 Няма активен чат с клиент в момента.');
+      return NextResponse.json({ ok: true });
+    }
+    const sess = sessRows[0];
+    await sql`
+      UPDATE salons SET bot_conversation_state = ${JSON.stringify({ type: 'waiting_chat_reply', session_id: sess.id })}::jsonb
+      WHERE telegram_chat_id = ${String(chatId)}
+    `.catch(() => {});
+    await sendTelegramMessage(chatId, `💬 Върнат си в чат режим с <b>${sess.client_name}</b>. Пиши директно за да й отговориш.\n\nНапиши /стоп за да излезеш.`);
     return NextResponse.json({ ok: true });
   }
 
