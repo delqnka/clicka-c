@@ -205,6 +205,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await sendTelegramMessage(chatId, '✅ Отговорът е изпратен на клиента.');
       return NextResponse.json({ ok: true });
     }
+
+    // Reply to a bot message that isn't a client chat notification — don't process as admin command
+    await sendTelegramMessage(chatId, '⚠️ Не успях да свържа reply-а с клиентски чат. За да отговориш на клиент, reply-вай директно на нотификацията с неговото съобщение.');
+    return NextResponse.json({ ok: true });
   }
 
   // Handle /start command
