@@ -955,6 +955,14 @@ export default function SalonPublicParity({
       openBookingModal();
       window.history.replaceState(null, '', window.location.pathname);
     }
+    function onHash() {
+      if (window.location.hash === '#rezerviraj') {
+        openBookingModal();
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

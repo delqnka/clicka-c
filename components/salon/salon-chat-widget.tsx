@@ -161,6 +161,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
                             href={bookingUrl}
                             onClick={(e) => {
                               e.preventDefault();
+                              window.history.replaceState(null, '', window.location.pathname);
                               window.location.hash = 'rezerviraj';
                             }}
                             style={{
