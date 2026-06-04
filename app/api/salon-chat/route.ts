@@ -66,9 +66,12 @@ export async function POST(req: NextRequest) {
         await sql`
           UPDATE salon_chat_messages
           SET telegram_message_id = ${result.result.message_id}
-          WHERE session_id = ${activeSessionId} AND role = 'client'
-          ORDER BY created_at DESC
-          LIMIT 1
+          WHERE id = (
+            SELECT id FROM salon_chat_messages
+            WHERE session_id = ${activeSessionId} AND role = 'client'
+            ORDER BY created_at DESC
+            LIMIT 1
+          )
         `;
       }
     }
