@@ -15,11 +15,20 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const mobileBottomRef = useRef<HTMLDivElement>(null);
+  const desktopBottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    mobileBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    desktopBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [open]);
 
   async function send() {
     const text = input.trim();
@@ -34,7 +43,7 @@ export function ChatWidget() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next.filter((m) => m.role !== 'assistant' || m !== WELCOME) }),
+        body: JSON.stringify({ messages: next }),
       });
       const data = await res.json();
       setMessages([...next, { role: 'assistant', content: data.message || 'Нещо се обърка.' }]);
@@ -51,12 +60,16 @@ export function ChatWidget() {
       {open && (
         <div
           className="fixed inset-0 z-[200] flex flex-col sm:hidden"
-          style={{ background: '#0f0f0f' }}
+          style={{ background: '#0f0f0f', height: '100dvh' }}
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 py-4 shrink-0"
-            style={{ background: 'linear-gradient(135deg, #e11d48, #a855f7)' }}
+            className="flex items-center justify-between px-4 shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #e11d48, #a855f7)',
+              paddingTop: 'max(16px, env(safe-area-inset-top))',
+              paddingBottom: '16px',
+            }}
           >
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-white/80 animate-pulse" />
@@ -68,7 +81,7 @@ export function ChatWidget() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 overscroll-contain">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
@@ -88,13 +101,17 @@ export function ChatWidget() {
                 </div>
               </div>
             )}
-            <div ref={bottomRef} />
+            <div ref={mobileBottomRef} />
           </div>
 
           {/* Input */}
-          <div className="px-4 py-4 border-t border-white/5 shrink-0" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <div
+            className="px-4 py-3 border-t border-white/5 shrink-0"
+            style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+          >
             <div className="flex gap-2">
               <input
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && send()}
@@ -150,7 +167,7 @@ export function ChatWidget() {
                   </div>
                 </div>
               )}
-              <div ref={bottomRef} />
+              <div ref={desktopBottomRef} />
             </div>
             <div className="px-3 py-3 border-t border-white/5">
               <div className="flex gap-2">
