@@ -2301,7 +2301,13 @@ export default function SalonPublicParity({
         salonName={name}
         primaryColor={primary}
         hasTelegram={!!rawSalon.telegram_chat_id}
-        onOpenBooking={openBookingModal}
+        onOpenBooking={(serviceName) => {
+          if (serviceName) {
+            const svc = bookingModalServices.find((s) => s.name.toLowerCase() === serviceName.toLowerCase());
+            if (svc) { openBookingModal(svc.id); return; }
+          }
+          openBookingModal();
+        }}
       />
     </div>
   );

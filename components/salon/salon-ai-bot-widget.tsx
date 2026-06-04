@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Loader2, CheckCircle2, User } from 'lucide-react';
 
-type AiMessage = { role: 'user' | 'assistant'; content: string; isBookingConfirm?: boolean };
+type AiMessage = { role: 'user' | 'assistant'; content: string; isBookingConfirm?: boolean; bookingLink?: string };
 type LiveMessage = { role: 'client' | 'salon'; content: string; createdAt: string };
 type Mode = 'ai' | 'live';
 
@@ -21,10 +21,11 @@ type Props = {
   salonName: string;
   primaryColor?: string;
   hasTelegram?: boolean;
-  onOpenBooking?: () => void;
+  onOpenBooking?: (serviceName?: string) => void;
 };
 
 const BOOK_RE = /<<BOOK:(\{[\s\S]*?\})>>/;
+const BOOK_LINK_RE = /<<BOOK_LINK:([^>]+)>>/;
 
 export function SalonAiBotWidget({ salonId, salonName, primaryColor = '#5B21B6', hasTelegram = false, onOpenBooking }: Props) {
   const [open, setOpen] = useState(false);
@@ -148,6 +149,14 @@ export function SalonAiBotWidget({ salonId, salonName, primaryColor = '#5B21B6',
         } catch { /* fall through */ }
       }
 
+      const bookLinkMatch = BOOK_LINK_RE.exec(raw);
+      if (bookLinkMatch) {
+        const serviceName = bookLinkMatch[1]!.trim();
+        const cleanContent = raw.replace(BOOK_LINK_RE, '').trim();
+        setAiMessages([...next, { role: 'assistant', content: cleanContent, bookingLink: serviceName }]);
+        return;
+      }
+
       setAiMessages([...next, { role: 'assistant', content: raw }]);
     } catch {
       setAiMessages([...next, { role: 'assistant', content: 'Нещо се обърка. Опитай пак.' }]);
@@ -239,6 +248,27 @@ export function SalonAiBotWidget({ salonId, salonName, primaryColor = '#5B21B6',
                       }}>
                         <CheckCircle2 size={16} style={{ color: '#10b981', flexShrink: 0, marginTop: 1 }} />
                         <span>{m.content}</span>
+                      </div>
+                    ) : m.bookingLink ? (
+                      <div style={{
+                        maxWidth: '82%', padding: '10px 13px', borderRadius: 16,
+                        borderBottomLeftRadius: 4,
+                        fontSize: 13, lineHeight: 1.55,
+                        background: '#f3f4f6', color: '#111',
+                        display: 'flex', flexDirection: 'column', gap: 8,
+                      }}>
+                        {m.content && <span>{m.content}</span>}
+                        <button
+                          onClick={() => onOpenBooking?.(m.bookingLink)}
+                          style={{
+                            padding: '9px 14px', borderRadius: 10, border: 'none',
+                            background: GRAD, color: '#fff', fontWeight: 700,
+                            fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                            textAlign: 'center',
+                          }}
+                        >
+                          📅 Запази час за {m.bookingLink}
+                        </button>
                       </div>
                     ) : (
                       <div style={{
