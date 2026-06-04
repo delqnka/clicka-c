@@ -24,6 +24,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
   const seenIdsRef = useRef(new Set<string>());
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -71,67 +72,64 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
       });
       const data = await res.json() as { sessionId?: string };
       const sid = data.sessionId ?? sessionId;
-      if (data.sessionId && !sessionId) {
-        setSessionId(data.sessionId);
-      }
-      // Immediately poll for auto-reply instead of waiting for next interval
+      if (data.sessionId && !sessionId) setSessionId(data.sessionId);
       if (sid) setTimeout(() => poll(sid), 300);
     } catch { /* ignore */ }
     finally { setSending(false); }
   }
 
   const GRAD = `linear-gradient(135deg, ${primaryColor}, #a855f7)`;
-
   const PINK_GRAD = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
 
   return (
-    <div className="fixed bottom-[76px] right-4 lg:bottom-5 lg:right-5 z-[9999] flex flex-col items-end gap-3">
+    <>
+      {/* Chat panel — fullscreen on mobile, floating on desktop */}
       {open && (
-        <div style={{
-          width: 'min(320px, calc(100vw - 32px))', borderRadius: 20, overflow: 'hidden',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
-          border: '1px solid rgba(0,0,0,0.08)',
-          background: '#fff',
-          display: 'flex', flexDirection: 'column',
-          height: 420,
-        }}>
+        <div className="
+          fixed z-[9999]
+          inset-x-0 bottom-0 top-0
+          sm:inset-auto sm:bottom-[84px] sm:right-5 sm:top-auto sm:w-[360px] sm:rounded-2xl
+          flex flex-col overflow-hidden
+          bg-white
+          shadow-[0_8px_40px_rgba(0,0,0,0.18)]
+          border border-black/[0.07]
+        ">
           {/* Header */}
-          <div style={{ background: GRAD, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,255,255,0.8)' }} />
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{salonName}</span>
+          <div
+            className="flex shrink-0 items-center justify-between px-4 py-3"
+            style={{ background: GRAD }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-white/70" />
+              <span className="text-[15px] font-bold text-white">{salonName}</span>
             </div>
-            <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)', padding: 2 }}>
-              <X size={16} />
+            <button
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center rounded-full p-1.5 text-white/80 transition hover:bg-white/20 active:bg-white/30"
+            >
+              <X size={18} />
             </button>
           </div>
 
-          {/* Name input */}
+          {/* Body */}
           {!nameEntered ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
-              <MessageCircle size={40} style={{ color: primaryColor, opacity: 0.7 }} />
-              <p style={{ fontSize: 15, fontWeight: 600, color: '#111', textAlign: 'center' }}>Как да те наречем?</p>
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 pb-8 pt-6">
+              <MessageCircle size={44} style={{ color: primaryColor, opacity: 0.7 }} />
+              <p className="text-center text-[15px] font-semibold text-gray-900">Как да те наречем?</p>
               <input
+                ref={inputRef}
                 autoFocus
                 placeholder="Твоето име"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && clientName.trim() && setNameEntered(true)}
-                style={{
-                  width: '100%', padding: '10px 14px', borderRadius: 12,
-                  border: '1.5px solid #e5e7eb', fontSize: 14, outline: 'none',
-                  fontFamily: 'inherit', boxSizing: 'border-box',
-                }}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-gray-400"
               />
               <button
                 onClick={() => clientName.trim() && setNameEntered(true)}
                 disabled={!clientName.trim()}
-                style={{
-                  width: '100%', padding: '10px 0', borderRadius: 12, border: 'none',
-                  background: GRAD, color: '#fff', fontWeight: 700, fontSize: 14,
-                  cursor: clientName.trim() ? 'pointer' : 'not-allowed',
-                  opacity: clientName.trim() ? 1 : 0.5, fontFamily: 'inherit',
-                }}
+                className="w-full rounded-xl py-2.5 text-sm font-bold text-white transition disabled:opacity-40"
+                style={{ background: GRAD }}
               >
                 Започни чата
               </button>
@@ -139,26 +137,20 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
           ) : (
             <>
               {/* Messages */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-3">
                 {messages.length === 0 && (
-                  <p style={{ fontSize: 13, color: '#888', textAlign: 'center', marginTop: 16 }}>
+                  <p className="mt-4 text-center text-[13px] text-gray-400">
                     Здравей, {clientName}! Напиши съобщението си и ще ти отговорим скоро.
                   </p>
                 )}
                 {messages.map((m, i) => {
-                  // Detect booking auto-reply: salon message containing #rezerviraj URL
                   const bookingMatch = m.role === 'salon' && m.content.match(/https?:\/\/\S+#rezerviraj/);
                   if (bookingMatch) {
                     const bookingUrl = bookingMatch[0];
                     const textBefore = m.content.slice(0, m.content.indexOf(bookingUrl)).trim();
                     return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                        <div style={{
-                          maxWidth: '85%', padding: '10px 14px', borderRadius: 14,
-                          fontSize: 13, lineHeight: 1.5,
-                          background: '#f3f4f6', color: '#111',
-                          display: 'flex', flexDirection: 'column', gap: 10,
-                        }}>
+                      <div key={i} className="flex justify-start">
+                        <div className="flex max-w-[85%] flex-col gap-2.5 rounded-2xl rounded-tl-sm bg-gray-100 px-3.5 py-2.5 text-[13px] leading-relaxed text-gray-900">
                           {textBefore && <span>{textBefore}</span>}
                           <a
                             href={bookingUrl}
@@ -171,12 +163,8 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
                                 window.location.hash = 'rezerviraj';
                               }
                             }}
-                            style={{
-                              display: 'block', padding: '10px 16px', borderRadius: 12,
-                              background: GRAD, color: '#fff', fontWeight: 700,
-                              fontSize: 13, textAlign: 'center', textDecoration: 'none',
-                              cursor: 'pointer',
-                            }}
+                            className="block rounded-xl px-4 py-2.5 text-center text-[13px] font-bold text-white no-underline"
+                            style={{ background: GRAD }}
                           >
                             📅 Виж свободни часове
                           </a>
@@ -185,51 +173,46 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
                     );
                   }
                   return (
-                  <div key={i} style={{ display: 'flex', justifyContent: m.role === 'client' ? 'flex-end' : 'flex-start' }}>
-                    <div style={{
-                      maxWidth: '80%', padding: '8px 12px', borderRadius: 14,
-                      fontSize: 13, lineHeight: 1.5,
-                      background: m.role === 'client' ? GRAD : '#f3f4f6',
-                      color: m.role === 'client' ? '#fff' : '#111',
-                    }}>
-                      {m.content.split(/\n/).map((line, j) => (
-                        <span key={j}>{line}{j < m.content.split(/\n/).length - 1 && <br />}</span>
-                      ))}
+                    <div key={i} className={`flex ${m.role === 'client' ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed ${
+                          m.role === 'client'
+                            ? 'rounded-br-sm text-white'
+                            : 'rounded-bl-sm bg-gray-100 text-gray-900'
+                        }`}
+                        style={m.role === 'client' ? { background: GRAD } : undefined}
+                      >
+                        {m.content.split(/\n/).map((line, j, arr) => (
+                          <span key={j}>{line}{j < arr.length - 1 && <br />}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
                   );
                 })}
                 {sending && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <Loader2 size={14} style={{ color: primaryColor, animation: 'spin 1s linear infinite' }} />
+                  <div className="flex justify-end">
+                    <Loader2 size={14} className="animate-spin" style={{ color: primaryColor }} />
                   </div>
                 )}
                 <div ref={bottomRef} />
               </div>
 
               {/* Input */}
-              <div style={{ padding: '10px 12px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 8 }}>
+              <div className="flex shrink-0 items-center gap-2 border-t border-gray-100 px-3 pb-[max(12px,env(safe-area-inset-bottom,12px))] pt-2.5 sm:pb-3">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && send()}
                   placeholder="Напиши съобщение..."
-                  style={{
-                    flex: 1, padding: '8px 12px', borderRadius: 12,
-                    border: '1.5px solid #e5e7eb', fontSize: 13,
-                    outline: 'none', fontFamily: 'inherit',
-                  }}
+                  className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2 text-sm outline-none focus:border-gray-400"
                 />
                 <button
                   onClick={send}
                   disabled={!input.trim() || sending}
-                  style={{
-                    padding: '8px 12px', borderRadius: 12, border: 'none',
-                    background: GRAD, cursor: input.trim() ? 'pointer' : 'not-allowed',
-                    opacity: input.trim() ? 1 : 0.4,
-                  }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-none transition disabled:opacity-40"
+                  style={{ background: GRAD }}
                 >
-                  <Send size={14} color="#fff" />
+                  <Send size={15} color="#fff" />
                 </button>
               </div>
             </>
@@ -237,18 +220,16 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
         </div>
       )}
 
-      {/* Toggle */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          width: 52, height: 52, borderRadius: '50%', border: 'none',
-          backgroundImage: PINK_GRAD, cursor: 'pointer', boxShadow: '0 4px 20px rgba(225,29,72,0.35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'transform 0.2s',
-        }}
-      >
-        {open ? <X size={22} color="#fff" /> : <MessageCircle size={22} color="#fff" />}
-      </button>
-    </div>
+      {/* Toggle bubble — stays fixed bottom right, above sticky bar on mobile */}
+      <div className="fixed bottom-[76px] right-4 z-[9999] lg:bottom-5 lg:right-5">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-14 w-14 items-center justify-center rounded-full border-none shadow-[0_4px_20px_rgba(225,29,72,0.35)] transition-transform active:scale-95"
+          style={{ backgroundImage: PINK_GRAD }}
+        >
+          {open ? <X size={24} color="#fff" /> : <MessageCircle size={24} color="#fff" />}
+        </button>
+      </div>
+    </>
   );
 }
