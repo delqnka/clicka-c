@@ -296,6 +296,26 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
               </button>
             </div>
 
+            {/* "Говори с нас" link — under header, Apple blue */}
+            {hasTelegram && mode === 'ai' && (
+              <div style={{
+                flexShrink: 0, borderBottom: '1px solid #f0f0f0',
+                padding: '8px 16px', background: '#fff',
+                display: 'flex', justifyContent: 'flex-end',
+              }}>
+                <button
+                  onClick={switchToLive}
+                  style={{
+                    background: 'none', border: 'none', padding: 0,
+                    cursor: 'pointer', fontSize: 14, color: '#007AFF',
+                    display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                  }}
+                >
+                  <User size={14} /> Говори с нас
+                </button>
+              </div>
+            )}
+
             {/* AI mode body */}
             {mode === 'ai' && (
               <>
@@ -317,21 +337,6 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
                   <div ref={bottomRef} />
                 </div>
 
-                {hasTelegram && (
-                  <div style={{ padding: '0 12px 8px', flexShrink: 0 }}>
-                    <button
-                      onClick={switchToLive}
-                      style={{
-                        width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid #e5e7eb',
-                        background: '#fff', cursor: 'pointer', fontSize: 14, color: '#555',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit',
-                      }}
-                    >
-                      <User size={15} /> Говори с нас
-                    </button>
-                  </div>
-                )}
-
                 <div style={{
                   flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
                   padding: '10px 12px',
@@ -352,18 +357,17 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
                   />
                   <button
                     onClick={sendAi}
-                    disabled={!aiInput.trim() || aiLoading}
+                    disabled={aiLoading}
                     style={{
                       width: 44, height: 44, borderRadius: '50%', border: 'none', flexShrink: 0,
-                      backgroundImage: aiInput.trim() ? GRAD : undefined,
-                      background: aiInput.trim() ? undefined : '#e5e7eb',
-                      cursor: aiInput.trim() ? 'pointer' : 'default',
+                      backgroundImage: GRAD, cursor: 'pointer',
+                      opacity: aiInput.trim() ? 1 : 0.4,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
                     {aiLoading
-                      ? <Loader2 size={18} color={aiInput.trim() ? '#fff' : '#aaa'} style={{ animation: 'spin 1s linear infinite' }} />
-                      : <Send size={18} color={aiInput.trim() ? '#fff' : '#aaa'} />
+                      ? <Loader2 size={18} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+                      : <Send size={18} color="#fff" />
                     }
                   </button>
                 </div>
