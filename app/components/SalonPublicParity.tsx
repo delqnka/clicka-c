@@ -2295,21 +2295,14 @@ export default function SalonPublicParity({
         </div>
       ) : null}
 
-      {/* Live chat widget — only show if salon has Telegram connected */}
-      {rawSalon.telegram_chat_id ? (
-        <SalonChatWidget
-          salonId={salonId}
-          salonName={name}
-          primaryColor={primary}
-          onOpenBooking={openBookingModal}
-        />
-      ) : (
-        <SalonAiBotWidget
-          salonId={salonId}
-          salonName={name}
-          primaryColor={primary}
-        />
-      )}
+      {/* AI assistant with optional live chat escalation to Telegram */}
+      <SalonAiBotWidget
+        salonId={salonId}
+        salonName={name}
+        primaryColor={primary}
+        hasTelegram={!!rawSalon.telegram_chat_id}
+        onOpenBooking={openBookingModal}
+      />
     </div>
   );
 }
