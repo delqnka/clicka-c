@@ -2635,7 +2635,7 @@ export default function AdminDashboardClient({
                     width: '100%', textAlign: 'left',
                     background: '#fff',
                     color: active ? T.text : T.muted,
-                    fontSize: 12, fontWeight: active ? 600 : 400,
+                    fontSize: 14, fontWeight: active ? 600 : 400,
                     cursor: 'pointer',
                     transition: 'background 120ms, color 120ms',
                   }}
