@@ -9,9 +9,10 @@ type Props = {
   salonId: string;
   salonName: string;
   primaryColor?: string;
+  onOpenBooking?: () => void;
 };
 
-export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }: Props) {
+export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', onOpenBooking }: Props) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -161,8 +162,12 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
                             href={bookingUrl}
                             onClick={(e) => {
                               e.preventDefault();
-                              window.history.replaceState(null, '', window.location.pathname);
-                              window.location.hash = 'rezerviraj';
+                              if (onOpenBooking) {
+                                onOpenBooking();
+                              } else {
+                                window.history.replaceState(null, '', window.location.pathname);
+                                window.location.hash = 'rezerviraj';
+                              }
                             }}
                             style={{
                               display: 'block', padding: '10px 16px', borderRadius: 12,

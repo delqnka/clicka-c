@@ -2301,6 +2301,7 @@ export default function SalonPublicParity({
           salonId={salonId}
           salonName={name}
           primaryColor={primary}
+          onOpenBooking={openBookingModal}
         />
       ) : (
         <SalonAiBotWidget

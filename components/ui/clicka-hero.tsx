@@ -34,7 +34,7 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 pb-16 pt-10 sm:pt-24">
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 pb-16 pt-32 sm:pt-24">
 
         {/* Badge */}
         <div className="mb-7 inline-flex items-center gap-2 text-[13px] font-semibold">

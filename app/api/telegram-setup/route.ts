@@ -4,8 +4,10 @@ import { telegramPost } from '@/lib/telegram';
 // GET /api/telegram-setup — registers bot commands so they appear in Telegram's menu.
 // Call this once after deploy (open the URL in browser while logged in as admin).
 export async function GET(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get('secret');
-  if (!secret || secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+  // Allow if no secret is configured (open) OR if secret matches
+  const configured = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const provided = req.nextUrl.searchParams.get('secret');
+  if (configured && provided !== configured) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
