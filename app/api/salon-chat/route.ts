@@ -74,6 +74,13 @@ export async function POST(req: NextRequest) {
           )
         `;
       }
+
+      // Mark this session as the active one so owner can reply without using Telegram Reply
+      await sql`
+        UPDATE salons
+        SET bot_conversation_state = ${JSON.stringify({ type: 'waiting_chat_reply', session_id: activeSessionId })}::jsonb
+        WHERE telegram_chat_id = ${salon.telegram_chat_id}
+      `.catch(() => {});
     }
 
     return NextResponse.json({ sessionId: activeSessionId });
