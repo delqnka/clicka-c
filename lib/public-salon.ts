@@ -15,6 +15,23 @@ type PublicSalonLookup = {
   slug: string;
 };
 
+/** Returns the current slug if this old_slug was renamed, otherwise null. */
+export async function resolveSlugRedirect(oldSlug: string): Promise<string | null> {
+  try {
+    const rows = await sql`
+      SELECT s.slug
+      FROM salon_slug_history h
+      JOIN salons s ON s.id = h.salon_id
+      WHERE h.old_slug = ${oldSlug} AND s.is_active = true
+      LIMIT 1
+    `;
+    if (rows.length > 0) return String((rows[0] as Record<string, unknown>).slug ?? '');
+  } catch {
+    // Table may not exist yet — ignore
+  }
+  return null;
+}
+
 async function resolvePublicSalonBySlugOrHost({
   slug,
   host,

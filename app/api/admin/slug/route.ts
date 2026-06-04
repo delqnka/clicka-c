@@ -39,8 +39,24 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Този адрес вече е зает.' }, { status: 409 });
   }
 
-  // Update slug in DB
+  const oldSlug = auth.salon.slug;
+
+  // Ensure redirect history table exists
+  await sql`
+    CREATE TABLE IF NOT EXISTS salon_slug_history (
+      old_slug   text        PRIMARY KEY,
+      salon_id   bigint      NOT NULL REFERENCES salons(id) ON DELETE CASCADE,
+      changed_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+
+  // Update slug in DB + record old slug for redirect
   await sql`UPDATE salons SET slug = ${newSlug} WHERE id = ${auth.salon.salonId}`;
+  await sql`
+    INSERT INTO salon_slug_history (old_slug, salon_id)
+    VALUES (${oldSlug}, ${auth.salon.salonId})
+    ON CONFLICT (old_slug) DO UPDATE SET salon_id = EXCLUDED.salon_id, changed_at = now()
+  `;
 
   // Register new Vercel subdomain (best-effort)
   await ensurePlatformSubdomain(newSlug).catch((e) =>

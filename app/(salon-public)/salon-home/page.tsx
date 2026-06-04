@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SalonPublicPageView } from '@/components/salon/salon-public-page-view';
-import { ROOT_DOMAIN } from '@/lib/domain-routing';
-import { getPublicSalonPageData } from '@/lib/public-salon';
+import { extractHostname, getPlatformSubdomain, ROOT_DOMAIN } from '@/lib/domain-routing';
+import { getPublicSalonPageData, resolveSlugRedirect } from '@/lib/public-salon';
 import { buildSalonPageMetadata } from '@/lib/seo';
 
 export const revalidate = 60;
@@ -22,6 +22,11 @@ export default async function SalonCustomDomainHomePage() {
   const pageData = await getPublicSalonPageData({ host });
 
   if (!pageData) {
+    const subdomain = getPlatformSubdomain(extractHostname(host));
+    if (subdomain) {
+      const newSlug = await resolveSlugRedirect(subdomain);
+      if (newSlug) redirect(`https://${newSlug}.${ROOT_DOMAIN}`);
+    }
     redirect(`https://${ROOT_DOMAIN}`);
   }
 
