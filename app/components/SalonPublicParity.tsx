@@ -1320,7 +1320,7 @@ export default function SalonPublicParity({
 
   return (
     <div
-      className={`client-site min-h-screen overflow-x-hidden bg-white text-[#1a1a1a] pb-20 lg:pb-10${bookingOpen || offerBookingOpen ? ' overflow-x-hidden' : ''}`}
+      className={`client-site min-h-screen [overflow-x:clip] bg-white text-[#1a1a1a] pb-20 lg:pb-10`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
       <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
@@ -2086,7 +2086,7 @@ export default function SalonPublicParity({
         </div>
       </footer>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white px-3 pb-[max(6px,env(safe-area-inset-bottom))] pt-2 lg:hidden" style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden', willChange: 'transform' }}>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-white px-3 pb-[max(6px,env(safe-area-inset-bottom))] pt-2 lg:hidden">
         <div className="mx-auto w-full max-w-[min(100%,1180px)]">
           <button
             type="button"

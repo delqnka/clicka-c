@@ -82,11 +82,13 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
 
   const GRAD = `linear-gradient(135deg, ${primaryColor}, #a855f7)`;
 
+  const PINK_GRAD = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
+
   return (
-    <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+    <div className="fixed bottom-[calc(64px+max(6px,env(safe-area-inset-bottom,0px)))] right-4 lg:bottom-5 lg:right-5 z-[9999] flex flex-col items-end gap-3">
       {open && (
         <div style={{
-          width: 320, borderRadius: 20, overflow: 'hidden',
+          width: 'min(320px, calc(100vw - 32px))', borderRadius: 20, overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
           border: '1px solid rgba(0,0,0,0.08)',
           background: '#fff',
@@ -240,7 +242,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
         onClick={() => setOpen((v) => !v)}
         style={{
           width: 52, height: 52, borderRadius: '50%', border: 'none',
-          background: GRAD, cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+          backgroundImage: PINK_GRAD, cursor: 'pointer', boxShadow: '0 4px 20px rgba(225,29,72,0.35)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'transform 0.2s',
         }}
