@@ -69,9 +69,12 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48' }
         body: JSON.stringify({ salonId, sessionId, clientName, message: msg }),
       });
       const data = await res.json() as { sessionId?: string };
+      const sid = data.sessionId ?? sessionId;
       if (data.sessionId && !sessionId) {
         setSessionId(data.sessionId);
       }
+      // Immediately poll for auto-reply instead of waiting for next interval
+      if (sid) setTimeout(() => poll(sid), 300);
     } catch { /* ignore */ }
     finally { setSending(false); }
   }

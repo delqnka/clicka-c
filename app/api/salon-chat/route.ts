@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { telegramPost } from '@/lib/telegram';
 
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'clicka.bg';
+
 // POST — create session + send first message, or continue existing session
 export async function POST(req: NextRequest) {
   try {
@@ -13,11 +15,11 @@ export async function POST(req: NextRequest) {
 
     // Get salon telegram chat id
     const salonRows = await sql`
-      SELECT CAST(id AS text) AS id, name, telegram_chat_id
+      SELECT CAST(id AS text) AS id, name, slug, custom_domain, telegram_chat_id
       FROM salons
       WHERE CAST(id AS text) = ${salonId} AND is_active = true
       LIMIT 1
-    ` as { id: string; name: string; telegram_chat_id: string | null }[];
+    ` as { id: string; name: string; slug: string; custom_domain: string | null; telegram_chat_id: string | null }[];
 
     if (salonRows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const salon = salonRows[0]!;
@@ -45,6 +47,16 @@ export async function POST(req: NextRequest) {
     await sql`
       INSERT INTO salon_chat_messages (session_id, role, content)
       VALUES (${activeSessionId}, 'client', ${message.trim()})
+    `;
+
+    // Auto-reply with booking link on every client message
+    const bookingUrl = salon.custom_domain
+      ? `https://${salon.custom_domain}`
+      : `https://${salon.slug}.${ROOT_DOMAIN}`;
+    const autoReply = `Свободните часове и записването можете да направите директно тук: ${bookingUrl}`;
+    await sql`
+      INSERT INTO salon_chat_messages (session_id, role, content)
+      VALUES (${activeSessionId}, 'salon', ${autoReply})
     `;
 
     // Forward to Telegram if salon has it connected
