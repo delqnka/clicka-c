@@ -33,7 +33,8 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
   const [nameEntered, setNameEntered] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [kbOffset, setKbOffset] = useState(0);
+  const [vvTop, setVvTop] = useState(0);
+  const [vvHeight, setVvHeight] = useState<number | null>(null);
 
   const lastAtRef = useRef('1970-01-01');
   const seenIdsRef = useRef(new Set<string>());
@@ -63,24 +64,28 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
     }
   }, [open, isMobile]);
 
-  // Keyboard height tracking via visualViewport
+  // Keyboard height tracking via visualViewport — track top+height directly for iOS accuracy
   useEffect(() => {
     if (!open || !isMobile) return;
     const vv = window.visualViewport;
-    if (!vv) return;
 
     function onResize() {
-      const offset = Math.max(0, window.innerHeight - (vv?.height ?? window.innerHeight) - (vv?.offsetTop ?? 0));
-      setKbOffset(offset);
+      setVvTop(vv?.offsetTop ?? 0);
+      setVvHeight(vv?.height ?? window.innerHeight);
     }
 
-    vv.addEventListener('resize', onResize);
-    vv.addEventListener('scroll', onResize);
+    if (vv) {
+      vv.addEventListener('resize', onResize);
+      vv.addEventListener('scroll', onResize);
+    }
     onResize();
     return () => {
-      vv.removeEventListener('resize', onResize);
-      vv.removeEventListener('scroll', onResize);
-      setKbOffset(0);
+      if (vv) {
+        vv.removeEventListener('resize', onResize);
+        vv.removeEventListener('scroll', onResize);
+      }
+      setVvTop(0);
+      setVvHeight(null);
     };
   }, [open, isMobile]);
 
@@ -92,7 +97,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
   // Instant scroll when keyboard opens/closes so input stays in view without jank
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'instant' });
-  }, [kbOffset]);
+  }, [vvHeight]);
 
   // Focus management
   useEffect(() => {
@@ -169,10 +174,10 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
           <div
             style={{
               position: 'fixed',
-              top: 0,
+              top: vvTop,
               left: 0,
               right: 0,
-              bottom: kbOffset,
+              height: vvHeight ?? window.innerHeight,
               zIndex: 9999,
               display: 'flex',
               flexDirection: 'column',
@@ -226,6 +231,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
                 justifyContent: 'center',
                 padding: '32px 24px',
                 gap: 14,
+                background: '#fff',
               }}>
                 <div style={{
                   width: 64, height: 64, borderRadius: '50%',
@@ -273,6 +279,7 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
                   display: 'flex', flexDirection: 'column', gap: 6,
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'contain',
+                  background: '#fff',
                 }}>
                   {messages.length === 0 && (
                     <div style={{ textAlign: 'center', marginTop: 24 }}>

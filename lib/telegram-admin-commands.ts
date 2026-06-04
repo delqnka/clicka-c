@@ -2146,9 +2146,11 @@ async function handleBookingsForWeek(chatId: number, salon: SalonRef): Promise<v
   const lines = [`📅 <b>Резервации за тази седмица (${rows.length} ${pluralBooking(rows.length)}):</b>`];
   for (const [date, dayRows] of byDate) {
     lines.push('', `<b>${formatDateBg(date)}</b>`);
-    for (const r of dayRows) {
+    for (let i = 0; i < dayRows.length; i++) {
+      const r = dayRows[i]!;
       const icon = r.status === 'confirmed' ? '✅' : '⏳';
-      lines.push(`  ${icon} ${r.time} — <b>${r.client_name}</b> — ${r.service_name}`);
+      lines.push(`${icon} <b>${r.time}</b> / ${r.client_name} - ${r.service_name}`);
+      if (i < dayRows.length - 1) lines.push('· · · · · · · · · · · ·');
     }
   }
   await sendTelegramMessage(chatId, lines.join('\n'));

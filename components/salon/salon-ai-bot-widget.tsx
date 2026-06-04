@@ -54,7 +54,8 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
   const [clientName, setClientName] = useState('');
   const [nameEntered, setNameEntered] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [kbOffset, setKbOffset] = useState(0);
+  const [vvTop, setVvTop] = useState(0);
+  const [vvHeight, setVvHeight] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,22 +86,26 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
     }
   }, [open, isMobile]);
 
-  // Keyboard height tracking
+  // Keyboard height tracking via visualViewport
   useEffect(() => {
     if (!open || !isMobile) return;
     const vv = window.visualViewport;
-    if (!vv) return;
     function onResize() {
-      const offset = Math.max(0, window.innerHeight - (vv?.height ?? window.innerHeight) - (vv?.offsetTop ?? 0));
-      setKbOffset(offset);
+      setVvTop(vv?.offsetTop ?? 0);
+      setVvHeight(vv?.height ?? window.innerHeight);
     }
-    vv.addEventListener('resize', onResize);
-    vv.addEventListener('scroll', onResize);
+    if (vv) {
+      vv.addEventListener('resize', onResize);
+      vv.addEventListener('scroll', onResize);
+    }
     onResize();
     return () => {
-      vv.removeEventListener('resize', onResize);
-      vv.removeEventListener('scroll', onResize);
-      setKbOffset(0);
+      if (vv) {
+        vv.removeEventListener('resize', onResize);
+        vv.removeEventListener('scroll', onResize);
+      }
+      setVvTop(0);
+      setVvHeight(null);
     };
   }, [open, isMobile]);
 
@@ -110,7 +115,7 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'instant' });
-  }, [kbOffset]);
+  }, [vvHeight]);
 
   useEffect(() => {
     if (open) {
@@ -253,7 +258,8 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
       <>
         {open && (
           <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: kbOffset,
+            position: 'fixed', top: vvTop, left: 0, right: 0,
+            height: vvHeight ?? window.innerHeight,
             zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#fff',
           }}>
             {/* Header */}
@@ -297,6 +303,7 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
                   flex: 1, overflowY: 'auto', padding: '12px 14px',
                   display: 'flex', flexDirection: 'column', gap: 8,
                   WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+                  background: '#fff',
                 }}>
                   {aiMessages.length === 0 && (
                     <div style={{ textAlign: 'center', paddingTop: 32 }}>
@@ -370,7 +377,7 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
                   <div style={{
                     flex: 1, display: 'flex', flexDirection: 'column',
                     alignItems: 'center', justifyContent: 'center',
-                    padding: '32px 24px', gap: 14,
+                    padding: '32px 24px', gap: 14, background: '#fff',
                   }}>
                     <p style={{ fontSize: 20, fontWeight: 700, color: '#111', textAlign: 'center', margin: 0 }}>
                       👋 Как се казваш?
@@ -412,6 +419,7 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
                       flex: 1, overflowY: 'auto', padding: '12px 14px',
                       display: 'flex', flexDirection: 'column', gap: 6,
                       WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+                      background: '#fff',
                     }}>
                       {liveMessages.length === 0 && (
                         <div style={{ textAlign: 'center', marginTop: 24 }}>
