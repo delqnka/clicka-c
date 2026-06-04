@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 
 export type PaymentType = 'none' | 'deposit' | 'full';
+export type CancelPolicyAction = 'full_refund' | 'keep_deposit' | 'keep_full';
 
 export type ServiceItem = {
   id?: string;
@@ -15,6 +16,8 @@ export type ServiceItem = {
   payment_type?: PaymentType;
   deposit_amount?: number; // euros (e.g. 20 = €20)
   requires_confirmation?: boolean;
+  cancel_policy_hours?: number;     // hours before which free cancel is allowed
+  cancel_policy_action?: CancelPolicyAction; // what happens after the deadline
 };
 
 export type ParsedSalonService = {
@@ -30,6 +33,8 @@ export type ParsedSalonService = {
   payment_type?: PaymentType;
   deposit_amount?: number;
   requires_confirmation?: boolean;
+  cancel_policy_hours?: number;
+  cancel_policy_action?: CancelPolicyAction;
 };
 
 function pickFirstNonEmptyString(...values: unknown[]): string {
@@ -125,6 +130,17 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
     const depositAmountRaw = Number(row.deposit_amount ?? NaN);
     const depositAmount = Number.isFinite(depositAmountRaw) ? Math.max(0, depositAmountRaw) : undefined;
 
+    const cancelPolicyHoursRaw = Number(row.cancel_policy_hours ?? NaN);
+    const cancelPolicyHours = Number.isFinite(cancelPolicyHoursRaw) && cancelPolicyHoursRaw > 0
+      ? cancelPolicyHoursRaw
+      : undefined;
+    const cancelPolicyActionRaw = String(row.cancel_policy_action ?? '');
+    const cancelPolicyAction: CancelPolicyAction | undefined = (
+      ['full_refund', 'keep_deposit', 'keep_full'] as CancelPolicyAction[]
+    ).includes(cancelPolicyActionRaw as CancelPolicyAction)
+      ? (cancelPolicyActionRaw as CancelPolicyAction)
+      : undefined;
+
     out.push({
       id,
       name,
@@ -147,6 +163,8 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
       ...(paymentType !== undefined ? { payment_type: paymentType } : {}),
       ...(depositAmount !== undefined ? { deposit_amount: depositAmount } : {}),
       ...(row.requires_confirmation === true ? { requires_confirmation: true } : {}),
+      ...(cancelPolicyHours !== undefined ? { cancel_policy_hours: cancelPolicyHours } : {}),
+      ...(cancelPolicyAction !== undefined ? { cancel_policy_action: cancelPolicyAction } : {}),
     });
   });
 
@@ -196,6 +214,8 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
         ? { deposit_amount: Math.max(0, Number((s as unknown as ServiceItem).deposit_amount)) }
         : {}),
       ...((s as unknown as ServiceItem).requires_confirmation === true ? { requires_confirmation: true } : {}),
+      ...(s.cancel_policy_hours !== undefined ? { cancel_policy_hours: s.cancel_policy_hours } : {}),
+      ...(s.cancel_policy_action !== undefined ? { cancel_policy_action: s.cancel_policy_action } : {}),
     };
   });
 }

@@ -10,6 +10,13 @@ import {
   syncBookingToGoogleCalendar,
 } from '@/lib/calendar-sync';
 import { cancelBookingSmsReminders } from '@/lib/sms-reminders';
+import { stripe } from '@/lib/stripe';
+import { parseSalonServices } from '@/lib/salon-services';
+import {
+  evaluateCancellationPolicy,
+  formatPolicySummary,
+  type CancelPolicyAction,
+} from '@/lib/cancellation-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,16 +40,24 @@ type BookingRow = {
   status: string;
   notes: string | null;
   manage_token: string | null;
+  payment_status: string;
+  amount_paid: number | null;
+  stripe_checkout_session_id: string | null;
 };
 
 async function loadBookingByToken(
   bookingId: string,
   token: string,
-): Promise<{ booking: BookingRow; salonName: string; salonSlug: string; telegramChatId: string } | null> {
+): Promise<{
+  booking: BookingRow;
+  salonName: string;
+  salonSlug: string;
+  telegramChatId: string;
+  stripeAccountId: string | null;
+  servicesJson: unknown;
+} | null> {
   await ensureBookingsSchema();
 
-  // New tokens are stored as SHA-256 hashes. Old tokens (pre-migration) are
-  // stored as plaintext 32-char hex. We try the hash first, then fall back.
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
   const rows = await sql`
@@ -50,7 +65,9 @@ async function loadBookingByToken(
       b.id, b.salon_id, b.client_name, b.client_phone, b.client_email,
       b.service_name, b.service_price, b.service_duration,
       b.date, b.time, b.status, b.notes, b.manage_token,
-      s.name AS salon_name, s.slug AS salon_slug, s.telegram_chat_id
+      b.payment_status, b.amount_paid, b.stripe_checkout_session_id,
+      s.name AS salon_name, s.slug AS salon_slug, s.telegram_chat_id,
+      s.stripe_account_id, s.services AS services_json
     FROM bookings b
     JOIN salons s ON CAST(s.id AS text) = b.salon_id
     WHERE b.id = ${bookingId}
@@ -58,12 +75,20 @@ async function loadBookingByToken(
     LIMIT 1
   `;
   if (rows.length === 0) return null;
-  const row = rows[0] as BookingRow & { salon_name: string; salon_slug: string; telegram_chat_id: string | null };
+  const row = rows[0] as BookingRow & {
+    salon_name: string;
+    salon_slug: string;
+    telegram_chat_id: string | null;
+    stripe_account_id: string | null;
+    services_json: unknown;
+  };
   return {
     booking: row,
     salonName: String(row.salon_name ?? ''),
     salonSlug: String(row.salon_slug ?? ''),
     telegramChatId: String(row.telegram_chat_id ?? '').trim(),
+    stripeAccountId: row.stripe_account_id ?? null,
+    servicesJson: row.services_json,
   };
 }
 
@@ -80,7 +105,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Резервацията не е намерена.' }, { status: 404 });
   }
 
-  const { booking, salonName } = result;
+  const { booking, salonName, servicesJson } = result;
+
+  // Resolve cancellation policy for this service
+  const services = parseSalonServices(servicesJson);
+  const matchedService = services.find(
+    (s) => s.name.trim().toLowerCase() === booking.service_name.trim().toLowerCase(),
+  );
+  const cancelPolicyHours = matchedService?.cancel_policy_hours ?? 24;
+  const cancelPolicyAction: CancelPolicyAction =
+    (matchedService?.cancel_policy_action as CancelPolicyAction | undefined) ?? 'keep_deposit';
+  const hasCancelPolicy =
+    (booking.payment_status === 'paid') &&
+    (matchedService?.payment_type === 'deposit' || matchedService?.payment_type === 'full');
+
   return NextResponse.json({
     id: booking.id,
     clientName: booking.client_name,
@@ -92,6 +130,18 @@ export async function GET(request: NextRequest) {
     status: booking.status,
     salonName,
     canModify: !isCancelledStatus(booking.status) && booking.status !== 'completed',
+    cancelPolicy: hasCancelPolicy
+      ? {
+          summary: formatPolicySummary({
+            cancelPolicyHours,
+            cancelPolicyAction,
+            depositAmountEuros: matchedService?.deposit_amount,
+          }),
+          policyHours: cancelPolicyHours,
+          policyAction: cancelPolicyAction,
+          amountPaidEuros: booking.amount_paid ? booking.amount_paid / 100 : 0,
+        }
+      : null,
   });
 }
 
@@ -115,13 +165,65 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Резервацията не е намерена.' }, { status: 404 });
   }
 
-  const { booking, salonName, telegramChatId } = result;
+  const { booking, salonName, telegramChatId, stripeAccountId, servicesJson } = result;
 
   if (isCancelledStatus(booking.status) || booking.status === 'completed') {
     return NextResponse.json({ error: 'Резервацията не може да бъде променена.' }, { status: 400 });
   }
 
   if (body.action === 'cancel') {
+    // Evaluate cancellation policy and issue Stripe refund if applicable
+    let refundMessage: string | null = null;
+
+    if (booking.payment_status === 'paid' && booking.amount_paid && booking.stripe_checkout_session_id && stripeAccountId) {
+      const services = parseSalonServices(servicesJson);
+      const matchedService = services.find(
+        (s) => s.name.trim().toLowerCase() === booking.service_name.trim().toLowerCase(),
+      );
+
+      const cancelPolicyHours = matchedService?.cancel_policy_hours ?? 24;
+      const cancelPolicyAction: CancelPolicyAction =
+        (matchedService?.cancel_policy_action as CancelPolicyAction | undefined) ?? 'keep_deposit';
+
+      const bookingDatetime = new Date(`${booking.date}T${booking.time}:00`);
+      const policy = evaluateCancellationPolicy({
+        bookingDatetime,
+        amountPaidCents: booking.amount_paid,
+        depositAmountEuros: matchedService?.deposit_amount,
+        cancelPolicyHours,
+        cancelPolicyAction,
+      });
+
+      if (policy.refundCents > 0) {
+        try {
+          // Retrieve payment intent from checkout session (on the connected account)
+          const session = await stripe.checkout.sessions.retrieve(
+            booking.stripe_checkout_session_id,
+            { expand: ['payment_intent'] },
+            { stripeAccount: stripeAccountId },
+          );
+          const paymentIntentId =
+            typeof session.payment_intent === 'string'
+              ? session.payment_intent
+              : (session.payment_intent as { id: string } | null)?.id;
+
+          if (paymentIntentId) {
+            await stripe.refunds.create(
+              { payment_intent: paymentIntentId, amount: policy.refundCents },
+              { stripeAccount: stripeAccountId },
+            );
+            await sql`
+              UPDATE bookings SET payment_status = 'refunded' WHERE id = ${id}
+            `;
+          }
+        } catch (err) {
+          console.error('[manage] stripe refund failed:', err);
+        }
+      }
+
+      refundMessage = policy.policyMessage;
+    }
+
     await sql`
       UPDATE bookings SET status = 'cancelled' WHERE id = ${id}
     `;
@@ -152,7 +254,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, status: 'cancelled' });
+    return NextResponse.json({ success: true, status: 'cancelled', refundMessage });
   }
 
   return NextResponse.json({ error: 'Невалидно действие.' }, { status: 400 });

@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+type CancelPolicy = {
+  summary: string;
+  policyHours: number;
+  policyAction: string;
+  amountPaidEuros: number;
+};
+
 type BookingData = {
   id: string;
   clientName: string;
@@ -14,6 +21,7 @@ type BookingData = {
   status: string;
   salonName: string;
   canModify: boolean;
+  cancelPolicy: CancelPolicy | null;
 };
 
 function formatBgDate(dateStr: string): string {
@@ -93,7 +101,10 @@ export default function ManageBookingPage() {
         setError(data.error || 'Грешка при отказване.');
         return;
       }
-      setDone('Резервацията е отказана успешно.');
+      const msg = data.refundMessage
+        ? `Резервацията е отказана. ${data.refundMessage}`
+        : 'Резервацията е отказана успешно.';
+      setDone(msg);
       setConfirmCancel(false);
       setBooking((prev) => prev ? { ...prev, status: 'cancelled', canModify: false } : prev);
     } catch {
@@ -195,6 +206,11 @@ export default function ManageBookingPage() {
                     <p style={{ margin: '0 0 12px', fontSize: 14, color: '#991B1B', fontWeight: 600 }}>
                       Сигурни ли сте?
                     </p>
+                    {booking.cancelPolicy && (
+                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#7F1D1D', background: '#FEE2E2', borderRadius: 8, padding: '8px 12px' }}>
+                        {booking.cancelPolicy.summary}
+                      </p>
+                    )}
                     <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                       <button
                         type="button"

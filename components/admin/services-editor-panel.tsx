@@ -401,6 +401,59 @@ const ServiceCardRow = memo(function ServiceCardRow({
           )}
         </div>
 
+        {/* Cancellation policy — only relevant when payment is collected */}
+        {(draft.payment_type === 'deposit' || draft.payment_type === 'full') && (
+          <div style={{ marginTop: 12, padding: '12px 14px', background: '#F9FAFB', borderRadius: 10, border: `1px solid ${T.border}` }}>
+            <FieldLabel>Политика при отказване</FieldLabel>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+              {([24, 48, 72] as const).map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => updateDraft((s) => ({ ...s, cancel_policy_hours: h }))}
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 20,
+                    border: `1.5px solid ${(draft.cancel_policy_hours ?? 24) === h ? '#000' : T.border}`,
+                    background: (draft.cancel_policy_hours ?? 24) === h ? '#000' : '#fff',
+                    color: (draft.cancel_policy_hours ?? 24) === h ? '#fff' : T.muted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {h === 24 ? '24 ч.' : h === 48 ? '48 ч.' : '72 ч.'}
+                </button>
+              ))}
+              <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>безплатен прозорец</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+              {((['full_refund', 'keep_deposit', 'keep_full'] as const).filter(
+                (a) => a !== 'keep_deposit' || draft.payment_type === 'deposit',
+              )).map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => updateDraft((s) => ({ ...s, cancel_policy_action: action }))}
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 20,
+                    border: `1.5px solid ${(draft.cancel_policy_action ?? 'keep_deposit') === action ? '#000' : T.border}`,
+                    background: (draft.cancel_policy_action ?? 'keep_deposit') === action ? '#000' : '#fff',
+                    color: (draft.cancel_policy_action ?? 'keep_deposit') === action ? '#fff' : T.muted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {action === 'full_refund' ? 'Пълен refund' : action === 'keep_deposit' ? 'Задържи депозит' : 'Без refund'}
+                </button>
+              ))}
+              <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>след срока</span>
+            </div>
+          </div>
+        )}
+
         {/* Requires confirmation */}
         <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
           <input
