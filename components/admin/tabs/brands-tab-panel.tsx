@@ -37,47 +37,6 @@ function splitInitialIds(ids: string[]): { predefined: string[]; custom: CustomB
   return { predefined, custom };
 }
 
-const BRAND_LOGO_SOURCES = (domain: string) => [
-  `https://img.logo.dev/${domain}?token=pk_free&size=128`,
-  `https://logo.clearbit.com/${domain}`,
-  `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-];
-
-function BrandLogo({ domain, name }: { domain: string; name: string }) {
-  const [srcIndex, setSrcIndex] = useState(0);
-  const sources = BRAND_LOGO_SOURCES(domain);
-  const failed = srcIndex >= sources.length;
-
-  if (failed) {
-    return (
-      <div
-        style={{
-          width: 40, height: 40, borderRadius: 8,
-          background: 'linear-gradient(135deg,#fdf2f8,#f5f3ff)',
-          border: '1px solid #f0e6f6',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: '#a855f7', textAlign: 'center',
-          padding: 2, lineHeight: 1.2,
-        }}
-      >
-        {name.slice(0, 2).toUpperCase()}
-      </div>
-    );
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={sources[srcIndex]}
-      alt={name}
-      width={40}
-      height={40}
-      onError={() => setSrcIndex((i) => i + 1)}
-      style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8 }}
-    />
-  );
-}
-
 export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
   const init = splitInitialIds(initialBrandIds);
   const [selected, setSelected] = useState<Set<string>>(new Set(init.predefined));
@@ -170,32 +129,21 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
                   <button
                     key={brand.id}
                     onClick={() => toggle(brand.id)}
-                    title={brand.name}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '6px 10px 6px 8px',
-                      borderRadius: 10,
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px',
+                      borderRadius: 8,
                       border: isOn ? '2px solid #0f0f0f' : '1.5px solid #e5e7eb',
-                      background: isOn ? '#f5f5f5' : '#fff',
+                      background: isOn ? '#0f0f0f' : '#fff',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
-                      position: 'relative',
                       ...font,
                     }}
                   >
-                    <BrandLogo domain={brand.domain} name={brand.name} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f0f0f', maxWidth: 100, textAlign: 'left', lineHeight: 1.3 }}>
+                    {isOn && <Check size={11} color="#fff" strokeWidth={3} />}
+                    <span style={{ fontSize: 12, fontWeight: 600, color: isOn ? '#fff' : '#0f0f0f', lineHeight: 1.3 }}>
                       {brand.name}
                     </span>
-                    {isOn && (
-                      <span style={{
-                        position: 'absolute', top: -6, right: -6,
-                        width: 16, height: 16, borderRadius: '50%',
-                        background: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Check size={10} color="#fff" strokeWidth={3} />
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -216,16 +164,15 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
               <div
                 key={b.domain}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 8px 6px 8px',
-                  borderRadius: 10,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 10px',
+                  borderRadius: 8,
                   border: '2px solid #0f0f0f',
-                  background: '#f5f5f5',
-                  position: 'relative',
+                  background: '#0f0f0f',
+                  ...font,
                 }}
               >
-                <BrandLogo domain={b.domain} name={b.name} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f0f0f', maxWidth: 100, lineHeight: 1.3, ...font }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.3 }}>
                   {b.name}
                 </span>
                 <button
@@ -233,12 +180,12 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
                   title="Премахни"
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 18, height: 18, borderRadius: '50%',
-                    background: '#0f0f0f', border: 'none', cursor: 'pointer',
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.2)', border: 'none', cursor: 'pointer',
                     flexShrink: 0,
                   }}
                 >
-                  <X size={10} color="#fff" strokeWidth={3} />
+                  <X size={9} color="#fff" strokeWidth={3} />
                 </button>
               </div>
             ))}
