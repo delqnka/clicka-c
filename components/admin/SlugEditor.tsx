@@ -4,12 +4,12 @@ import { useState, type CSSProperties } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField } from '@/components/admin/admin-ui';
 
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,10}[a-z0-9]$|^[a-z0-9]{2,12}$/;
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,18}[a-z0-9]$|^[a-z0-9]{2,20}$/;
 
 function validate(val: string): string | null {
   if (!val) return 'Въведи адрес.';
   if (val.length < 2) return 'Минимум 2 символа.';
-  if (val.length > 12) return 'Максимум 12 символа.';
+  if (val.length > 20) return 'Максимум 20 символа.';
   if (!SLUG_RE.test(val)) return 'Само малки букви (a-z), цифри и тирета. Не може да започва или свършва с тире.';
   return null;
 }
@@ -67,7 +67,7 @@ export function SlugEditor({
               setError(''); setNotice('');
             }}
             placeholder="urban"
-            maxLength={12}
+            maxLength={20}
             style={{
               ...fieldInp,
               borderRadius: '6px 0 0 6px',

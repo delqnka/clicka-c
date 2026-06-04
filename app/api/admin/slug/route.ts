@@ -4,7 +4,7 @@ import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,10}[a-z0-9]$|^[a-z0-9]{2,12}$/;
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,18}[a-z0-9]$|^[a-z0-9]{2,20}$/;
 const RESERVED = new Set([
   'www', 'mail', 'api', 'app', 'admin', 'blog', 'static', 'media',
   'clicka', 'support', 'help', 'login', 'signup', 'demo',
