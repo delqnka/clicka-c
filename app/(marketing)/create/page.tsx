@@ -17,8 +17,9 @@ const PRICES: Record<Plan, Record<Period, number>> = {
 const DAYS: Record<Period, number> = { '12m': 365, '6m': 183 };
 
 const SOLO_HIGHLIGHTS = [
-  'Сайт за резервации',
-  'AI асистент в Telegram',
+  'Собствен сайт за резервации',
+  'AI рецепционист 24/7',
+  'Жив чат от Telegram',
   'Онлайн плащания',
   '0% комисионна',
 ];
@@ -35,21 +36,22 @@ const SOLO_ALL = [
   'Възможност за SMS напомняния',
   'Неограничена галерия',
   'Блог система',
-  'AI асистент в Telegram',
+  'AI рецепционист + управление от Telegram',
   '0% комисионна върху резервациите',
 ];
 
 const TEAM_HIGHLIGHTS = [
   'Всичко от SOLO',
   'До 3 служители',
-  'До 3 AI асистента',
+  'До 3 AI рецепциониста',
+  'Жив чат от Telegram',
   '0% комисионна',
 ];
 
 const TEAM_ALL = [
   'Всичко от SOLO',
   'До 3 служители',
-  'До 3 AI асистента в Telegram',
+  'До 3 AI рецепциониста в Telegram',
   'Отделни графици за всеки служител',
   'Отделни линкове за резервации',
   'Отделни календари',
@@ -57,10 +59,19 @@ const TEAM_ALL = [
   'Управление на екип до 3 специалиста',
 ];
 
-function IconCheck({ color = 'currentColor' }: { color?: string }) {
+function IconCheck({ color }: { color?: string }) {
+  if (!color) {
+    return (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <defs><linearGradient id="ichk" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#db2777"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
+        <path d="M20 6L9 17l-5-5" stroke="url(#ichk)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <path d="M20 6L9 17l-5-5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <defs><linearGradient id="ichk2" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#db2777"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
+      <path d="M20 6L9 17l-5-5" stroke="url(#ichk2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -178,9 +189,10 @@ function CreatePageContent() {
           box-shadow: 0 2px 0 rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.10);
         }
         .cp-plan-card.selected {
-          border-color: #e11d48;
-          background: linear-gradient(180deg, #ffffff 0%, #fdf0f4 100%);
-          box-shadow: 0 0 0 1px #e11d48, 0 2px 0 rgba(0,0,0,0.10);
+          border-color: transparent;
+          background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #db2777, #a855f7) border-box;
+          border: 2px solid transparent;
+          box-shadow: 0 0 0 0px transparent, 0 4px 20px rgba(219,39,119,0.15);
         }
         .cp-period-btn {
           flex: 1;
@@ -195,7 +207,9 @@ function CreatePageContent() {
           color: var(--muted-foreground);
         }
         .cp-period-btn.selected {
-          border-color: #e11d48;
+          border-color: transparent;
+          background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #db2777, #a855f7) border-box;
+          border: 2px solid transparent;
           color: var(--foreground);
         }
         .cp-period-btn.selected .cp-period-badge {
@@ -257,7 +271,7 @@ function CreatePageContent() {
           Избери план
         </h1>
         <p className="mb-8 text-[15px] text-[var(--muted-foreground)]">
-          Еднократно плащане. Без абонамент. Без скрити такси.
+          Еднократно плащане. Без месечни такси. Без скрити такси.
         </p>
 
         {/* ── Period toggle ── */}
@@ -313,7 +327,7 @@ function CreatePageContent() {
 
             {plan === 'solo' && (
               <>
-                <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, margin: '10px 0 10px' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                   Само {(PRICES.solo[period] / DAYS[period]).toFixed(2)} € на ден
                 </p>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
@@ -322,7 +336,7 @@ function CreatePageContent() {
                     {SOLO_HIGHLIGHTS.map(f => {
                       const isZero = f === '0% комисионна';
                       return (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: isZero ? '#16a34a' : 'var(--foreground)' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : 'var(--foreground)' }}>
                           <IconCheck color="#16a34a" /> {f}
                         </span>
                       );
@@ -385,7 +399,7 @@ function CreatePageContent() {
 
             {plan === 'team' && (
               <>
-                <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, margin: '10px 0 10px' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                   Само {(PRICES.team[period] / DAYS[period]).toFixed(2)} € на ден
                 </p>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
@@ -394,7 +408,7 @@ function CreatePageContent() {
                     {TEAM_HIGHLIGHTS.map(f => {
                       const isZero = f === '0% комисионна';
                       return (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: isZero ? '#16a34a' : 'var(--foreground)' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : 'var(--foreground)' }}>
                           <IconCheck color="#16a34a" /> {f}
                         </span>
                       );
@@ -533,7 +547,7 @@ function CreatePageContent() {
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
           <div className="mt-3 flex flex-wrap items-center justify-center gap-4">
-            {['Еднократно плащане', 'Без абонамент', 'Готов веднага'].map(t => (
+            {['Еднократно плащане', 'Без месечни такси', 'Готов веднага'].map(t => (
               <span key={t} className="flex items-center gap-1.5 text-[11px] text-[var(--muted-foreground)]">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M20 6L9 17l-5-5" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />

@@ -15,6 +15,7 @@ type BookingPayload = {
   time: string;
   clientName: string;
   clientPhone: string;
+  clientEmail?: string;
 };
 
 type Props = {
@@ -170,10 +171,12 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
       if (res.ok) {
         const dateObj = new Date(payload.date + 'T12:00:00');
         const dateLabel = dateObj.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
-        const confirmMsg = `✅ Записан си при ${payload.staffName} на ${dateLabel} в ${payload.time} за ${payload.serviceName}. Ще те очакваме!`;
+        const byWhom = payload.staffName ? ` при ${payload.staffName}` : '';
+        const confirmMsg = `✅ Записан си${byWhom} на ${dateLabel} в ${payload.time} за ${payload.serviceName}. Ще те очакваме!`;
         setAiMessages([...history, { role: 'assistant', content: confirmMsg, isBookingConfirm: true }]);
       } else if (res.status === 409) {
-        setAiMessages([...history, { role: 'assistant', content: `За съжаление ${payload.time} при ${payload.staffName} е вече зает. Кой друг час ти подхожда?` }]);
+        const takenBy = payload.staffName ? ` при ${payload.staffName}` : '';
+        setAiMessages([...history, { role: 'assistant', content: `За съжаление ${payload.time}${takenBy} е вече зает. Кой друг час ти подхожда?` }]);
       } else {
         setAiMessages([...history, { role: 'assistant', content: 'Не успях да направя резервацията. Моля, опитай пак или натисни "Запази час".' }]);
       }

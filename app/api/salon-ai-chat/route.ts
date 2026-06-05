@@ -19,6 +19,56 @@ function offsetDayISO(days: number): string {
 
 function todayISO(): string { return new Date().toISOString().slice(0, 10); }
 
+async function getSalonFreeSlots(
+  salonId: string,
+  workingHours: Record<string, { open?: string; close?: string; closed?: boolean }>,
+  durationMin: number,
+  days = 7,
+  slotsPerDay = 4,
+): Promise<{ date: string; slots: string[] }[]> {
+  const start = todayISO();
+  const end = offsetDayISO(days);
+
+  const bookings = await sql`
+    SELECT date, time, COALESCE(service_duration, 60) AS duration
+    FROM bookings
+    WHERE salon_id = ${salonId}
+      AND date >= ${start} AND date <= ${end}
+      AND status NOT IN ('cancelled', 'completed')
+  ` as { date: string; time: string; duration: number }[];
+
+  const bookedByDate = new Map<string, { startMin: number; endMin: number }[]>();
+  for (const b of bookings) {
+    const startMin = parseTimeToMinutes(b.time) ?? 0;
+    const list = bookedByDate.get(b.date) ?? [];
+    list.push({ startMin, endMin: startMin + Math.max(5, b.duration) });
+    bookedByDate.set(b.date, list);
+  }
+
+  const result: { date: string; slots: string[] }[] = [];
+  for (let d = 0; d <= days; d++) {
+    const dateStr = offsetDayISO(d);
+    const jsDay = new Date(dateStr + 'T12:00:00').getDay();
+    const dayKey = JS_DAY_KEY[jsDay]!;
+    const dayHours = workingHours[dayKey];
+    if (!dayHours || dayHours.closed || !dayHours.open || !dayHours.close) continue;
+
+    const openMin = parseTimeToMinutes(dayHours.open) ?? 540;
+    const closeMin = parseTimeToMinutes(dayHours.close) ?? 1080;
+    const booked = bookedByDate.get(dateStr) ?? [];
+    const daySlots: string[] = [];
+
+    for (let t = openMin; t + durationMin <= closeMin && daySlots.length < slotsPerDay; t += 30) {
+      if (!booked.some((b) => t < b.endMin && t + durationMin > b.startMin)) {
+        daySlots.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
+      }
+    }
+
+    if (daySlots.length > 0) result.push({ date: dateStr, slots: daySlots });
+  }
+  return result;
+}
+
 async function getStaffFreeSlots(
   salonId: string,
   staffMemberId: string,
@@ -88,6 +138,7 @@ function buildSystemPrompt(
   staff: StaffRow[],
   isTeamPlan: boolean,
   staffSlots: StaffSlots[],
+  soloSlots: { date: string; slots: string[] }[],
 ): string {
   const name = String(salon.name ?? '');
   const category = String(salon.category ?? '');
@@ -173,31 +224,81 @@ function buildSystemPrompt(
       }).join('\n\n')
     : '';
 
+  // Solo plan free slots text
+  const soloSlotsText = soloSlots.length > 0
+    ? soloSlots.map((d) => {
+        const dateObj = new Date(d.date + 'T12:00:00');
+        const label = dateObj.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
+        return `  ${label}: ${d.slots.join(', ')}`;
+      }).join('\n')
+    : '';
+
+  const noSlotsMsg = `В момента няма заредени свободни часове — попитай клиента кой ден му е удобен и кажи да се обади на ${phone || 'телефона на салона'} за потвърждение.`;
+
   const bookingInstructions = isTeamPlan ? `
-ОНЛАЙН ЗАПИСВАНЕ ПРЕЗ ЧАТ (само за team план):
-Можеш да записваш клиенти директно. Когато клиент иска час, събери последователно:
-1. Услуга (от списъка по-горе)
-2. Майстор (от екипа по-горе) — ако не посочи, предложи наличните
-3. Дата и час (от свободните часове по-долу — само тях предлагай!)
-4. Имe на клиента
-5. Телефон на клиента
+ЗАПИСВАНЕ ДИРЕКТНО В ЧАТ:
+Записвай клиентите сам — не ги пращай на линкове. Когато клиент иска час, събери стъпка по стъпка (не всичко наведнъж):
+1. Услуга
+2. Майстор (ако не посочи — предложи кой е наличен за тази услуга)
+3. Дата и час (само от СВОБОДНИТЕ ЧАСОВЕ по-долу — не измисляй!)
+4. Три имена на клиента
+5. Телефон
+6. Имейл
 
-Когато имаш ВСИЧКИТЕ 5 точки потвърдени от клиента, отговори САМО с:
-<<BOOK:{"staffName":"ИМЕ","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ИМЕ","clientPhone":"ТЕЛЕФОН"}>>
-(без нищо друго в отговора — само този таг)
+Когато имаш ВСИЧКИТЕ 6 потвърдени, отговори САМО с:
+<<BOOK:{"staffName":"ИМЕ","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ"}>>
 
-${slotsText ? `СВОБОДНИ ЧАСОВЕ ПО МАЙСТОР (следващите 7 дни):\n${slotsText}` : ''}` : '';
+${slotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n${slotsText}` : noSlotsMsg}` : `
+ЗАПИСВАНЕ ДИРЕКТНО В ЧАТ:
+Записвай клиентите сам — не ги пращай на линкове. Когато клиент иска час, събери стъпка по стъпка (не всичко наведнъж):
+1. Услуга (от списъка)
+2. Дата и час (само от СВОБОДНИТЕ ЧАСОВЕ по-долу — не измисляй!)
+3. Три имена на клиента
+4. Телефон
+5. Имейл
 
-  const bookingLinkRule = isTeamPlan
-    ? 'Записвай директно когато клиентът иска час при конкретен майстор'
-    : 'Когато клиент спомене конкретна услуга (пита за цена, кога има час, иска да запише, пита дали е свободно) — добави ЗАДЪЛЖИТЕЛНО в КРАЯ на отговора си (на нов ред) тага <<BOOK_LINK:ТОЧНО_ИМЕ_НА_УСЛУГАТА>> с точното име на услугата от списъка. Примери: <<BOOK_LINK:Маникюр>>, <<BOOK_LINK:Педикюр с лак>>. НИКОГА не казвай "нямам информация за свободни часове" — вместо това добави бутона за записване. Не добавяй тага само ако клиентът изобщо не е споменал услуга.';
+Когато имаш ВСИЧКИТЕ 5 потвърдени, отговори САМО с:
+<<BOOK:{"staffName":"","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ"}>>
 
-  return `Ти си асистент на "${name}" — ${category || 'салон за красота'}${city ? ` в ${city}` : ''}.
+${soloSlotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n${soloSlotsText}` : noSlotsMsg}`;
 
-Отговаряш на въпроси от клиенти относно услугите, цените, работното време, екипа и записването.
+  const bookingLinkRule = 'Записвай директно в чата — не пращай клиента на линк';
 
-${about ? `ЗА НАС:\n${about}\n` : ''}
-${staffText ? `НАШИЯТ ЕКИП:\n${staffText}\n` : ''}
+  return `Ти си рецепционист на "${name}"${city ? ` в ${city}` : ''} — отговаряш като истински служител на салона, не като бот.
+
+ТВОЯТА ЦЕЛ: Всеки разговор да завърши с резервация. Ти не просто отговаряш на въпроси — ти водиш клиента към записване.
+
+КАК СЕ ДЪРЖИШ:
+- Кратки, човешки отговори — 1-3 изречения максимум
+- Задавай по ЕДИН уточняващ въпрос наведнъж — не бомбардирай с въпроси
+- Предлагай конкретни часове директно ("Имам свободно в сряда в 10:00 и 12:30 — кое ви е удобно?")
+- Използвай емоджита пестеливо (😊 при топли отговори, не при всяко изречение)
+
+КОНСУЛТАТИВЕН ПОДХОД (най-важното):
+Когато клиент изрази желание за услуга с думи (не с точното и название), НЕ питай "каква услуга искате" — задавай конкретни уточняващи въпроси, за да препоръчаш правилната услуга:
+
+Примери:
+- "Искам да изруся косата" → "Каква е приблизителната дължина на косата ви — къса, средна или дълга?"
+  → след отговора: "За пълно изрусяване или за балеаж/кичури?"
+  → след отговора: препоръчай конкретна услуга от списъка и предложи час
+
+- "Искам нещо различно с косата" → "Имате ли предвид цвят, прическа или нещо друго?"
+
+- "Колко ще ми струва боядисването?" → "Каква е дължината на косата и имате ли предвид цялостно боядисване или кичури?"
+
+- "Имате ли свободно утре?" → "Разбира се! Каква услуга ви интересува, за да проверя точното свободно време?"
+
+Правило: Идентифицирай намерението → задай 1-2 уточняващи въпроса → препоръчай услуга от списъка → предложи час
+
+НИКОГА НЕ ПРАВИШ:
+- Не казваш "Изберете услуга" или "Коя услуга искате?" — задавай конкретни въпроси
+- Не препращаш към линкове, освен ако клиентът изрично ги поиска
+- Не изброявaш всички услуги без причина
+- Не казваш "нямам информация" — ако нещо не знаеш, попитай клиента или предложи да се обади на ${phone || 'телефона на салона'}
+- Не измисляш услуги, цени, часове или имена извън предоставените данни
+
+${about ? `ЗА САЛОНА:\n${about}\n` : ''}
+${staffText ? `ЕКИП:\n${staffText}\n` : ''}
 ${servicesText ? `УСЛУГИ И ЦЕНИ:\n${servicesText}\n` : ''}
 ${hoursText ? `РАБОТНО ВРЕМЕ:\n${hoursText}\n` : ''}
 ${address ? `АДРЕС: ${address}${city ? `, ${city}` : ''}\n` : ''}
@@ -208,13 +309,10 @@ ${offersText ? `АКТУАЛНИ ОФЕРТИ:\n${offersText}\n` : ''}
 ${faqText ? `ЧЕСТИ ВЪПРОСИ:\n${faqText}\n` : ''}
 ${bookingInstructions}
 
-ПРАВИЛА:
-- Отговаряй само за "${name}" — не давай информация за други салони
-- Бъди кратък, приятелски и на български
-- ${bookingLinkRule}
-- Ако услуга изисква депозит, спомени го при въпрос за цена
-- Ако не знаеш нещо конкретно, кажи да се обадят на ${phone || 'телефона на салона'}
-- Не измисляй услуги, цени, имена на служители или свободни часове извън предоставените данни`;
+ДОПЪЛНИТЕЛНИ ПРАВИЛА:
+- Отговаряй само за "${name}"
+- Ако услуга изисква депозит, спомени го естествено ("Тази процедура изисква депозит от X лв. при записване")
+- ${bookingLinkRule}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -265,10 +363,11 @@ export async function POST(req: NextRequest) {
       : [];
 
     const isTeamPlan = String(salon.plan ?? '') === 'team';
+    const wh = (salon.working_hours as Record<string, { open?: string; close?: string; closed?: boolean }> | null) ?? {};
     let staffSlots: StaffSlots[] = [];
+    let soloSlots: { date: string; slots: string[] }[] = [];
 
     if (isTeamPlan && staff.length > 0) {
-      const wh = (salon.working_hours as Record<string, { open?: string; close?: string; closed?: boolean }> | null) ?? {};
       // Load staff member IDs so we can query their bookings
       const staffWithIds = await sql`
         SELECT CAST(id AS text) AS id, name FROM staff_members
@@ -282,9 +381,11 @@ export async function POST(req: NextRequest) {
           return { staffName: sm.name, days };
         }),
       )).flatMap((r) => r.status === 'fulfilled' ? [r.value] : []);
+    } else if (!isTeamPlan) {
+      soloSlots = await getSalonFreeSlots(salonId, wh, 60).catch(() => []);
     }
 
-    const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots);
+    const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
 
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { insertBookingIfNoOverlap } from '@/lib/booking-insert';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
+import { upsertSalonClient } from '@/lib/salon-clients';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,15 +15,16 @@ export async function POST(req: NextRequest) {
       time: string; // HH:MM
       clientName: string;
       clientPhone: string;
+      clientEmail?: string;
     };
 
-    const { salonId, staffName, serviceName, date, time, clientName, clientPhone } = body;
+    const { salonId, staffName, serviceName, date, time, clientName, clientPhone, clientEmail } = body;
 
-    if (!salonId || !staffName || !serviceName || !date || !time || !clientName || !clientPhone) {
+    if (!salonId || !serviceName || !date || !time || !clientName || !clientPhone) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
-    // Load salon and verify team plan
+    // Load salon
     const salonRows = await sql`
       SELECT CAST(id AS text) AS id, name, plan, email, telegram_chat_id,
              services, working_hours
@@ -34,25 +36,25 @@ export async function POST(req: NextRequest) {
     if (salonRows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const salon = salonRows[0]!;
-    if (String(salon.plan ?? '') !== 'team') {
-      return NextResponse.json({ error: 'Plan not supported' }, { status: 403 });
+    const isTeamPlan = String(salon.plan ?? '') === 'team';
+
+    // Find staff member by name (team plan only)
+    let staff: { id: string; name: string; role?: string; email?: string; telegram_chat_id?: string } | null = null;
+    if (isTeamPlan && staffName) {
+      const staffRows = await sql`
+        SELECT id, name, role, email, telegram_chat_id
+        FROM staff_members
+        WHERE salon_id = ${salonId}
+          AND is_active = true
+          AND lower(trim(name)) = lower(trim(${staffName}))
+        LIMIT 1
+      ` as { id: string; name: string; role?: string; email?: string; telegram_chat_id?: string }[];
+
+      if (staffRows.length === 0) {
+        return NextResponse.json({ error: 'Staff not found', staffName }, { status: 404 });
+      }
+      staff = staffRows[0]!;
     }
-
-    // Find staff member by name (case-insensitive)
-    const staffRows = await sql`
-      SELECT id, name, role, email, telegram_chat_id
-      FROM staff_members
-      WHERE salon_id = ${salonId}
-        AND is_active = true
-        AND lower(trim(name)) = lower(trim(${staffName}))
-      LIMIT 1
-    ` as { id: string; name: string; role?: string; email?: string; telegram_chat_id?: string }[];
-
-    if (staffRows.length === 0) {
-      return NextResponse.json({ error: 'Staff not found', staffName }, { status: 404 });
-    }
-
-    const staff = staffRows[0]!;
 
     // Resolve service duration from salon.services json
     let serviceDuration = 60;
@@ -75,10 +77,10 @@ export async function POST(req: NextRequest) {
     const result = await insertBookingIfNoOverlap({
       id: bookingId,
       salonId,
-      staffMemberId: staff.id,
+      staffMemberId: staff?.id ?? null,
       clientName,
       clientPhone,
-      clientEmail: '',
+      clientEmail: clientEmail ?? '',
       serviceName,
       servicePrice,
       serviceDuration,
@@ -94,13 +96,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Slot taken' }, { status: 409 });
     }
 
+    // Add/update client in salon's client list (fire-and-forget)
+    upsertSalonClient(salonId, clientName, { phone: clientPhone, email: clientEmail || undefined }).catch(() => {});
+
+    const notesLine = staff ? `Майстор: ${staff.name} | Записан през AI чат` : 'Записан през AI чат';
+
     // Fire-and-forget notifications
     dispatchBookingNotifications({
       salonEmail: String(salon.email ?? ''),
-      clientEmail: '',
+      clientEmail: clientEmail ?? '',
       telegramChatId: String(salon.telegram_chat_id ?? ''),
-      staffEmail: staff.email ?? null,
-      staffTelegramChatId: staff.telegram_chat_id ?? null,
+      staffEmail: staff?.email ?? null,
+      staffTelegramChatId: staff?.telegram_chat_id ?? null,
       bookingDetails: {
         salonName: String(salon.name ?? ''),
         clientName,
@@ -110,7 +117,7 @@ export async function POST(req: NextRequest) {
         servicePrice: servicePrice ?? undefined,
         date,
         time,
-        notes: `Майстор: ${staff.name} | Записан през AI чат`,
+        notes: notesLine,
       },
       telegramDetails: {
         salonName: String(salon.name ?? ''),
@@ -119,14 +126,14 @@ export async function POST(req: NextRequest) {
         serviceName,
         date,
         time,
-        notes: `Майстор: ${staff.name} | Записан през AI чат`,
+        notes: notesLine,
       },
     }).catch(() => {});
 
     return NextResponse.json({
       ok: true,
       bookingId: result.id,
-      staffName: staff.name,
+      staffName: staff?.name ?? null,
       date,
       time,
       serviceName,

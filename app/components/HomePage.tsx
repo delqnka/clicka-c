@@ -19,7 +19,6 @@ import {
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { IPhoneMockup } from '@/components/ui/iphone-mockup';
 import { MARKETING_PRICING } from '@/lib/marketing-home-copy';
-import { ContactSection } from '@/components/marketing/contact-section';
 import type { MarketingActivity } from '@/lib/marketing-activity-shared';
 
 type MarketingHomePageProps = {
@@ -70,14 +69,14 @@ const SEO_BENEFITS = [
 ];
 
 const SOLO_FEATURES = [
+  'AI рецепционист — записва клиенти 24/7 вместо теб',
+  'Онлайн записване директно от чат',
+  'Автоматичен клиентски профил при всяка резервация',
+  'Жив чат — поемаш разговора от Telegram когато искаш',
   'Собствен сайт с резервации',
-  'AI асистент в Telegram',
-  'Пълен контрол на сайта от Telegram',
   'Качване на услуги от ценоразпис със снимка',
-  'Онлайн резервации 24/7',
-  'Email потвърждения за клиентите',
-  'Telegram известия за теб',
   'Онлайн плащания и депозити',
+  'Email и Telegram известия за теб и клиентите',
   'Автоматично събиране на Google ревюта',
   'Неограничена галерия',
   'Хостинг, SSL и поддръжка включени',
@@ -85,13 +84,13 @@ const SOLO_FEATURES = [
 ];
 
 const EKIP_FEATURES = [
+  'AI рецепционист за целия екип',
+  'Онлайн записване при избран специалист директно от чат',
+  'Автоматичен клиентски профил при всяка резервация',
   'До 3 специалисти в един сайт',
-  'До 3 AI асистента в Telegram',
-  'Отделни графици за всеки специалист',
-  'Отделни линкове за резервации',
-  'Отделни известия за всеки специалист',
+  'Отделни графици и известия за всеки специалист',
   'Директно резервиране при избран специалист',
-  'По-добра организация на целия екип',
+  'Жив чат — поемаш разговора от Telegram',
   'Неограничени известия',
   '0% комисионна върху резервациите ви',
 ];
@@ -106,7 +105,7 @@ const SECTION_LINKS = [
   { id: 'how-it-works', label: 'Как работи', mobileHidden: false },
   { id: 'features', label: 'Какво получаваш', mobileHidden: false },
   { id: 'pricing', label: 'Цени', mobileHidden: false },
-  { id: 'contact', label: 'Контакт', mobileHidden: false },
+  { id: 'chat', label: 'Контакт', mobileHidden: false },
 ];
 
 const CSS = `
@@ -356,15 +355,28 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       </nav>
       <nav className="hp-section-nav" aria-label="Навигация по секции">
         <div className="hp-section-nav-wrap">
-          {SECTION_LINKS.map((section) => (
-            <a
-              key={section.id}
-              href={`#${section.id}`}
-              className={`hp-section-link${activeSection === section.id ? ' active' : ''}${section.mobileHidden ? ' hp-section-link-desktop' : ''}`}
-            >
-              {section.label}
-            </a>
-          ))}
+          {SECTION_LINKS.map((section) =>
+            section.id === 'chat' ? (
+              <button
+                key="chat"
+                onClick={() => {
+                  window.dispatchEvent(new Event('clicka:open-chat'));
+                }}
+                className="hp-section-link"
+                style={{ cursor: 'pointer' }}
+              >
+                {section.label}
+              </button>
+            ) : (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className={`hp-section-link${activeSection === section.id ? ' active' : ''}${section.mobileHidden ? ' hp-section-link-desktop' : ''}`}
+              >
+                {section.label}
+              </a>
+            )
+          )}
         </div>
       </nav>
       </header>
@@ -387,6 +399,9 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         {/* ── TELEGRAM CHAT ─────────────────────────────── */}
         <TelegramChatSection />
       </div>
+
+      {/* ── WHAT YOU GET ──────────────────────────────── */}
+      <MarketingFeaturesSection />
 
       {/* ── COMPARISON ────────────────────────────────── */}
       <MarketingComparisonSection />
@@ -419,11 +434,6 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
           </div>
         </div>
       </section>
-
-      {/* ── WHAT YOU GET ──────────────────────────────── */}
-      <MarketingFeaturesSection />
-
-
 
       {/* ── DEPOSITS ──────────────────────────────────── */}
       <section
@@ -794,11 +804,6 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
         </div>
       </section>
 
-
-      {/* ── CONTACT ───────────────────────────────────── */}
-      <div data-home-section="contact" id="contact">
-        <ContactSection />
-      </div>
 
       </main>
 

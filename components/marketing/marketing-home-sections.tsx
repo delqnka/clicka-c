@@ -289,8 +289,8 @@ function IPhoneFrame({ src, alt, size = 'md' }: { src: string; alt: string; size
       <div style={{ position: 'absolute', left: -borderW / 2, top: '32%', width: borderW / 2, height: '9%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
       <div style={{ position: 'absolute', right: -borderW / 2, top: '30%', width: borderW / 2, height: '14%', background: '#3a3a40', borderRadius: '0 1px 1px 0' }} />
       <div style={{ margin: '2.5% 2.5% 0', borderRadius: innerR, background: '#000', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: size === 'lg' ? 28 : 22, background: '#000' }}>
-          <div style={{ width: '28%', height: 14, background: '#1a1a1e', borderRadius: 999 }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: size === 'lg' ? 28 : 20, background: '#000' }}>
+          <div style={{ width: size === 'lg' ? '28%' : '22%', height: size === 'lg' ? 14 : 10, background: '#1a1a1e', borderRadius: 999 }} />
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt={alt} style={{ width: '100%', display: 'block' }} />
@@ -305,7 +305,7 @@ export function TelegramChatSection() {
       aria-label="Чат с клиенти от Telegram"
       style={{
         background: 'linear-gradient(to bottom, #0a0a0a 0%, #0a0a0a 18%, #3d0a2e 38%, #7b1050 55%, #b8186a 72%, #db2777 85%, #f472b6 100%)',
-        padding: 'clamp(64px,10vw,120px) clamp(20px,5vw,60px) clamp(64px,10vw,120px)',
+        padding: 'clamp(32px,5vw,64px) clamp(20px,5vw,60px) clamp(64px,10vw,120px)',
         overflow: 'hidden',
         position: 'relative',
         marginTop: -1,
@@ -337,88 +337,77 @@ export function TelegramChatSection() {
           </p>
         </div>
 
-        {/* Story visual — left big phone + arrow + right two phones stacked */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
-          gap: 'clamp(12px,3vw,40px)',
-          alignItems: 'end',
-          marginBottom: 'clamp(40px,6vw,64px)',
-        }}>
+        {/* Story visual — all phones stacked vertically */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 'clamp(40px,6vw,64px)' }}>
 
-          {/* Left: big chat phone */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ maxWidth: 280, width: '100%', margin: '0 auto' }}>
-              <IPhoneFrame src="/chat.png" alt="Клиентът пише в чата" size="lg" />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 3px', WebkitTextFillColor: '#fff' }}>💬 Клиентът пише в сайта</p>
-              <p style={{ fontSize: 12, color: '#fff', margin: 0, lineHeight: 1.5 }}>Задава въпрос директно от сайта ти</p>
-            </div>
+          {/* Phone 1: клиентът пише */}
+          <div style={{ width: '100%', maxWidth: 220 }}>
+            <IPhoneFrame src="/chat.png" alt="Клиентът пише в чата" size="lg" />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>💬 Клиентът пише в сайта</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0 }}>Задава въпрос директно от сайта ти</p>
           </div>
 
-          {/* Center: arrow */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 100, alignSelf: 'start' }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12h14M13 6l6 6-6 6" stroke="#f9196e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+          {/* Arrow */}
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M6 13l6 6 6-6" stroke="#f9196e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+
+          {/* Phone 2: известие */}
+          <div style={{ width: '100%', maxWidth: 280 }}>
+            <IPhoneFrame src="/IMG_1851.jpg" alt="Известие в Telegram" size="lg" />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>🔔 Известие в Telegram</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0 }}>Веднага на телефона ти</p>
           </div>
 
-          {/* Right: two phones stacked with arrow between */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ maxWidth: 220, width: '85%', margin: '0 auto' }}>
-                <IPhoneFrame src="/IMG_1851.jpg" alt="Отговаряш от Telegram" size="md" />
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>🔔 Известие в Telegram</p>
-                <p style={{ fontSize: 11, color: '#fff', margin: 0, lineHeight: 1.4 }}>Веднага на телефона ти</p>
-              </div>
-            </div>
-            {/* Arrow between the two right phones */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M6 13l6 6 6-6" stroke="#f9196e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ maxWidth: 220, width: '85%', margin: '0 auto' }}>
-                <IPhoneFrame src="/IMG_1852.jpg" alt="Известие в Telegram" size="md" />
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>📲 Отговаряш от Telegram</p>
-                <p style={{ fontSize: 11, color: '#fff', margin: 0, lineHeight: 1.4 }}>Клиентът вижда отговора в реално време</p>
-              </div>
-            </div>
+          {/* Arrow */}
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M6 13l6 6 6-6" stroke="#f9196e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+
+          {/* Phone 3: отговаряш */}
+          <div style={{ width: '100%', maxWidth: 280 }}>
+            <IPhoneFrame src="/IMG_1852.jpg" alt="Отговаряш от Telegram" size="lg" />
           </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>📲 Отговаряш от Telegram</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0 }}>Клиентът вижда отговора в реално време</p>
+          </div>
+
         </div>
 
         {/* Checkmarks */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 'clamp(36px,5vw,56px)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 'clamp(36px,5vw,56px)' }}>
           {[
             'Без допълнителни приложения',
             'Отговаряш директно от телефона си',
-            'Не губиш клиенти, които имат въпроси преди резервация',
+            'Не губиш клиенти преди резервация',
           ].map((text, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'rgba(255,255,255,0.10)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 999,
+              padding: '6px 14px',
+              width: 'fit-content',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
                 <path d="M20 6L9 17l-5-5" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span style={{ fontSize: 'clamp(13px,1.6vw,15px)', fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>{text}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.90)', whiteSpace: 'nowrap' }}>{text}</span>
             </div>
           ))}
         </div>
 
         {/* Bottom tagline */}
-        <div style={{ textAlign: 'center', paddingBottom: 'clamp(48px,8vw,80px)' }}>
+        <div style={{ textAlign: 'center', paddingBottom: 'clamp(80px,12vw,120px)', paddingTop: 'clamp(20px,3vw,32px)' }}>
           <p style={{ fontSize: 'clamp(20px,3vw,32px)', fontWeight: 800, marginBottom: 8, color: '#fff' }}>
             Това не е просто чат.
           </p>
-          <p style={{
-            fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: 800,
-            backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>
+          <p style={{ fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: 800, color: '#fff' }}>
             💬 AI асистент + чат с реален човек в една система
           </p>
         </div>
@@ -484,20 +473,32 @@ export function TelegramManagementSection() {
   );
 }
 
-const MAIN_FEATURES = [
-  'Собствен сайт, а не профил в платформа',
-  '0% комисионна върху резервациите',
-  'AI асистент в Telegram',
-  'Онлайн плащания и депозити',
-  'Автоматични имейли и известия',
-  'Google ревюта, които работят за твоя бранд',
-  'Хостинг, SSL и поддръжка включени',
-  'Всичко управляваш от телефона си',
+const AI_FEATURES = [
+  {
+    icon: '🤖',
+    title: 'AI рецепционист',
+    body: 'Отговаря на въпроси, препоръчва услуги и записва клиенти 24/7 - като истински служител на салона.',
+  },
+  {
+    icon: '💬',
+    title: 'Онлайн записване директно от чат',
+    body: 'Клиентът резервира час в рамките на разговора, без да напуска сайта и без да чака отговор.',
+  },
+  {
+    icon: '👤',
+    title: 'Автоматичен клиентски профил',
+    body: 'След всяка резервация клиентът автоматично се добавя в клиентската ти база с имена, телефон и имейл.',
+  },
 ];
 
-const EXTRA_BADGES = [
-  'SEO 100/100', 'Блог', 'Собствен домейн', 'Неограничени посещения',
-  'Неограничена галерия', 'AI рецепционист', 'SMS напомняния',
+const EXTRA_CHECKS = [
+  'Собствен домейн',
+  'SEO оптимизация и блог',
+  'Google ревюта',
+  'Онлайн плащания и депозити',
+  'SMS и имейл напомняния',
+  'Хостинг и SSL включени',
+  '0% комисионна',
 ];
 
 export function MarketingFeaturesSection() {
@@ -506,48 +507,43 @@ export function MarketingFeaturesSection() {
       id="features"
       data-home-section="features"
       aria-label="Какво получаваш"
-      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 60%, #fff 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative', fontFamily: 'var(--font-client-manrope), sans-serif' }}
     >
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom, #ffffff, transparent)', pointerEvents: 'none' }} />
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
         {/* Header */}
-        <div style={{ marginBottom: 'clamp(32px,5vw,48px)' }}>
+        <div style={{ marginBottom: 'clamp(32px,5vw,52px)', textAlign: 'center' }}>
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
-            Какво получаваш
+            Твоят нов служител
           </p>
-          <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.12, marginBottom: 10, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Защо салоните избират Clicka?
+          <h2 style={{ marginBottom: 14, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{ display: 'block', fontSize: 'clamp(30px,5.5vw,52px)', fontWeight: 800, lineHeight: 1.1 }}>Работи 24/7. Не взима отпуска.</span>
+            <span style={{ display: 'block', fontSize: 'clamp(22px,4vw,38px)', fontWeight: 800, lineHeight: 1.15 }}>Не пропуска клиент.</span>
           </h2>
-          <p style={{ fontSize: 'clamp(15px,1.8vw,17px)', color: '#555', lineHeight: 1.6, maxWidth: 520 }}>
-            Всичко необходимо, за да работи салонът ти онлайн.
-          </p>
         </div>
 
-        {/* Main features */}
-        <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 clamp(28px,4vw,40px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {MAIN_FEATURES.map((f, i) => (
-            <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 3 }}>
-                <defs><linearGradient id={`fg${i}`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e11d48"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
-                <path d="M20 6L9 17l-5-5" stroke={`url(#fg${i})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span style={{ fontSize: 'clamp(15px,1.8vw,17px)', fontWeight: 600, color: '#0f0f0f', lineHeight: 1.5 }}>{f}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Extra badges */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {EXTRA_BADGES.map((b) => (
-            <span key={b} style={{
-              fontSize: 12, fontWeight: 600, padding: '5px 12px',
-              borderRadius: 999,
-              background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg,#e11d48,#a855f7) border-box',
-              border: '1.5px solid transparent',
-              color: '#db2777',
-            }}>{b}</span>
+        {/* Feature cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 'clamp(28px,4vw,44px)' }}>
+          {AI_FEATURES.map((f) => (
+            <div key={f.title} style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: '14px 16px',
+              boxShadow: '0 4px 20px rgba(219,39,119,0.13)',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+            }}>
+              <span style={{ fontSize: 22, flexShrink: 0, marginTop: 2 }}>{f.icon}</span>
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 500, margin: '0 0 4px', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{f.title}</h3>
+                <p style={{ fontSize: 13, color: '#666', lineHeight: 1.5, margin: 0 }}>{f.body}</p>
+              </div>
+            </div>
           ))}
         </div>
+
       </div>
     </section>
   );
@@ -619,7 +615,7 @@ export function MarketingComparisonSection() {
     <section
       id="comparison"
       className="bg-[var(--background)]"
-      style={{ padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)' }}
+      style={{ padding: 'clamp(64px,10vw,100px) clamp(20px,5vw,60px)', fontFamily: 'var(--font-client-manrope), sans-serif' }}
       aria-labelledby="comparison-h"
     >
       <div className="mx-auto max-w-[900px]">
@@ -658,7 +654,7 @@ export function MarketingComparisonSection() {
             <ul className="space-y-2">
               {MARKETING_COMPARISON.left.items.map((item) => (
                 <li key={item} className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                  <span className="mt-0.5 shrink-0 text-red-500" aria-hidden>&#10005;</span>
+                  <span className="mt-0.5 shrink-0 font-black text-red-500" aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>✕</span>
                   {item}
                 </li>
               ))}
@@ -672,7 +668,7 @@ export function MarketingComparisonSection() {
               flex: '0 0 82%',
               scrollSnapAlign: 'start',
               maxWidth: 420,
-              background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #e11d48, #db2777, #a855f7) border-box',
+              background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #db2777, #a855f7) border-box',
               border: '2px solid transparent',
               borderRadius: 16,
               padding: 20,
@@ -680,11 +676,14 @@ export function MarketingComparisonSection() {
           >
             <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-[var(--foreground)]">
               <ClickaLogo size="compact" href={null} className="inline-flex shrink-0" />
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M20 6L9 17l-5-5" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </h3>
             <ul className="space-y-2">
               {MARKETING_COMPARISON.right.items.map((item) => (
                 <li key={item} className="flex items-start gap-2 text-xs leading-relaxed text-[var(--foreground)]">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 2 }}><defs><linearGradient id="chk" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e11d48"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs><path d="M20 6L9 17l-5-5" stroke="url(#chk)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 2 }}><path d="M20 6L9 17l-5-5" stroke="#22c55e" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   {item}
                 </li>
               ))}
