@@ -2324,7 +2324,7 @@ export default function AdminDashboardClient({
                 alignContent: 'start',
               }}
             >
-              {NAVBAR_TABS.map(({ id, label, Icon }) => {
+              {NAVBAR_TABS.filter(t => t.id !== 'staff' || site.plan === 'team').map(({ id, label, Icon }) => {
                 const active = activeTab === id;
                 return (
                   <button
@@ -2339,8 +2339,8 @@ export default function AdminDashboardClient({
                       gap: 5,
                       padding: '8px 6px',
                       borderRadius: 12,
-                      border: `1px solid ${T.border}`,
-                      background: '#fff',
+                      border: active ? '1.5px solid #C084FC' : `1px solid ${T.border}`,
+                      background: active ? 'linear-gradient(135deg, #FDF4FF 0%, #EDE9FE 100%)' : '#fff',
                       cursor: 'pointer',
                       minHeight: 64,
                       WebkitTapHighlightColor: 'transparent',
@@ -2369,7 +2369,10 @@ export default function AdminDashboardClient({
                         letterSpacing: '-0.01em',
                         textAlign: 'center',
                         lineHeight: 1.2,
-                        color: '#18181B',
+                        color: active ? 'transparent' : '#18181B',
+                        background: active ? ICON_GRADIENT : 'none',
+                        WebkitBackgroundClip: active ? 'text' : 'unset',
+                        backgroundClip: active ? 'text' : 'unset',
                       }}
                     >
                       {label}
@@ -3151,17 +3154,72 @@ export default function AdminDashboardClient({
         </main>
       </div>
 
+      {/* ── Telegram connect banner ───────────────────── */}
+      {!site.telegramChatId && (
+        <div style={{
+          position: 'fixed',
+          bottom: isMobile ? 84 : 24,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 32px)',
+          maxWidth: 420,
+          zIndex: 49,
+          background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+          borderRadius: 16,
+          padding: '14px 18px',
+          boxShadow: '0 8px 32px rgba(219,39,119,.35)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          color: '#fff',
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, opacity: 0.9 }}>
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.038 9.593c-.152.678-.549.843-1.112.524l-3.078-2.268-1.484 1.428c-.164.164-.302.302-.619.302l.221-3.131 5.703-5.152c.248-.221-.054-.344-.383-.123L7.12 14.073l-3.031-.947c-.658-.206-.671-.658.138-.975l11.84-4.564c.548-.197 1.028.134.495.661z"/>
+          </svg>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>Свържи Telegram</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>Получавай резервации директно в Telegram</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              // Копирай кода и отвори бота
+              if (site.onboardingCode) {
+                navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
+              }
+              window.open('https://t.me/clicka_booking_bot', '_blank');
+            }}
+            style={{
+              flexShrink: 0,
+              border: '2px solid rgba(255,255,255,0.6)',
+              background: 'rgba(255,255,255,0.15)',
+              color: '#fff',
+              borderRadius: 999,
+              padding: '7px 14px',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Свържи →
+          </button>
+        </div>
+      )}
+
       {/* ── Mobile bottom tab bar (glass pill) ───────── */}
       {isMobile && (
         <nav
           aria-label="Навигация"
           style={{
             position: 'fixed',
-            left: 16,
-            right: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
             bottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
             zIndex: 50,
             pointerEvents: 'none',
+            width: 'calc(100% - 32px)',
+            maxWidth: 320,
           }}
         >
           <div
