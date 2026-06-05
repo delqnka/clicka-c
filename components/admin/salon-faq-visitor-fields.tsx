@@ -220,19 +220,20 @@ export function SalonFaqVisitorFields({
               marginTop: 8,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 5,
-              border: `1px dashed ${T.border}`,
-              borderRadius: 8,
-              padding: '5px 10px',
-              background: '#fff',
-              fontSize: 12,
-              fontWeight: 500,
+              gap: 4,
+              border: 'none',
+              background: 'none',
+              padding: 0,
               cursor: 'pointer',
-              color: T.text,
+              fontSize: 13,
+              fontWeight: 600,
+              backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
             }}
           >
-            <Plus size={14} />
-            Добави въпрос
+            + Добави въпрос
           </button>
         </div>
       ) : null}

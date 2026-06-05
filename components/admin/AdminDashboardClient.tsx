@@ -143,7 +143,7 @@ const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings']);
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
 
-const ICON_GRADIENT = 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)';
+const ICON_GRADIENT = 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)';
 const PWA_HOME_STORAGE_KEY = (slug: string) => `admin-pwa-homescreen:${slug}`;
 
 function getPwaInstallGuide(ua: string): { title: string; note: string; steps: string[] } {
@@ -1797,7 +1797,8 @@ export default function AdminDashboardClient({
     minHeight: isMobile ? 48 : undefined,
     borderRadius: isMobile ? 14 : T.radiusSm,
     border: isMobile ? '1.5px solid transparent' : `1px solid ${T.border}`,
-    background: isMobile ? '#F4F4F5' : T.surface,
+    background: '#fff',
+    boxShadow: isMobile ? '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)' : undefined,
     color: T.text,
     fontSize: isMobile ? 16 : 14,
     lineHeight: 1.4,
@@ -2120,7 +2121,7 @@ export default function AdminDashboardClient({
     >
       {/* Background grid + gradient */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle 800px at 100% 200px, #d5c5ff, transparent)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 120% 60% at 80% 0%, rgba(219,39,119,0.07) 0%, rgba(168,85,247,0.05) 50%, transparent 80%)' }} />
       </div>
 
       {/* ── Top nav ───────────────────────────────────── */}
@@ -2145,9 +2146,9 @@ export default function AdminDashboardClient({
                 height: 36,
                 borderRadius: 999,
                 border: 'none',
-                background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
                 color: '#fff',
-                boxShadow: '0 8px 20px rgba(124,58,237,0.32)',
+                boxShadow: '0 8px 20px rgba(219,39,119,0.28)',
                 flexShrink: 0,
                 cursor: 'pointer',
               }}
@@ -2195,7 +2196,7 @@ export default function AdminDashboardClient({
                 borderRadius: isMobile ? 10 : T.radiusSm,
                 border: isMobile ? 'none' : `1px solid ${T.border}`,
                 background: isMobile ? ICON_GRADIENT : 'transparent',
-                boxShadow: isMobile ? '0 6px 16px rgba(124,58,237,0.28)' : 'none',
+                boxShadow: isMobile ? '0 6px 16px rgba(219,39,119,0.22)' : 'none',
                 textDecoration: 'none', color: isMobile ? '#fff' : T.muted,
                 padding: isMobile ? 0 : '6px 12px',
                 fontSize: 13, cursor: 'pointer',
@@ -2340,7 +2341,7 @@ export default function AdminDashboardClient({
                       padding: '8px 6px',
                       borderRadius: 12,
                       border: active ? '1.5px solid #C084FC' : `1px solid ${T.border}`,
-                      background: active ? 'linear-gradient(135deg, #FDF4FF 0%, #EDE9FE 100%)' : '#fff',
+                      background: active ? 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)' : '#fff',
                       cursor: 'pointer',
                       minHeight: 64,
                       WebkitTapHighlightColor: 'transparent',
@@ -2356,7 +2357,7 @@ export default function AdminDashboardClient({
                         borderRadius: 999,
                         background: active ? ICON_GRADIENT : 'transparent',
                         color: active ? '#fff' : '#18181B',
-                        boxShadow: active ? '0 6px 16px rgba(124,58,237,0.28)' : 'none',
+                        boxShadow: active ? '0 6px 16px rgba(219,39,119,0.22)' : 'none',
                         transition: 'all 180ms ease',
                       }}
                     >
@@ -2411,7 +2412,7 @@ export default function AdminDashboardClient({
                   fontSize: 14,
                   fontWeight: 600,
                   background: ICON_GRADIENT,
-                  boxShadow: '0 6px 16px rgba(124,58,237,0.28)',
+                  boxShadow: '0 6px 16px rgba(219,39,119,0.22)',
                 }}
               >
                 <ExternalLink size={16} /> Виж сайта
@@ -2666,7 +2667,7 @@ export default function AdminDashboardClient({
             flex: 1,
             minWidth: 0,
             padding: isMobile
-              ? '20px 20px calc(88px + env(safe-area-inset-bottom)) 20px'
+              ? '16px 12px calc(88px + env(safe-area-inset-bottom)) 12px'
               : '28px 32px 48px',
           }}
         >
@@ -2807,8 +2808,8 @@ export default function AdminDashboardClient({
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
-                      boxShadow: '0 4px 12px rgba(124,58,237,0.22)',
+                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+                      boxShadow: '0 4px 12px rgba(219,39,119,0.18)',
                       padding: '6px 10px',
                       fontSize: 12,
                       fontWeight: 600,
@@ -2874,7 +2875,7 @@ export default function AdminDashboardClient({
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
                       padding: '6px 12px',
                       fontSize: 12,
                       fontWeight: 600,
@@ -2939,7 +2940,7 @@ export default function AdminDashboardClient({
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
                       padding: '6px 12px',
                       fontSize: 12,
                       fontWeight: 600,
@@ -3273,7 +3274,7 @@ export default function AdminDashboardClient({
                       borderRadius: 999,
                       background: active ? ICON_GRADIENT : 'transparent',
                       color: active ? '#fff' : '#18181B',
-                      boxShadow: active ? '0 8px 20px rgba(124,58,237,0.35)' : 'none',
+                      boxShadow: active ? '0 8px 20px rgba(219,39,119,0.28)' : 'none',
                       transition: 'all 180ms ease',
                     }}
                   >
@@ -3284,7 +3285,7 @@ export default function AdminDashboardClient({
                       fontSize: 10,
                       fontWeight: active ? 700 : 500,
                       letterSpacing: '-0.01em',
-                      color: active ? '#7C3AED' : '#18181B',
+                      color: active ? '#db2777' : '#18181B',
                       lineHeight: 1,
                     }}
                   >
@@ -3383,61 +3384,37 @@ function AdminSaveBtn({
   green?: boolean;
   onClick: () => void;
 }) {
-  const bg = green ? '#16A34A' : T.accent;
-  const shadow = green ? '0 4px 12px rgba(22,163,74,0.28)' : '0 4px 12px rgba(34,197,94,0.3)';
+  const [saved, setSaved] = useState(false);
+  const prevBusy = useRef(busy);
+  useEffect(() => {
+    if (prevBusy.current && !busy) {
+      setSaved(true);
+      const t = setTimeout(() => setSaved(false), 2000);
+      return () => clearTimeout(t);
+    }
+    prevBusy.current = busy;
+  }, [busy]);
 
-  if (mobile) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={busy}
-        aria-label={label}
-        title={label}
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          border: 'none',
-          background: bg,
-          color: '#fff',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: busy ? 'wait' : 'pointer',
-          flexShrink: 0,
-          boxShadow: shadow,
-          transition: 'transform 150ms ease, box-shadow 150ms ease',
-        }}
-      >
-        {busy ? <RefreshCw size={16} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={18} strokeWidth={2.5} />}
-      </button>
-    );
-  }
+  const gradStyle: CSSProperties = {
+    border: 'none',
+    background: 'none',
+    padding: '4px 8px',
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: busy ? 'wait' : 'pointer',
+    whiteSpace: 'nowrap',
+    backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexShrink: 0,
+  };
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        borderRadius: 8,
-        border: 'none',
-        background: bg,
-        color: '#fff',
-        padding: '6px 11px',
-        fontSize: 12,
-        fontWeight: 600,
-        cursor: busy ? 'wait' : 'pointer',
-        whiteSpace: 'nowrap',
-        boxShadow: green ? shadow : undefined,
-      }}
-    >
-      {busy ? <RefreshCw size={13} /> : <Check size={13} strokeWidth={2.5} />}
-      {busy ? 'Запазване…' : label}
+    <button type="button" onClick={onClick} disabled={busy} style={gradStyle}>
+      {busy ? 'Запазване…' : saved ? '✓ Запазено' : 'Запази'}
     </button>
   );
 }

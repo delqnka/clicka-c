@@ -28,6 +28,7 @@ export default function AdminPreviewPage() {
     stripeConnectAccountId: null,
     stripeConnectEnabled: false,
     faq: [],
+    faqItems: [],
     amenities: [],
     coverImageUrl: null,
     logoUrl: null,

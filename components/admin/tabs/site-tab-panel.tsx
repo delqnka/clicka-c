@@ -10,7 +10,7 @@ import type { AdminSitePayload } from '@/lib/admin-site';
 
 const SITE_SECTIONS = [
   { id: 'basics', label: 'Контакти' },
-  { id: 'address', label: 'Адрес' },
+  { id: 'address', label: 'WWW.' },
   { id: 'about', label: 'За салона' },
   { id: 'faq', label: 'FAQ' },
   { id: 'amenities', label: 'Удобства' },
@@ -86,9 +86,10 @@ export function SiteTabPanel({
               onClick={() => setSection(id)}
               style={{
                 borderRadius: 999,
-                border: active ? `1px solid ${ADMIN_T.text}` : `1px solid ${ADMIN_T.border}`,
-                background: active ? ADMIN_T.text : '#fff',
+                border: active ? '1px solid transparent' : `1px solid ${ADMIN_T.border}`,
+                background: active ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : '#fff',
                 color: active ? '#fff' : ADMIN_T.text,
+                boxShadow: active ? '0 4px 12px rgba(219,39,119,0.25)' : '0 2px 6px rgba(0,0,0,0.07)',
                 padding: '5px 11px',
                 fontSize: 12,
                 fontWeight: 500,

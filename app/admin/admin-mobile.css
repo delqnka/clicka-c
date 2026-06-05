@@ -45,3 +45,20 @@
     transform: rotate(360deg);
   }
 }
+
+/* Focus ring — замени черния браузърен outline с нашия градиент */
+.admin-mobile-root input:focus,
+.admin-mobile-root textarea:focus,
+.admin-mobile-root select:focus {
+  outline: none;
+  border-color: #db2777 !important;
+  box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
+}
+
+.admin-mobile-root input:focus-visible,
+.admin-mobile-root textarea:focus-visible,
+.admin-mobile-root select:focus-visible {
+  outline: none !important;
+  border-color: #db2777 !important;
+  box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
+}

@@ -59,7 +59,15 @@ export function SlugEditor({
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <AdminField compact label="Адрес на сайта">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          background: '#fff',
+          border: `1.5px solid ${ADMIN_T.border}`,
+          borderRadius: 14,
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+        }}>
           <input
             value={value}
             onChange={(e) => {
@@ -70,21 +78,21 @@ export function SlugEditor({
             maxLength={20}
             style={{
               ...fieldInp,
-              borderRadius: '6px 0 0 6px',
-              borderRight: 'none',
+              border: 'none',
+              boxShadow: 'none',
+              borderRadius: 0,
               flex: 1,
               minWidth: 0,
+              background: 'transparent',
             }}
           />
           <span style={{
-            padding: '7px 10px',
-            fontSize: 13,
-            background: '#f4f4f5',
-            border: `1px solid ${ADMIN_T.border}`,
-            borderRadius: '0 6px 6px 0',
-            color: '#71717a',
+            paddingRight: 14,
+            fontSize: 14,
+            color: '#a1a1aa',
             whiteSpace: 'nowrap',
             flexShrink: 0,
+            fontWeight: 500,
           }}>
             .{rootDomain}
           </span>
@@ -118,28 +126,35 @@ export function SlugEditor({
         <p style={{ fontSize: 13, color: '#16a34a', margin: 0 }}>{notice}</p>
       )}
 
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
       <button
         type="button"
         disabled={busy || !changed || !!validationErr}
         onClick={handleSave}
         style={{
-          alignSelf: 'flex-start',
-          padding: '7px 16px',
-          borderRadius: 6,
+          padding: '8px 24px',
+          borderRadius: 999,
           border: 'none',
-          background: busy || !changed || !!validationErr ? '#e4e4e7' : ADMIN_T.text,
+          background: busy || !changed || !!validationErr
+            ? '#e4e4e7'
+            : 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
           color: busy || !changed || !!validationErr ? '#a1a1aa' : '#fff',
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 700,
           cursor: busy || !changed || !!validationErr ? 'default' : 'pointer',
+          boxShadow: busy || !changed || !!validationErr ? 'none' : '0 4px 14px rgba(219,39,119,0.28)',
         }}
       >
         {busy ? 'Запазване…' : 'Запази адреса'}
       </button>
+      </div>
 
-      <p style={{ fontSize: 12, color: '#a1a1aa', margin: 0, lineHeight: 1.5 }}>
-        След промяна ще бъдеш пренасочена към новия адрес. Стария адрес спира да работи.
-      </p>
+      <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.7 }}>
+        <p style={{ margin: '0 0 4px' }}>* Ако смениш адреса:</p>
+        <p style={{ margin: '0 0 2px', paddingLeft: 8 }}>· Линкът, който сте споделяли, спира да работи</p>
+        <p style={{ margin: '0 0 2px', paddingLeft: 8 }}>· QR кодовете трябва да се генерират наново</p>
+        <p style={{ margin: 0, paddingLeft: 8 }}>· Google ще трябва да намери отново сайта ти</p>
+      </div>
     </div>
   );
 }

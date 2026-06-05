@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, CheckCircle2, ImagePlus, RefreshCw, Upload } from 'lucide-react';
-import { useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 
 export function AdminField({
@@ -65,7 +65,7 @@ export function AdminSection({
           <h2
             style={{
               margin: 0,
-              fontSize: isMbl ? (compact ? 17 : 22) : compact ? 16 : 18,
+              fontSize: isMbl ? (compact ? 15 : 18) : compact ? 14 : 16,
               fontWeight: compact ? 600 : 700,
               letterSpacing: compact ? '-0.02em' : '-0.025em',
               color: ADMIN_T.text,
@@ -179,8 +179,24 @@ export function AdminSaveBtn({
   compact?: boolean;
   onClick: () => void;
 }) {
-  const bg = green ? '#16A34A' : ADMIN_T.accent;
-  const shadow = green ? '0 4px 12px rgba(22,163,74,0.28)' : '0 4px 12px rgba(34,197,94,0.3)';
+  const [saved, setSaved] = useState(false);
+  const prevBusy = useRef(busy);
+  useEffect(() => {
+    if (prevBusy.current && !busy) {
+      setSaved(true);
+      const t = setTimeout(() => setSaved(false), 2000);
+      return () => clearTimeout(t);
+    }
+    prevBusy.current = busy;
+  }, [busy]);
+
+  const GRAD = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
+  const gradText: CSSProperties = {
+    backgroundImage: GRAD,
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  };
 
   if (mobile) {
     return (
@@ -191,25 +207,20 @@ export function AdminSaveBtn({
         aria-label={label}
         title={label}
         style={{
-          width: compact ? 36 : 44,
-          height: compact ? 36 : 44,
-          borderRadius: compact ? 10 : 14,
           border: 'none',
-          background: bg,
-          color: '#fff',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          background: 'none',
+          padding: '4px 8px',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: shadow,
+          fontSize: 14,
+          fontWeight: 700,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          ...gradText,
         }}
       >
-        {busy ? (
-          <RefreshCw size={compact ? 16 : 18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} />
-        ) : (
-          <Check size={compact ? 18 : 20} strokeWidth={2.5} />
-        )}
+        {busy ? 'Запазване…' : saved ? '✓ Запазено' : 'Запази'}
       </button>
     );
   }
@@ -222,21 +233,20 @@ export function AdminSaveBtn({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: compact ? 5 : 6,
-        borderRadius: compact ? 8 : 10,
         border: 'none',
-        background: bg,
-        color: '#fff',
-        padding: compact ? '6px 11px' : '7px 14px',
-        fontSize: compact ? 12 : 13,
-        fontWeight: 600,
+        background: 'none',
+        padding: '4px 8px',
+        fontSize: 13,
+        fontWeight: 700,
         cursor: busy ? 'wait' : 'pointer',
         whiteSpace: 'nowrap',
-        boxShadow: green ? shadow : undefined,
+        backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
       }}
     >
-      {busy ? <RefreshCw size={compact ? 13 : 14} /> : <Check size={compact ? 13 : 14} strokeWidth={2.5} />}
-      {busy ? 'Запазване…' : label}
+      {busy ? 'Запазване…' : saved ? '✓ Запазено' : 'Запази'}
     </button>
   );
 }

@@ -347,12 +347,19 @@ export default function PlatformAdminDashboard({
       {/* ── Stats cards ──────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-4 pt-5 pb-2 grid grid-cols-2 gap-3">
         {[
-          { label: 'Общо салони',    value: stats.totalSalons,   icon: <IconBuilding className="w-5 h-5" />,   from: '#6366f1', to: '#818cf8' },
-          { label: 'Активни',        value: stats.activeSalons,  icon: <IconGlobe className="w-5 h-5" />,      from: '#10b981', to: '#34d399' },
-          { label: 'Регистрирани',   value: stats.claimedSalons, icon: <IconUsers className="w-5 h-5" />,      from: '#f59e0b', to: '#fbbf24' },
-          { label: 'Резервации',     value: stats.totalBookings, icon: <IconCalendar className="w-5 h-5" />,   from: '#ec4899', to: '#f472b6' },
+          { label: 'Общо салони',  value: stats.totalSalons,   icon: <IconBuilding className="w-5 h-5" />, from: '#6366f1', to: '#818cf8', onClick: () => { setTab('salons'); setFilterActive('all'); } },
+          { label: 'Активни',      value: stats.activeSalons,  icon: <IconGlobe className="w-5 h-5" />,   from: '#10b981', to: '#34d399', onClick: () => { setTab('salons'); setFilterActive('active'); } },
+          { label: 'Регистрирани', value: stats.claimedSalons, icon: <IconUsers className="w-5 h-5" />,   from: '#f59e0b', to: '#fbbf24', onClick: () => { setTab('salons'); setFilterActive('all'); setSearch(''); } },
+          { label: 'Резервации',   value: stats.totalBookings, icon: <IconCalendar className="w-5 h-5" />, from: '#ec4899', to: '#f472b6', onClick: () => setTab('bookings') },
         ].map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <button
+            key={s.label}
+            type="button"
+            onClick={s.onClick}
+            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left
+                       hover:shadow-md hover:border-gray-200 active:scale-[0.97]
+                       transition-all duration-150 cursor-pointer"
+          >
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white mb-3"
               style={{ background: `linear-gradient(135deg,${s.from},${s.to})` }}
@@ -361,7 +368,7 @@ export default function PlatformAdminDashboard({
             </div>
             <div className="text-2xl font-bold text-gray-900 leading-none">{s.value}</div>
             <div className="text-xs text-gray-500 mt-1">{s.label}</div>
-          </div>
+          </button>
         ))}
       </div>
 

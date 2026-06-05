@@ -62,7 +62,7 @@ type BookingsPanelProps = {
   T: ThemePalette;
 };
 
-const CALENDAR_DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
+const CALENDAR_DAY_NAMES = ['ПОН', 'ВТ', 'СР', 'ЧЕТ', 'ПЕТ', 'СЪБ', 'НЕД'] as const;
 
 const STATUS_CFG: Record<BookingStatus, { label: string; text: string; dot: string; border: string }> = {
   pending: { label: 'Чакаща', text: '#C2410C', dot: '#FB923C', border: 'rgba(251,146,60,0.45)' },
@@ -247,7 +247,9 @@ export function BookingsPanel({
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '8px 16px', borderRadius: 100, border: 'none',
-                  background: isActive ? T.accent : '#F4F4F5', color: isActive ? '#fff' : T.muted,
+                  background: isActive ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : '#fff',
+                  color: isActive ? '#fff' : T.muted,
+                  boxShadow: isActive ? '0 4px 12px rgba(219,39,119,0.25)' : '0 2px 6px rgba(0,0,0,0.06)',
                   fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: 'pointer',
                   whiteSpace: 'nowrap', flexShrink: 0, WebkitTapHighlightColor: 'transparent',
                 }}
@@ -263,11 +265,11 @@ export function BookingsPanel({
       <div
         style={{
           marginBottom: 14,
-          border: isMobile ? 'none' : `1px solid ${T.border}`,
+          border: 'none',
           borderRadius: isMobile ? 18 : 14,
           background: T.surface,
           padding: isMobile ? '14px 14px 12px' : '14px 16px',
-          boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -335,7 +337,7 @@ export function BookingsPanel({
       </div>
 
       {visibleBookings.length === 0 && externalCalendarEvents.length === 0 ? (
-        <div style={{ border: `1px dashed ${T.border}`, borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
+        <div style={{ padding: '20px 14px', color: T.muted, textAlign: 'center', fontSize: 14 }}>
           Няма резервации за избраните филтри.
         </div>
       ) : (
