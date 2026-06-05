@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       email: emailNorm,
       expiresMs: 60 * 60 * 1000, // 1 час
     });
-    return NextResponse.json({ success: true, redirectTo: magicLink });
+    return NextResponse.json({ success: true, redirectTo: magicLink, isNewUser: true });
   }
 
   // Съществуващ потребител с парола — създай сесия и прати към admin

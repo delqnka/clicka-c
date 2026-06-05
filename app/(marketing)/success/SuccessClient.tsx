@@ -18,6 +18,7 @@ export default function SuccessClient({
   const [notice, setNotice] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [redirectTo, setRedirectTo] = useState('');
+  const [isNewUser, setIsNewUser] = useState(false);
   const sentRef = useRef(false);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function SuccessClient({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Грешен код.');
       setConfirmed(true);
+      setIsNewUser(!!data.isNewUser);
       setRedirectTo(data.redirectTo || '/admin');
       setTimeout(() => {
         window.location.href = data.redirectTo || '/admin';
@@ -117,14 +119,14 @@ export default function SuccessClient({
         {confirmed ? (
           <>
             <h1 className="fade-1" style={{ fontSize: 'clamp(28px,5vw,46px)', fontWeight: 800, margin: '0 0 16px', letterSpacing: '-0.03em', lineHeight: 1.1, color: '#0D0D12' }}>
-              Добре дошъл в панела!
+              {isNewUser ? 'Последна стъпка!' : 'Добре дошъл в панела!'}
             </h1>
             <p className="fade-2" style={{ fontSize: 18, color: '#667085', maxWidth: 480, lineHeight: 1.65, margin: '0 0 40px' }}>
-              Пренасочваме те към dashboard-а...
+              {isNewUser ? 'Пренасочваме те към регистрацията...' : 'Пренасочваме те към dashboard-а...'}
             </p>
             {redirectTo && (
-              <a href={redirectTo} className="fade-3" style={{ display: 'inline-block', padding: '14px 32px', background: 'linear-gradient(135deg,#22C55E,#16A34A)', color: '#fff', borderRadius: 100, fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: '0 8px 28px rgba(34,197,94,.38)' }}>
-                Отвори панела →
+              <a href={redirectTo} className="fade-3" style={{ display: 'inline-block', padding: '14px 32px', background: isNewUser ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : 'linear-gradient(135deg,#22C55E,#16A34A)', color: '#fff', borderRadius: 100, fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: isNewUser ? '0 8px 28px rgba(219,39,119,.3)' : '0 8px 28px rgba(34,197,94,.38)' }}>
+                {isNewUser ? 'Създай акаунт →' : 'Отвори панела →'}
               </a>
             )}
           </>
