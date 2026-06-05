@@ -34,6 +34,12 @@ export function ChatWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener('clicka:open-chat', handler);
+    return () => window.removeEventListener('clicka:open-chat', handler);
+  }, []);
+
   // Body scroll lock — saves and restores scroll position
   useEffect(() => {
     if (!isMobile || !open) return;

@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent white overscroll on iOS below the dark footer */
+html {
+  background: #0a0a0a;
+}
+
 @layer utilities {
   .scrollbar-none {
     -ms-overflow-style: none;
