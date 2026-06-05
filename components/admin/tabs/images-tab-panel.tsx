@@ -116,7 +116,7 @@ function GalleryGrid({
 
       <AdminField
         compact
-        label={images.length > 0 ? `${uploadedLabel} · ${images.length}` : 'Качи снимки'}
+        label={images.length > 0 ? `${uploadedLabel} · ${images.length}` : ''}
       >
         {uploadProgress ? (
           <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.4 }}>
@@ -279,7 +279,7 @@ export function ImagesTabPanel({
               };
             })
           }
-          emptyHint={isMobile ? 'Натисни + за снимки в портфолиото' : 'Натисни + или плъзни файлове тук.'}
+          emptyHint={isMobile ? '' : ''}
         />
       ) : null}
     </AdminSection>
