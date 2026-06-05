@@ -65,7 +65,7 @@ export default function AdminSignInPage() {
     padding: '13px 14px',
     borderRadius: 999,
     border: 'none',
-    background: '#000',
+    background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
     color: '#fff',
     fontWeight: 800,
     fontSize: 15,
