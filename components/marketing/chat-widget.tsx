@@ -33,6 +33,7 @@ export function ChatWidget() {
   const [humanMode, setHumanMode] = useState(false);
   const [askingName, setAskingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [clientName, setClientName] = useState('');
   const sendingRef = useRef(false);
@@ -129,8 +130,9 @@ export function ChatWidget() {
 
   function confirmName() {
     const name = nameInput.trim();
-    if (!name) return;
-    setClientName(name);
+    const phone = phoneInput.trim();
+    if (!name || !phone) return;
+    setClientName(`${name} (${phone})`);
     setAskingName(false);
     setHumanMode(true);
     setMessages((prev) => [
@@ -263,8 +265,8 @@ export function ChatWidget() {
                 alignItems: 'center', justifyContent: 'center',
                 padding: '32px 24px', gap: 14, background: '#111',
               }}>
-                <p style={{ fontSize: 20, fontWeight: 700, color: '#fff', textAlign: 'center', margin: 0 }}>👋 Как се казваш?</p>
-                <p style={{ fontSize: 14, color: '#888', textAlign: 'center', margin: 0 }}>за да знаем с кого говорим</p>
+                <p style={{ fontSize: 20, fontWeight: 700, color: '#fff', textAlign: 'center', margin: 0 }}>👋 Свържи се с нас</p>
+                <p style={{ fontSize: 14, color: '#888', textAlign: 'center', margin: 0 }}>Остави името и телефона си</p>
                 <input
                   autoFocus
                   placeholder="Твоето име"
@@ -277,15 +279,27 @@ export function ChatWidget() {
                     fontFamily: 'inherit', background: '#1a1a1a', color: '#fff',
                   }}
                 />
+                <input
+                  placeholder="Телефон"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && confirmName()}
+                  type="tel"
+                  style={{
+                    width: '100%', padding: '14px 16px', borderRadius: 14, boxSizing: 'border-box',
+                    border: '1.5px solid #333', fontSize: 16, outline: 'none',
+                    fontFamily: 'inherit', background: '#1a1a1a', color: '#fff',
+                  }}
+                />
                 <button
                   onClick={confirmName}
-                  disabled={!nameInput.trim()}
+                  disabled={!nameInput.trim() || !phoneInput.trim()}
                   style={{
                     width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-                    backgroundImage: nameInput.trim() ? GRAD : undefined,
-                    background: nameInput.trim() ? undefined : '#2a2a2a',
+                    backgroundImage: (nameInput.trim() && phoneInput.trim()) ? GRAD : undefined,
+                    background: (nameInput.trim() && phoneInput.trim()) ? undefined : '#2a2a2a',
                     color: '#fff', fontWeight: 700, fontSize: 16,
-                    cursor: nameInput.trim() ? 'pointer' : 'not-allowed',
+                    cursor: (nameInput.trim() && phoneInput.trim()) ? 'pointer' : 'not-allowed',
                     fontFamily: 'inherit',
                   }}
                 >
@@ -469,8 +483,8 @@ export function ChatWidget() {
               alignItems: 'center', justifyContent: 'center',
               padding: '24px 20px', gap: 12, background: '#111',
             }}>
-              <p style={{ fontSize: 17, fontWeight: 700, color: '#fff', textAlign: 'center', margin: 0 }}>👋 Как се казваш?</p>
-              <p style={{ fontSize: 13, color: '#888', textAlign: 'center', margin: 0 }}>за да знаем с кого говорим</p>
+              <p style={{ fontSize: 17, fontWeight: 700, color: '#fff', textAlign: 'center', margin: 0 }}>👋 Свържи се с нас</p>
+              <p style={{ fontSize: 13, color: '#888', textAlign: 'center', margin: 0 }}>Остави името и телефона си</p>
               <input
                 autoFocus
                 placeholder="Твоето име"
@@ -483,15 +497,27 @@ export function ChatWidget() {
                   fontFamily: 'inherit', background: '#1a1a1a', color: '#fff',
                 }}
               />
+              <input
+                placeholder="Телефон"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmName()}
+                type="tel"
+                style={{
+                  width: '100%', padding: '11px 14px', borderRadius: 12, boxSizing: 'border-box',
+                  border: '1.5px solid #333', fontSize: 14, outline: 'none',
+                  fontFamily: 'inherit', background: '#1a1a1a', color: '#fff',
+                }}
+              />
               <button
                 onClick={confirmName}
-                disabled={!nameInput.trim()}
+                disabled={!nameInput.trim() || !phoneInput.trim()}
                 style={{
                   width: '100%', padding: '11px 0', borderRadius: 12, border: 'none',
-                  backgroundImage: nameInput.trim() ? GRAD : undefined,
-                  background: nameInput.trim() ? undefined : '#2a2a2a',
+                  backgroundImage: (nameInput.trim() && phoneInput.trim()) ? GRAD : undefined,
+                  background: (nameInput.trim() && phoneInput.trim()) ? undefined : '#2a2a2a',
                   color: '#fff', fontWeight: 700, fontSize: 14,
-                  cursor: nameInput.trim() ? 'pointer' : 'not-allowed',
+                  cursor: (nameInput.trim() && phoneInput.trim()) ? 'pointer' : 'not-allowed',
                   fontFamily: 'inherit',
                 }}
               >
