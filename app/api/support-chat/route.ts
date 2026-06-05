@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
       const result = await telegramPost('sendMessage', {
         chat_id: OWNER_CHAT_ID,
-        text: `${header}${message.trim()}\n\n<i>session: ${activeSessionId}</i>`,
+        text: `${header}${message.trim()}`,
         parse_mode: 'HTML',
       }) as { ok: boolean; result?: { message_id: number } };
 

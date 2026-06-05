@@ -31,8 +31,11 @@ export function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [kbOffset, setKbOffset] = useState(0);
   const [humanMode, setHumanMode] = useState(false);
+  const [askingName, setAskingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [clientName, setClientName] = useState('');
+  const sendingRef = useRef(false);
   const lastAtRef = useRef('1970-01-01');
   const seenIdsRef = useRef(new Set<string>());
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -121,19 +124,28 @@ export function ChatWidget() {
   }, [humanMode, sessionId, open]);
 
   function switchToHuman() {
+    setAskingName(true);
+  }
+
+  function confirmName() {
+    const name = nameInput.trim();
+    if (!name) return;
+    setClientName(name);
+    setAskingName(false);
     setHumanMode(true);
     setMessages((prev) => [
       ...prev,
       {
         role: 'assistant',
-        content: '👤 Свързвам те с екипа на Clicka. Ще ти отговорим скоро — обикновено в рамките на няколко минути.',
+        content: `👤 Здравей, ${name}! Свързвам те с екипа на Clicka. Ще ти отговорим скоро.`,
       },
     ]);
   }
 
   async function send() {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || sendingRef.current) return;
+    sendingRef.current = true;
     setInput('');
 
     if (humanMode) {
@@ -147,6 +159,7 @@ export function ChatWidget() {
         const data = await res.json() as { sessionId?: string };
         if (data.sessionId && !sessionId) setSessionId(data.sessionId);
       } catch { /* ignore */ }
+      finally { sendingRef.current = false; }
       return;
     }
 
@@ -177,6 +190,7 @@ export function ChatWidget() {
       setMessages([...next, { role: 'assistant', content: 'Нещо се обърка. Опитай пак.' }]);
     } finally {
       setLoading(false);
+      sendingRef.current = false;
     }
   }
 
@@ -242,8 +256,46 @@ export function ChatWidget() {
               </button>
             </div>
 
+            {/* Ask name screen */}
+            {askingName && (
+              <div style={{
+                flex: 1, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                padding: '32px 24px', gap: 14, background: '#111',
+              }}>
+                <p style={{ fontSize: 20, fontWeight: 700, color: '#fff', textAlign: 'center', margin: 0 }}>👋 Как се казваш?</p>
+                <p style={{ fontSize: 14, color: '#888', textAlign: 'center', margin: 0 }}>за да знаем с кого говорим</p>
+                <input
+                  autoFocus
+                  placeholder="Твоето име"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && confirmName()}
+                  style={{
+                    width: '100%', padding: '14px 16px', borderRadius: 14, boxSizing: 'border-box',
+                    border: '1.5px solid #333', fontSize: 16, outline: 'none',
+                    fontFamily: 'inherit', background: '#1a1a1a', color: '#fff',
+                  }}
+                />
+                <button
+                  onClick={confirmName}
+                  disabled={!nameInput.trim()}
+                  style={{
+                    width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
+                    backgroundImage: nameInput.trim() ? GRAD : undefined,
+                    background: nameInput.trim() ? undefined : '#2a2a2a',
+                    color: '#fff', fontWeight: 700, fontSize: 16,
+                    cursor: nameInput.trim() ? 'pointer' : 'not-allowed',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Продължи →
+                </button>
+              </div>
+            )}
+
             {/* Messages */}
-            <div style={{
+            {!askingName && <div style={{
               flex: 1, overflowY: 'auto', padding: '12px 12px',
               display: 'flex', flexDirection: 'column', gap: 4,
               WebkitOverflowScrolling: 'touch',
@@ -287,10 +339,10 @@ export function ChatWidget() {
                 </div>
               )}
               <div ref={bottomRef} />
-            </div>
+            </div>}
 
-            {/* Input bar */}
-            <div style={{
+            {/* Input bar — hidden while asking name */}
+            {!askingName && <div style={{
               flexShrink: 0, background: '#1a1a1a',
               borderTop: '1px solid #2a2a2a',
               paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))',
@@ -327,7 +379,7 @@ export function ChatWidget() {
                   }
                 </button>
               </div>
-            </div>
+            </div>}
           </div>
         )}
 
@@ -410,8 +462,46 @@ export function ChatWidget() {
             </button>
           </div>
 
+          {/* Ask name screen — desktop */}
+          {askingName && (
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: '24px 20px', gap: 12, background: '#111',
+            }}>
+              <p style={{ fontSize: 17, fontWeight: 700, color: '#fff', textAlign: 'center', margin: 0 }}>👋 Как се казваш?</p>
+              <p style={{ fontSize: 13, color: '#888', textAlign: 'center', margin: 0 }}>за да знаем с кого говорим</p>
+              <input
+                autoFocus
+                placeholder="Твоето име"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmName()}
+                style={{
+                  width: '100%', padding: '11px 14px', borderRadius: 12, boxSizing: 'border-box',
+                  border: '1.5px solid #333', fontSize: 14, outline: 'none',
+                  fontFamily: 'inherit', background: '#1a1a1a', color: '#fff',
+                }}
+              />
+              <button
+                onClick={confirmName}
+                disabled={!nameInput.trim()}
+                style={{
+                  width: '100%', padding: '11px 0', borderRadius: 12, border: 'none',
+                  backgroundImage: nameInput.trim() ? GRAD : undefined,
+                  background: nameInput.trim() ? undefined : '#2a2a2a',
+                  color: '#fff', fontWeight: 700, fontSize: 14,
+                  cursor: nameInput.trim() ? 'pointer' : 'not-allowed',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Продължи →
+              </button>
+            </div>
+          )}
+
           {/* Messages */}
-          <div style={{
+          {!askingName && <div style={{
             flex: 1, overflowY: 'auto',
             padding: '10px 12px',
             display: 'flex', flexDirection: 'column', gap: 4,
@@ -454,10 +544,10 @@ export function ChatWidget() {
               </div>
             )}
             <div ref={bottomRef} />
-          </div>
+          </div>}
 
           {/* Input bar */}
-          <div style={{ flexShrink: 0, background: '#1a1a1a', borderTop: '1px solid #2a2a2a' }}>
+          {!askingName && <div style={{ flexShrink: 0, background: '#1a1a1a', borderTop: '1px solid #2a2a2a' }}>
             <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               ref={inputRef}
@@ -489,7 +579,7 @@ export function ChatWidget() {
               }
             </button>
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
