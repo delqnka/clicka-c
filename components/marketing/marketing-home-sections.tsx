@@ -270,6 +270,164 @@ export function PriceListImportSection() {
   );
 }
 
+/* ── Telegram Live Chat section ──────────────────────── */
+
+function IPhoneFrame({ src, alt, size = 'md' }: { src: string; alt: string; size?: 'lg' | 'md' }) {
+  const borderW = size === 'lg' ? 10 : 8;
+  const outerR = '36px 36px 0 0';
+  const innerR = '30px 30px 0 0';
+  return (
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      borderRadius: outerR,
+      background: 'linear-gradient(145deg, #2a2a2e 0%, #1a1a1e 60%, #0e0e10 100%)',
+      boxShadow: '0 0 0 1.5px #3a3a40, 0 0 0 2.5px #1a1a1e, 0 24px 60px rgba(0,0,0,0.55)',
+      overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', left: -borderW / 2, top: '22%', width: borderW / 2, height: '7%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
+      <div style={{ position: 'absolute', left: -borderW / 2, top: '32%', width: borderW / 2, height: '9%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
+      <div style={{ position: 'absolute', right: -borderW / 2, top: '30%', width: borderW / 2, height: '14%', background: '#3a3a40', borderRadius: '0 1px 1px 0' }} />
+      <div style={{ margin: '2.5% 2.5% 0', borderRadius: innerR, background: '#000', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: size === 'lg' ? 28 : 22, background: '#000' }}>
+          <div style={{ width: '28%', height: 14, background: '#1a1a1e', borderRadius: 999 }} />
+        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt} style={{ width: '100%', display: 'block' }} />
+      </div>
+    </div>
+  );
+}
+
+export function TelegramChatSection() {
+  return (
+    <section
+      aria-label="Чат с клиенти от Telegram"
+      style={{
+        background: 'linear-gradient(to bottom, #0a0a0a 0%, #0a0a0a 18%, #3d0a2e 38%, #7b1050 55%, #b8186a 72%, #db2777 85%, #f472b6 100%)',
+        padding: 'clamp(64px,10vw,120px) clamp(20px,5vw,60px) clamp(64px,10vw,120px)',
+        overflow: 'hidden',
+        position: 'relative',
+        marginTop: -1,
+        transform: 'translateZ(0)',
+        willChange: 'transform',
+      }}
+    >
+      {/* top fade */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 480, background: 'linear-gradient(to bottom, #ffffff 0%, rgba(255,255,255,0.97) 22%, rgba(255,255,255,0.9) 40%, rgba(255,255,255,0.65) 58%, rgba(255,255,255,0.3) 76%, transparent 100%)', pointerEvents: 'none', zIndex: 2 }} />
+      {/* bottom fade */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 340, background: 'linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0.92) 15%, rgba(255,255,255,0.75) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.2) 70%, transparent 100%)', pointerEvents: 'none', zIndex: 2 }} />
+
+      <div style={{ maxWidth: 1000, margin: '0 auto', position: 'relative', zIndex: 3 }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(40px,6vw,72px)' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 12, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Живи разговори с клиенти
+          </p>
+          <h2 style={{
+            fontSize: 'clamp(26px,5vw,48px)', fontWeight: 800, lineHeight: 1.1, marginBottom: 16,
+            backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>
+            Клиентите пишат в сайта ти.<br />Ти отговаряш от Telegram.
+          </h2>
+          <p style={{ fontSize: 'clamp(15px,1.8vw,18px)', color: '#0f0f0f', maxWidth: 520, margin: '0 auto', lineHeight: 1.65, fontWeight: 400 }}>
+            Получаваш съобщенията директно в Telegram и можеш да отговаряш на клиентите си отвсякъде.
+          </p>
+        </div>
+
+        {/* Story visual — left big phone + arrow + right two phones stacked */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
+          gap: 'clamp(12px,3vw,40px)',
+          alignItems: 'end',
+          marginBottom: 'clamp(40px,6vw,64px)',
+        }}>
+
+          {/* Left: big chat phone */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ maxWidth: 280, width: '100%', margin: '0 auto' }}>
+              <IPhoneFrame src="/chat.png" alt="Клиентът пише в чата" size="lg" />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 3px', WebkitTextFillColor: '#fff' }}>💬 Клиентът пише в сайта</p>
+              <p style={{ fontSize: 12, color: '#fff', margin: 0, lineHeight: 1.5 }}>Задава въпрос директно от сайта ти</p>
+            </div>
+          </div>
+
+          {/* Center: arrow */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 100, alignSelf: 'start' }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="#f9196e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+
+          {/* Right: two phones stacked with arrow between */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ maxWidth: 220, width: '85%', margin: '0 auto' }}>
+                <IPhoneFrame src="/IMG_1851.jpg" alt="Отговаряш от Telegram" size="md" />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>🔔 Известие в Telegram</p>
+                <p style={{ fontSize: 11, color: '#fff', margin: 0, lineHeight: 1.4 }}>Веднага на телефона ти</p>
+              </div>
+            </div>
+            {/* Arrow between the two right phones */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M6 13l6 6 6-6" stroke="#f9196e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ maxWidth: 220, width: '85%', margin: '0 auto' }}>
+                <IPhoneFrame src="/IMG_1852.jpg" alt="Известие в Telegram" size="md" />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>📲 Отговаряш от Telegram</p>
+                <p style={{ fontSize: 11, color: '#fff', margin: 0, lineHeight: 1.4 }}>Клиентът вижда отговора в реално време</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Checkmarks */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 'clamp(36px,5vw,56px)' }}>
+          {[
+            'Без допълнителни приложения',
+            'Отговаряш директно от телефона си',
+            'Не губиш клиенти, които имат въпроси преди резервация',
+          ].map((text, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M20 6L9 17l-5-5" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{ fontSize: 'clamp(13px,1.6vw,15px)', fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom tagline */}
+        <div style={{ textAlign: 'center', paddingBottom: 'clamp(48px,8vw,80px)' }}>
+          <p style={{ fontSize: 'clamp(20px,3vw,32px)', fontWeight: 800, marginBottom: 8, color: '#fff' }}>
+            Това не е просто чат.
+          </p>
+          <p style={{
+            fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: 800,
+            backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>
+            💬 AI асистент + чат с реален човек в една система
+          </p>
+        </div>
+
+      </div>
+    </section>
+  );
+}
+
 /* ── Features (FlowArt fullscreen scroll) ────────────── */
 
 export function TelegramManagementSection() {

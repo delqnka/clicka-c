@@ -14,6 +14,7 @@ import {
   MarketingFaqSection,
   PriceListImportSection,
   TelegramManagementSection,
+  TelegramChatSection,
 } from '@/components/marketing/marketing-home-sections';
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { IPhoneMockup } from '@/components/ui/iphone-mockup';
@@ -374,6 +375,9 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
 
       {/* ── TELEGRAM MANAGEMENT ───────────────────────── */}
       <TelegramManagementSection />
+
+      {/* ── TELEGRAM CHAT ─────────────────────────────── */}
+      <TelegramChatSection />
 
       {/* ── COMPARISON ────────────────────────────────── */}
       <MarketingComparisonSection />
