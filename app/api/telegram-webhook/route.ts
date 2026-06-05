@@ -18,6 +18,8 @@ import {
 } from '@/lib/telegram-admin-commands';
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
+const OWNER_CHAT_ID = process.env.CLICKA_OWNER_CHAT_ID ?? '';
+const SUPPORT_SALON_ID = 'clicka_support';
 
 type TelegramUpdate = {
   message?: {
@@ -192,6 +194,33 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   const chatId = message.chat.id;
   const text = (message.text ?? '').trim();
   const firstName = message.from?.first_name ?? '';
+
+  // ── Handle Clicka owner reply to support chat (clicka.bg marketing chat) ──
+  if (OWNER_CHAT_ID && String(chatId) === OWNER_CHAT_ID && text && !text.startsWith('/')) {
+    // Find the most recent active support session
+    const sessRows = await sql`
+      SELECT id, client_name FROM salon_chat_sessions
+      WHERE salon_id = ${SUPPORT_SALON_ID}
+      ORDER BY last_message_at DESC
+      LIMIT 1
+    ` as { id: string; client_name: string }[];
+
+    if (sessRows[0]) {
+      const sess = sessRows[0];
+      await sql`
+        INSERT INTO salon_chat_messages (session_id, role, content)
+        VALUES (${sess.id}, 'salon', ${text})
+      `;
+      await sql`
+        UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${sess.id}
+      `;
+      await sendTelegramMessage(chatId, `✅ Отговорът е изпратен на <b>${sess.client_name}</b>.`);
+      return NextResponse.json({ ok: true });
+    }
+
+    await sendTelegramMessage(chatId, '📭 Няма активен support чат в момента.');
+    return NextResponse.json({ ok: true });
+  }
 
   // ── Handle owner plain-text reply when there is an active client chat ────
   // When a client message arrives, we store the session in bot_conversation_state.

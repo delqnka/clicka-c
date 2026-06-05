@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 
-type Message = { role: 'user' | 'assistant'; content: string };
+type Message = { role: 'user' | 'assistant' | 'human-support'; content: string };
 
 const WELCOME: Message = {
   role: 'assistant',
@@ -30,6 +30,12 @@ export function ChatWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [kbOffset, setKbOffset] = useState(0);
+  const [humanMode, setHumanMode] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [clientName, setClientName] = useState('');
+  const lastAtRef = useRef('1970-01-01');
+  const seenIdsRef = useRef(new Set<string>());
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -90,12 +96,62 @@ export function ChatWidget() {
     if (open) setTimeout(() => inputRef.current?.focus(), 150);
   }, [open]);
 
+  // Poll for owner replies when in human mode
+  useEffect(() => {
+    if (!humanMode || !sessionId || !open) return;
+    async function poll() {
+      try {
+        const res = await fetch(`/api/support-chat/${sessionId}?after=${encodeURIComponent(lastAtRef.current)}`);
+        const data = await res.json() as { messages: { id: string; role: string; content: string; created_at: string }[] };
+        const newMsgs = data.messages.filter((m) => m.role === 'salon' && !seenIdsRef.current.has(m.id));
+        if (newMsgs.length > 0) {
+          lastAtRef.current = newMsgs[newMsgs.length - 1]!.created_at;
+          setMessages((prev) => [
+            ...prev,
+            ...newMsgs.map((m) => {
+              seenIdsRef.current.add(m.id);
+              return { role: 'assistant' as const, content: m.content };
+            }),
+          ]);
+        }
+      } catch { /* ignore */ }
+    }
+    pollRef.current = setInterval(poll, 4000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [humanMode, sessionId, open]);
+
+  function switchToHuman() {
+    setHumanMode(true);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: '👤 Свързвам те с екипа на Clicka. Ще ти отговорим скоро — обикновено в рамките на няколко минути.',
+      },
+    ]);
+  }
+
   async function send() {
     const text = input.trim();
     if (!text || loading) return;
+    setInput('');
+
+    if (humanMode) {
+      setMessages((prev) => [...prev, { role: 'user', content: text }]);
+      try {
+        const res = await fetch('/api/support-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, clientName: clientName || 'Посетител', message: text }),
+        });
+        const data = await res.json() as { sessionId?: string };
+        if (data.sessionId && !sessionId) setSessionId(data.sessionId);
+      } catch { /* ignore */ }
+      return;
+    }
+
     const next: Message[] = [...messages, { role: 'user', content: text }];
     setMessages(next);
-    setInput('');
     setLoading(true);
     try {
       const res = await fetch('/api/chat', {
@@ -104,7 +160,19 @@ export function ChatWidget() {
         body: JSON.stringify({ messages: next }),
       });
       const data = await res.json();
-      setMessages([...next, { role: 'assistant', content: data.message || 'Нещо се обърка.' }]);
+      // Detect from AI response that it can't help → offer human
+      const aiMsg: string = data.message || 'Нещо се обърка.';
+      const cantHelp = aiMsg.includes('support@clicka.bg') || aiMsg.includes('Не откривам');
+      const finalMessages: Message[] = [...next, { role: 'assistant', content: aiMsg }];
+      setMessages(finalMessages);
+      if (cantHelp) {
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: '💡 Искаш ли да говориш директно с екипа ни?' },
+          ]);
+        }, 600);
+      }
     } catch {
       setMessages([...next, { role: 'assistant', content: 'Нещо се обърка. Опитай пак.' }]);
     } finally {
@@ -149,6 +217,19 @@ export function ChatWidget() {
                   онлайн
                 </div>
               </div>
+              {!humanMode && (
+                <button
+                  onClick={switchToHuman}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#fff', fontSize: 13, fontFamily: 'inherit',
+                    textDecoration: 'underline', flexShrink: 0, padding: 0,
+                    opacity: 0.85,
+                  }}
+                >
+                  Свържи се с екипа
+                </button>
+              )}
               <button
                 onClick={() => setOpen(false)}
                 style={{
@@ -212,40 +293,40 @@ export function ChatWidget() {
             <div style={{
               flexShrink: 0, background: '#1a1a1a',
               borderTop: '1px solid #2a2a2a',
-              padding: '10px 12px',
               paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))',
-              display: 'flex', alignItems: 'center', gap: 8,
             }}>
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && send()}
-                placeholder="Съобщение..."
-                style={{
-                  flex: 1, padding: '11px 16px', borderRadius: 24,
-                  border: '1.5px solid #333', fontSize: 16,
-                  outline: 'none', fontFamily: 'inherit',
-                  background: '#111', color: '#fff',
-                }}
-              />
-              <button
-                onClick={send}
-                disabled={!input.trim() || loading}
-                style={{
-                  width: 44, height: 44, borderRadius: '50%', border: 'none', flexShrink: 0,
-                  backgroundImage: input.trim() ? GRAD : undefined,
-                  background: input.trim() ? undefined : '#2a2a2a',
-                  cursor: input.trim() ? 'pointer' : 'default',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.15s',
-                }}
-              >
-                {loading
-                  ? <Loader2 size={18} color="#a855f7" style={{ animation: 'spin 1s linear infinite' }} />
-                  : <Send size={18} color={input.trim() ? '#fff' : '#555'} />
-                }
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && send()}
+                  placeholder="Съобщение..."
+                  style={{
+                    flex: 1, padding: '11px 16px', borderRadius: 24,
+                    border: '1.5px solid #333', fontSize: 16,
+                    outline: 'none', fontFamily: 'inherit',
+                    background: '#111', color: '#fff',
+                  }}
+                />
+                <button
+                  onClick={send}
+                  disabled={!input.trim() || loading}
+                  style={{
+                    width: 44, height: 44, borderRadius: '50%', border: 'none', flexShrink: 0,
+                    backgroundImage: input.trim() ? GRAD : undefined,
+                    background: input.trim() ? undefined : '#2a2a2a',
+                    cursor: input.trim() ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  {loading
+                    ? <Loader2 size={18} color="#a855f7" style={{ animation: 'spin 1s linear infinite' }} />
+                    : <Send size={18} color={input.trim() ? '#fff' : '#555'} />
+                  }
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -304,6 +385,19 @@ export function ChatWidget() {
                 онлайн
               </div>
             </div>
+            {!humanMode && (
+              <button
+                onClick={switchToHuman}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#fff', fontSize: 12, fontFamily: 'inherit',
+                  textDecoration: 'underline', flexShrink: 0, padding: 0,
+                  opacity: 0.85,
+                }}
+              >
+                Свържи се с екипа
+              </button>
+            )}
             <button
               onClick={() => setOpen(false)}
               style={{
@@ -363,12 +457,8 @@ export function ChatWidget() {
           </div>
 
           {/* Input bar */}
-          <div style={{
-            flexShrink: 0, background: '#1a1a1a',
-            borderTop: '1px solid #2a2a2a',
-            padding: '10px 12px',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
+          <div style={{ flexShrink: 0, background: '#1a1a1a', borderTop: '1px solid #2a2a2a' }}>
+            <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               ref={inputRef}
               value={input}
@@ -398,6 +488,7 @@ export function ChatWidget() {
                 : <Send size={15} color={input.trim() ? '#fff' : '#444'} />
               }
             </button>
+            </div>
           </div>
         </div>
       )}

@@ -49,15 +49,25 @@ export async function POST(req: NextRequest) {
       VALUES (${activeSessionId}, 'client', ${message.trim()})
     `;
 
-    // Auto-reply with booking link on every client message
-    const bookingUrl = salon.custom_domain
-      ? `https://${salon.custom_domain}/#rezerviraj`
-      : `https://${salon.slug}.${ROOT_DOMAIN}/#rezerviraj`;
-    const autoReply = `Запишете се директно:\n${bookingUrl}`;
-    await sql`
-      INSERT INTO salon_chat_messages (session_id, role, content)
-      VALUES (${activeSessionId}, 'salon', ${autoReply})
-    `;
+    // Auto-reply with booking link only when the client asks about availability/appointments
+    const bookingKeywords = [
+      'час', 'часове', 'свободен', 'свободно', 'свободни', 'запис', 'запиша', 'запишем',
+      'запишете', 'резервац', 'резервира', 'кога', 'петък', 'събота', 'неделя', 'понеделник',
+      'вторник', 'сряда', 'четвъртък', 'утре', 'днес', 'седмица', 'available', 'book',
+    ];
+    const msgLower = message.trim().toLowerCase();
+    const isBookingQuery = bookingKeywords.some((kw) => msgLower.includes(kw));
+
+    if (isBookingQuery) {
+      const bookingUrl = salon.custom_domain
+        ? `https://${salon.custom_domain}/#rezerviraj`
+        : `https://${salon.slug}.${ROOT_DOMAIN}/#rezerviraj`;
+      const autoReply = `Запишете се директно:\n${bookingUrl}`;
+      await sql`
+        INSERT INTO salon_chat_messages (session_id, role, content)
+        VALUES (${activeSessionId}, 'salon', ${autoReply})
+      `;
+    }
 
     // Forward to Telegram if salon has it connected
     if (salon.telegram_chat_id) {
