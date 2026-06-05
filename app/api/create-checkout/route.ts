@@ -15,7 +15,7 @@ type PlanOption = {
 };
 
 const PLAN_OPTIONS: Record<string, PlanOption> = {
-  solo_12m: { amount: 29900, plan: 'solo', billingPeriod: '12m', name: 'SOLO — Годишен (12 месеца)' },
+  solo_12m: { amount: 100,   plan: 'solo', billingPeriod: '12m', name: 'SOLO — Годишен (12 месеца)' }, // TEST: временно 1 EUR (оригинал: 29900)
   solo_6m:  { amount: 16900, plan: 'solo', billingPeriod: '6m',  name: 'SOLO — 6 месеца' },
   team_12m: { amount: 49900, plan: 'team', billingPeriod: '12m', name: 'TEAM — Годишен (12 месеца)' },
   team_6m:  { amount: 27900, plan: 'team', billingPeriod: '6m',  name: 'TEAM — 6 месеца' },
@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
+    console.log(`[create-checkout] ▶ Checkout started — planKey=${planKey} plan=${option.plan} period=${option.billingPeriod} amount=${option.amount} smsAddon=${smsAddon ?? false}`);
 
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
@@ -76,9 +78,11 @@ export async function POST(request: NextRequest) {
       cancel_url: `${appUrl}/create`,
     });
 
+    console.log(`[create-checkout] ✅ Checkout session created — id=${session.id}`);
+
     return NextResponse.json({ checkoutUrl: session.url });
   } catch (error) {
-    console.error('[create-checkout] failed:', error);
+    console.error('[create-checkout] ❌ Failed:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Грешка при създаване на checkout' },
       { status: 500 },

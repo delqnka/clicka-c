@@ -144,6 +144,9 @@ export async function POST(request: NextRequest) {
     const session = event.data.object;
     const { flow, domainPurchaseRequestId, salonSlug, templateId, planType } = session.metadata ?? {};
 
+    console.log(`[stripe-webhook] ▶ Webhook received — event=${event.type} session=${session.id} amount=${session.amount_total} payment_status=${session.payment_status}`);
+    console.log(`[stripe-webhook] 📦 Metadata — flow=${flow ?? 'none'} planType=${planType ?? 'none'} billingPeriod=${session.metadata?.billingPeriod ?? 'none'} salonSlug=${salonSlug ?? 'none'} smsAddon=${session.metadata?.smsAddon ?? '0'}`);
+
     if (flow === 'sms_pack') {
       const salonId = String(session.metadata?.salonId ?? '').trim();
       const credits = Math.max(1, Number(session.metadata?.credits ?? SMS_PACK_CREDITS) || SMS_PACK_CREDITS);
@@ -217,6 +220,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
+    console.log(`[stripe-webhook] 🌐 Ensuring platform subdomain for slug=${salonSlug}`);
     await ensurePlatformSubdomain(String(salonSlug));
 
     // Normalize planType to the canonical `plan` column value.
@@ -224,6 +228,8 @@ export async function POST(request: NextRequest) {
 
     const billingPeriod = String(session.metadata?.billingPeriod ?? '12m');
     const billingMonths = billingPeriod === '6m' ? 6 : 12;
+
+    console.log(`[stripe-webhook] 💾 Updating salon — slug=${salonSlug} plan=${canonicalPlan} billingPeriod=${billingPeriod} billingMonths=${billingMonths}`);
 
     await sql`
       UPDATE salons
@@ -240,11 +246,14 @@ export async function POST(request: NextRequest) {
       WHERE slug = ${salonSlug}
     `;
 
+    console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
+
     const salons = await sql`
       SELECT email, name FROM salons WHERE slug = ${salonSlug}
     `;
 
     if (salons.length > 0 && salons[0].email) {
+      console.log(`[stripe-webhook] 📧 Sending welcome email to=${salons[0].email} salon=${salons[0].name}`);
       const { email, name } = salons[0];
       const salonIdRows = await sql`SELECT CAST(id AS text) AS salon_id FROM salons WHERE slug = ${salonSlug} LIMIT 1`;
       const salonId = String((salonIdRows[0] as Record<string, unknown>)?.salon_id ?? '');
@@ -285,7 +294,10 @@ export async function POST(request: NextRequest) {
           </div>
         `,
       });
+      console.log(`[stripe-webhook] ✅ Welcome email sent to=${email}`);
     }
+
+    console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
   }
 
   return NextResponse.json({ received: true });
