@@ -1,6 +1,7 @@
 import { cookies, headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
+import { OnboardingTour } from '@/components/admin/OnboardingTour';
 import { ADMIN_COOKIE_NAME, resolveAdminGate } from '@/lib/admin-auth';
 import { getHostAwareSalonPath } from '@/lib/domain-routing';
 import { loadAdminAccountInfo } from '@/lib/admin-account-load';
@@ -51,6 +52,8 @@ export default async function AdminEntryPage() {
   if (!site) notFound();
 
   return (
+    <>
+    <OnboardingTour slug={gate.salon.slug} />
     <AdminDashboardClient
       slug={gate.salon.slug}
       ownerEmail={gate.session.ownerEmail}
@@ -62,5 +65,6 @@ export default async function AdminEntryPage() {
         pendingEmail: initialAccount.pendingEmail,
       }}
     />
+    </>
   );
 }
