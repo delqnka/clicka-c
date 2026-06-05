@@ -4,6 +4,7 @@ import {
   createOwnerSession,
   ensureAdminAuthSchema,
   ensureOwnerForSalon,
+  generateAdminMagicLink,
   getPrimaryOwnerForSalon,
   hashOtpCode,
   normalizeEmail,
@@ -88,23 +89,36 @@ export async function POST(request: NextRequest) {
       email: emailNorm,
     }));
 
+  // Провери дали потребителят има зададена парола
+  const ownerRow = await sql`
+    SELECT password_hash FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1
+  `;
+  const hasPassword = !!(ownerRow[0] as Record<string, unknown>)?.password_hash;
+
+  if (!hasPassword) {
+    // Нов потребител — прати magic link за задаване на парола
+    const magicLink = await generateAdminMagicLink({
+      salonId: salon.salonId,
+      slug: salon.slug,
+      email: emailNorm,
+      expiresMs: 60 * 60 * 1000, // 1 час
+    });
+    return NextResponse.json({ success: true, redirectTo: magicLink });
+  }
+
+  // Съществуващ потребител с парола — създай сесия и прати към admin
   const { sessionId, sessionExpires } = await createOwnerSession({
     salonId: salon.salonId,
     ownerId: owner.ownerId,
   });
 
-  // Ако заявката идва от apex домейн (www.clicka.bg), редиректваме към subdomain URL-а.
-  // Ако идва от самия subdomain (garant1aa.clicka.bg), ползваме relative path.
   const host = request.headers.get('host') ?? '';
   const isOnSubdomain = !!getPlatformSubdomain(host);
   const redirectTo = isOnSubdomain
     ? getHostAwareSalonPath({ host, slug: salon.slug, path: 'admin' })
     : getPlatformAdminUrl(salon.slug);
 
-  const response = NextResponse.json({
-    success: true,
-    redirectTo,
-  });
+  const response = NextResponse.json({ success: true, redirectTo });
   setAdminSessionCookie(response, request, sessionId, sessionExpires);
   return response;
 }
