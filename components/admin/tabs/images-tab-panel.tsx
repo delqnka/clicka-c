@@ -15,6 +15,8 @@ const GalleryReorderGrid = dynamic(
 
 const IMAGE_SECTIONS = [
   { id: 'portfolio', label: 'Портфолио' },
+  { id: 'logo', label: 'Лого' },
+  { id: 'cover', label: 'Cover' },
 ] as const;
 
 type ImageSectionId = (typeof IMAGE_SECTIONS)[number]['id'];
