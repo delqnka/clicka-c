@@ -102,12 +102,12 @@ const PLAN_FEATURES: Record<string, string[]> = {
 };
 
 const SECTION_LINKS = [
-  { id: 'audience', label: 'За кого е' },
-  { id: 'features', label: 'Какво получаваш' },
-  { id: 'steps', label: 'Как работи' },
-  { id: 'pricing', label: 'Цени' },
-  { id: 'cta', label: 'Старт' },
-] as const;
+  { id: 'audience', label: 'За кого е', mobileHidden: false },
+  { id: 'how-it-works', label: 'Как работи', mobileHidden: false },
+  { id: 'features', label: 'Функции', mobileHidden: true },
+  { id: 'pricing', label: 'Цени', mobileHidden: false },
+  { id: 'cta', label: 'Старт', mobileHidden: true },
+];
 
 const CSS = `
   .hp {
@@ -186,6 +186,9 @@ const CSS = `
     text-decoration-color: #ec4899;
     text-underline-offset: 4px;
     text-decoration-thickness: 2px;
+  }
+  @media (max-width: 639px) {
+    .hp-section-link-desktop { display: none; }
   }
   @media (min-width: 640px) {
     .hp-section-link { font-size: 13px; }
@@ -357,7 +360,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             <a
               key={section.id}
               href={`#${section.id}`}
-              className={`hp-section-link ${activeSection === section.id ? 'active' : ''}`}
+              className={`hp-section-link${activeSection === section.id ? ' active' : ''}${section.mobileHidden ? ' hp-section-link-desktop' : ''}`}
             >
               {section.label}
             </a>
@@ -370,14 +373,20 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       {/* ── HERO ──────────────────────────────────────── */}
       <ClickaHero activity={activity} />
 
-      {/* ── PRICE LIST AI IMPORT ──────────────────────── */}
-      <PriceListImportSection />
+      {/* ── FOR WHOM ──────────────────────────────────── */}
+      <MarketingAudienceSection />
 
-      {/* ── TELEGRAM MANAGEMENT ───────────────────────── */}
-      <TelegramManagementSection />
+      {/* ── HOW IT WORKS (AI upload + Telegram + Chat) ── */}
+      <div data-home-section="how-it-works" id="how-it-works">
+        {/* ── PRICE LIST AI IMPORT ──────────────────────── */}
+        <PriceListImportSection />
 
-      {/* ── TELEGRAM CHAT ─────────────────────────────── */}
-      <TelegramChatSection />
+        {/* ── TELEGRAM MANAGEMENT ───────────────────────── */}
+        <TelegramManagementSection />
+
+        {/* ── TELEGRAM CHAT ─────────────────────────────── */}
+        <TelegramChatSection />
+      </div>
 
       {/* ── COMPARISON ────────────────────────────────── */}
       <MarketingComparisonSection />
@@ -410,9 +419,6 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
           </div>
         </div>
       </section>
-
-      {/* ── FOR WHOM ──────────────────────────────────── */}
-      <MarketingAudienceSection />
 
       {/* ── WHAT YOU GET ──────────────────────────────── */}
       <MarketingFeaturesSection />
