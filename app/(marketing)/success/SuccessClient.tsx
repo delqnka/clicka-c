@@ -4,6 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 
+const GRAD = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
+const GRAD_SHADOW = '0 8px 28px rgba(219,39,119,.32)';
+const GRAD_GREEN = 'linear-gradient(135deg,#22C55E,#16A34A)';
+const FONT = "var(--font-client-manrope,'Manrope',system-ui,sans-serif)";
+
 export default function SuccessClient({
   slug,
   email,
@@ -77,92 +82,87 @@ export default function SuccessClient({
     : '';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF8', fontFamily: "'Inter',system-ui,sans-serif", display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT, display: 'flex', flexDirection: 'column', overflowX: 'hidden', position: 'relative' }}>
       <style>{`
         @keyframes popIn    { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }
         @keyframes drawCheck{ 0%{opacity:0;stroke-dasharray:30;stroke-dashoffset:30} 100%{opacity:1;stroke-dasharray:30;stroke-dashoffset:0} }
-        @keyframes fadeUp   { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
-        @keyframes float1   { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,15px)} }
-        @keyframes float2   { 0%,100%{transform:translate(0,0)} 50%{transform:translate(18px,-22px)} }
+        @keyframes fadeUp   { 0%{opacity:0;transform:translateY(16px)} 100%{opacity:1;transform:translateY(0)} }
         @keyframes spin     { to { transform:rotate(360deg); } }
-        .orb { position:absolute; border-radius:50%; filter:blur(80px); pointer-events:none; }
         .check-circle { animation:popIn .5s cubic-bezier(.34,1.56,.64,1) forwards; }
         .check-svg    { animation:drawCheck .4s ease .3s forwards; opacity:0; }
-        .fade-1 { animation:fadeUp .6s cubic-bezier(.16,1,.3,1) .1s forwards; opacity:0; }
-        .fade-2 { animation:fadeUp .6s cubic-bezier(.16,1,.3,1) .22s forwards; opacity:0; }
-        .fade-3 { animation:fadeUp .6s cubic-bezier(.16,1,.3,1) .34s forwards; opacity:0; }
-        .fade-4 { animation:fadeUp .6s cubic-bezier(.16,1,.3,1) .46s forwards; opacity:0; }
+        .fade-1 { animation:fadeUp .5s cubic-bezier(.16,1,.3,1) .1s forwards; opacity:0; }
+        .fade-2 { animation:fadeUp .5s cubic-bezier(.16,1,.3,1) .2s forwards; opacity:0; }
+        .fade-3 { animation:fadeUp .5s cubic-bezier(.16,1,.3,1) .3s forwards; opacity:0; }
+        .fade-4 { animation:fadeUp .5s cubic-bezier(.16,1,.3,1) .4s forwards; opacity:0; }
         .sc-spinner {
-          width:18px; height:18px; border-radius:50%;
+          width:18px; height:18px; border-radius:50%; flex-shrink:0;
           border:2.5px solid rgba(255,255,255,.3);
           border-top-color:#fff;
           animation:spin .75s linear infinite; display:inline-block;
         }
+        .otp-input::placeholder { letter-spacing:0.25em; color:rgba(0,0,0,0.2); }
       `}</style>
 
-      <div className="orb" style={{ width: 600, height: 600, background: 'rgba(124,58,237,.1)', top: '-200px', left: '-150px', animation: 'float1 12s ease-in-out infinite' }} />
-      <div className="orb" style={{ width: 400, height: 400, background: 'rgba(212,168,83,.07)', bottom: '-100px', right: '-100px', animation: 'float2 10s ease-in-out infinite' }} />
-
-      <nav style={{ position: 'relative', zIndex: 10, height: 60, display: 'flex', alignItems: 'center', padding: '0 24px', borderBottom: '1px solid rgba(0,0,0,.06)', background: 'rgba(250,250,248,.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+      <nav style={{ height: 56, display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '1px solid rgba(0,0,0,.07)', background: '#fff' }}>
         <ClickaLogo size="compact" />
       </nav>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center', position: 'relative', zIndex: 1, boxSizing: 'border-box', width: '100%' }}>
 
-        {/* Check icon */}
-        <div className="check-circle" style={{ width: 88, height: 88, borderRadius: '50%', background: confirmed ? 'linear-gradient(135deg,#22C55E,#16A34A)' : 'linear-gradient(135deg,#7C3AED,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 32, boxShadow: confirmed ? '0 16px 48px rgba(34,197,94,.38)' : '0 16px 48px rgba(124,58,237,.38)', transition: 'background .5s, box-shadow .5s' }}>
-          <svg className="check-svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        {/* Check circle */}
+        <div className="check-circle" style={{ width: 80, height: 80, borderRadius: '50%', background: confirmed && !isNewUser ? GRAD_GREEN : GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, boxShadow: confirmed && !isNewUser ? '0 16px 40px rgba(34,197,94,.3)' : GRAD_SHADOW, transition: 'background .5s, box-shadow .5s' }}>
+          <svg className="check-svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
 
         {confirmed ? (
           <>
-            <h1 className="fade-1" style={{ fontSize: 'clamp(28px,5vw,46px)', fontWeight: 800, margin: '0 0 16px', letterSpacing: '-0.03em', lineHeight: 1.1, color: '#0D0D12' }}>
+            <h1 className="fade-1" style={{ fontSize: 'clamp(26px,6vw,40px)', fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.15, color: '#0D0D12' }}>
               {isNewUser ? 'Последна стъпка!' : 'Добре дошъл в панела!'}
             </h1>
-            <p className="fade-2" style={{ fontSize: 18, color: '#667085', maxWidth: 480, lineHeight: 1.65, margin: '0 0 40px' }}>
+            <p className="fade-2" style={{ fontSize: 16, color: '#667085', maxWidth: 340, lineHeight: 1.65, margin: '0 0 32px' }}>
               {isNewUser ? 'Пренасочваме те към регистрацията...' : 'Пренасочваме те към dashboard-а...'}
             </p>
             {redirectTo && (
-              <a href={redirectTo} className="fade-3" style={{ display: 'inline-block', padding: '14px 32px', background: isNewUser ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : 'linear-gradient(135deg,#22C55E,#16A34A)', color: '#fff', borderRadius: 100, fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: isNewUser ? '0 8px 28px rgba(219,39,119,.3)' : '0 8px 28px rgba(34,197,94,.38)' }}>
+              <a href={redirectTo} className="fade-3" style={{ display: 'inline-block', padding: '13px 28px', background: isNewUser ? GRAD : GRAD_GREEN, color: '#fff', borderRadius: 100, fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: isNewUser ? GRAD_SHADOW : '0 8px 28px rgba(34,197,94,.35)', fontFamily: FONT }}>
                 {isNewUser ? 'Създай акаунт →' : 'Отвори панела →'}
               </a>
             )}
           </>
         ) : (
           <>
-            <h1 className="fade-1" style={{ fontSize: 'clamp(28px,5vw,46px)', fontWeight: 800, margin: '0 0 16px', letterSpacing: '-0.03em', lineHeight: 1.1, color: '#0D0D12' }}>
+            <h1 className="fade-1" style={{ fontSize: 'clamp(24px,6vw,38px)', fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.15, color: '#0D0D12' }}>
               Плащането мина успешно!
             </h1>
-            <p className="fade-2" style={{ fontSize: 18, color: '#667085', maxWidth: 480, lineHeight: 1.65, margin: '0 0 40px' }}>
+            <p className="fade-2" style={{ fontSize: 15, color: '#667085', maxWidth: 320, lineHeight: 1.65, margin: '0 0 28px' }}>
               {otpSent
-                ? <>Изпратихме 6-цифрен код на <strong>{maskedEmail}</strong>. Въведи го, за да влезеш в панела.</>
+                ? <><span>Изпратихме 6-цифрен код на </span><strong style={{ color: '#0D0D12' }}>{maskedEmail}</strong><span>. Въведи го, за да влезеш в панела.</span></>
                 : loading
                   ? 'Изпращаме код за достъп...'
                   : 'Подготвяме достъпа до панела...'}
             </p>
 
             {/* OTP form */}
-            <div className="fade-3" style={{ background: '#fff', border: '1.5px solid rgba(0,0,0,.1)', borderRadius: 24, padding: '28px 32px', marginBottom: 32, maxWidth: 400, width: '100%', boxShadow: '0 18px 40px rgba(0,0,0,.08)' }}>
+            <div className="fade-3" style={{ background: '#fff', border: '1.5px solid rgba(0,0,0,.09)', borderRadius: 20, padding: '24px 20px', marginBottom: 20, maxWidth: 360, width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,.07)', boxSizing: 'border-box' }}>
               {notice && (
-                <div style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,.1)', padding: '10px 14px', background: '#F9FAFB', color: '#374151', fontSize: 14, marginBottom: 16 }}>
+                <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,.1)', padding: '9px 13px', color: '#374151', fontSize: 13, marginBottom: 14 }}>
                   {notice}
                 </div>
               )}
-
               {error && (
-                <div style={{ borderRadius: 12, border: '1px solid #FECACA', padding: '10px 14px', background: '#FEF2F2', color: '#DC2626', fontSize: 14, marginBottom: 16 }}>
+                <div style={{ borderRadius: 10, border: '1px solid #FECACA', padding: '9px 13px', background: '#FEF2F2', color: '#DC2626', fontSize: 13, marginBottom: 14 }}>
                   {error}
                 </div>
               )}
 
-              <form onSubmit={confirmOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <form onSubmit={confirmOtp} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 7, fontSize: 13, fontWeight: 700, color: '#0D0D12', textAlign: 'left' }}>
-                    6-цифрен код
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'left' }}>
+                    6-цифрен код от имейла
                   </label>
                   <input
+                    className="otp-input"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]{6}"
@@ -174,17 +174,19 @@ export default function SuccessClient({
                     autoFocus
                     style={{
                       width: '100%',
-                      padding: '16px 15px',
-                      borderRadius: 16,
+                      padding: '12px 14px',
+                      borderRadius: 12,
                       border: '1.5px solid rgba(0,0,0,.12)',
-                      fontSize: 32,
+                      fontSize: 28,
                       letterSpacing: '0.3em',
                       textAlign: 'center',
                       color: '#0D0D12',
-                      background: '#FAFAF8',
+                      background: '#fff',
                       fontWeight: 700,
                       outline: 'none',
                       boxSizing: 'border-box',
+                      boxShadow: '0 2px 8px rgba(0,0,0,.07)',
+                      fontFamily: FONT,
                     }}
                   />
                 </div>
@@ -195,19 +197,21 @@ export default function SuccessClient({
                   style={{
                     border: 'none',
                     borderRadius: 100,
-                    background: 'linear-gradient(135deg,#7C3AED,#6D28D9)',
+                    background: GRAD,
                     color: '#fff',
-                    padding: '16px 16px',
-                    fontSize: 16,
+                    padding: '13px 16px',
+                    fontSize: 15,
                     fontWeight: 800,
                     cursor: loading || code.length < 4 ? 'not-allowed' : 'pointer',
-                    opacity: loading || code.length < 4 ? 0.6 : 1,
-                    boxShadow: '0 8px 28px rgba(124,58,237,.38)',
+                    opacity: loading || code.length < 4 ? 0.65 : 1,
+                    boxShadow: GRAD_SHADOW,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
-                    transition: 'opacity .2s, transform .2s',
+                    transition: 'opacity .2s',
+                    fontFamily: FONT,
+                    width: '100%',
                   }}
                 >
                   {loading ? <><span className="sc-spinner" /> Потвърждаваме...</> : 'Влез в панела →'}
@@ -219,28 +223,18 @@ export default function SuccessClient({
                   type="button"
                   onClick={() => { sentRef.current = false; sendOtp(); }}
                   disabled={loading}
-                  style={{ marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#7C3AED', padding: 0, fontFamily: 'inherit' }}
+                  style={{ marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#db2777', padding: 0, fontFamily: FONT }}
                 >
                   Изпрати нов код
                 </button>
               )}
             </div>
 
-            {/* Feature checklist */}
-            <div className="fade-4" style={{ background: 'rgba(124,58,237,.05)', border: '1px solid rgba(124,58,237,.12)', borderRadius: 20, padding: '24px 32px', marginBottom: 32, maxWidth: 420, width: '100%' }}>
-              {[
-                '✓  Резервационната система е активна',
-                '✓  Имейл напомняния са включени',
-                '✓  Сайтът ти е достъпен 24/7',
-              ].map(line => (
-                <p key={line} style={{ fontSize: 15, margin: '8px 0', color: '#4B5563', textAlign: 'left', fontWeight: 500 }}>{line}</p>
-              ))}
-            </div>
           </>
         )}
 
-        <div className="fade-4" style={{ marginTop: 8 }}>
-          <Link href="/" style={{ color: '#667085', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
+        <div className="fade-4">
+          <Link href="/" style={{ color: '#9CA3AF', fontSize: 13, fontWeight: 600, textDecoration: 'none', fontFamily: FONT }}>
             ← Към началната страница
           </Link>
         </div>
