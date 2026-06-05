@@ -104,7 +104,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 const SECTION_LINKS = [
   { id: 'audience', label: 'За кого е', mobileHidden: false },
   { id: 'how-it-works', label: 'Как работи', mobileHidden: false },
-  { id: 'features', label: 'Функции', mobileHidden: false },
+  { id: 'features', label: 'Какво получаваш', mobileHidden: false },
   { id: 'pricing', label: 'Цени', mobileHidden: false },
   { id: 'contact', label: 'Контакт', mobileHidden: false },
 ];
