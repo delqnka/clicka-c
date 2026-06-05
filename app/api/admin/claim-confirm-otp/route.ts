@@ -10,7 +10,7 @@ import {
   resolveSalonBySlugOrHost,
   setAdminSessionCookie,
 } from '@/lib/admin-auth';
-import { getHostAwareSalonPath } from '@/lib/domain-routing';
+import { getHostAwareSalonPath, getPlatformAdminUrl, getPlatformSubdomain } from '@/lib/domain-routing';
 
 export async function POST(request: NextRequest) {
   await ensureAdminAuthSchema();
@@ -93,13 +93,17 @@ export async function POST(request: NextRequest) {
     ownerId: owner.ownerId,
   });
 
+  // Ако заявката идва от apex домейн (www.clicka.bg), редиректваме към subdomain URL-а.
+  // Ако идва от самия subdomain (garant1aa.clicka.bg), ползваме relative path.
+  const host = request.headers.get('host') ?? '';
+  const isOnSubdomain = !!getPlatformSubdomain(host);
+  const redirectTo = isOnSubdomain
+    ? getHostAwareSalonPath({ host, slug: salon.slug, path: 'admin' })
+    : getPlatformAdminUrl(salon.slug);
+
   const response = NextResponse.json({
     success: true,
-    redirectTo: getHostAwareSalonPath({
-      host: request.headers.get('host'),
-      slug: salon.slug,
-      path: 'admin',
-    }),
+    redirectTo,
   });
   setAdminSessionCookie(response, request, sessionId, sessionExpires);
   return response;
