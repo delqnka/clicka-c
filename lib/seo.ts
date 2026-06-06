@@ -136,6 +136,10 @@ export function buildSalonPageMetadata(
       description,
       ...(coverImage ? { images: [coverImage] } : {}),
     },
+    icons: {
+      icon: '/icon.svg',
+      apple: '/icon.svg',
+    },
     robots: { index: true, follow: true },
   };
 }

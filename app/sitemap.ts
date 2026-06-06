@@ -62,11 +62,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const s = row as Record<string, unknown>;
     const slug = String(s.slug ?? '');
     const salonId = String(s.salon_id ?? '');
+    // Force clicka.bg URLs in the platform sitemap — custom-domain URLs belong
+    // in the sitemap served from the custom domain itself, not here.
     const salonEntries = await buildSalonSitemapEntries(
       salonId,
       slug,
-      String(s.custom_domain ?? ''),
-      String(s.domain_status ?? ''),
+      '',
+      '',
       s.updated_at ? new Date(String(s.updated_at)) : null,
     );
     entries.push(...salonEntries);
