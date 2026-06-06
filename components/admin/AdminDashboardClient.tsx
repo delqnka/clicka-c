@@ -629,17 +629,10 @@ export default function AdminDashboardClient({
   // Prevent browser back-swipe from leaving the admin
   useEffect(() => {
     const url = window.location.href;
-    // Push several entries so multiple swipes stay on admin
     window.history.pushState({ admin: true }, '', url);
-    window.history.pushState({ admin: true }, '', url);
-    window.history.pushState({ admin: true }, '', url);
-    const onPopState = (e: PopStateEvent) => {
-      if (!e.state?.admin) {
-        window.history.pushState({ admin: true }, '', url);
-        window.history.pushState({ admin: true }, '', url);
-      } else {
-        window.history.pushState({ admin: true }, '', url);
-      }
+    const onPopState = () => {
+      // Go forward immediately to cancel the back navigation
+      window.history.go(1);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
