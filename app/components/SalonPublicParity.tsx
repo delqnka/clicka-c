@@ -1253,6 +1253,7 @@ export default function SalonPublicParity({
       markDateSlotOccupied(selectedDate, selectedTime, combinedDuration);
       setBookingSuccessDetails({ serviceName: combinedServiceName, dateLabel, time: selectedTime });
       setBookingSuccess(`${combinedServiceName} — ${dateLabel} в ${selectedTime} ч.`);
+      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Schedule');
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
     } finally {
@@ -1303,6 +1304,7 @@ export default function SalonPublicParity({
       setBookingSuccess(
         json.message || `${selectedOffer.title} — ${dateLabel} в ${selectedTime} ч.`,
       );
+      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Schedule');
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
     } finally {
