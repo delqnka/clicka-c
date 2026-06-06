@@ -24,7 +24,7 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function ChatWidget() {
+export function ChatWidget({ mobileBottomOffset = 0 }: { mobileBottomOffset?: number } = {}) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState('');
@@ -402,12 +402,12 @@ export function ChatWidget() {
           <button
             onClick={() => setOpen(true)}
             style={{
-              position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-              width: 56, height: 56, borderRadius: '50%', border: 'none',
+              position: 'fixed', bottom: `calc(max(12px, env(safe-area-inset-bottom, 12px)) + ${mobileBottomOffset}px)`, right: 16, zIndex: 9999,
+              width: 50, height: 50, borderRadius: '50%', border: 'none',
               backgroundImage: GRAD, cursor: 'pointer',
               boxShadow: '0 4px 20px rgba(225,29,72,0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 24,
+              fontSize: 22,
             }}
           >
             💬

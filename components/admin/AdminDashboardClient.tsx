@@ -3536,7 +3536,7 @@ export default function AdminDashboardClient({
           opacity: 0.85;
         }
       `}</style>
-      <ChatWidget />
+      <ChatWidget mobileBottomOffset={isMobile ? 80 : 0} />
     </div>
   );
 }
