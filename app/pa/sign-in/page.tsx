@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+function blockCyrillic(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (/[Ѐ-ӿ]/.test(e.key)) e.preventDefault();
+}
+
 export default function PlatformAdminSignIn() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -73,6 +77,7 @@ export default function PlatformAdminSignIn() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={blockCyrillic}
                 autoFocus
                 required
                 className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl bg-white
@@ -94,6 +99,7 @@ export default function PlatformAdminSignIn() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={blockCyrillic}
                   required
                   className="w-full px-4 py-3 pr-11 text-sm border border-gray-200 rounded-xl bg-white
                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent

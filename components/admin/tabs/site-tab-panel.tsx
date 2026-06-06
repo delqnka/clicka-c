@@ -130,22 +130,35 @@ export function SiteTabPanel({
           <AdminField compact label="Град">
             <input value={site.city} onChange={(e) => setSite((p) => ({ ...p, city: e.target.value }))} style={fieldInp} />
           </AdminField>
-          <AddressAutocompleteField
-            label="Адрес"
-            value={site.address}
-            inputStyle={fieldInp}
-            onChange={(address) => setSite((p) => ({ ...p, address }))}
-            onSelect={({ address, city, lat, lng, googleMapsUrl }) =>
-              setSite((p) => ({
-                ...p,
-                address,
-                city: city || p.city,
-                latitude: lat,
-                longitude: lng,
-                googleMapsUrl,
-              }))
-            }
-          />
+          <div style={{ display: 'grid', gap: 4 }}>
+            <AddressAutocompleteField
+              label="Адрес"
+              value={site.address}
+              inputStyle={fieldInp}
+              onChange={(address) => setSite((p) => ({ ...p, address }))}
+              onSelect={({ address, city, lat, lng, googleMapsUrl }) =>
+                setSite((p) => ({
+                  ...p,
+                  address,
+                  city: city || p.city,
+                  latitude: lat,
+                  longitude: lng,
+                  googleMapsUrl,
+                }))
+              }
+            />
+            {site.latitude && site.longitude ? (
+              <a
+                href={`https://maps.apple.com/?ll=${site.latitude},${site.longitude}&q=${encodeURIComponent(site.address || 'Локация')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 12, color: '#007AFF', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Виж в Apple Maps
+              </a>
+            ) : null}
+          </div>
           <AdminField compact label="Instagram">
             <input value={site.instagram} onChange={(e) => setSite((p) => ({ ...p, instagram: e.target.value }))} style={fieldInp} />
           </AdminField>

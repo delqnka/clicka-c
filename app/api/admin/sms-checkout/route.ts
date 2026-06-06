@@ -19,7 +19,10 @@ export async function POST(request: NextRequest) {
   await ensureSmsSchema();
 
   try {
-    const adminUrl = getPlatformAdminUrl(auth.salon.slug);
+    // Use the actual request origin so Stripe returns the user to the same
+    // host they came from — prevents losing the session cookie on custom domains.
+    const requestOrigin = request.nextUrl.origin;
+    const adminUrl = `${requestOrigin}/admin`;
 
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',

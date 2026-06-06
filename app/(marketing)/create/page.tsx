@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useId } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
@@ -60,18 +60,12 @@ const TEAM_ALL = [
 ];
 
 function IconCheck({ color }: { color?: string }) {
-  if (!color) {
-    return (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-        <defs><linearGradient id="ichk" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#db2777"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
-        <path d="M20 6L9 17l-5-5" stroke="url(#ichk)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
+  const id = useId();
+  const gradId = `ichk-${id}`;
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <defs><linearGradient id="ichk2" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#db2777"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
-      <path d="M20 6L9 17l-5-5" stroke="url(#ichk2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <defs><linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#db2777"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
+      <path d="M20 6L9 17l-5-5" stroke={`url(#${gradId})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

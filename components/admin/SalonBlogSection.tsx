@@ -133,9 +133,7 @@ export function SalonBlogSection({
       {posts.length === 0 ? (
         <div
           style={{
-            border: '1px dashed #d1d5db',
-            borderRadius: 12,
-            padding: '32px 16px',
+            padding: '24px 0',
             textAlign: 'center',
             color: '#6b7280',
             fontSize: 14,

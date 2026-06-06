@@ -419,6 +419,7 @@ export default function AdminDashboardClient({
     variants: [] as { label: string; price: number; duration_min: number }[],
   });
   const [offers, setOffers] = useState<AdminSalonOffer[]>(initialOffers);
+  const [offersSaved, setOffersSaved] = useState(false);
   const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
   const [blogSectionTitle, setBlogSectionTitle] = useState('');
   const [blogLoaded, setBlogLoaded] = useState(false);
@@ -1820,9 +1821,9 @@ export default function AdminDashboardClient({
     padding: isMobile ? '14px 16px' : '9px 12px',
     minHeight: isMobile ? 48 : undefined,
     borderRadius: isMobile ? 14 : T.radiusSm,
-    border: isMobile ? '1.5px solid transparent' : `1px solid ${T.border}`,
+    border: isMobile ? '1.5px solid rgba(0,0,0,0.10)' : `1px solid ${T.border}`,
     background: '#fff',
-    boxShadow: isMobile ? '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)' : undefined,
+    boxShadow: isMobile ? '0 3px 10px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.10)' : '0 1px 4px rgba(0,0,0,0.10)',
     color: T.text,
     fontSize: isMobile ? 16 : 14,
     lineHeight: 1.4,
@@ -1862,7 +1863,7 @@ export default function AdminDashboardClient({
       });
       const data = (await guardResponse(res)) as { offers?: AdminSalonOffer[] };
       if (Array.isArray(data.offers)) setOffers(data.offers);
-      setNotice('Офертите са запазени.');
+      setOffersSaved(true);
     } catch (e) {
       handleErr(e);
     } finally {
@@ -3117,15 +3118,19 @@ export default function AdminDashboardClient({
                   </button>
                   <button
                     type="button"
-                    onClick={() => void saveOffers()}
+                    onClick={() => { setOffersSaved(false); void saveOffers(); }}
                     disabled={busyKey === 'offers'}
                     style={{
-                      ...ADMIN_COMPACT_SAVE_BTN,
-                      opacity: busyKey === 'offers' ? 0.7 : 1,
+                      background: 'none',
+                      border: 'none',
+                      padding: '4px 2px',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: offersSaved ? '#16a34a' : busyKey === 'offers' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.6)',
                       cursor: busyKey === 'offers' ? 'wait' : 'pointer',
                     }}
                   >
-                    {busyKey === 'offers' ? 'Запазване…' : 'Запази'}
+                    {busyKey === 'offers' ? 'Запазване…' : offersSaved ? 'Запазено ✓' : 'Запази'}
                   </button>
                 </div>
               }
@@ -3135,7 +3140,7 @@ export default function AdminDashboardClient({
                 isMobile={isMobile}
                 busyKey={busyKey}
                 inp={inp}
-                onChange={setOffers}
+                onChange={(v) => { setOffersSaved(false); setOffers(v); }}
                 onUploadImages={handleOfferImagesUpload}
               />
             </Section>
@@ -4041,7 +4046,7 @@ function StepCard({ step, title, done, children }: { step: number; title: string
     <div style={{
       border: isMbl ? 'none' : `1px solid ${done ? '#A7F3D0' : T.border}`,
       borderRadius: isMbl ? 20 : T.radiusLg,
-      background: done ? '#F0FDF4' : T.surface,
+      background: done ? '#F0FDF4' : '#fff',
       overflow: 'hidden',
       boxShadow: isMbl ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
     }}>
@@ -4070,23 +4075,23 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
   const valueKey = `val-${host}-${value}`;
 
   return (
-    <div style={{ border: `1px solid ${isVerification ? '#DDD6FE' : T.border}`, borderRadius: T.radiusSm, overflow: 'hidden', background: isVerification ? '#FAF5FF' : '#F9F9F8' }}>
-      <div style={{ padding: '8px 12px', borderBottom: `1px solid ${isVerification ? '#DDD6FE' : T.border}`, background: isVerification ? '#EDE9FE' : '#F4F4F5' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: isVerification ? '#5B21B6' : T.text, letterSpacing: '0.04em' }}>
+    <div style={{ border: `1px solid ${isVerification ? '#DDD6FE' : T.border}`, borderRadius: T.radiusSm, overflow: 'hidden', background: '#fff' }}>
+      <div style={{ padding: '8px 14px', borderBottom: `1px solid ${isVerification ? '#DDD6FE' : T.border}`, background: isVerification ? '#EDE9FE' : '#fff' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: isVerification ? '#5B21B6' : T.text }}>
           {typeLabels[type] ?? type}
         </span>
       </div>
-      <div style={{ padding: '12px', display: 'grid', gap: 8 }}>
+      <div style={{ padding: '12px 14px', display: 'grid', gap: 10 }}>
         <div>
-          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: T.muted, letterSpacing: '0.03em' }}>ПОЛЕ "ХОС" / "NAME" / "SUBDOMAIN"</p>
+          <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Host / Name / Subdomain</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <code style={{ flex: 1, padding: '7px 10px', background: '#fff', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, fontSize: 13, fontFamily: 'monospace', fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <code style={{ flex: 1, padding: '8px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#007AFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {host || '@'}
             </code>
             <button
               type="button"
               onClick={() => onCopy(host || '@', hostKey)}
-              style={{ padding: '7px 10px', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: T.muted, flexShrink: 0 }}
+              style={{ padding: '7px 12px', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, background: '#F0F7FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#007AFF', fontWeight: 600, flexShrink: 0 }}
             >
               {copied === hostKey ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
               {copied === hostKey ? 'Копирано' : 'Копирай'}
@@ -4094,15 +4099,15 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
           </div>
         </div>
         <div>
-          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: T.muted, letterSpacing: '0.03em' }}>ПОЛЕ "СТОЙНОСТ" / "VALUE" / "POINTS TO"</p>
+          <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Value / Points To</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <code style={{ flex: 1, padding: '7px 10px', background: '#fff', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, fontSize: 12, fontFamily: 'monospace', color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <code style={{ flex: 1, padding: '8px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, fontSize: 12, fontFamily: 'monospace', fontWeight: 600, color: '#007AFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {value}
             </code>
             <button
               type="button"
               onClick={() => onCopy(value, valueKey)}
-              style={{ padding: '7px 10px', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: T.muted, flexShrink: 0 }}
+              style={{ padding: '7px 12px', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, background: '#F0F7FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#007AFF', fontWeight: 600, flexShrink: 0 }}
             >
               {copied === valueKey ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
               {copied === valueKey ? 'Копирано' : 'Копирай'}
@@ -4110,8 +4115,8 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
           </div>
         </div>
         <div>
-          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: T.muted, letterSpacing: '0.03em' }}>ПОЛЕ "TTL"</p>
-          <code style={{ display: 'inline-block', padding: '7px 10px', background: '#fff', border: `1px solid ${T.border}`, borderRadius: T.radiusSm, fontSize: 13, fontFamily: 'monospace', color: T.muted }}>Automatic</code>
+          <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TTL</p>
+          <code style={{ display: 'inline-block', padding: '8px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, fontSize: 13, fontFamily: 'monospace', color: '#007AFF' }}>Automatic</code>
         </div>
       </div>
     </div>
@@ -4250,32 +4255,29 @@ function DomainTab({
         {/* Step 1 */}
         <StepCard step={1} title="Влез при регистратора на домейна" done={false}>
           <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            Отиди на сайта, от който си купил домейна си. Примерни регистратори:{' '}
-            <strong style={{ color: T.text }}>Register.bg</strong>,{' '}
-            <strong style={{ color: T.text }}>Superhosting.bg</strong>,{' '}
-            <strong style={{ color: T.text }}>GoDaddy</strong>,{' '}
-            <strong style={{ color: T.text }}>Namecheap</strong> или друг.
-            Влез в акаунта си там и намери управлението на домейна.
+            Отиди на сайта, от който си купил домейна (Register.bg, Superhosting.bg, GoDaddy и др.).
+            Влез в акаунта си и намери управлението на домейна.
           </p>
         </StepCard>
 
         {/* Step 2 */}
         <StepCard step={2} title='Намери DNS настройките' done={false}>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            В управлението на домейна търси раздел или бутон, който се казва:{' '}
+            Търси раздел или бутон с някое от тези имена:{' '}
             <strong style={{ color: T.text }}>DNS Settings</strong>,{' '}
-            <strong style={{ color: T.text }}>Manage DNS</strong>,{' '}
-            <strong style={{ color: T.text }}>DNS Management</strong> или{' '}
+            <strong style={{ color: T.text }}>Manage DNS</strong> или{' '}
             <strong style={{ color: T.text }}>Zone Editor</strong>.
-            Там ще видиш списък с DNS записи.
+            Ще видиш таблица с DNS записи — ето как изглежда:
           </p>
+          <img
+            src="/dns-example.png"
+            alt="Пример за DNS записи"
+            style={{ width: '100%', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, marginBottom: 12, display: 'block' }}
+          />
           <div style={{ padding: '10px 14px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: T.radiusSm }}>
             <p style={{ margin: 0, fontSize: 13, color: '#92400E', lineHeight: 1.7 }}>
-              <strong style={{ color: '#7C2D12' }}>⚠️ Важно — изтрий съществуващите записи първо!</strong><br />
-              Преди да добавиш новите стойности, провери дали в списъка вече има:{' '}
-              <strong>CNAME запис с Host „www"</strong> или <strong>A запис с Host „@"</strong>.
-              Ако имаш такива — <strong>изтрий ги</strong> (бутон "Delete" или "Remove" до тях).
-              Само след това добавяй новите записи от Стъпка 3.
+              <strong style={{ color: '#7C2D12' }}>⚠️ Важно</strong> — ако вече има{' '}
+              <strong>CNAME с „www"</strong> или <strong>A запис с „@"</strong>, изтрий ги преди да добавяш новите.
             </p>
           </div>
         </StepCard>
@@ -4283,10 +4285,7 @@ function DomainTab({
         {/* Step 3 */}
         <StepCard step={3} title="Добави двата DNS записа" done={false}>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            Натисни <strong style={{ color: T.text }}>"Добави нов запис"</strong> или{' '}
-            <strong style={{ color: T.text }}>"Add Record"</strong> и добави{' '}
-            <strong style={{ color: T.text }}>и двата записа по-долу</strong>{' '}
-            (използвай бутона "Копирай" за да не сбъркаш):
+            Натисни „Add Record" и добави и двата записа по-долу. Използвай бутона „Копирай" за да не сбъркаш:
           </p>
 
           {instructions.length > 0 ? (
@@ -4318,13 +4317,9 @@ function DomainTab({
         {/* Step 4 */}
         <StepCard step={4} title="Изчакай и провери" done={false}>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            След като добавиш записите, промените се разпространяват из интернет.
-            Обикновено отнема между{' '}
-            <strong style={{ color: T.text }}>15 минути и 48 часа</strong>{' '}
-            — зависи от регистратора. Не се притеснявай, ако не стане веднага.
-          </p>
-          <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            Ние проверяваме автоматично на всеки няколко секунди. Можеш и ти да проверите ръчно:
+            Промените се разпространяват обикновено между{' '}
+            <strong style={{ color: T.text }}>15 мин. и 24 часа</strong>.
+            Ние проверяваме автоматично — ще те уведомим щом е готово. Можеш и ръчно:
           </p>
           <button
             type="button"
@@ -4343,11 +4338,10 @@ function DomainTab({
               Проверяваме автоматично. Страницата ще се обнови при успешно свързване.
             </p>
           )}
-          <div style={{ marginTop: 16, padding: '10px 12px', background: '#F0F4F8', border: `1px solid #BFDBFE`, borderRadius: T.radiusSm }}>
+          <div style={{ marginTop: 16, padding: '10px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm }}>
             <p style={{ margin: 0, fontSize: 12, color: '#1E40AF', lineHeight: 1.6 }}>
-              <strong style={{ color: '#1E3A8A' }}>ℹ "Not secure"?</strong> {' '}
-              Браузъра казва това докато SSL сертификатът се издава (обикновено 5-30 мин след разпространение на DNS).
-              Това е нормално и ще мине автоматично. Не делай нищо допълнително.
+              <strong style={{ color: '#1E3A8A' }}>ℹ Браузърът казва „Not secure"?</strong>{' '}
+              Нормално е — SSL сертификатът се издава автоматично до 30 мин. след DNS. Не правиш нищо.
             </p>
           </div>
         </StepCard>

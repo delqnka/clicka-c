@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import { AdminSection, AdminSaveBtn } from '@/components/admin/admin-ui';
 import { ALL_BRANDS, BRAND_CATEGORY_LABELS, type BrandCategory } from '@/lib/brands';
 
@@ -43,6 +43,16 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
   const [saved, setSaved] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const [customError, setCustomError] = useState('');
+  const [openCats, setOpenCats] = useState<Set<BrandCategory>>(new Set());
+
+  function toggleCat(cat: BrandCategory) {
+    setOpenCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  }
 
   const font = { fontFamily: "'Manrope', sans-serif" };
 
@@ -102,10 +112,6 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
         />
       }
     >
-      <p style={{ fontSize: 13, color: '#888', marginBottom: 20, ...font }}>
-        Избери брандовете, с които работиш. Ще се показват на публичната ти страница.
-      </p>
-
       {/* Custom brands — най-горе */}
       <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
         <p style={{ fontSize: 12, fontWeight: 700, color: '#0f0f0f', marginBottom: 12, ...font }}>
@@ -171,37 +177,57 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
 
       {categories.map((cat) => {
         const brands = ALL_BRANDS.filter((b) => b.category === cat);
+        const isOpen = openCats.has(cat);
+        const selectedCount = brands.filter((b) => selected.has(b.id)).length;
         return (
-          <div key={cat} style={{ marginBottom: 28 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#0f0f0f', marginBottom: 12, ...font }}>
-              {BRAND_CATEGORY_LABELS[cat]}
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {brands.map((brand) => {
-                const isOn = selected.has(brand.id);
-                return (
-                  <button
-                    key={brand.id}
-                    onClick={() => toggle(brand.id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px',
-                      borderRadius: 8,
-                      border: isOn ? '2px solid #0f0f0f' : '1.5px solid #e5e7eb',
-                      background: isOn ? '#0f0f0f' : '#fff',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      ...font,
-                    }}
-                  >
-                    {isOn && <Check size={11} color="#fff" strokeWidth={3} />}
-                    <span style={{ fontSize: 12, fontWeight: 600, color: isOn ? '#fff' : '#0f0f0f', lineHeight: 1.3 }}>
-                      {brand.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          <div key={cat} style={{ marginBottom: 4, borderBottom: '1px solid #f0f0f0' }}>
+            <button
+              type="button"
+              onClick={() => toggleCat(cat)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '10px 0', ...font,
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#0f0f0f' }}>
+                {BRAND_CATEGORY_LABELS[cat]}
+                {selectedCount > 0 && (
+                  <span style={{ marginLeft: 6, fontSize: 11, color: '#888' }}>({selectedCount})</span>
+                )}
+              </span>
+              {isOpen
+                ? <ChevronDown size={14} color="#888" />
+                : <ChevronRight size={14} color="#888" />}
+            </button>
+            {isOpen && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 12 }}>
+                {brands.map((brand) => {
+                  const isOn = selected.has(brand.id);
+                  return (
+                    <button
+                      key={brand.id}
+                      onClick={() => toggle(brand.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        border: isOn ? '2px solid #0f0f0f' : '1.5px solid #e5e7eb',
+                        background: isOn ? '#0f0f0f' : '#fff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        ...font,
+                      }}
+                    >
+                      {isOn && <Check size={11} color="#fff" strokeWidth={3} />}
+                      <span style={{ fontSize: 12, fontWeight: 400, color: isOn ? '#fff' : '#0f0f0f', lineHeight: 1.3 }}>
+                        {brand.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}

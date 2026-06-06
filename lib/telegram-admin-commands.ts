@@ -692,6 +692,7 @@ type AIIntent =
   | { action: 'update_owner_bio'; bio: string }
   | { action: 'sms_balance' }
   | { action: 'toggle_sms'; enabled: boolean }
+  | { action: 'send_sms_to_client'; client_name: string; message?: string }
   | { action: 'confirm_booking'; client_name: string }
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
@@ -1409,6 +1410,7 @@ ${servicesJson}
 - { "action": "list_services" }
 - { "action": "pending_bookings" }
 - { "action": "sms_balance" }
+- { "action": "send_sms_to_client", "client_name": "Диана" }  ← изпраща SMS напомняне до конкретен клиент за предстоящата му резервация
 - { "action": "complete_booking", "client_name": "..." }
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
@@ -1799,6 +1801,9 @@ ${servicesJson}
     case 'toggle_sms':
       await sql`UPDATE salons SET sms_enabled = ${intent.enabled}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
       await sendTelegramMessage(chatId, intent.enabled ? '✅ SMS напомнянията са <b>включени</b>.' : '🔕 SMS напомнянията са <b>изключени</b>.');
+      return true;
+    case 'send_sms_to_client':
+      await handleSendSmsToClient(chatId, salon, intent.client_name, intent.message);
       return true;
     case 'confirm_booking':
       await handleConfirmBooking(chatId, salon, intent.client_name);
@@ -3052,6 +3057,68 @@ async function handleSmsBalance(chatId: number, salon: SalonRef): Promise<void> 
     `🔔 Автоматични напомняния: ${r.sms_enabled ? '✅ включени' : '🔕 изключени'}`,
     `⚙️ Режим: ${r.sms_reminder_mode ?? 'off'}`,
   ].join('\n'));
+}
+
+async function handleSendSmsToClient(chatId: number, salon: SalonRef, clientName: string, customMessage?: string): Promise<void> {
+  // Find upcoming booking for this client
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = await sql`
+    SELECT b.id, b.client_name, b.client_phone, b.date, b.time, b.service_name,
+           s.sms_balance, s.name AS salon_name, s.phone AS salon_phone
+    FROM bookings b
+    JOIN salons s ON s.id::text = b.salon_id
+    WHERE b.salon_id = ${salon.salonId}
+      AND LOWER(b.client_name) ILIKE ${`%${clientName.toLowerCase()}%`}
+      AND b.date >= ${today}
+      AND b.status NOT IN ('cancelled', 'completed')
+    ORDER BY b.date ASC, b.time ASC
+    LIMIT 1
+  ` as { id: string; client_name: string; client_phone: string | null; date: string; time: string; service_name: string | null; sms_balance: number; salon_name: string; salon_phone: string }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `⚠️ Не намерих предстояща резервация за <b>${clientName}</b>.`);
+    return;
+  }
+
+  const row = rows[0]!;
+
+  if (!row.client_phone) {
+    await sendTelegramMessage(chatId, `⚠️ <b>${row.client_name}</b> няма записан телефон.`);
+    return;
+  }
+
+  if (row.sms_balance <= 0) {
+    await sendTelegramMessage(chatId, `❌ Няма налични SMS кредити. Купи пакет от Admin → SMS таб.`);
+    return;
+  }
+
+  const { sendSmsReminder } = await import('@/lib/smsapi');
+  const result = await sendSmsReminder(
+    row.client_phone,
+    row.client_name,
+    row.salon_name,
+    row.salon_phone,
+    row.service_name ?? '',
+    row.date,
+    row.time,
+  );
+
+  if (!result.success) {
+    await sendTelegramMessage(chatId, `❌ Неуспешно изпращане до ${row.client_name}: ${result.error ?? 'неизвестна грешка'}`);
+    return;
+  }
+
+  // Debit 1 credit
+  await sql`
+    UPDATE salons SET sms_balance = sms_balance - 1
+    WHERE id::text = ${salon.salonId} AND sms_balance > 0
+  `;
+  await sql`
+    INSERT INTO sms_transactions (salon_id, kind, delta, client_phone, note)
+    VALUES (${salon.salonId}, 'manual_send', -1, ${row.client_phone}, ${'Ръчно изпращане от Telegram до ' + row.client_name})
+  `;
+
+  await sendTelegramMessage(chatId, `✅ SMS изпратен до <b>${row.client_name}</b> (${row.client_phone})\n📅 Резервация: ${formatDateBg(row.date)} в ${row.time}`);
 }
 
 // ─── Gallery photo upload ─────────────────────────────────────────────────────
