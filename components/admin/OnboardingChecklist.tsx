@@ -103,7 +103,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
   return (
     <div
       style={{
-        background: 'transparent',
+        background: '#fff',
         border: '1px solid rgba(219,39,119,0.15)',
         borderRadius: 14,
         padding: '14px 16px',
@@ -113,7 +113,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: collapsed ? 0 : 10 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.01em' }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#1a1a2e', letterSpacing: '-0.01em' }}>
             Настрой сайта си
           </p>
           {!collapsed && (
@@ -139,7 +139,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
             style={{
               display: 'flex', alignItems: 'center', gap: 3,
               background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 11.5, color: '#9ca3af', padding: '2px 4px',
+              fontSize: 11.5, color: '#18181b', padding: '2px 4px',
               WebkitTapHighlightColor: 'transparent',
             }}
           >
@@ -178,14 +178,15 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              background: step.done ? 'transparent' : 'rgba(255,255,255,0.7)',
-              border: step.done ? 'none' : '1px solid rgba(219,39,119,0.1)',
+              background: '#fff',
+              border: step.done ? '1px solid #f3f4f6' : '1px solid rgba(219,39,119,0.1)',
               borderRadius: 9,
-              padding: step.done ? '3px 0' : '8px 10px',
+              padding: '8px 10px',
               cursor: step.done ? 'default' : 'pointer',
               textAlign: 'left',
               width: '100%',
-              transition: 'background 0.15s',
+              boxShadow: step.done ? 'none' : '0 2px 6px rgba(0,0,0,0.06)',
+              transition: 'box-shadow 0.15s',
             }}
           >
             {step.done ? (
@@ -196,7 +197,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
             <span style={{
               flex: 1,
               fontSize: 12.5,
-              fontWeight: step.done ? 500 : 600,
+              fontWeight: 400,
               color: step.done ? '#9ca3af' : '#1a1a2e',
               textDecoration: step.done ? 'line-through' : 'none',
             }}>
