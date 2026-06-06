@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { normalizeServices } from '@/lib/salon-services';
 import { normalizeSalonFaqItems } from '@/lib/salon-visitor-info';
 import { getBrandsByIds } from '@/lib/brands';
@@ -316,6 +317,10 @@ ${bookingInstructions}
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = await checkRateLimit('salon-ai-chat', ip, 20, 60 * 1000);
+  if (rl.limited) return NextResponse.json({ error: 'Твърде много заявки. Опитай след малко.' }, { status: 429 });
+
   try {
     const { salonId, messages } = await req.json() as { salonId: string; messages: ChatMessage[] };
 

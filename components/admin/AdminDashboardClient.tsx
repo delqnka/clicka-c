@@ -2145,7 +2145,7 @@ export default function AdminDashboardClient({
       }}
     >
       {/* Background grid + gradient */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', willChange: 'transform', contain: 'strict' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 120% 60% at 80% 0%, rgba(219,39,119,0.07) 0%, rgba(168,85,247,0.05) 50%, transparent 80%)' }} />
       </div>
 
@@ -2156,6 +2156,8 @@ export default function AdminDashboardClient({
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderBottom: isMobile ? '0.5px solid rgba(0,0,0,0.06)' : `1px solid ${T.border}`,
         height: isMobile ? 52 : 56,
+        transform: 'translateZ(0)',
+        willChange: 'transform',
       }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '0 16px' : '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
           {isMobile ? (
@@ -3394,10 +3396,11 @@ export default function AdminDashboardClient({
         <div style={{
           position: 'fixed',
           bottom: isMobile ? 84 : 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: 0,
+          right: 0,
           width: 'calc(100% - 32px)',
           maxWidth: 420,
+          margin: '0 auto',
           zIndex: 49,
           background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
           borderRadius: 16,
@@ -3514,13 +3517,14 @@ export default function AdminDashboardClient({
           aria-label="Навигация"
           style={{
             position: 'fixed',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            left: 0,
+            right: 0,
             bottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
             zIndex: 50,
             pointerEvents: 'none',
             width: 'calc(100% - 32px)',
             maxWidth: 320,
+            margin: '0 auto',
           }}
         >
           <div
@@ -3603,6 +3607,9 @@ export default function AdminDashboardClient({
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .admin-mobile-root {
+          overscroll-behavior-y: none;
+        }
         .admin-mobile-root input:focus, .admin-mobile-root textarea:focus, .admin-mobile-root select:focus {
           border-color: #18181B !important;
           outline: none;
@@ -3613,6 +3620,12 @@ export default function AdminDashboardClient({
         .admin-sheet-handle:active {
           transform: none;
           opacity: 0.85;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .admin-mobile-root * {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+          }
         }
       `}</style>
       <ChatWidget mobileBottomOffset={0} hideBubble={isMobile} />
@@ -4180,12 +4193,6 @@ function DomainTab({
                 </button>
               </div>
             </Field>
-            <p style={{ margin: '14px 0 0', fontSize: 12, color: T.subtle, lineHeight: 1.6 }}>
-              Нямаш домейн? Можеш да закупиш от{' '}
-              <strong style={{ color: T.muted }}>register.bg</strong>,{' '}
-              <strong style={{ color: T.muted }}>superhosting.bg</strong> или{' '}
-              <strong style={{ color: T.muted }}>GoDaddy</strong>.
-            </p>
           </div>
         </div>
       </Section>

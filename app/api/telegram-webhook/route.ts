@@ -19,6 +19,9 @@ import {
 } from '@/lib/telegram-admin-commands';
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
+if (!WEBHOOK_SECRET) {
+  console.error('[telegram-webhook] TELEGRAM_WEBHOOK_SECRET is not set — webhook is unprotected!');
+}
 const OWNER_CHAT_ID = process.env.CLICKA_OWNER_CHAT_ID ?? '';
 const SUPPORT_SALON_ID = 'clicka_support';
 
@@ -263,11 +266,9 @@ async function handleBlockMessage(chatId: number, text: string): Promise<void> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  if (WEBHOOK_SECRET) {
-    const incoming = request.headers.get('x-telegram-bot-api-secret-token') ?? '';
-    if (incoming !== WEBHOOK_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const incoming = request.headers.get('x-telegram-bot-api-secret-token') ?? '';
+  if (!WEBHOOK_SECRET || incoming !== WEBHOOK_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   let update: TelegramUpdate;

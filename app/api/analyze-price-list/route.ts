@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 const VISION_MODEL = 'anthropic/claude-3.5-sonnet';
@@ -38,6 +39,10 @@ function originFromRequest(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = await checkRateLimit('analyze-price-list', ip, 5, 60 * 60 * 1000);
+  if (rl.limited) return NextResponse.json({ error: 'Твърде много заявки. Опитай след час.' }, { status: 429 });
+
   if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
       { error: 'Липсва OPENROUTER_API_KEY (настрой env променливата).' },

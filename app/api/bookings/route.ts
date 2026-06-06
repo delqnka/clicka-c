@@ -72,9 +72,9 @@ export async function GET(request: NextRequest) {
   const { searchParams: requestSearchParams } = new URL(request.url);
 
   if (requestSearchParams.get('public') === '1' && requestSearchParams.get('date')) {
-    // Rate limit public slot checks — 120 requests per minute per IP to stop enumeration
+    // Rate limit public slot checks — 30 requests per minute per IP to stop enumeration
     const ip = getClientIp(request as unknown as Request);
-    const rl = await checkRateLimit('bookings-public', ip, 120, 60 * 1000);
+    const rl = await checkRateLimit('bookings-public', ip, 30, 60 * 1000);
     if (rl.limited) {
       return NextResponse.json({ error: 'Твърде много заявки.' }, { status: 429 });
     }

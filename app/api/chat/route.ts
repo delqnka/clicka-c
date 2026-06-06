@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const SYSTEM_PROMPT = `Ти си FAQ и Sales Assistant на Clicka.bg. Отговаряш САМО с информация, която съществува на сайта — изброена по-долу. Никога не измисляй цени, функции, безплатни периоди, интеграции или бъдещи обещания. Не използвай общи знания за други платформи.
 
@@ -184,6 +185,10 @@ FAQ — ВСИЧКИ ВЪПРОСИ И ОТГОВОРИ
 - Насочвай към регистрация на clicka.bg`;
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = await checkRateLimit('faq-chat', ip, 30, 60 * 1000);
+  if (rl.limited) return NextResponse.json({ error: 'Твърде много заявки. Опитай след малко.' }, { status: 429 });
+
   try {
     const { messages } = await req.json();
 

@@ -20,6 +20,7 @@ const DEFAULT_HOURS: WorkingHours = {
 };
 
 function hasCustomHours(workingHours: WorkingHours): boolean {
+  if (!workingHours) return false;
   return Object.entries(workingHours).some(([day, d]) => {
     const def = DEFAULT_HOURS[day as keyof WorkingHours];
     if (!def) return false;
@@ -45,7 +46,7 @@ function useOnboardingSteps(site: AdminSitePayload) {
     {
       id: 'images',
       label: 'Качи снимки',
-      done: site.galleryImages.length > 0 || !!site.coverImageUrl,
+      done: (site.galleryImages?.length ?? 0) > 0 || !!site.coverImageUrl,
       tab: 'images',
     },
     {

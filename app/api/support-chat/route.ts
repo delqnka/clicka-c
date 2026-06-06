@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { telegramPost } from '@/lib/telegram';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const OWNER_CHAT_ID = process.env.CLICKA_OWNER_CHAT_ID ?? '';
 const SUPPORT_SALON_ID = 'clicka_support';
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = await checkRateLimit('support-chat', ip, 10, 60 * 1000);
+  if (rl.limited) return NextResponse.json({ error: 'Твърде много заявки.' }, { status: 429 });
+
   try {
     const { sessionId, clientName, message } = await req.json();
 

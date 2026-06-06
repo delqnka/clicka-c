@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import crypto from 'crypto';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const TRANSLIT: Record<string, string> = {
   а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',
@@ -61,6 +62,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = await checkRateLimit('grant-activate', ip, 3, 60 * 1000);
+  if (rl.limited) return NextResponse.json({ error: 'Твърде много опити. Изчакай малко.' }, { status: 429 });
+
   const body = await request.json().catch(() => ({}));
   const { token } = body as { token?: string };
   if (!token) return NextResponse.json({ error: 'Липсва токен' }, { status: 400 });
