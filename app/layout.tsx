@@ -94,8 +94,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const htmlClass = salonPublic ? manrope.variable : marketingFontVariables;
 
   return (
-    <html lang="bg" className={htmlClass}>
-      <body>{children}</body>
+    <html lang="bg" className={htmlClass} suppressHydrationWarning>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
