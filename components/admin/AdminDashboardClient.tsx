@@ -2833,14 +2833,10 @@ export default function AdminDashboardClient({
           {/* ── Site URL + QR bar ── */}
           {activeTab === 'site' && (
             <>
-              {/* URL + QR chip */}
+              {/* URL + QR bar — no background, no border */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                marginBottom: 14,
-                padding: '10px 14px',
-                borderRadius: 14,
-                background: 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)',
-                border: '1px solid rgba(219,39,119,0.15)',
+                marginBottom: 14, padding: '2px 0',
               }}>
                 {/* URL link */}
                 <a
@@ -2855,8 +2851,7 @@ export default function AdminDashboardClient({
                 >
                   <ExternalLink size={14} style={{ color: '#db2777', flexShrink: 0 }} />
                   <span style={{
-                    fontSize: 13, fontWeight: 600,
-                    color: '#db2777',
+                    fontSize: 13, fontWeight: 600, color: '#db2777',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{publicSiteHost}</span>
                 </a>
@@ -2870,7 +2865,7 @@ export default function AdminDashboardClient({
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: 34, height: 34, borderRadius: 10, border: 'none',
-                    background: 'rgba(219,39,119,0.1)', color: '#db2777',
+                    background: 'transparent', color: '#a1a1aa',
                     cursor: 'pointer', flexShrink: 0,
                     WebkitTapHighlightColor: 'transparent',
                   }}
@@ -2897,43 +2892,11 @@ export default function AdminDashboardClient({
 
               {/* QR modal */}
               {qrOpen && (
-                <div
-                  onClick={() => setQrOpen(false)}
-                  style={{
-                    position: 'fixed', inset: 0, zIndex: 200,
-                    background: 'rgba(0,0,0,0.55)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: 24,
-                  }}
-                >
-                  <div
-                    onClick={e => e.stopPropagation()}
-                    style={{
-                      background: '#fff', borderRadius: 24, padding: '28px 24px',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
-                      boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
-                      maxWidth: 300, width: '100%',
-                    }}
-                  >
-                    <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#18181B', textAlign: 'center' }}>QR код на сайта</p>
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(sitePublicUrl)}&color=db2777&bgcolor=ffffff`}
-                      alt="QR код"
-                      width={220} height={220}
-                      style={{ borderRadius: 12, border: '1px solid #f3e8ff' }}
-                    />
-                    <p style={{ margin: 0, fontSize: 12, color: '#71717A', textAlign: 'center', wordBreak: 'break-all' }}>{sitePublicUrl}</p>
-                    <button
-                      type="button"
-                      onClick={() => setQrOpen(false)}
-                      style={{
-                        width: '100%', padding: '12px', borderRadius: 12, border: 'none',
-                        background: ICON_GRADIENT, color: '#fff',
-                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                      }}
-                    >Затвори</button>
-                  </div>
-                </div>
+                <QrModal
+                  url={sitePublicUrl}
+                  salonName={site.name || ''}
+                  onClose={() => setQrOpen(false)}
+                />
               )}
 
               <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} />
@@ -4287,6 +4250,184 @@ function DomainTab({
 
       </div>
     </Section>
+  );
+}
+
+/* ── QR Modal ─────────────────────────────────────────────── */
+function QrModal({ url, salonName, onClose }: { url: string; salonName: string; onClose: () => void }) {
+  const qrRef = useRef<HTMLDivElement>(null);
+  const qrInstance = useRef<import('qr-code-styling').default | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    import('qr-code-styling').then(({ default: QRCodeStyling }) => {
+      if (!mounted || !qrRef.current) return;
+      qrRef.current.innerHTML = '';
+      const qr = new QRCodeStyling({
+        width: 240,
+        height: 240,
+        data: url,
+        margin: 8,
+        qrOptions: { errorCorrectionLevel: 'H' },
+        dotsOptions: { color: '#C2185B', type: 'rounded' },
+        cornersSquareOptions: { color: '#AD1457', type: 'extra-rounded' },
+        cornersDotOptions: { color: '#880E4F', type: 'dot' },
+        backgroundOptions: { color: '#ffffff' },
+        imageOptions: { crossOrigin: 'anonymous' },
+      });
+      qr.append(qrRef.current);
+      qrInstance.current = qr;
+    });
+    return () => { mounted = false; };
+  }, [url]);
+
+  const handleDownload = async () => {
+    if (!qrInstance.current) return;
+    // Build a full poster canvas: title + salon name + QR + URL
+    const qrBlob = await qrInstance.current.getRawData('png');
+    if (!qrBlob) return;
+    const qrImg = await createImageBitmap(qrBlob as Blob);
+
+    const W = 800, H = 1000;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // Pink top accent strip
+    const grad = ctx.createLinearGradient(0, 0, W, 120);
+    grad.addColorStop(0, '#e11d48');
+    grad.addColorStop(0.5, '#db2777');
+    grad.addColorStop(1, '#a855f7');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, 120);
+
+    // "Резервирайте онлайн!" text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 52px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Резервирайте онлайн!', W / 2, 78);
+
+    // Salon name
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 44px system-ui, -apple-system, sans-serif';
+    ctx.fillText(salonName, W / 2, 210);
+
+    // Instruction
+    ctx.fillStyle = '#71717a';
+    ctx.font = '28px system-ui, -apple-system, sans-serif';
+    ctx.fillText('Сканирайте с камерата на телефона', W / 2, 270);
+
+    // QR code centered
+    const qrSize = 420;
+    const qrX = (W - qrSize) / 2;
+    ctx.drawImage(qrImg, qrX, 310, qrSize, qrSize);
+
+    // URL at bottom
+    ctx.fillStyle = '#db2777';
+    ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+    ctx.fillText(url.replace('https://', ''), W / 2, 800);
+
+    // Bottom gradient line
+    const gradLine = ctx.createLinearGradient(80, 0, W - 80, 0);
+    gradLine.addColorStop(0, '#e11d48');
+    gradLine.addColorStop(1, '#a855f7');
+    ctx.strokeStyle = gradLine;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(80, 850); ctx.lineTo(W - 80, 850);
+    ctx.stroke();
+
+    // Small footer
+    ctx.fillStyle = '#a1a1aa';
+    ctx.font = '20px system-ui, -apple-system, sans-serif';
+    ctx.fillText('clicka.bg', W / 2, 920);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = `qr-${salonName.toLowerCase().replace(/\s+/g, '-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: '#fff', borderRadius: 28, overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.25)',
+          maxWidth: 320, width: '100%',
+        }}
+      >
+        {/* Header gradient band */}
+        <div style={{
+          width: '100%', padding: '20px 24px 18px',
+          background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+          textAlign: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+            Резервирайте онлайн!
+          </p>
+          {salonName && (
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+              {salonName}
+            </p>
+          )}
+        </div>
+
+        {/* QR code */}
+        <div style={{ padding: '20px 24px 4px' }}>
+          <div ref={qrRef} style={{ borderRadius: 16, overflow: 'hidden', lineHeight: 0 }} />
+        </div>
+
+        {/* URL */}
+        <p style={{ margin: '8px 0 20px', fontSize: 12, color: '#71717A', textAlign: 'center', wordBreak: 'break-all', padding: '0 20px' }}>
+          {url}
+        </p>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 8, padding: '0 20px 20px', width: '100%', boxSizing: 'border-box' }}>
+          <button
+            type="button"
+            onClick={handleDownload}
+            style={{
+              flex: 1, padding: '13px', borderRadius: 14, border: 'none',
+              background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+              color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Свали за печат
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '13px 18px', borderRadius: 14, border: '1.5px solid #e4e4e7',
+              background: '#fff', color: '#71717a', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Затвори
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
