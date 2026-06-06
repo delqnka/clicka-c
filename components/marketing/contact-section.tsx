@@ -1,30 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { MessageCircle, Mail, Send, ChevronDown } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
+import type { TurnstileInstance } from '@marsidev/react-turnstile';
 
 export function ContactSection() {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!turnstileToken) return;
     setStatus('loading');
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, turnstileToken }),
       });
       if (res.ok) {
         setStatus('sent');
         if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Lead');
       } else {
         setStatus('error');
+        turnstileRef.current?.reset();
+        setTurnstileToken(null);
       }
     } catch {
       setStatus('error');
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
     }
   }
 
@@ -240,9 +249,17 @@ export function ContactSection() {
                   {status === 'error' && (
                     <p style={{ color: '#e11d48', fontSize: 13 }}>Нещо се обърка. Опитай пак или пиши на support@clicka.bg</p>
                   )}
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                    onSuccess={setTurnstileToken}
+                    onExpire={() => setTurnstileToken(null)}
+                    onError={() => setTurnstileToken(null)}
+                    options={{ theme: 'light', language: 'bg' }}
+                  />
                   <button
                     type="submit"
-                    disabled={status === 'loading'}
+                    disabled={status === 'loading' || !turnstileToken}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -251,12 +268,12 @@ export function ContactSection() {
                       padding: '13px 28px',
                       borderRadius: 12,
                       border: 'none',
-                      cursor: status === 'loading' ? 'not-allowed' : 'pointer',
+                      cursor: (status === 'loading' || !turnstileToken) ? 'not-allowed' : 'pointer',
                       fontSize: 15,
                       fontWeight: 700,
                       color: '#fff',
                       background: 'linear-gradient(135deg,#e11d48,#a855f7)',
-                      opacity: status === 'loading' ? 0.7 : 1,
+                      opacity: (status === 'loading' || !turnstileToken) ? 0.7 : 1,
                       fontFamily: 'inherit',
                     }}
                   >
