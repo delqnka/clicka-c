@@ -4269,7 +4269,7 @@ function QrModal({ url, salonName, onClose }: { url: string; salonName: string; 
         data: url,
         margin: 8,
         qrOptions: { errorCorrectionLevel: 'H' },
-        dotsOptions: { color: '#C2185B', type: 'rounded' },
+        dotsOptions: { color: '#C2185B', type: 'dots' },
         cornersSquareOptions: { color: '#AD1457', type: 'extra-rounded' },
         cornersDotOptions: { color: '#880E4F', type: 'dot' },
         backgroundOptions: { color: '#ffffff' },
