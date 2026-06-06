@@ -72,23 +72,6 @@ export async function PATCH(request: NextRequest) {
   const action = String(body.action ?? '').trim();
   const currentPassword = String(body.currentPassword ?? '');
 
-  if (!currentPassword) {
-    return NextResponse.json({ error: 'Въведете текущата парола' }, { status: 400 });
-  }
-
-  const passwordHash = await getOwnerPasswordHash(auth.session.ownerId);
-  if (!passwordHash) {
-    return NextResponse.json(
-      { error: 'Паролата не е зададена. Използвайте „Забравена парола?" на страницата за вход.' },
-      { status: 400 },
-    );
-  }
-
-  const validCurrent = await verifyPassword(currentPassword, passwordHash);
-  if (!validCurrent) {
-    return NextResponse.json({ error: 'Грешна текуща парола' }, { status: 401 });
-  }
-
   if (action === 'password') {
     const newPassword = String(body.newPassword ?? '');
     const confirmPassword = String(body.confirmPassword ?? '');
@@ -129,6 +112,18 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (action === 'email') {
+    // Email change requires current password confirmation
+    if (!currentPassword) {
+      return NextResponse.json({ error: 'Въведете текущата парола' }, { status: 400 });
+    }
+    const passwordHash = await getOwnerPasswordHash(auth.session.ownerId);
+    if (passwordHash) {
+      const validCurrent = await verifyPassword(currentPassword, passwordHash);
+      if (!validCurrent) {
+        return NextResponse.json({ error: 'Грешна текуща парола' }, { status: 401 });
+      }
+    }
+
     const ip = getClientIp(request as unknown as Request);
     const rl = await checkRateLimit('account-email-change', ip, EMAIL_CHANGE_MAX, EMAIL_CHANGE_WINDOW_MS);
     if (rl.limited) {

@@ -87,7 +87,6 @@ export function AccountTabPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'password',
-          currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
           confirmPassword: passwordForm.confirmPassword,
         }),
@@ -238,16 +237,6 @@ export function AccountTabPanel({
               </button>
             </p>
           ) : null}
-          <AdminField label="Текуща парола" compact>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={passwordForm.currentPassword}
-              onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
-              style={fieldInp}
-              required
-            />
-          </AdminField>
           <AdminField label="Нова парола" compact>
             <input
               type="password"
