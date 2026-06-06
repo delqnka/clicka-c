@@ -432,6 +432,7 @@ export default function AdminDashboardClient({
   >([]);
   const [smsPanelLoading, setSmsPanelLoading] = useState(false);
   const [smsPendingReminders, setSmsPendingReminders] = useState(0);
+  const [tgCodeCopied, setTgCodeCopied] = useState(false);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
   const [portfolioPending, setPortfolioPending] = useState<Set<string>>(() => new Set());
   const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
@@ -3187,8 +3188,8 @@ export default function AdminDashboardClient({
                   type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
-                    setCopied('tg-code');
-                    setTimeout(() => setCopied(''), 2000);
+                    setTgCodeCopied(true);
+                    setTimeout(() => setTgCodeCopied(false), 2000);
                   }}
                   title="Копирай кода"
                   style={{
@@ -3209,7 +3210,7 @@ export default function AdminDashboardClient({
                   }}
                 >
                   {site.onboardingCode}
-                  {copied === 'tg-code' ? (
+                  {tgCodeCopied ? (
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
