@@ -402,7 +402,7 @@ export default function AdminDashboardClient({
   const [legalSaving, setLegalSaving] = useState(false);
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['Съдържание', 'Екип', 'Настройки']));
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [pwaInstallOpen, setPwaInstallOpen] = useState(false);
   const [blogActiveIndex, setBlogActiveIndex] = useState(0);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
@@ -2378,14 +2378,21 @@ export default function AdminDashboardClient({
                       }}>{group.label}</p>
                       <svg
                         width={14} height={14} viewBox="0 0 24 24" fill="none"
-                        stroke="#a1a1aa" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+                        strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
                         style={{
                           transform: isGroupOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
                           transition: 'transform 220ms ease',
                           flexShrink: 0,
                         }}
                       >
-                        <polyline points="6 9 12 15 18 9" />
+                        <defs>
+                          <linearGradient id={`chev-${group.label}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#e11d48" />
+                            <stop offset="50%" stopColor="#db2777" />
+                            <stop offset="100%" stopColor="#a855f7" />
+                          </linearGradient>
+                        </defs>
+                        <polyline points="6 9 12 15 18 9" stroke={`url(#chev-${group.label})`} />
                       </svg>
                     </button>
                     <div style={{
