@@ -300,10 +300,7 @@ function ymdKey(year: number, monthIndex: number, day: number) {
 const CALENDAR_DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 
 function useIsMobileLayout(bp = 768) {
-  const [m, setM] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia(`(max-width: ${bp - 1}px)`).matches;
-  });
+  const [m, setM] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${bp - 1}px)`);
     const fn = () => setM(mq.matches);
