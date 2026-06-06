@@ -163,8 +163,8 @@ function CreatePageContent() {
 
   return (
     <div
-      className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]"
-      style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}
+      className="min-h-dvh bg-white text-[#0a0a0a]"
+      style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)", colorScheme: 'light' }}
     >
       <style>{`
         .cp-grad-text {
@@ -204,13 +204,13 @@ function CreatePageContent() {
           font-weight: 600;
           cursor: pointer;
           transition: border-color 120ms;
-          color: var(--muted-foreground);
+          color: #6b7280;
         }
         .cp-period-btn.selected {
           border-color: transparent;
           background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #db2777, #a855f7) border-box;
           border: 2px solid transparent;
-          color: var(--foreground);
+          color: #0a0a0a;
         }
         .cp-period-btn.selected .cp-period-badge {
           display: inline-flex;
@@ -239,7 +239,7 @@ function CreatePageContent() {
             background: rgba(255,255,255,0.96);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-top: 1px solid var(--border);
+            border-top: 1px solid #e5e7eb;
             padding: 12px 16px 20px;
             z-index: 40;
           }
@@ -249,15 +249,15 @@ function CreatePageContent() {
 
       {/* NAV */}
       <nav
-        className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[var(--border)] px-[clamp(16px,5vw,60px)]"
+        className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#e5e7eb] px-[clamp(16px,5vw,60px)]"
         style={{
-          background:           'color-mix(in srgb, var(--background) 93%, transparent)',
+          background:           'rgba(255,255,255,0.93)',
           backdropFilter:       'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
         }}
       >
         <ClickaLogo size="nav" />
-        <a href="/" className="text-[13px] font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+        <a href="/" className="text-[13px] font-semibold text-[#6b7280] hover:text-[#0a0a0a] transition-colors">
           ← Начало
         </a>
       </nav>
@@ -270,7 +270,7 @@ function CreatePageContent() {
         >
           Избери план
         </h1>
-        <p className="mb-8 text-[15px] text-[var(--muted-foreground)]">
+        <p className="mb-8 text-[15px] text-[#6b7280]">
           Еднократно плащане. Без месечни такси. Без скрити такси.
         </p>
 
@@ -303,8 +303,8 @@ function CreatePageContent() {
                 <span
                   style={{
                     width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                    border: plan === 'solo' ? 'none' : '2px solid var(--border)',
-                    background: plan === 'solo' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+                    border: plan === 'solo' ? 'none' : '2px solid #e5e7eb',
+                    background: plan === 'solo' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
@@ -312,14 +312,14 @@ function CreatePageContent() {
                 </span>
                 <div>
                   <p style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>SOLO</p>
-                  <p style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>За самостоятелни специалисти</p>
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>За самостоятелни специалисти</p>
                 </div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
                   {PRICES.solo[period]} €
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>
+                <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>
                   {period === '12m' ? '/ година' : '/ 6 месеца'}
                 </p>
               </div>
@@ -330,13 +330,13 @@ function CreatePageContent() {
                 <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                   Само {(PRICES.solo[period] / DAYS[period]).toFixed(2)} € на ден
                 </p>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
                   {/* Key highlights — always visible */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginBottom: 10 }}>
                     {SOLO_HIGHLIGHTS.map(f => {
                       const isZero = f === '0% комисионна';
                       return (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : 'var(--foreground)' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : '#0a0a0a' }}>
                           <IconCheck color="#16a34a" /> {f}
                         </span>
                       );
@@ -346,7 +346,7 @@ function CreatePageContent() {
                   {expanded.solo && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 16px', marginBottom: 10 }}>
                       {SOLO_ALL.map(f => (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted-foreground)' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6b7280' }}>
                           <IconCheck /> {f}
                         </span>
                       ))}
@@ -375,8 +375,8 @@ function CreatePageContent() {
                 <span
                   style={{
                     width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                    border: plan === 'team' ? 'none' : '2px solid var(--border)',
-                    background: plan === 'team' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+                    border: plan === 'team' ? 'none' : '2px solid #e5e7eb',
+                    background: plan === 'team' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
@@ -384,14 +384,14 @@ function CreatePageContent() {
                 </span>
                 <div>
                   <p style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>TEAM</p>
-                  <p style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>За салони с екип</p>
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>За салони с екип</p>
                 </div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
                   {PRICES.team[period]} €
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>
+                <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>
                   {period === '12m' ? '/ година' : '/ 6 месеца'}
                 </p>
               </div>
@@ -402,13 +402,13 @@ function CreatePageContent() {
                 <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                   Само {(PRICES.team[period] / DAYS[period]).toFixed(2)} € на ден
                 </p>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
                   {/* Key highlights — always visible */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginBottom: 10 }}>
                     {TEAM_HIGHLIGHTS.map(f => {
                       const isZero = f === '0% комисионна';
                       return (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : 'var(--foreground)' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : '#0a0a0a' }}>
                           <IconCheck color="#16a34a" /> {f}
                         </span>
                       );
@@ -418,7 +418,7 @@ function CreatePageContent() {
                   {expanded.team && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 16px', marginBottom: 10 }}>
                       {TEAM_ALL.map(f => (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted-foreground)' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6b7280' }}>
                           <IconCheck /> {f}
                         </span>
                       ))}
@@ -447,8 +447,8 @@ function CreatePageContent() {
             onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setTermsAccepted(v => !v); } }}
             style={{
               marginTop: 1, flexShrink: 0, width: 20, height: 20,
-              borderRadius: 6, border: termsAccepted ? 'none' : '1.5px solid var(--border)',
-              background: termsAccepted ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+              borderRadius: 6, border: termsAccepted ? 'none' : '1.5px solid #e5e7eb',
+              background: termsAccepted ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -458,7 +458,7 @@ function CreatePageContent() {
               </svg>
             )}
           </span>
-          <span className="text-[13px] leading-snug text-[var(--muted-foreground)]" onClick={() => setTermsAccepted(v => !v)}>
+          <span className="text-[13px] leading-snug text-[#6b7280]" onClick={() => setTermsAccepted(v => !v)}>
             Съгласявам се с{' '}
             <a href="/terms" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75" onClick={e => e.stopPropagation()}>
               Общите условия
@@ -482,8 +482,8 @@ function CreatePageContent() {
               onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setWantsInvoice(v => !v); } }}
               style={{
                 flexShrink: 0, width: 20, height: 20,
-                borderRadius: 6, border: wantsInvoice ? 'none' : '1.5px solid var(--border)',
-                background: wantsInvoice ? 'linear-gradient(135deg,#e11d48,#a855f7)' : 'var(--card)',
+                borderRadius: 6, border: wantsInvoice ? 'none' : '1.5px solid #e5e7eb',
+                background: wantsInvoice ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -493,37 +493,37 @@ function CreatePageContent() {
                 </svg>
               )}
             </span>
-            <span className="text-[13px] font-semibold text-[var(--foreground)]" onClick={() => setWantsInvoice(v => !v)}>
+            <span className="text-[13px] font-semibold text-[#0a0a0a]" onClick={() => setWantsInvoice(v => !v)}>
               Искам фактура на фирма
             </span>
           </label>
 
           {wantsInvoice && (
-            <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+            <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-[#e5e7eb] bg-[#ffffff] p-5">
               <div>
-                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
                   Фирма / Търговско наименование <span className="cp-grad-text">*</span>
                 </label>
                 <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="ПРИМЕРНА ФИРМА ЕООД"
-                  className="cp-input-focus w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-[14px] outline-none transition-all" />
+                  className="cp-input-focus w-full rounded-xl border border-[#e5e7eb] bg-[#ffffff] px-4 py-2.5 text-[14px] outline-none transition-all" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
                     ЕИК <span className="cp-grad-text">*</span>
                   </label>
                   <input type="text" value={eik} onChange={e => setEik(e.target.value.replace(/\D/g, '').slice(0, 9))} placeholder="123456789" maxLength={9}
-                    className="cp-input-focus w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
+                    className="cp-input-focus w-full rounded-xl border border-[#e5e7eb] bg-[#ffffff] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
                     ДДС номер <span className="normal-case font-normal">(по желание)</span>
                   </label>
                   <input type="text" value={vatNumber} onChange={e => setVatNumber(e.target.value.toUpperCase())} placeholder="BG123456789"
-                    className="cp-input-focus w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
+                    className="cp-input-focus w-full rounded-xl border border-[#e5e7eb] bg-[#ffffff] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
                 </div>
               </div>
-              <p className="text-[11px] text-[var(--muted-foreground)]">Адресът за фактуриране се попълва на следващата стъпка при плащането.</p>
+              <p className="text-[11px] text-[#6b7280]">Адресът за фактуриране се попълва на следващата стъпка при плащането.</p>
             </div>
           )}
         </div>
@@ -548,7 +548,7 @@ function CreatePageContent() {
           />
           <div className="mt-3 flex flex-wrap items-center justify-center gap-4">
             {['Еднократно плащане', 'Без месечни такси', 'Готов веднага'].map(t => (
-              <span key={t} className="flex items-center gap-1.5 text-[11px] text-[var(--muted-foreground)]">
+              <span key={t} className="flex items-center gap-1.5 text-[11px] text-[#6b7280]">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M20 6L9 17l-5-5" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -556,7 +556,7 @@ function CreatePageContent() {
               </span>
             ))}
           </div>
-          <p className="mt-3 text-center text-[12px] text-[var(--muted-foreground)]">
+          <p className="mt-3 text-center text-[12px] text-[#6b7280]">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mr-1 inline align-middle" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
@@ -572,7 +572,7 @@ function CreatePageContent() {
 export default function CreatePage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-dvh items-center justify-center bg-[var(--background)] text-[var(--muted-foreground)]"
+      <div className="flex min-h-dvh items-center justify-center bg-[#ffffff] text-[#6b7280]"
         style={{ fontFamily: "var(--font-client-manrope, 'Manrope', system-ui, sans-serif)" }}>
         Зареждане…
       </div>
