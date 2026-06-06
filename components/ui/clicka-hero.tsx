@@ -2,7 +2,7 @@ import { ButtonColorful } from '@/components/ui/button-colorful';
 
 import { LiveSalonCount } from '@/components/ui/live-salon-count';
 import {
-  getMarketingActivityMock,
+  MARKETING_ACTIVITY_MOCK,
   type MarketingActivity,
 } from '@/lib/marketing-activity-shared';
 
@@ -11,7 +11,7 @@ type ClickaHeroProps = {
 };
 
 export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
-  const activity = activityProp ?? getMarketingActivityMock();
+  const activity = activityProp ?? MARKETING_ACTIVITY_MOCK;
   const { settingUpNow } = activity;
 
   return (
