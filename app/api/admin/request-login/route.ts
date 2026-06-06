@@ -70,7 +70,9 @@ export async function POST(request: NextRequest) {
     VALUES (${salon.salonId}, ${tokenHash}, ${allowedEmail}, ${expiresAt.toISOString()}, null, now())
   `;
 
-  const base = getPlatformSiteOrigin(salon.slug);
+  const base = salon.customDomain
+    ? `https://${salon.customDomain}`
+    : getPlatformSiteOrigin(salon.slug);
   const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}`;
 
   await resend.emails.send({
