@@ -120,7 +120,7 @@ export function PriceListServicesImport({
                 padding: '12px 14px',
                 marginBottom: 4,
                 borderRadius: 14,
-                border: '1.5px dashed #86efac',
+                border: 'none',
                 background: 'linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(16,185,129,0.05) 100%)',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
