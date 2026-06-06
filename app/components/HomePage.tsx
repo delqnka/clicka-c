@@ -13,6 +13,7 @@ import {
   MarketingFounderSection,
   MarketingFaqSection,
   PriceListImportSection,
+  OwnPlatformSection,
   TelegramManagementSection,
   TelegramChatSection,
 } from '@/components/marketing/marketing-home-sections';
@@ -388,10 +389,14 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
       {/* ── FOR WHOM ──────────────────────────────────── */}
       <MarketingAudienceSection />
 
-      {/* ── HOW IT WORKS (AI upload + Telegram + Chat) ── */}
+{/* ── OWN PLATFORM MANIFESTO ────────────────────── */}
+      <OwnPlatformSection />
+
+{/* ── HOW IT WORKS (AI upload + Telegram + Chat) ── */}
       <div data-home-section="how-it-works" id="how-it-works">
         {/* ── PRICE LIST AI IMPORT ──────────────────────── */}
         <PriceListImportSection />
+
 
         {/* ── TELEGRAM MANAGEMENT ───────────────────────── */}
         <TelegramManagementSection />
@@ -437,7 +442,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
 
       {/* ── DEPOSITS ──────────────────────────────────── */}
       <section
-        style={{ background: 'linear-gradient(180deg, #fdf2f8 0%, #fff 100%)', padding: 'clamp(56px,9vw,96px) clamp(20px,5vw,60px)' }}
+        style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 50%, #fff 100%)', padding: 'clamp(56px,9vw,96px) clamp(20px,5vw,60px)' }}
         aria-label="Онлайн плащания"
       >
         <div style={{ maxWidth: 680, margin: '0 auto' }}>

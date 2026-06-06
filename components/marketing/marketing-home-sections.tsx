@@ -59,7 +59,7 @@ export function MarketingAudienceSection() {
     <section
       id="audience"
       data-home-section="audience"
-      style={{ background: 'linear-gradient(180deg, #fdf2f8 0%, #fce7ef 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
+      style={{ background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #fdf2f8 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative', marginTop: -8 }}
       aria-label="За кого е"
     >
       <div className="mx-auto max-w-3xl text-center">
@@ -173,15 +173,18 @@ export function PriceListImportSection() {
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,5vw,56px)' }}>
+          <h2 style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(20px,4vw,40px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Как работи?
+          </h2>
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
             Без ръчно въвеждане
           </p>
-          <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 14, color: '#0f0f0f' }}>
+          <h3 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 14, color: '#0f0f0f' }}>
             Качи снимка на ценоразписа.<br />
             <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               AI добавя всичко за секунди.
             </span>
-          </h2>
+          </h3>
           <p style={{ fontSize: 'clamp(14px,1.8vw,17px)', color: '#666', maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
             Снимай ценоразписа си, качи снимката в Telegram бота и мигновено всичките ти услуги са в сайта!
           </p>
@@ -269,12 +272,98 @@ export function PriceListImportSection() {
   );
 }
 
+/* ── Own platform manifesto section ──────────────────── */
+
+export function OwnPlatformSection() {
+  return (
+    <section
+      aria-label="Не сте платформа"
+      style={{
+        background: '#fff',
+        padding: 'clamp(48px,9vw,88px) clamp(20px,5vw,60px)',
+      }}
+    >
+      <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
+        <p style={{
+          fontSize: 'clamp(18px,3.5vw,28px)',
+          fontWeight: 800,
+          lineHeight: 1.3,
+          color: '#0f0f0f',
+          marginBottom: 'clamp(20px,4vw,36px)',
+        }}>
+          Това не е платформа за резервации.
+        </p>
+
+        <p style={{
+          fontSize: 'clamp(22px,4.5vw,38px)',
+          fontWeight: 800,
+          lineHeight: 1.15,
+          marginBottom: 'clamp(24px,4vw,40px)',
+          backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
+          Clicka ти осигурява собствен сайт за твоя бизнес ВЕДНАГА.
+        </p>
+
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          marginBottom: 'clamp(24px,4vw,40px)',
+          textAlign: 'left',
+          maxWidth: 440,
+          margin: '0 auto clamp(24px,4vw,40px)',
+        }}>
+          {[
+            'Не си част от каталог.',
+            'Не стоиш до конкурентите си.',
+            'Не градиш чужд бранд.',
+          ].map((line) => (
+            <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                background: 'linear-gradient(135deg,#e11d48,#a855f7)',
+                display: 'inline-block',
+              }} />
+              <span style={{ fontSize: 'clamp(15px,2vw,18px)', fontWeight: 600, color: '#0f0f0f' }}>{line}</span>
+            </div>
+          ))}
+        </div>
+
+        <p style={{
+          fontSize: 'clamp(14px,1.8vw,17px)',
+          color: '#444',
+          lineHeight: 1.75,
+          marginBottom: 'clamp(24px,4vw,40px)',
+          maxWidth: 520,
+          margin: '0 auto clamp(24px,4vw,40px)',
+        }}>
+          Получаваш собствен сайт, собствен домейн, собствена клиентска база и AI рецепционист, който работи за теб 24/7.
+        </p>
+
+        <p style={{
+          fontSize: 'clamp(16px,2.5vw,22px)',
+          fontWeight: 800,
+          lineHeight: 1.3,
+          backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
+          Всеки нов клиент става твой клиент.<br />
+          Не клиент на платформа.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 /* ── Telegram Live Chat section ──────────────────────── */
 
-function IPhoneFrame({ src, alt, size = 'md' }: { src: string; alt: string; size?: 'lg' | 'md' }) {
+function IPhoneFrame({ src, alt, size = 'md', fullRadius = false }: { src: string; alt: string; size?: 'lg' | 'md'; fullRadius?: boolean }) {
   const borderW = size === 'lg' ? 10 : 8;
-  const outerR = '36px 36px 0 0';
-  const innerR = '30px 30px 0 0';
+  const outerR = fullRadius ? '36px' : '36px 36px 0 0';
+  const innerR = fullRadius ? '30px' : '30px 30px 0 0';
   return (
     <div style={{
       position: 'relative',
@@ -303,17 +392,14 @@ export function TelegramChatSection() {
     <section
       aria-label="Чат с клиенти от Telegram"
       style={{
-        background: 'linear-gradient(to bottom, #0a0a0a 0%, #0a0a0a 18%, #3d0a2e 38%, #7b1050 55%, #b8186a 72%, #db2777 85%, #f472b6 100%)',
+        background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 40%, #fdf2f8 52%, #fce7ef 62%, #f9a8d4 74%, #db2777 86%, #f472b6 100%)',
         padding: 'clamp(32px,5vw,64px) clamp(20px,5vw,60px) clamp(64px,10vw,120px)',
         overflow: 'hidden',
         position: 'relative',
-        marginTop: -1,
         transform: 'translateZ(0)',
         willChange: 'transform',
       }}
     >
-      {/* top fade */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 480, background: 'linear-gradient(to bottom, #ffffff 0%, rgba(255,255,255,0.97) 22%, rgba(255,255,255,0.9) 40%, rgba(255,255,255,0.65) 58%, rgba(255,255,255,0.3) 76%, transparent 100%)', pointerEvents: 'none', zIndex: 2 }} />
       {/* bottom fade */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 340, background: 'linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0.92) 15%, rgba(255,255,255,0.75) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.2) 70%, transparent 100%)', pointerEvents: 'none', zIndex: 2 }} />
 
@@ -344,8 +430,8 @@ export function TelegramChatSection() {
             <IPhoneFrame src="/chat.png" alt="Клиентът пише в чата" size="lg" />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>💬 Клиентът пише в сайта</p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0 }}>Задава въпрос директно от сайта ти</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#0f0f0f', margin: '0 0 2px' }}>💬 Клиентът пише в сайта</p>
+            <p style={{ fontSize: 12, color: '#666', margin: 0 }}>Задава въпрос директно от сайта ти</p>
           </div>
 
           {/* Arrow */}
@@ -358,8 +444,8 @@ export function TelegramChatSection() {
             <IPhoneFrame src="/IMG_1851.jpg" alt="Известие в Telegram" size="lg" />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>🔔 Известие в Telegram</p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0 }}>Веднага на телефона ти</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#0f0f0f', margin: '0 0 2px' }}>🔔 Известие в Telegram</p>
+            <p style={{ fontSize: 12, color: '#666', margin: 0 }}>Веднага на телефона ти</p>
           </div>
 
           {/* Arrow */}
@@ -372,8 +458,8 @@ export function TelegramChatSection() {
             <IPhoneFrame src="/IMG_1852.jpg" alt="Отговаряш от Telegram" size="lg" />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>📲 Отговаряш от Telegram</p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0 }}>Клиентът вижда отговора в реално време</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px', textShadow: '0 1px 4px rgba(0,0,0,0.35)' }}>📲 Отговаряш от Telegram</p>
+            <p style={{ fontSize: 12, color: '#fff', margin: 0, textShadow: '0 1px 4px rgba(0,0,0,0.35)' }}>Клиентът вижда отговора в реално време</p>
           </div>
 
         </div>
@@ -387,16 +473,22 @@ export function TelegramChatSection() {
           ].map((text, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.10)',
-              border: '1px solid rgba(255,255,255,0.18)',
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.35)',
               borderRadius: 999,
               padding: '6px 14px',
               width: 'fit-content',
             }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M20 6L9 17l-5-5" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <defs>
+                  <linearGradient id={`chk-pill-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#e11d48" />
+                    <stop offset="100%" stopColor="#a855f7" />
+                  </linearGradient>
+                </defs>
+                <path d="M20 6L9 17l-5-5" stroke="#ffffff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.90)', whiteSpace: 'nowrap' }}>{text}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap' }}>{text}</span>
             </div>
           ))}
         </div>
@@ -426,6 +518,7 @@ export function TelegramManagementSection() {
         background: 'linear-gradient(180deg, #fdf2f8 0%, #fff 100%)',
         padding: 'clamp(48px,9vw,96px) clamp(20px,5vw,60px)',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
@@ -453,15 +546,8 @@ export function TelegramManagementSection() {
             { src: '/images/IMG_1821.jpg', alt: 'Записване на клиент и добавяне на услуга' },
             { src: '/images/IMG_1826 2.jpg', alt: 'Преместване на резервация и бележки за клиент' },
           ].map((img) => (
-            <div key={img.src} style={{ borderRadius: 38, overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.18)', width: '100%' }}>
-              <Image
-                src={img.src}
-                alt={img.alt}
-                width={560}
-                height={900}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                loading="lazy"
-              />
+            <div key={img.src} style={{ width: '100%' }}>
+              <IPhoneFrame src={img.src} alt={img.alt} size="lg" fullRadius />
             </div>
           ))}
         </div>
@@ -484,19 +570,13 @@ export function TelegramManagementSection() {
             { src: '/images/IMG_1822.jpg', alt: 'Качване на снимки за портфолио' },
             { src: '/images/IMG_1823.jpg', alt: 'Снимките добавени в галерията' },
           ].map((img) => (
-            <div key={img.src} style={{ borderRadius: 38, overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.18)', width: '100%' }}>
-              <Image
-                src={img.src}
-                alt={img.alt}
-                width={560}
-                height={900}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                loading="lazy"
-              />
+            <div key={img.src} style={{ width: '100%' }}>
+              <IPhoneFrame src={img.src} alt={img.alt} size="lg" fullRadius />
             </div>
           ))}
         </div>
       </div>
+
     </section>
   );
 }

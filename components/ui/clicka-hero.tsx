@@ -17,8 +17,16 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
   return (
     <section
       aria-label="Hero"
-      className="clicka-hero relative flex min-h-[85svh] w-full flex-col overflow-hidden bg-white"
+      className="clicka-hero relative flex min-h-[85svh] w-full flex-col overflow-hidden"
+      style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 40%, #fdf2f8 75%)' }}
     >
+      {/* Fade from white at top */}
+      <div
+        className="absolute top-0 left-0 right-0 z-0"
+        style={{ height: '18%', background: 'linear-gradient(to top, transparent, #ffffff)' }}
+        aria-hidden
+      />
+
       {/* Pink gradient — starts only behind/below the buttons */}
       <div
         className="absolute bottom-0 left-0 right-0 z-0"
@@ -31,11 +39,11 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
       {/* Fade into next section colour */}
       <div
         className="absolute bottom-0 left-0 right-0 z-0"
-        style={{ height: '28%', background: 'linear-gradient(to bottom, transparent, #fdf2f8)' }}
+        style={{ height: '28%', background: 'linear-gradient(to bottom, transparent, #ffffff)' }}
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 pb-16 pt-32 sm:pt-24">
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 pb-16 pt-44 sm:pt-32">
 
         {/* Badge */}
         <div className="mb-7 inline-flex items-center gap-2 text-[13px] font-semibold">
@@ -73,7 +81,7 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
 
         {/* 3 key badges */}
         <div className="mb-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-          {['0% комисионна', 'Онлайн резервации 24/7', 'Управление от Telegram'].map((label, i) => (
+          {['0% комисионна', 'Онлайн резервации 24/7', 'Управление от Telegram', 'AI асистент'].map((label, i) => (
             <span key={label} className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--foreground)]">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <defs>
