@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { ChatWidget } from '@/components/marketing/chat-widget';
 import {
   BriefcaseBusiness,
   MessageSquare,
@@ -35,6 +36,7 @@ import {
   KeyRound,
   CreditCard,
   QrCode,
+  LifeBuoy,
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -2731,6 +2733,37 @@ export default function AdminDashboardClient({
               );
             })}
 
+            <div style={{ flex: 1 }} />
+
+            <a
+              href="https://t.me/clickabg_support"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '7px 10px', borderRadius: T.radiusSm,
+                border: '1px solid transparent',
+                width: '100%', textAlign: 'left',
+                background: 'transparent',
+                color: T.muted,
+                fontSize: 14, fontWeight: 400,
+                cursor: 'pointer',
+                textDecoration: 'none',
+                transition: 'background 120ms, color 120ms',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLAnchorElement).style.background = '#f4f4f5';
+                (e.currentTarget as HTMLAnchorElement).style.color = T.text;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                (e.currentTarget as HTMLAnchorElement).style.color = T.muted;
+              }}
+            >
+              <LifeBuoy size={14} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Поддръжка</span>
+            </a>
+
           </aside>
         )}
 
@@ -3503,6 +3536,7 @@ export default function AdminDashboardClient({
           opacity: 0.85;
         }
       `}</style>
+      <ChatWidget />
     </div>
   );
 }
