@@ -1,33 +1,7 @@
 'use client';
 
 import { RefreshCw, ScanLine, X } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
-
-function UploadInputWrapper({
-  busy,
-  onUpload,
-  children,
-}: {
-  busy: boolean;
-  onUpload: (files: FileList | null, input?: HTMLInputElement | null) => void | Promise<void>;
-  children: (onClick: () => void) => ReactNode;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  return (
-    <>
-      {children(() => inputRef.current?.click())}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        style={{ display: 'none' }}
-        disabled={busy}
-        onChange={e => void onUpload(e.target.files, e.target)}
-      />
-    </>
-  );
-}
+import { useRef } from 'react';
 
 type Props = {
   urls: string[];
@@ -103,65 +77,11 @@ export function PriceListServicesImport({
   onReanalyze,
 }: Props) {
   if (urls.length === 0 && !analyzing) {
-    if (compact) {
-      // Tappable upload row — full width, clear instruction
-      return (
-        <div>
-        <UploadInputWrapper onUpload={onUpload} busy={busy || analyzing}>
-          {(onClick) => (
-            <button
-              type="button"
-              onClick={onClick}
-              disabled={busy || analyzing}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 14px',
-                marginBottom: 4,
-                borderRadius: 14,
-                border: 'none',
-                background: 'linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(16,185,129,0.05) 100%)',
-                cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: '#22c55e', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(34,197,94,0.3)',
-              }}>
-                <ScanLine size={18} strokeWidth={2.25} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#15803d' }}>
-                  Качи снимка на ценоразписа
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#71717A', lineHeight: 1.4 }}>
-                  AI ще добави услугите автоматично
-                </p>
-              </div>
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          )}
-        </UploadInputWrapper>
-        <p style={{ margin: '4px 0 0', fontSize: 10, color: '#a1a1aa', lineHeight: 1.4, paddingLeft: 4 }}>
-          * прегледайте и редактирайте ако е нужно — ai може да прави грешки
-        </p>
-        </div>
-      );
-    }
-
     return (
       <div
         style={{
-          marginBottom: 16,
-          padding: '10px 0',
+          marginBottom: compact ? 0 : 16,
+          padding: compact ? 0 : '10px 0',
           border: 'none',
           borderRadius: 0,
           background: 'transparent',
@@ -173,11 +93,14 @@ export function PriceListServicesImport({
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#18181B' }}>Ценоразпис с AI</p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#71717A', lineHeight: 1.4 }}>
-            Снимай ценоразписа — услугите се добавят автоматично.
-          </p>
+          <p style={{ margin: 0, fontSize: compact ? 12 : 13, fontWeight: 700, color: '#18181B' }}>Ценоразпис с AI</p>
+          {!compact ? (
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#71717A', lineHeight: 1.4 }}>
+              Снимай ценоразписа — услугите се добавят автоматично.
+            </p>
+          ) : null}
         </div>
+        {compact ? <AdminPriceListScanBtn busy={busy || analyzing} size="sm" onUpload={onUpload} /> : null}
       </div>
     );
   }
