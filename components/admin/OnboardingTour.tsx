@@ -71,8 +71,10 @@ export function OnboardingTour({ slug }: { slug: string }) {
       <div style={{
         position: 'fixed',
         bottom: 0,
-        left: 0,
-        right: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: 480,
         zIndex: 9999,
         background: '#fff',
         borderRadius: '24px 24px 0 0',

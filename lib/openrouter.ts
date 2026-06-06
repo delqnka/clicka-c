@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/nextjs';
+
 export const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 
 export function getOpenRouterApiKey(): string | undefined {
@@ -40,6 +42,11 @@ export async function openRouterChatCompletion(options: {
 
   if (!response.ok) {
     const details = (await response.text().catch(() => '')).slice(0, 2000);
+    Sentry.captureEvent({
+      message: 'OpenRouter API error',
+      level: 'error',
+      extra: { status: response.status, model: options.model, details },
+    });
     return { ok: false, status: response.status, details };
   }
 

@@ -285,6 +285,7 @@ export function ChatWidget() {
                   onChange={(e) => setPhoneInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && confirmName()}
                   type="tel"
+                  inputMode="tel"
                   style={{
                     width: '100%', padding: '14px 16px', borderRadius: 14, boxSizing: 'border-box',
                     border: '1.5px solid #333', fontSize: 16, outline: 'none',
@@ -503,6 +504,7 @@ export function ChatWidget() {
                 onChange={(e) => setPhoneInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && confirmName()}
                 type="tel"
+                inputMode="tel"
                 style={{
                   width: '100%', padding: '11px 14px', borderRadius: 12, boxSizing: 'border-box',
                   border: '1.5px solid #333', fontSize: 14, outline: 'none',

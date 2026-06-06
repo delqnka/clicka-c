@@ -139,9 +139,15 @@ const TABS = [
   { id: 'account',       label: 'Профил',         Icon: KeyRound },
 ] as const;
 
-const TAB_BAR_IDS = new Set<TabId>(['site', 'images', 'services', 'bookings']);
-const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
+const TAB_BAR_IDS = new Set<TabId>(['bookings', 'clients', 'services', 'site']);
 const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
+
+const SHEET_GROUPS: { label: string; ids: TabId[] }[] = [
+  { label: 'Съдържание', ids: ['images', 'offers', 'brands', 'blog'] },
+  { label: 'Екип',       ids: ['specialist', 'staff'] },
+  { label: 'Настройки',  ids: ['hours', 'domain', 'payments', 'sms', 'integrations', 'legal', 'account'] },
+];
+const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 
 const ICON_GRADIENT = 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)';
 const PWA_HOME_STORAGE_KEY = (slug: string) => `admin-pwa-homescreen:${slug}`;
@@ -384,7 +390,7 @@ export default function AdminDashboardClient({
     () => (selectedCalendarDate ? allExternalEvents.filter((ev) => ev.date === selectedCalendarDate) : []),
     [allExternalEvents, selectedCalendarDate],
   );
-  const [domainInput, setDomainInput] = useState(initialSite.customDomain);
+  const [domainInput, setDomainInput] = useState(initialSite.customDomain ?? '');
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
   const [pwaOnHomeScreen, setPwaOnHomeScreen] = useState(false);
@@ -2270,6 +2276,7 @@ export default function AdminDashboardClient({
               background: '#fff',
               borderRadius: '20px 20px 0 0',
               paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+              fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
               animation: 'slideUp 280ms cubic-bezier(0.32, 0.72, 0, 1)',
               maxHeight: 'min(92dvh, calc(100dvh - 12px))',
               display: 'flex',
@@ -2318,70 +2325,91 @@ export default function AdminDashboardClient({
             <div
               style={{
                 padding: '0 12px 8px',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                gap: 8,
                 overflowY: 'auto',
                 WebkitOverflowScrolling: 'touch',
                 flex: '1 1 auto',
                 minHeight: 0,
-                alignContent: 'start',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
               }}
             >
-              {NAVBAR_TABS.filter(t => t.id !== 'staff' || site.plan === 'team').map(({ id, label, Icon }) => {
-                const active = activeTab === id;
+              {SHEET_GROUPS.map(group => {
+                const visibleTabs = TABS.filter(
+                  t => group.ids.includes(t.id) && (t.id !== 'staff' || site.plan === 'team')
+                );
+                if (visibleTabs.length === 0) return null;
                 return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => switchTab(id)}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 5,
-                      padding: '8px 6px',
-                      borderRadius: 12,
-                      border: active ? '1.5px solid #C084FC' : `1px solid ${T.border}`,
-                      background: active ? 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)' : '#fff',
-                      cursor: 'pointer',
-                      minHeight: 64,
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: active ? 32 : 28,
-                        height: active ? 32 : 28,
-                        borderRadius: 999,
-                        background: active ? ICON_GRADIENT : 'transparent',
-                        color: active ? '#fff' : '#18181B',
-                        boxShadow: active ? '0 6px 16px rgba(219,39,119,0.22)' : 'none',
-                        transition: 'all 180ms ease',
-                      }}
-                    >
-                      <Icon size={active ? 20 : 18} strokeWidth={active ? 2.25 : 1.75} />
+                  <div key={group.label}>
+                    <p style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      margin: '0 0 8px 4px',
+                      fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+                      background: ICON_GRADIENT,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      color: 'transparent',
+                    }}>{group.label}</p>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                      gap: 8,
+                    }}>
+                      {visibleTabs.map(({ id, label, Icon }) => {
+                        const active = activeTab === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => switchTab(id)}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 5,
+                              padding: '8px 6px',
+                              borderRadius: 12,
+                              border: active ? '1.5px solid #C084FC' : `1px solid ${T.border}`,
+                              background: active ? 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)' : '#fff',
+                              cursor: 'pointer',
+                              minHeight: 64,
+                              WebkitTapHighlightColor: 'transparent',
+                            }}
+                          >
+                            <div style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              width: active ? 32 : 28, height: active ? 32 : 28,
+                              borderRadius: 999,
+                              background: active ? ICON_GRADIENT : 'transparent',
+                              color: active ? '#fff' : '#18181B',
+                              boxShadow: active ? '0 6px 16px rgba(219,39,119,0.22)' : 'none',
+                              transition: 'all 180ms ease',
+                            }}>
+                              <Icon size={active ? 20 : 18} strokeWidth={active ? 2.25 : 1.75} />
+                            </div>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: active ? 600 : 400,
+                              letterSpacing: '-0.01em',
+                              textAlign: 'center',
+                              lineHeight: 1.2,
+                              color: active ? 'transparent' : '#18181B',
+                              background: active ? ICON_GRADIENT : 'none',
+                              WebkitBackgroundClip: active ? 'text' : 'unset',
+                              backgroundClip: active ? 'text' : 'unset',
+                            }}>
+                              {label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: active ? 600 : 400,
-                        letterSpacing: '-0.01em',
-                        textAlign: 'center',
-                        lineHeight: 1.2,
-                        color: active ? 'transparent' : '#18181B',
-                        background: active ? ICON_GRADIENT : 'none',
-                        WebkitBackgroundClip: active ? 'text' : 'unset',
-                        backgroundClip: active ? 'text' : 'unset',
-                      }}
-                    >
-                      {label}
-                    </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -2752,7 +2780,7 @@ export default function AdminDashboardClient({
           })()}
 
           {activeTab === 'site' ? (
-            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} />
+            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} />
           ) : null}
 
           {activeTab === 'images' ? (
@@ -3903,7 +3931,6 @@ function DomainTab({
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg, padding: 24 }}>
             <p style={{ margin: '0 0 18px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
               Имаш ли собствен домейн? Въведи го по-долу и ние ще те преведем стъпка по стъпка как да го свържеш.
-              Не е нужно да разбираш от технически термини — ще обясним всичко на разбираем език.
             </p>
             <Field label="Твоят домейн">
               <div style={{ display: 'flex', gap: 8 }}>
@@ -3916,7 +3943,7 @@ function DomainTab({
                 />
                 <button
                   type="button"
-                  style={btn('primary')}
+                  style={{ ...btn('primary'), background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
                   disabled={busyKey === 'domain' || !domainInput.trim()}
                   onClick={() => void connectDomain()}
                 >

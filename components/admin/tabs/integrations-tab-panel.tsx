@@ -93,40 +93,28 @@ export function IntegrationsTabPanel({
   return (
     <AdminSection title="Интеграции" desc="Telegram, календар и Google отзиви.">
       <div style={{ display: 'grid', gap: 10 }}>
-        <AdminInfoCard
-          title="Блокирай часове от Fresha / Booksy / Studio24"
-          status={site.telegramChatId ? 'connected' : 'pending'}
-        >
+        <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'}>
           {site.telegramChatId ? (
             <div style={{ display: 'grid', gap: 6 }}>
               <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
                 Telegram ботът е свързан
               </p>
               <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-                Когато получиш нотификация от Fresha, Studio24 или друга система — просто я forward-ни на Clicka бота в Telegram. Часът ще се блокира автоматично.
+                Получаваш известия при нова резервация, отказ или промяна. Можеш и да блокираш часове, като напишеш директно на бота.
               </p>
               <div style={{ background: '#F4F4F5', borderRadius: 8, padding: '10px 12px', marginTop: 2 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>Или напиши директно:</p>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>Пример:</p>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: ADMIN_T.muted, fontFamily: 'monospace' }}>
                   зает 14:00-16:00 утре
                 </p>
               </div>
             </div>
           ) : (
-            <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-              Свържи Telegram бота (по-горе) и ще можеш да блокираш часове с forward на съобщения от Fresha, Studio24 и др.
-            </p>
-          )}
-        </AdminInfoCard>
-
-        <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'}>
-          {site.telegramChatId ? (
-            <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-              Telegram е свързан. Ще получаваш известия при нова резервация.
-            </p>
-          ) : (
             <>
               <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
+                Свържи Telegram бота, за да получаваш известия за резервации и да блокираш часове директно от телефона си.
+              </p>
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
                 Отвори{' '}
                 <a
                   href="https://t.me/clicka_booking_bot"

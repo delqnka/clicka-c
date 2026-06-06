@@ -34,6 +34,7 @@ export function SiteTabPanel({
   currentSlug,
   rootDomain,
   onSlugSaved,
+  onNavigateToDomain,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -45,6 +46,7 @@ export function SiteTabPanel({
   currentSlug: string;
   rootDomain: string;
   onSlugSaved: (newSlug: string) => void;
+  onNavigateToDomain?: () => void;
 }) {
   const [section, setSection] = useState<SiteSectionId>('basics');
   const fieldInp: CSSProperties = { ...inp, padding: '7px 10px', fontSize: 14 };
@@ -113,7 +115,7 @@ export function SiteTabPanel({
             <input value={site.category} onChange={(e) => setSite((p) => ({ ...p, category: e.target.value }))} style={fieldInp} />
           </AdminField>
           <AdminField compact label="Телефон">
-            <input value={site.phone} onChange={(e) => setSite((p) => ({ ...p, phone: e.target.value }))} style={fieldInp} />
+            <input value={site.phone} onChange={(e) => setSite((p) => ({ ...p, phone: e.target.value }))} style={fieldInp} type="tel" inputMode="tel" />
           </AdminField>
           <AdminField compact label="Имейл">
             <input value={site.email} readOnly style={{ ...fieldInp, color: '#71717A', cursor: 'default' }} />
@@ -150,12 +152,33 @@ export function SiteTabPanel({
       ) : null}
 
       {section === 'address' ? (
-        <SlugEditor
-          currentSlug={currentSlug}
-          rootDomain={rootDomain}
-          inp={inp}
-          onSaved={onSlugSaved}
-        />
+        <>
+          <SlugEditor
+            currentSlug={currentSlug}
+            rootDomain={rootDomain}
+            inp={inp}
+            onSaved={onSlugSaved}
+          />
+          {onNavigateToDomain && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}` }}>
+              <p style={{ margin: '0 0 10px', fontSize: 13, color: ADMIN_T.muted }}>
+                Имаш собствен домейн (например <em>moisalon.com</em>)?
+              </p>
+              <button
+                type="button"
+                onClick={onNavigateToDomain}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+                  color: '#fff', border: 'none', borderRadius: 999,
+                  padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                🌐 Свържи своя домейн →
+              </button>
+            </div>
+          )}
+        </>
       ) : null}
 
       {section === 'about' ? (

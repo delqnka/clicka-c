@@ -25,6 +25,7 @@ export default function AdminPreviewPage() {
     billingPeriod: '12m',
     planExpiresAt: null,
     telegramChatId: null,
+    onboardingCode: 'ABC123',
     stripeConnectAccountId: null,
     stripeConnectEnabled: false,
     faq: [],
@@ -45,6 +46,7 @@ export default function AdminPreviewPage() {
     brands: [],
     venueName: null,
     venueAddress: null,
+    venueExtras: {},
   } as any;
 
   return (

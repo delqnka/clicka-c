@@ -1,3 +1,6 @@
+// @ts-check
+const { withSentryConfig } = require('@sentry/nextjs');
+
 /** @type {import('next').NextConfig} */
 function hostnameFromUrl(maybeUrl) {
   try {
@@ -23,6 +26,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion', '@radix-ui/react-accordion'],
     optimizeCss: true,
+    instrumentationHook: true,
   },
   swcMinify: true,
   compiler: {
@@ -69,4 +73,20 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Source maps качени в Sentry, скрити от browser
+  silent: true,
+  hideSourceMaps: true,
+
+  // Намалява bundle size — не включва Sentry debug код в prod
+  disableLogger: true,
+
+  // Automatic instrumentation на Next.js API routes
+  autoInstrumentServerFunctions: true,
+  autoInstrumentMiddleware: true,
+  autoInstrumentAppDirectory: true,
+});
