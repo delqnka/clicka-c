@@ -320,3 +320,156 @@
     opacity: 0.55;
   }
 }
+
+/* ── HomePage inline styles moved here to fix React 18 hydration (style hoisting) ── */
+.hp {
+  font-family: var(--font-client-manrope, 'Manrope', var(--font-body, 'Inter', system-ui, sans-serif));
+  font-weight: 400;
+  background: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+}
+
+.hp [style*='var(--muted-foreground)'] {
+  font-weight: 300 !important;
+}
+.hp footer p,
+.hp .hp-section-link {
+  font-weight: 200 !important;
+}
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hp-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 64px;
+  background: color-mix(in srgb, var(--background) 93%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(16px, 5vw, 60px);
+}
+
+.hp-section-nav {
+  position: fixed;
+  top: 64px; left: 0; right: 0; z-index: 95;
+  background: color-mix(in srgb, var(--background) 90%, transparent);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hp-section-nav::-webkit-scrollbar { display: none; }
+.hp-section-nav-wrap {
+  display: flex;
+  gap: clamp(16px, 4vw, 28px);
+  padding: 14px clamp(12px, 4vw, 60px);
+  min-width: max-content;
+}
+.hp-section-link {
+  display: inline-block;
+  padding: 4px 0;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--muted-foreground);
+  background: none;
+  border: none;
+  border-radius: 0;
+  text-decoration: none;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
+  white-space: nowrap;
+}
+.hp-section-link:hover { color: #ec4899; }
+.hp-section-link.active {
+  color: #ec4899;
+  font-weight: 400;
+  text-decoration: underline;
+  text-decoration-color: #ec4899;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+@media (max-width: 639px) { .hp-section-link-desktop { display: none; } }
+@media (min-width: 640px) { .hp-section-link { font-size: 13px; } }
+
+.hp-price-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: calc(var(--radius) * 2.5);
+  padding: 14px;
+  display: flex; flex-direction: column;
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+.hp-price-card:hover { transform: translateY(-5px); box-shadow: var(--hp-shadow); }
+.hp-price-card.popular {
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 2px transparent, 0 8px 32px rgba(225,29,72,0.15);
+  background-image: linear-gradient(white, white), linear-gradient(135deg, #e11d48, #db2777, #a855f7);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.hp-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 900px) { .hp-pricing-grid { grid-template-columns: 1fr; } }
+@media (min-width: 640px) and (max-width: 900px) { .hp-pricing-grid { grid-template-columns: 1fr 1fr; } }
+
+.hp-seo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 5vw, 64px);
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+@media (max-width: 900px) {
+  .hp-seo-grid { grid-template-columns: 1fr; }
+  .hp-seo-visual { order: 1; }
+}
+.hp-seo-visual {
+  position: relative;
+  border-radius: calc(var(--radius) * 2.5);
+  overflow: hidden;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+}
+
+.hp-check {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 11px; font-weight: 400;
+  color: var(--secondary-foreground);
+  line-height: 1.35; padding: 1.5px 0;
+}
+
+[data-home-section] { scroll-margin-top: 128px; }
+
+.hp-heading {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+}
+
+/* ── SiteFooter hover styles moved here to fix React 18 hydration ── */
+.footer-link { transition: color 0.2s; }
+.footer-link:hover {
+  background: linear-gradient(135deg, #e11d48, #db2777, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

@@ -4,17 +4,6 @@ import { clickaMarketingSite } from '@/lib/clicka-marketing-site';
 export function SiteFooter() {
   return (
     <footer className="border-t border-white/[0.06] bg-[#0a0a0a] py-10" style={{ position: 'relative', zIndex: 2 }}>
-      <style>{`
-        .footer-link {
-          transition: color 0.2s;
-        }
-        .footer-link:hover {
-          background: linear-gradient(135deg, #e11d48, #db2777, #a855f7);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-      `}</style>
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 sm:flex-row sm:px-6">
         <div className="flex flex-col items-center gap-1 sm:items-start">
           <p className="text-sm font-medium tracking-[-0.02em] text-white/50">

@@ -1,6 +1,7 @@
 'use client';
 
 import './marketing-tailwind.css';
+import './marketing.css';
 import { usePathname } from 'next/navigation';
 import { SiteFooter } from '@/components/marketing/site-footer';
 import { ChatWidget } from '@/components/marketing/chat-widget';
