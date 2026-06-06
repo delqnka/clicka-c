@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { AddressAutocompleteField } from '@/components/admin/address-autocomplete-field';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminSaveBtn, AdminSection } from '@/components/admin/admin-ui';
@@ -51,6 +51,9 @@ export function SiteTabPanel({
   initialSection?: SiteSectionId;
 }) {
   const [section, setSection] = useState<SiteSectionId>(initialSection ?? 'basics');
+  useEffect(() => {
+    if (initialSection) setSection(initialSection);
+  }, [initialSection]);
   const fieldInp: CSSProperties = { ...inp, padding: '7px 10px', fontSize: 14 };
 
   return (
