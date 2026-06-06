@@ -532,23 +532,6 @@ function CreatePageContent() {
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{error}</div>
         )}
 
-        {/* Trust footer — before spacer so it's not hidden under fixed bar */}
-        <div className="mt-8 border-t border-[#e5e7eb] py-5 text-center text-[11px] text-[#9ca3af]">
-          <p>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mr-1 inline align-middle" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            Сигурно плащане чрез Stripe
-            {'  ·  '}
-            <a href="mailto:support@clicka.bg" className="hover:text-[#6b7280] transition-colors">support@clicka.bg</a>
-          </p>
-          <p className="mt-1">
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-[#6b7280] transition-colors">Общи условия</a>
-            {'  ·  '}
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-[#6b7280] transition-colors">Поверителност</a>
-          </p>
-        </div>
-
         <div className="cp-sticky-spacer" aria-hidden />
 
         {/* Pay button */}
