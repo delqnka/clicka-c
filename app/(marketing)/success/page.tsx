@@ -70,6 +70,7 @@ export default async function SuccessPage({
 
   let salonEmail = '';
   let salonSlug = legacySlug;
+  let purchaseValue = 0;
 
   if (legacySlug) {
     // Old flow: salon already exists
@@ -97,6 +98,8 @@ export default async function SuccessPage({
           const email = session.customer_details?.email ?? '';
           const planType = session.metadata?.planType ?? 'solo';
           const billingPeriod = session.metadata?.billingPeriod ?? '12m';
+          const prices: Record<string, Record<string, number>> = { solo: { '12m': 299, '6m': 169 }, team: { '12m': 499, '6m': 279 } };
+          purchaseValue = prices[planType]?.[billingPeriod] ?? (session.amount_total ? session.amount_total / 100 : 0);
           const billingMonths = billingPeriod === '6m' ? 6 : 12;
 
           if (email) {
@@ -143,5 +146,5 @@ export default async function SuccessPage({
     }
   }
 
-  return <SuccessClient slug={salonSlug || ''} email={salonEmail} />;
+  return <SuccessClient slug={salonSlug || ''} email={salonEmail} purchaseValue={purchaseValue} />;
 }

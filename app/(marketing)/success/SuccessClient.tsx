@@ -12,9 +12,11 @@ const FONT = "var(--font-client-manrope,'Manrope',system-ui,sans-serif)";
 export default function SuccessClient({
   slug,
   email,
+  purchaseValue = 0,
 }: {
   slug: string;
   email: string;
+  purchaseValue?: number;
 }) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,13 @@ export default function SuccessClient({
   const [redirectTo, setRedirectTo] = useState('');
   const [isNewUser, setIsNewUser] = useState(false);
   const sentRef = useRef(false);
+
+  useEffect(() => {
+    if (slug && typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'Purchase', { value: purchaseValue, currency: 'BGN' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!slug || !email || sentRef.current) return;
