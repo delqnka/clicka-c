@@ -217,7 +217,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
       services, working_hours, opening_hours,
       custom_domain, domain_status, domain_config,
-      google_place_id, telegram_chat_id, onboarding_code,
+      google_place_id, telegram_chat_id, onboarding_code, onboarding_tour_done,
       site_status, legal_info, latitude, longitude,
       faq_items, visitor_info, visitor_additional_info, venue_extras,
       sms_balance, sms_enabled, sms_reminder_mode, plan,
@@ -273,6 +273,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     googlePlaceId: String(row.google_place_id ?? ''),
     telegramChatId: String(row.telegram_chat_id ?? ''),
     onboardingCode: String(row.onboarding_code ?? ''),
+    onboardingTourDone: row.onboarding_tour_done === true,
     siteStatus: String(row.site_status ?? ''),
     legalInfo: (() => {
       const li = row.legal_info;

@@ -34,19 +34,21 @@ const GRAD = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
 const FONT = "var(--font-client-manrope,'Manrope',system-ui,sans-serif)";
 const KEY = 'clicka_onboarding_done';
 
-export function OnboardingTour({ slug }: { slug: string }) {
+export function OnboardingTour({ slug, done }: { slug: string; done?: boolean }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
+    if (done) return;
     try {
       if (!localStorage.getItem(`${KEY}_${slug}`)) setVisible(true);
     } catch { /* ignore */ }
-  }, [slug]);
+  }, [slug, done]);
 
   function dismiss() {
-    try { localStorage.setItem(`${KEY}_${slug}`, '1'); } catch { /* ignore */ }
     setVisible(false);
+    try { localStorage.setItem(`${KEY}_${slug}`, '1'); } catch { /* ignore */ }
+    fetch('/api/admin/onboarding-done', { method: 'POST' }).catch(() => { /* ignore */ });
   }
 
   function next() {

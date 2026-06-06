@@ -53,7 +53,7 @@ export default async function AdminEntryPage() {
 
   return (
     <>
-    <OnboardingTour slug={gate.salon.slug} />
+    <OnboardingTour slug={gate.salon.slug} done={site.onboardingTourDone} />
     <AdminDashboardClient
       slug={gate.salon.slug}
       ownerEmail={gate.session.ownerEmail}
