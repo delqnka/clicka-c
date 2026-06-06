@@ -28,10 +28,10 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
         }}
         aria-hidden
       />
-      {/* Fade to white at the very bottom */}
+      {/* Fade into next section colour */}
       <div
         className="absolute bottom-0 left-0 right-0 z-0"
-        style={{ height: '18%', background: 'linear-gradient(to bottom, transparent, #fff)' }}
+        style={{ height: '28%', background: 'linear-gradient(to bottom, transparent, #fdf2f8)' }}
         aria-hidden
       />
 

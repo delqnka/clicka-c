@@ -59,8 +59,7 @@ export function MarketingAudienceSection() {
     <section
       id="audience"
       data-home-section="audience"
-      className="bg-rose-50"
-      style={{ padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
+      style={{ background: 'linear-gradient(180deg, #fdf2f8 0%, #fce7ef 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
       aria-label="За кого е"
     >
       <div className="mx-auto max-w-3xl text-center">
@@ -468,7 +467,7 @@ export function TelegramManagementSection() {
         </div>
 
         {/* Divider label */}
-        <div style={{ textAlign: 'center', margin: 'clamp(40px,7vw,72px) 0 clamp(32px,5vw,56px)' }}>
+        <div style={{ textAlign: 'center', margin: 'clamp(56px,10vw,96px) 0 clamp(48px,8vw,80px)' }}>
           <p style={{ fontSize: 'clamp(22px,4vw,36px)', fontWeight: 800, lineHeight: 1.2, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Качваш снимки в галерията си с едно съобщение.
           </p>
