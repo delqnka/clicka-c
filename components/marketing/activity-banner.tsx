@@ -14,7 +14,8 @@ function AnimatedCount({
   minWidthClassName: string;
 }) {
   const prefersReducedMotion = useReducedMotion();
-  const [value, setValue] = useState(prefersReducedMotion ? target : initialValue);
+  // Always start with initialValue on server — useEffect handles the reduced-motion jump after hydration
+  const [value, setValue] = useState(initialValue);
   const valueRef = useRef(value);
 
   useEffect(() => {
