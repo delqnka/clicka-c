@@ -36,6 +36,7 @@ export function SiteTabPanel({
   onSlugSaved,
   onNavigateToDomain,
   initialSection,
+  siteNavVersion,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
