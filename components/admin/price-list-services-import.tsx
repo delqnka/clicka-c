@@ -106,6 +106,7 @@ export function PriceListServicesImport({
     if (compact) {
       // Tappable upload row — full width, clear instruction
       return (
+        <div>
         <UploadInputWrapper onUpload={onUpload} busy={busy || analyzing}>
           {(onClick) => (
             <button
@@ -149,6 +150,10 @@ export function PriceListServicesImport({
             </button>
           )}
         </UploadInputWrapper>
+        <p style={{ margin: '4px 0 0', fontSize: 10, color: '#a1a1aa', lineHeight: 1.4, paddingLeft: 4 }}>
+          * прегледайте и редактирайте ако е нужно — ai може да прави грешки
+        </p>
+        </div>
       );
     }
 
