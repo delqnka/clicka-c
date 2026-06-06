@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SalonPublicPageView } from '@/components/salon/salon-public-page-view';
+import { MetaPixelViewContent } from '@/components/meta-pixel-view-content';
 import { extractHostname, getPlatformSubdomain, ROOT_DOMAIN } from '@/lib/domain-routing';
 import { getPublicSalonPageData, resolveSlugRedirect } from '@/lib/public-salon';
 import { buildSalonPageMetadata } from '@/lib/seo';
@@ -30,5 +31,5 @@ export default async function SalonCustomDomainHomePage() {
     redirect(`https://${ROOT_DOMAIN}`);
   }
 
-  return <SalonPublicPageView pageData={pageData} />;
+  return <><MetaPixelViewContent /><SalonPublicPageView pageData={pageData} /></>;
 }

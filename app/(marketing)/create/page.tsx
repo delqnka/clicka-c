@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
@@ -91,6 +91,10 @@ function CreatePageContent() {
   const initial       = resolveInitial(searchParams.get('plan'));
   const [plan,   setPlan]   = useState<Plan>(initial.plan);
   const [period, setPeriod] = useState<Period>(initial.period);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'ViewContent');
+  }, []);
 
   const [expanded, setExpanded] = useState<Expanded>({ solo: false, team: false });
   const [isSubmitting,  setIsSubmitting]  = useState(false);
