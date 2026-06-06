@@ -2730,13 +2730,6 @@ export default function AdminDashboardClient({
               );
             })}
 
-            {/* Sidebar footer */}
-            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
-              <Link href={claimPath} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: T.radiusSm, textDecoration: 'none', color: T.muted, fontSize: 13 }}>
-                <ExternalLink size={14} />
-                Claim page
-              </Link>
-            </div>
           </aside>
         )}
 
