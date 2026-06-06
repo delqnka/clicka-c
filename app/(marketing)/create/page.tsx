@@ -243,7 +243,7 @@ function CreatePageContent() {
             padding: 12px 16px 20px;
             z-index: 40;
           }
-          .cp-sticky-spacer { height: 96px; }
+          .cp-sticky-spacer { height: 180px; }
         }
       `}</style>
 
