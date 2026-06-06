@@ -352,13 +352,15 @@ function CreatePageContent() {
                       ))}
                     </div>
                   )}
-                  <button
-                    type="button"
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={e => { e.stopPropagation(); setExpanded(v => ({ ...v, solo: !v.solo })); }}
-                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setExpanded(v => ({ ...v, solo: !v.solo })); } }}
+                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
                   >
                     {expanded.solo ? 'Скрий функциите ↑' : 'Виж всички функции ↓'}
-                  </button>
+                  </span>
                 </div>
               </>
             )}
@@ -424,13 +426,15 @@ function CreatePageContent() {
                       ))}
                     </div>
                   )}
-                  <button
-                    type="button"
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={e => { e.stopPropagation(); setExpanded(v => ({ ...v, team: !v.team })); }}
-                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setExpanded(v => ({ ...v, team: !v.team })); } }}
+                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
                   >
                     {expanded.team ? 'Скрий функциите ↑' : 'Виж всички функции ↓'}
-                  </button>
+                  </span>
                 </div>
               </>
             )}
