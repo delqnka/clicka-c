@@ -2178,9 +2178,11 @@ export default function AdminDashboardClient({
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                   borderRadius: isMobile ? 12 : T.radiusSm, border: 'none',
-                  background: T.accent, color: '#fff',
+                  background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+                  color: '#fff',
                   padding: isMobile ? '8px 14px' : '6px 14px',
                   fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  opacity: busyKey === 'publish' ? 0.7 : 1,
                 }}
               >
                 {busyKey === 'publish' ? '…' : (isMobile ? 'Публикувай' : 'Публикувай сайта')}
