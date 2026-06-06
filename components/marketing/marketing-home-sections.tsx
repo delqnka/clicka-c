@@ -443,7 +443,7 @@ export function TelegramManagementSection() {
           </p>
         </div>
 
-        {/* Screenshots grid */}
+        {/* Screenshots — row 1 */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
@@ -453,6 +453,35 @@ export function TelegramManagementSection() {
           {[
             { src: '/images/IMG_1821.jpg', alt: 'Записване на клиент и добавяне на услуга' },
             { src: '/images/IMG_1826 2.jpg', alt: 'Преместване на резервация и бележки за клиент' },
+          ].map((img) => (
+            <div key={img.src} style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: '100%' }}>
+              <Image
+                src={img.src}
+                alt={img.alt}
+                width={560}
+                height={900}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Divider label */}
+        <div style={{ textAlign: 'center', margin: 'clamp(24px,4vw,40px) 0 clamp(16px,3vw,28px)' }}>
+          <p style={{ fontSize: 'clamp(16px,2.2vw,22px)', fontWeight: 800, color: '#0f0f0f', lineHeight: 1.3 }}>
+            Качваш снимки в галерията си с едно съобщение.
+          </p>
+        </div>
+
+        {/* Screenshots — row 2 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 'clamp(10px,2.5vw,24px)',
+          alignItems: 'start',
+        }}>
+          {[
             { src: '/images/IMG_1822.jpg', alt: 'Качване на снимки за портфолио' },
             { src: '/images/IMG_1823.jpg', alt: 'Снимките добавени в галерията' },
           ].map((img) => (
