@@ -352,7 +352,7 @@ export default function AdminDashboardClient({
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('site');
-  const [siteInitialSection, setSiteInitialSection] = useState<string | undefined>(undefined);
+  const [siteNav, setSiteNav] = useState<{ section: string; v: number } | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
   const [notice, setNotice]       = useState('');
@@ -2915,7 +2915,7 @@ export default function AdminDashboardClient({
 
           {/* ── Onboarding checklist ── */}
           {activeTab === 'site' && (
-            <OnboardingChecklist site={site} onGoToTab={(tab, subtab) => { setSiteInitialSection(subtab); switchTab(tab as TabId); }} />
+            <OnboardingChecklist site={site} onGoToTab={(tab, subtab) => { if (subtab) setSiteNav(prev => ({ section: subtab, v: (prev?.v ?? 0) + 1 })); switchTab(tab as TabId); }} />
           )}
 
           {/* ── Site URL + QR bar ── */}
@@ -2987,7 +2987,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} initialSection={siteInitialSection as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} />
             </>
           )}
 

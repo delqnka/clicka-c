@@ -49,11 +49,12 @@ export function SiteTabPanel({
   onSlugSaved: (newSlug: string) => void;
   onNavigateToDomain?: () => void;
   initialSection?: SiteSectionId;
+  siteNavVersion?: number;
 }) {
   const [section, setSection] = useState<SiteSectionId>(initialSection ?? 'basics');
   useEffect(() => {
     if (initialSection) setSection(initialSection);
-  }, [initialSection]);
+  }, [initialSection, siteNavVersion]);
   const fieldInp: CSSProperties = { ...inp, padding: '7px 10px', fontSize: 14 };
 
   return (
