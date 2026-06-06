@@ -51,12 +51,12 @@ function SectionPills({
             onClick={() => onChange(id)}
             style={{
               borderRadius: 999,
-              border: active ? `1px solid ${ADMIN_T.text}` : `1px solid ${ADMIN_T.border}`,
-              background: active ? ADMIN_T.text : '#fff',
-              color: active ? '#fff' : ADMIN_T.text,
+              border: active ? '1px solid #007AFF' : `1px solid ${ADMIN_T.border}`,
+              background: '#fff',
+              color: active ? '#007AFF' : ADMIN_T.muted,
               padding: '5px 11px',
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 400,
               cursor: 'pointer',
               flexShrink: 0,
               whiteSpace: 'nowrap',
