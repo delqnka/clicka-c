@@ -2364,7 +2364,6 @@ export default function AdminDashboardClient({
                 );
                 if (visibleTabs.length === 0) return null;
                 const isGroupOpen = openGroups.has(group.label);
-                const isSettings = group.label === 'Настройки';
                 return (
                   <div key={group.label}>
                     <button
@@ -2481,47 +2480,45 @@ export default function AdminDashboardClient({
                         );
                       })}
                     </div>
-                    {isSettings && (
-                      <div style={{ marginTop: 8 }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNavOpen(false);
-                            window.dispatchEvent(new Event('clicka:open-chat'));
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            width: '100%',
-                            padding: '10px 12px',
-                            borderRadius: 12,
-                            border: `1px solid ${T.border}`,
-                            background: '#fff',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                            fontWeight: 500,
-                            color: '#18181B',
-                            WebkitTapHighlightColor: 'transparent',
-                          }}
-                        >
-                          <span style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: 28, height: 28, borderRadius: 999,
-                            background: ICON_GRADIENT, color: '#fff', flexShrink: 0,
-                          }}>
-                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                            </svg>
-                          </span>
-                          Чат поддръжка
-                        </button>
-                      </div>
-                    )}
                     </div>
                   </div>
                 );
               })}
+
+              {/* ── Чат поддръжка — 4-та секция ── */}
+              <div>
+                <p style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', margin: '0 4px 8px',
+                  background: ICON_GRADIENT, WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent',
+                }}>Чат с поддръжка</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNavOpen(false);
+                    window.dispatchEvent(new Event('clicka:open-chat'));
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    width: '100%', padding: '10px 12px', borderRadius: 12,
+                    border: `1px solid ${T.border}`, background: '#fff',
+                    cursor: 'pointer', fontSize: 14, fontWeight: 500,
+                    color: '#18181B', WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <span style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 28, height: 28, borderRadius: 999,
+                    background: ICON_GRADIENT, color: '#fff', flexShrink: 0,
+                  }}>
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </span>
+                  Напиши ни
+                </button>
+              </div>
             </div>
 
             <div
