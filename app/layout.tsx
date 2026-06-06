@@ -84,6 +84,9 @@ export const metadata: Metadata = {
     title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
     description: 'Готов за под 15 минути. 0% комисионна. От 0,82 € на ден.',
   },
+  other: {
+    'impact-site-verification': '4885e315-7bef-4133-b3c5-fd82b1aa0c3f',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
