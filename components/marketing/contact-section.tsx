@@ -17,7 +17,12 @@ export function ContactSection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      setStatus(res.ok ? 'sent' : 'error');
+      if (res.ok) {
+        setStatus('sent');
+        if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Lead');
+      } else {
+        setStatus('error');
+      }
     } catch {
       setStatus('error');
     }

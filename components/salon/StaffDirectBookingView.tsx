@@ -197,6 +197,7 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
         weekday: 'long', day: 'numeric', month: 'long',
       });
       setSuccessDetails({ serviceName, dateLabel, time: selectedTime });
+      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Schedule');
       setBookingSuccess(`${serviceName} — ${dateLabel} в ${selectedTime} ч.`);
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');

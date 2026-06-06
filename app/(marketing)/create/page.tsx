@@ -127,6 +127,7 @@ function CreatePageContent() {
     }
 
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
+    if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'InitiateCheckout');
     if (wantsInvoice) {
       if (!companyName.trim()) { setError('Въведи наименование на фирмата.'); return; }
       if (!/^\d{9}$/.test(eik.trim())) { setError('ЕИК трябва да е точно 9 цифри.'); return; }
@@ -153,7 +154,11 @@ function CreatePageContent() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Грешка');
-      if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
+      if (data.checkoutUrl) {
+        if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Subscribe', { value: '0.00', currency: 'BGN', predicted_ltv: '0.00' });
+        window.location.href = data.checkoutUrl;
+        return;
+      }
       throw new Error('Няма линк за плащане');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Грешка при пренасочване');

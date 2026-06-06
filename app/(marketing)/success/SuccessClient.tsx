@@ -66,6 +66,7 @@ export default function SuccessClient({
       if (!res.ok) throw new Error(data.error || 'Грешен код.');
       setConfirmed(true);
       setIsNewUser(!!data.isNewUser);
+      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'CompleteRegistration');
       setRedirectTo(data.redirectTo || '/admin');
       setTimeout(() => {
         window.location.href = data.redirectTo || '/admin';
