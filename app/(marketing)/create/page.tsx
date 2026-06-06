@@ -300,7 +300,7 @@ function CreatePageContent() {
           {/* SOLO */}
           <button
             type="button"
-            onClick={() => setPlan('solo')}
+            onClick={() => { setPlan('solo'); if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'AddToCart', { content_name: 'SOLO', currency: 'BGN', value: PRICES.solo[period] }); }}
             className={`cp-plan-card${plan === 'solo' ? ' selected' : ''}`}
           >
             <div className="flex items-start justify-between gap-4">
@@ -374,7 +374,7 @@ function CreatePageContent() {
           {/* TEAM */}
           <button
             type="button"
-            onClick={() => setPlan('team')}
+            onClick={() => { setPlan('team'); if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'AddToCart', { content_name: 'TEAM', currency: 'BGN', value: PRICES.team[period] }); }}
             className={`cp-plan-card${plan === 'team' ? ' selected' : ''}`}
           >
             <div className="flex items-start justify-between gap-4">
