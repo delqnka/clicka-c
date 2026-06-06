@@ -35,6 +35,7 @@ export function SiteTabPanel({
   rootDomain,
   onSlugSaved,
   onNavigateToDomain,
+  initialSection,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -47,8 +48,9 @@ export function SiteTabPanel({
   rootDomain: string;
   onSlugSaved: (newSlug: string) => void;
   onNavigateToDomain?: () => void;
+  initialSection?: SiteSectionId;
 }) {
-  const [section, setSection] = useState<SiteSectionId>('basics');
+  const [section, setSection] = useState<SiteSectionId>(initialSection ?? 'basics');
   const fieldInp: CSSProperties = { ...inp, padding: '7px 10px', fontSize: 14 };
 
   return (

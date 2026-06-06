@@ -352,6 +352,7 @@ export default function AdminDashboardClient({
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('site');
+  const [siteInitialSection, setSiteInitialSection] = useState<string | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
   const [notice, setNotice]       = useState('');
@@ -442,6 +443,7 @@ export default function AdminDashboardClient({
   const [smsPanelLoading, setSmsPanelLoading] = useState(false);
   const [smsPendingReminders, setSmsPendingReminders] = useState(0);
   const [tgCodeCopied, setTgCodeCopied] = useState(false);
+  const [tgBannerHidden, setTgBannerHidden] = useState(false);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
   const [portfolioPending, setPortfolioPending] = useState<Set<string>>(() => new Set());
   const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
@@ -622,6 +624,16 @@ export default function AdminDashboardClient({
     let t = p.get('tab');
     if (t === 'notifications') t = p.get('smsPurchase') ? 'sms' : 'integrations';
     if (t && TABS.some(tab => tab.id === t)) setActiveTab(t as TabId);
+  }, []);
+
+  // Prevent browser back-swipe from leaving the admin
+  useEffect(() => {
+    window.history.pushState({ admin: true }, '');
+    const onPopState = () => {
+      window.history.pushState({ admin: true }, '');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   useEffect(() => {
@@ -2343,6 +2355,7 @@ export default function AdminDashboardClient({
                 );
                 if (visibleTabs.length === 0) return null;
                 const isGroupOpen = openGroups.has(group.label);
+                const isSettings = group.label === 'Настройки';
                 return (
                   <div key={group.label}>
                     <button
@@ -2459,6 +2472,43 @@ export default function AdminDashboardClient({
                         );
                       })}
                     </div>
+                    {isSettings && (
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNavOpen(false);
+                            window.dispatchEvent(new Event('clicka:open-chat'));
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            border: `1px solid ${T.border}`,
+                            background: '#fff',
+                            cursor: 'pointer',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: '#18181B',
+                            WebkitTapHighlightColor: 'transparent',
+                          }}
+                        >
+                          <span style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 28, height: 28, borderRadius: 999,
+                            background: ICON_GRADIENT, color: '#fff', flexShrink: 0,
+                          }}>
+                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                          </span>
+                          Чат поддръжка
+                        </button>
+                      </div>
+                    )}
                     </div>
                   </div>
                 );
@@ -2856,7 +2906,7 @@ export default function AdminDashboardClient({
 
           {/* ── Onboarding checklist ── */}
           {activeTab === 'site' && (
-            <OnboardingChecklist site={site} onGoToTab={(tab) => setActiveTab(tab as TabId)} />
+            <OnboardingChecklist site={site} onGoToTab={(tab, subtab) => { setSiteInitialSection(subtab); switchTab(tab as TabId); }} />
           )}
 
           {/* ── Site URL + QR bar ── */}
@@ -2928,7 +2978,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} initialSection={siteInitialSection as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} />
             </>
           )}
 
@@ -3336,7 +3386,7 @@ export default function AdminDashboardClient({
       </div>
 
       {/* ── Telegram connect banner ───────────────────── */}
-      {!site.telegramChatId && (
+      {!site.telegramChatId && !tgBannerHidden && (
         <div style={{
           position: 'fixed',
           bottom: isMobile ? 84 : 24,
@@ -3353,6 +3403,7 @@ export default function AdminDashboardClient({
           alignItems: 'center',
           gap: 12,
           color: '#fff',
+          position: 'relative',
         }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, opacity: 0.9 }}>
             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.038 9.593c-.152.678-.549.843-1.112.524l-3.078-2.268-1.484 1.428c-.164.164-.302.302-.619.302l.221-3.131 5.703-5.152c.248-.221-.054-.344-.383-.123L7.12 14.073l-3.031-.947c-.658-.206-.671-.658.138-.975l11.84-4.564c.548-.197 1.028.134.495.661z"/>
@@ -3425,6 +3476,31 @@ export default function AdminDashboardClient({
             }}
           >
             Отвори →
+          </button>
+          <button
+            type="button"
+            aria-label="Скрий банера"
+            onClick={() => setTgBannerHidden(true)}
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: 999,
+              width: 22,
+              height: 22,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: '#fff',
+              flexShrink: 0,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
           </button>
         </div>
       )}
@@ -3536,7 +3612,7 @@ export default function AdminDashboardClient({
           opacity: 0.85;
         }
       `}</style>
-      <ChatWidget mobileBottomOffset={isMobile ? 80 : 0} />
+      <ChatWidget mobileBottomOffset={0} hideBubble={isMobile} />
     </div>
   );
 }

@@ -24,7 +24,7 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function ChatWidget({ mobileBottomOffset = 0 }: { mobileBottomOffset?: number } = {}) {
+export function ChatWidget({ mobileBottomOffset = 0, hideBubble = false }: { mobileBottomOffset?: number; hideBubble?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState('');
@@ -400,7 +400,7 @@ export function ChatWidget({ mobileBottomOffset = 0 }: { mobileBottomOffset?: nu
           </div>
         )}
 
-        {!open && (
+        {!open && !hideBubble && (
           <button
             onClick={() => setOpen(true)}
             style={{
