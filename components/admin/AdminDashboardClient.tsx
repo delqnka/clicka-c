@@ -3196,7 +3196,7 @@ export default function AdminDashboardClient({
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
-                    background: 'rgba(255,255,255,0.25)',
+                    background: '#fff',
                     border: 'none',
                     borderRadius: 6,
                     padding: '1px 7px',
@@ -3204,7 +3204,7 @@ export default function AdminDashboardClient({
                     fontWeight: 800,
                     fontSize: 13,
                     letterSpacing: '0.05em',
-                    color: '#fff',
+                    color: '#e11d48',
                     cursor: 'pointer',
                     verticalAlign: 'middle',
                   }}
