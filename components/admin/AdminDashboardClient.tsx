@@ -52,6 +52,7 @@ import {
 } from '@/components/admin/lazy-admin-tabs';
 import { AccountTabPanel } from '@/components/admin/tabs/account-tab-panel';
 import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
+import { OnboardingChecklist } from '@/components/admin/OnboardingChecklist';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer } from '@/lib/salon-offers';
 import {
@@ -2819,6 +2820,11 @@ export default function AdminDashboardClient({
               </div>
             );
           })()}
+
+          {/* ── Onboarding checklist ── */}
+          {activeTab === 'site' && (
+            <OnboardingChecklist site={site} onGoToTab={(tab) => setActiveTab(tab as TabId)} />
+          )}
 
           {/* ── Site URL + QR bar ── */}
           {activeTab === 'site' && (
