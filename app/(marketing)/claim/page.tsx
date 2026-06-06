@@ -17,6 +17,7 @@ export default async function RootClaimPage() {
   return (
     <ClaimPageClient
       slug={salon.slug}
+      displayName={salon.customDomain ?? salon.slug}
       submitPayload={{}}
       signInHref="/admin/sign-in"
       siteHref="/"

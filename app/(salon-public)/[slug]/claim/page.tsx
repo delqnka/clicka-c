@@ -6,6 +6,7 @@ export default function ClaimPage({ params }: { params: { slug: string } }) {
   return (
     <ClaimPageClient
       slug={slug}
+      displayName={slug}
       signInHref={`/${slug}/admin/sign-in`}
       siteHref={`/${slug}`}
     />

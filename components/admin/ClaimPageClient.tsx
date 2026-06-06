@@ -5,11 +5,13 @@ import { useState } from 'react';
 
 export default function ClaimPageClient({
   slug,
+  displayName,
   submitPayload,
   signInHref,
   siteHref,
 }: {
   slug: string;
+  displayName?: string;
   submitPayload?: { slug?: string };
   signInHref: string;
   siteHref: string;
@@ -93,7 +95,7 @@ export default function ClaimPageClient({
           Активирай dashboard-а за своя сайт
         </h1>
         <p style={{ margin: '12px 0 0', fontSize: 15, lineHeight: 1.65, color: '#121212' }}>
-          За <strong>{slug}</strong> изпращаме код само до имейла, с който е създаден сайтът. След потвърждение влизаш директно в админ панела.
+          За <strong>{displayName ?? slug}</strong> изпращаме код само до имейла, с който е създаден сайтът. След потвърждение влизаш директно в админ панела.
         </p>
 
         {notice ? (
@@ -244,9 +246,6 @@ export default function ClaimPageClient({
         )}
 
         <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Link href={signInHref} style={{ color: '#000', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
-            Имаш акаунт и искаш magic link
-          </Link>
           <Link href={siteHref} style={{ color: '#000', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
             Виж сайта
           </Link>

@@ -114,10 +114,10 @@ function SetPasswordForm() {
       </div>
 
       <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-        Създай акаунт
+        Задай парола
       </h1>
       <p style={{ margin: '0 0 28px', color: 'rgba(0,0,0,0.45)', fontSize: 14, lineHeight: 1.6 }}>
-        Въведи имейл и парола за достъп до твоя панел.
+        Избери парола за достъп до твоя панел.
       </p>
 
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
