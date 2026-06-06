@@ -34,6 +34,7 @@ import {
   X,
   KeyRound,
   CreditCard,
+  QrCode,
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -403,6 +404,7 @@ export default function AdminDashboardClient({
   const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [qrOpen, setQrOpen] = useState(false);
   const [pwaInstallOpen, setPwaInstallOpen] = useState(false);
   const [blogActiveIndex, setBlogActiveIndex] = useState(0);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
@@ -2828,9 +2830,115 @@ export default function AdminDashboardClient({
             );
           })()}
 
-          {activeTab === 'site' ? (
-            <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} />
-          ) : null}
+          {/* ── Site URL + QR bar ── */}
+          {activeTab === 'site' && (
+            <>
+              {/* URL + QR chip */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                marginBottom: 14,
+                padding: '10px 14px',
+                borderRadius: 14,
+                background: 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)',
+                border: '1px solid rgba(219,39,119,0.15)',
+              }}>
+                {/* URL link */}
+                <a
+                  href={sitePublicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    flex: 1, minWidth: 0,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    textDecoration: 'none',
+                  }}
+                >
+                  <ExternalLink size={14} style={{ color: '#db2777', flexShrink: 0 }} />
+                  <span style={{
+                    fontSize: 13, fontWeight: 600,
+                    color: '#db2777',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{publicSiteHost}</span>
+                </a>
+                {/* Copy button */}
+                <button
+                  type="button"
+                  title="Копирай линка"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(sitePublicUrl).then(() => setNotice('Линкът е копиран!'));
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 34, height: 34, borderRadius: 10, border: 'none',
+                    background: 'rgba(219,39,119,0.1)', color: '#db2777',
+                    cursor: 'pointer', flexShrink: 0,
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <Copy size={15} />
+                </button>
+                {/* QR button */}
+                <button
+                  type="button"
+                  title="QR код"
+                  onClick={() => setQrOpen(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 34, height: 34, borderRadius: 10, border: 'none',
+                    background: ICON_GRADIENT, color: '#fff',
+                    cursor: 'pointer', flexShrink: 0,
+                    boxShadow: '0 4px 12px rgba(219,39,119,0.30)',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <QrCode size={16} />
+                </button>
+              </div>
+
+              {/* QR modal */}
+              {qrOpen && (
+                <div
+                  onClick={() => setQrOpen(false)}
+                  style={{
+                    position: 'fixed', inset: 0, zIndex: 200,
+                    background: 'rgba(0,0,0,0.55)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 24,
+                  }}
+                >
+                  <div
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      background: '#fff', borderRadius: 24, padding: '28px 24px',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+                      boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
+                      maxWidth: 300, width: '100%',
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#18181B', textAlign: 'center' }}>QR код на сайта</p>
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(sitePublicUrl)}&color=db2777&bgcolor=ffffff`}
+                      alt="QR код"
+                      width={220} height={220}
+                      style={{ borderRadius: 12, border: '1px solid #f3e8ff' }}
+                    />
+                    <p style={{ margin: 0, fontSize: 12, color: '#71717A', textAlign: 'center', wordBreak: 'break-all' }}>{sitePublicUrl}</p>
+                    <button
+                      type="button"
+                      onClick={() => setQrOpen(false)}
+                      style={{
+                        width: '100%', padding: '12px', borderRadius: 12, border: 'none',
+                        background: ICON_GRADIENT, color: '#fff',
+                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >Затвори</button>
+                  </div>
+                </div>
+              )}
+
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} />
+            </>
+          )}
 
           {activeTab === 'images' ? (
             <LazyImagesTabPanel
