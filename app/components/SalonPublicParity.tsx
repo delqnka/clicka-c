@@ -1981,7 +1981,7 @@ export default function SalonPublicParity({
               <div className="mt-5 space-y-4 pt-2 text-sm salon-text-muted">
                 <div className="flex gap-2">
                   <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--salon-primary)]" aria-hidden />
-                  <span className="min-w-0 leading-snug">{getCurrentStatusString(openingHoursMerged)}</span>
+                  <span className="min-w-0 leading-snug">{currentStatusLabel}</span>
                 </div>
                 {mapsHref || address || city ? (
                   <div>

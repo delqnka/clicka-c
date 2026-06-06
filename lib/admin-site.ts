@@ -97,6 +97,7 @@ export type AdminSitePayload = {
   billingPeriod: string | null;
   planExpiresAt: string | null;
   brandIds: string[];
+  onboardingTourDone: boolean;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
