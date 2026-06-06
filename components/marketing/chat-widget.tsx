@@ -149,6 +149,8 @@ export function ChatWidget({ mobileBottomOffset = 0 }: { mobileBottomOffset?: nu
     if (!text || loading || sendingRef.current) return;
     sendingRef.current = true;
     setInput('');
+    const isFirstMessage = messages.filter((m) => m.role === 'user').length === 0;
+    if (isFirstMessage && typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Lead');
 
     if (humanMode) {
       setMessages((prev) => [...prev, { role: 'user', content: text }]);
