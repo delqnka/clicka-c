@@ -454,7 +454,7 @@ export function TelegramManagementSection() {
             { src: '/images/IMG_1821.jpg', alt: 'Записване на клиент и добавяне на услуга' },
             { src: '/images/IMG_1826 2.jpg', alt: 'Преместване на резервация и бележки за клиент' },
           ].map((img) => (
-            <div key={img.src} style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: '100%' }}>
+            <div key={img.src} style={{ borderRadius: 38, overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.18)', width: '100%' }}>
               <Image
                 src={img.src}
                 alt={img.alt}
@@ -468,8 +468,8 @@ export function TelegramManagementSection() {
         </div>
 
         {/* Divider label */}
-        <div style={{ textAlign: 'center', margin: 'clamp(24px,4vw,40px) 0 clamp(16px,3vw,28px)' }}>
-          <p style={{ fontSize: 'clamp(16px,2.2vw,22px)', fontWeight: 800, color: '#0f0f0f', lineHeight: 1.3 }}>
+        <div style={{ textAlign: 'center', margin: 'clamp(40px,7vw,72px) 0 clamp(32px,5vw,56px)' }}>
+          <p style={{ fontSize: 'clamp(22px,4vw,36px)', fontWeight: 800, lineHeight: 1.2, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Качваш снимки в галерията си с едно съобщение.
           </p>
         </div>
@@ -485,7 +485,7 @@ export function TelegramManagementSection() {
             { src: '/images/IMG_1822.jpg', alt: 'Качване на снимки за портфолио' },
             { src: '/images/IMG_1823.jpg', alt: 'Снимките добавени в галерията' },
           ].map((img) => (
-            <div key={img.src} style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: '100%' }}>
+            <div key={img.src} style={{ borderRadius: 38, overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.18)', width: '100%' }}>
               <Image
                 src={img.src}
                 alt={img.alt}
