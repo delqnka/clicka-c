@@ -105,17 +105,17 @@ export async function POST(request: NextRequest) {
   const sendResult = await resend.emails.send({
     from: 'Clicka.bg <noreply@clicka.bg>',
     to: allowedEmail,
-    subject: `Код за достъп до ${salon.name}`,
+    subject: `🔑 Код за достъп / Clicka.bg`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
-        <h2 style="color: #111; margin-bottom: 12px;">Код за claim на сайта</h2>
-        <p style="font-size: 15px; line-height: 1.6; color: #222;">
-          Въведете този код, за да активирате собствения си dashboard за <strong>${salon.name}</strong>.
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
+        <h2 style="color: #111; margin: 0 0 16px; font-size: 22px;">🔑 Код за достъп</h2>
+        <p style="font-size: 15px; line-height: 1.6; color: #444; margin: 0 0 24px;">
+          Използвайте този код, за да влезете в управлението на сайта си.
         </p>
-        <div style="margin: 24px 0; padding: 18px 20px; border-radius: 16px; background: #111; color: #fff; font-size: 34px; font-weight: 800; letter-spacing: 0.24em; text-align: center;">
+        <div style="margin: 0 0 24px; padding: 20px; border-radius: 16px; background: #F3F4F6; color: #111; font-size: 36px; font-weight: 800; letter-spacing: 0.28em; text-align: center; border: 1.5px solid #E5E7EB;">
           ${code}
         </div>
-        <p style="font-size: 13px; color: #555; line-height: 1.6;">
+        <p style="font-size: 13px; color: #888; line-height: 1.6; margin: 0;">
           Кодът е валиден 10 минути. Ако не сте поискали този код, просто игнорирайте имейла.
         </p>
       </div>

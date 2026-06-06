@@ -82,7 +82,7 @@ export default function SuccessClient({
     : '';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT, display: 'flex', flexDirection: 'column', overflowX: 'hidden', position: 'relative' }}>
+    <div className="sc-root" style={{ background: '#fff', fontFamily: FONT, display: 'flex', flexDirection: 'column', overflowX: 'hidden', position: 'relative' }}>
       <style>{`
         @keyframes popIn    { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }
         @keyframes drawCheck{ 0%{opacity:0;stroke-dasharray:30;stroke-dashoffset:30} 100%{opacity:1;stroke-dasharray:30;stroke-dashoffset:0} }
@@ -101,13 +101,18 @@ export default function SuccessClient({
           animation:spin .75s linear infinite; display:inline-block;
         }
         .otp-input::placeholder { letter-spacing:0.25em; color:rgba(0,0,0,0.2); }
+        .sc-root {
+          min-height: 100vh;
+          min-height: 100dvh;
+          min-height: -webkit-fill-available;
+        }
       `}</style>
 
       <nav style={{ height: 56, display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '1px solid rgba(0,0,0,.07)', background: '#fff' }}>
         <ClickaLogo size="compact" />
       </nav>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center', position: 'relative', zIndex: 1, boxSizing: 'border-box', width: '100%' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: '32px 20px 40px', paddingTop: 'max(32px, 8vh)', textAlign: 'center', position: 'relative', zIndex: 1, boxSizing: 'border-box', width: '100%' }}>
 
         {/* Check circle */}
         <div className="check-circle" style={{ width: 80, height: 80, borderRadius: '50%', background: confirmed && !isNewUser ? GRAD_GREEN : GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, boxShadow: confirmed && !isNewUser ? '0 16px 40px rgba(34,197,94,.3)' : GRAD_SHADOW, transition: 'background .5s, box-shadow .5s' }}>
