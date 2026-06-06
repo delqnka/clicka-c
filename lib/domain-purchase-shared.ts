@@ -1,6 +1,6 @@
 export const DOMAIN_PURCHASE_CURRENCY = 'eur';
-export const DOMAIN_SETUP_FEE_CENTS = 2500;
-export const DOMAIN_SETUP_FEE_BGN_CENTS = 4890;
+export const DOMAIN_SETUP_FEE_CENTS = 0; // TEST: временно 0 (оригинал: 2500)
+export const DOMAIN_SETUP_FEE_BGN_CENTS = 0; // TEST: временно 0 (оригинал: 4890)
 
 export type DomainTldOption = {
   value: string;
@@ -13,10 +13,10 @@ export type DomainTldOption = {
 };
 
 export const DOMAIN_TLD_OPTIONS: DomainTldOption[] = [
-  { value: 'com', label: '.com', feeCents: 1200, feeBgnCents: 2347 },
-  { value: 'bg', label: '.bg', feeCents: 3000, feeBgnCents: 5867 },
-  { value: 'org', label: '.org', feeCents: 800, feeBgnCents: 1565 },
-  { value: 'info', label: '.info', feeCents: 800, feeBgnCents: 1565 },
+  { value: 'com', label: '.com', feeCents: 100, feeBgnCents: 100 }, // TEST: 1 EUR (оригинал: 1200 / 2347)
+  { value: 'bg', label: '.bg', feeCents: 100, feeBgnCents: 100 },   // TEST: 1 EUR (оригинал: 3000 / 5867)
+  { value: 'org', label: '.org', feeCents: 100, feeBgnCents: 100 }, // TEST: 1 EUR (оригинал: 800 / 1565)
+  { value: 'info', label: '.info', feeCents: 100, feeBgnCents: 100 }, // TEST: 1 EUR (оригинал: 800 / 1565)
 ];
 
 export type DomainPurchaseStatus =
