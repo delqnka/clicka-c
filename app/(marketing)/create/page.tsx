@@ -106,6 +106,7 @@ function CreatePageContent() {
   const planKey  = `${plan}_${period}` as const;
 
   async function handlePay() {
+    if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'InitiateCheckout');
     if (grantToken) {
       setIsSubmitting(true);
       setError('');
@@ -127,13 +128,13 @@ function CreatePageContent() {
     }
 
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
-    if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'InitiateCheckout');
     if (wantsInvoice) {
       if (!companyName.trim()) { setError('Въведи наименование на фирмата.'); return; }
       if (!/^\d{9}$/.test(eik.trim())) { setError('ЕИК трябва да е точно 9 цифри.'); return; }
       if (vatNumber.trim() && !/^BG\d{9,10}$/i.test(vatNumber.trim())) {
         setError('ДДС номерът трябва да е във формат BG123456789.'); return;
       }
+      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'AddPaymentInfo');
     }
     setIsSubmitting(true);
     setError('');
