@@ -3403,7 +3403,6 @@ export default function AdminDashboardClient({
           alignItems: 'center',
           gap: 12,
           color: '#fff',
-          position: 'relative',
         }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, opacity: 0.9 }}>
             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.038 9.593c-.152.678-.549.843-1.112.524l-3.078-2.268-1.484 1.428c-.164.164-.302.302-.619.302l.221-3.131 5.703-5.152c.248-.221-.054-.344-.383-.123L7.12 14.073l-3.031-.947c-.658-.206-.671-.658.138-.975l11.84-4.564c.548-.197 1.028.134.495.661z"/>
