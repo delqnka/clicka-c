@@ -4,7 +4,7 @@ import { requireAdminRequestAccess } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request);
-  if (!auth || auth.kind !== 'authorized') {
+  if (!auth || !auth.ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
