@@ -243,7 +243,7 @@ function CreatePageContent() {
             padding: 12px 16px 20px;
             z-index: 40;
           }
-          .cp-sticky-spacer { height: 180px; }
+          .cp-sticky-spacer { height: 160px; }
         }
       `}</style>
 
@@ -258,7 +258,7 @@ function CreatePageContent() {
       >
         <ClickaLogo size="nav" />
         <a href="/" className="text-[13px] font-semibold text-[#6b7280] hover:text-[#0a0a0a] transition-colors">
-          ← Начало
+          ← Назад
         </a>
       </nav>
 
@@ -532,10 +532,32 @@ function CreatePageContent() {
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{error}</div>
         )}
 
+        {/* Trust footer — before spacer so it's not hidden under fixed bar */}
+        <div className="mt-8 border-t border-[#e5e7eb] py-5 text-center text-[11px] text-[#9ca3af]">
+          <p>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mr-1 inline align-middle" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            Сигурно плащане чрез Stripe
+            {'  ·  '}
+            <a href="mailto:support@clicka.bg" className="hover:text-[#6b7280] transition-colors">support@clicka.bg</a>
+          </p>
+          <p className="mt-1">
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-[#6b7280] transition-colors">Общи условия</a>
+            {'  ·  '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-[#6b7280] transition-colors">Поверителност</a>
+          </p>
+        </div>
+
         <div className="cp-sticky-spacer" aria-hidden />
 
         {/* Pay button */}
         <div className="cp-sticky-bar mt-6">
+          {!grantToken && (
+            <p className="mb-2 text-center text-[13px] font-semibold text-[#0a0a0a]">
+              Плащаш еднократно {price} € за {period === '12m' ? '12 месеца' : '6 месеца'}.
+            </p>
+          )}
           <ButtonColorful
             label={isSubmitting
               ? (grantToken ? 'Активира…' : 'Пренасочване към Stripe…')
@@ -546,17 +568,7 @@ function CreatePageContent() {
             disabled={isSubmitting || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-4">
-            {['Еднократно плащане', 'Без месечни такси', 'Готов веднага'].map(t => (
-              <span key={t} className="flex items-center gap-1.5 text-[11px] text-[#6b7280]">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M20 6L9 17l-5-5" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {t}
-              </span>
-            ))}
-          </div>
-          <p className="mt-3 text-center text-[12px] text-[#6b7280]">
+          <p className="mt-2 text-center text-[12px] text-[#6b7280]">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mr-1 inline align-middle" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
@@ -564,6 +576,7 @@ function CreatePageContent() {
             <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2">Stripe</a>.
           </p>
         </div>
+
       </div>
     </div>
   );
