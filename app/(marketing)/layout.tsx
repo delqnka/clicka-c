@@ -4,6 +4,8 @@ import './marketing-tailwind.css';
 import { usePathname } from 'next/navigation';
 import { SiteFooter } from '@/components/marketing/site-footer';
 import { ChatWidget } from '@/components/marketing/chat-widget';
+import { ClarityScript } from '@/components/analytics/ClarityScript';
+import { CookieConsentBanner } from '@/components/analytics/CookieConsentBanner';
 
 const NO_FOOTER_PATHS = ['/create', '/success'];
 
@@ -16,6 +18,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       {children}
       {showFooter && <SiteFooter />}
       <ChatWidget />
+      <ClarityScript />
+      <CookieConsentBanner />
     </>
   );
 }
