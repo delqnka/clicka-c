@@ -19,7 +19,35 @@ const r2PublicNormalized = r2PublicRaw.trim().startsWith('http')
     : '';
 const r2Host = hostnameFromUrl(r2PublicNormalized);
 
+/** @type {import('next').NextConfig['headers']} */
+const securityHeaders = [
+  { key: 'X-Content-Type-Options',           value: 'nosniff' },
+  { key: 'X-Frame-Options',                 value: 'SAMEORIGIN' },
+  { key: 'Referrer-Policy',                 value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy',              value: 'camera=(), microphone=(), geolocation=()' },
+  { key: 'Strict-Transport-Security',       value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-DNS-Prefetch-Control',          value: 'on' },
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      // inline styles/scripts needed by Next.js hydration, Sentry, and Stripe
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' blob: data: https:",
+      "font-src 'self' https://fonts.gstatic.com",
+      "frame-src https://challenges.cloudflare.com https://js.stripe.com",
+      "connect-src 'self' https://openrouter.ai https://api.stripe.com https://o*.ingest.sentry.io https://sentry.io",
+      "worker-src 'self' blob:",
+    ].join('; '),
+  },
+];
+
 const nextConfig = {
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: '/(.*)', headers: securityHeaders }];
+  },
   env: {
     NEXT_PUBLIC_R2_PUBLIC_URL: r2PublicNormalized,
   },
