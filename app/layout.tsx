@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
+import Script from 'next/script';
 import { Inter, Manrope, Merriweather, Montserrat, Playfair_Display, Source_Code_Pro } from 'next/font/google';
 import { isSalonPublicRequest } from '@/lib/salon-public-request';
 import './globals.base.css';
@@ -95,6 +96,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="bg" className={htmlClass} suppressHydrationWarning>
+      <head>
+        <Script id="clarity-analytics" strategy="afterInteractive">{`
+          (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+          })(window, document, "clarity", "script", "x2t2g8dohk");
+        `}</Script>
+      </head>
       <body suppressHydrationWarning>{children}</body>
     </html>
   );
