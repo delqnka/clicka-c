@@ -23,7 +23,10 @@ export function DeferredSection({
   sectionRef,
 }: DeferredSectionProps) {
   const ref = useRef<HTMLElement | null>(null);
-  const [visible, setVisible] = useState(eager);
+  // Always render on server (SSR) to avoid hydration mismatch.
+  // On client, start deferred unless eager.
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
 
   const setRefs = (el: HTMLElement | null) => {
     ref.current = el;
@@ -31,6 +34,12 @@ export function DeferredSection({
   };
 
   useEffect(() => {
+    setMounted(true);
+    if (eager) setVisible(true);
+  }, [eager]);
+
+  useEffect(() => {
+    if (!mounted) return;
     const el = ref.current;
     if (!el || visible) return;
 
@@ -51,15 +60,19 @@ export function DeferredSection({
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [visible, rootMargin]);
+  }, [mounted, visible, rootMargin]);
 
-  useEffect(() => {
-    if (eager) setVisible(true);
-  }, [eager]);
+  // SSR and pre-mount: always render children (no placeholder).
+  // After mount: show placeholder until visible.
+  const showChildren = !mounted || visible;
 
   return (
-    <section ref={setRefs} className={className} style={!visible && minHeight > 0 ? { minHeight } : undefined}>
-      {visible ? children : null}
+    <section
+      ref={setRefs}
+      className={className}
+      style={mounted && !visible && minHeight > 0 ? { minHeight } : undefined}
+    >
+      {showChildren ? children : null}
     </section>
   );
 }
