@@ -18,7 +18,7 @@ const SIGN_IN_MAX = 10;
 const SIGN_IN_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const csrfErr = checkCsrfOrigin(request);
+  const csrfErr = await checkCsrfOrigin(request);
   if (csrfErr) return NextResponse.json({ error: csrfErr }, { status: 403 });
 
   const ip = getClientIp(request as unknown as Request);

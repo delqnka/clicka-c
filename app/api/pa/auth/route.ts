@@ -13,7 +13,7 @@ const PA_MAX = 5;
 const PA_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
-  const csrfErr = checkCsrfOrigin(request);
+  const csrfErr = await checkCsrfOrigin(request);
   if (csrfErr) return NextResponse.json({ error: csrfErr }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));

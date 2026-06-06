@@ -20,7 +20,7 @@ const RESET_MAX = 5;
 const RESET_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
-  const csrfErr = checkCsrfOrigin(request);
+  const csrfErr = await checkCsrfOrigin(request);
   if (csrfErr) return NextResponse.json({ error: csrfErr }, { status: 403 });
 
   const ip = getClientIp(request as unknown as Request);
