@@ -205,6 +205,99 @@ function ServiceAssignPanel({
   );
 }
 
+function PortalLinkInfo({ member, salonSlug }: { member: StaffMember; salonSlug: string }) {
+  const [link, setLink] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [confirmRegen, setConfirmRegen] = useState(false);
+
+  const generate = useCallback(async (regenerate: boolean) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(
+        `/api/admin/staff/${member.id}/portal-link?slug=${encodeURIComponent(salonSlug)}${regenerate ? '&regenerate=1' : ''}`,
+        { method: 'POST' },
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Грешка при генериране на линка');
+        return;
+      }
+      setLink(json.url);
+      setConfirmRegen(false);
+    } catch {
+      setError('Грешка при свързване със сървъра');
+    } finally {
+      setLoading(false);
+    }
+  }, [member.id, salonSlug]);
+
+  return (
+    <div style={{ marginTop: 14, display: 'grid', gap: 6 }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Линк за достъп до график
+      </p>
+      <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.5 }}>
+        Сподели този линк със служителя — той вижда само своя график и може сам да добавя резервации, без нужда от вход в админ панела.
+      </p>
+      {link ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: '#7C3AED', fontFamily: 'monospace', wordBreak: 'break-all' }}>{link}</span>
+          <CopyButton value={link} label="линк" />
+        </div>
+      ) : null}
+      {error ? <p style={{ margin: 0, fontSize: 12, color: '#dc2626' }}>{error}</p> : null}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {!link ? (
+          <button
+            type="button"
+            onClick={() => void generate(false)}
+            disabled={loading}
+            style={{
+              padding: '6px 12px', borderRadius: 8, border: `1px solid ${ADMIN_T.border}`,
+              background: '#fff', fontSize: 12, fontWeight: 500, cursor: loading ? 'wait' : 'pointer',
+              color: ADMIN_T.text,
+            }}
+          >
+            {loading ? 'Генерираме…' : 'Генерирай линк'}
+          </button>
+        ) : !confirmRegen ? (
+          <button
+            type="button"
+            onClick={() => setConfirmRegen(true)}
+            style={{
+              padding: '6px 12px', borderRadius: 8, border: `1px solid ${ADMIN_T.border}`,
+              background: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: ADMIN_T.muted,
+            }}
+          >
+            Регенерирай (старият линк ще спре да работи)
+          </button>
+        ) : (
+          <>
+            <span style={{ fontSize: 12, color: '#92400e' }}>Сигурен ли си? Старият линк ще престане да работи.</span>
+            <button
+              type="button"
+              onClick={() => void generate(true)}
+              disabled={loading}
+              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff', fontSize: 12, fontWeight: 600, color: '#dc2626', cursor: loading ? 'wait' : 'pointer' }}
+            >
+              {loading ? 'Генерираме…' : 'Да, регенерирай'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmRegen(false)}
+              style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${ADMIN_T.border}`, background: '#fff', fontSize: 12, color: ADMIN_T.muted, cursor: 'pointer' }}
+            >
+              Отказ
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OnboardingInfo({ member, salonSlug }: { member: StaffMember; salonSlug: string }) {
   const bookingUrl = `https://${salonSlug}.clicka.bg/book/${member.slug}`;
   return (
@@ -342,7 +435,7 @@ export function StaffTabPanel({ salonSlug, initialStaff, planLimit, salonService
 
       <AdminSection
         title="Служители"
-        desc={`${nonOwners.length} / ${planLimit} служителя — ти като собственик си в таб „Специалист" и не влизаш в това число`}
+        desc={`${nonOwners.length} / ${planLimit} служителя (ти като собственик не влизаш в този брой)`}
         action={
           canAdd ? (
             <button
@@ -560,6 +653,7 @@ export function StaffTabPanel({ salonSlug, initialStaff, planLimit, salonService
                         onUpdate={(ids) => updateMemberServices(member.id, ids)}
                       />
                       <OnboardingInfo member={member} salonSlug={salonSlug} />
+                      {!member.isOwner ? <PortalLinkInfo member={member} salonSlug={salonSlug} /> : null}
                     </div>
                   ) : null}
                 </div>

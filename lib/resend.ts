@@ -243,6 +243,7 @@ export async function sendStaffInviteEmail(
   staffName: string,
   salonName: string,
   onboardingCode: string,
+  portalUrl: string | null,
 ): Promise<void> {
   const firstName = staffName.split(' ')[0] ?? staffName;
   await sendResendWithRetry({
@@ -265,6 +266,20 @@ export async function sendStaffInviteEmail(
             ${escapeHtml(onboardingCode)}
           </span>
         </p>
+        ${portalUrl ? `
+        <p style="line-height: 1.7;">
+          Освен това можете да видите своя график и да добавяте резервации през личната си страница (без нужда от парола):
+        </p>
+        <p style="margin: 16px 0; text-align: center;">
+          <a href="${escapeHtml(portalUrl)}" style="display:inline-block;background:#7C3AED;color:#fff;font-weight:700;font-size:14px;
+                       padding:12px 24px;border-radius:10px;text-decoration:none;">
+            Виж моя график
+          </a>
+        </p>
+        <p style="font-size: 12px; line-height: 1.6; color: #999; word-break: break-all;">
+          Или копирайте линка: ${escapeHtml(portalUrl)}
+        </p>
+        ` : ''}
         <p style="line-height: 1.7;">След като се свържете, директно от Telegram ще можете да:</p>
         <ul style="line-height: 1.8; padding-left: 20px;">
           <li>получавате известия за нови резервации в реално време;</li>

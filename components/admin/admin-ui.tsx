@@ -114,7 +114,7 @@ export function AdminInfoCard({
   status,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   status: 'connected' | 'pending';
   children: ReactNode;
 }) {

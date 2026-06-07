@@ -2796,44 +2796,6 @@ export default function AdminDashboardClient({
           {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
           {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
 
-          {/* ── Plan info (always visible) ── */}
-          {(() => {
-            const expiresAt = site.planExpiresAt ? new Date(site.planExpiresAt) : null;
-            if (!expiresAt || isNaN(expiresAt.getTime())) return null;
-            const planLabel = site.plan === 'team' ? 'TEAM' : 'SOLO';
-            const periodLabel = site.billingPeriod === '6m' ? '6 месеца' : '12 месеца';
-            const expiresLabel = expiresAt.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' });
-            const startedAt = site.planStartedAt ? new Date(site.planStartedAt) : null;
-            const startedLabel = startedAt && !isNaN(startedAt.getTime())
-              ? startedAt.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' })
-              : null;
-            const priceLabel = site.planPaidAmount != null
-              ? `${(site.planPaidAmount / 100).toFixed(2)} ${site.planPaidCurrency ?? 'EUR'}`
-              : null;
-
-            return (
-              <div style={{
-                marginBottom: 12,
-                padding: '12px 16px',
-                borderRadius: 14,
-                border: `1px solid ${T.border}`,
-                background: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                flexWrap: 'wrap',
-              }}>
-                <CreditCard size={16} style={{ color: T.subtle, flexShrink: 0 }} />
-                <p style={{ margin: 0, fontSize: 13, color: T.text }}>
-                  План <strong>{planLabel}</strong> · {periodLabel}
-                  {startedLabel ? <> · платен на <strong>{startedLabel}</strong></> : null}
-                  {priceLabel ? <> за <strong>{priceLabel}</strong></> : null}
-                  {' '}· активен до <strong>{expiresLabel}</strong>
-                </p>
-              </div>
-            );
-          })()}
-
           {/* ── Plan renewal banner ── */}
           {(() => {
             const expiresAt = site.planExpiresAt ? new Date(site.planExpiresAt) : null;
@@ -3018,7 +2980,7 @@ export default function AdminDashboardClient({
             <LazyStaffTabPanel
               salonSlug={slug}
               initialStaff={staffMembers}
-              planLimit={site.plan === 'team' ? 3 : 1}
+              planLimit={site.plan === 'team' ? 2 : 1}
               salonServices={site.services}
             />
           ) : null}
@@ -3484,7 +3446,7 @@ export default function AdminDashboardClient({
           ) : null}
 
           {activeTab === 'payments' ? (
-            <LazyPaymentsTabPanel slug={slug} btn={btn} />
+            <LazyPaymentsTabPanel slug={slug} btn={btn} site={site} />
           ) : null}
 
           {activeTab === 'integrations' ? (

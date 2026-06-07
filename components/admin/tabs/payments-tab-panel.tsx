@@ -1,7 +1,7 @@
 'use client';
 
-import { CheckCircle2, ExternalLink, Loader2, RefreshCw, XCircle } from 'lucide-react';
-import { type CSSProperties, useEffect, useState } from 'react';
+import { CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
 
@@ -13,12 +13,23 @@ type StripeStatus = {
   detailsSubmitted?: boolean;
 };
 
+type PlanInfoSite = {
+  plan?: string | null;
+  billingPeriod?: string | null;
+  planStartedAt?: string | null;
+  planExpiresAt?: string | null;
+  planPaidAmount?: number | null;
+  planPaidCurrency?: string | null;
+};
+
 export function PaymentsTabPanel({
   slug,
   btn,
+  site,
 }: {
   slug: string;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
+  site?: PlanInfoSite;
 }) {
   const [status, setStatus] = useState<StripeStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,11 +76,52 @@ export function PaymentsTabPanel({
   return (
     <AdminSection
       title="Плащания"
-      desc="Свържи Stripe акаунт, за да приемаш онлайн плащания от клиенти."
     >
       <div style={{ display: 'grid', gap: 10 }}>
+        {(() => {
+          const expiresAt = site?.planExpiresAt ? new Date(site.planExpiresAt) : null;
+          if (!expiresAt || isNaN(expiresAt.getTime())) return null;
+          const planLabel = site?.plan === 'team' ? 'TEAM' : 'SOLO';
+          const periodLabel = site?.billingPeriod === '6m' ? '6 месеца' : '12 месеца';
+          const expiresLabel = expiresAt.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' });
+          const startedAt = site?.planStartedAt ? new Date(site.planStartedAt) : null;
+          const startedLabel = startedAt && !isNaN(startedAt.getTime())
+            ? startedAt.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' })
+            : null;
+          const priceLabel = site?.planPaidAmount != null
+            ? `${(site.planPaidAmount / 100).toFixed(2)} ${site?.planPaidCurrency ?? 'EUR'}`
+            : null;
+
+          return (
+            <div style={{
+              padding: '12px 16px',
+              borderRadius: 14,
+              border: `1px solid ${ADMIN_T.border}`,
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}>
+              <CreditCard size={16} style={{ color: ADMIN_T.muted, flexShrink: 0 }} />
+              <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.text }}>
+                План <strong>{planLabel}</strong> · {periodLabel}
+                {startedLabel ? <> · платен на <strong>{startedLabel}</strong></> : null}
+                {priceLabel ? <> за <strong>{priceLabel}</strong></> : null}
+                {' '}· активен до <strong>{expiresLabel}</strong>
+              </p>
+            </div>
+          );
+        })()}
         <AdminInfoCard
-          title="Stripe Connect"
+          title={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              Stripe Connect
+              <svg width="40" height="17" viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Stripe">
+                <path d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a8.33 8.33 0 0 1-4.56 1.1c-4.01 0-6.83-2.5-6.83-7.48 0-4.19 2.39-7.52 6.3-7.52 3.92 0 5.96 3.28 5.96 7.5 0 .4-.04 1.26-.06 1.48zm-5.92-5.62c-1.03 0-2.17.73-2.17 2.58h4.25c0-1.85-1.07-2.58-2.08-2.58zM40.95 20.3c-1.44 0-2.32-.6-2.9-1.04l-.02 4.63-4.12.87V5.57h3.76l.08 1.02a4.7 4.7 0 0 1 3.23-1.29c2.9 0 5.62 2.6 5.62 7.4 0 5.23-2.7 7.6-5.65 7.6zM40 8.95c-.95 0-1.54.34-1.97.81l.02 6.12c.4.44.98.78 1.95.78 1.52 0 2.54-1.65 2.54-3.87 0-2.15-1.04-3.84-2.54-3.84zM28.24 5.57h4.13v14.44h-4.13zM28.24.4 32.37 0v3.36l-4.13.87zM23.62 6.79l.26 1.22c1-1.78 2.99-1.6 3.55-1.4v3.79c-.55-.18-2.36-.43-3.43.96v8.65h-4.12V5.57h3.55l.19 1.22zM15.3 1.91v3.66h2.87v3.39h-2.87v6.18c0 1.43.62 1.78 1.84 1.78.45 0 .94-.08 1.4-.21v3.46c-.78.4-2.06.66-3.36.66-2.84 0-4-1.5-4-3.91l.02-7.96-1.91-.4V5.57h1.9V2.65zM6.36 9.92c0 .73.6 1.07 2.27 1.6 2.46.78 5.6 1.81 5.6 5.5 0 3.05-2.42 5.07-6.4 5.07-1.6 0-3.34-.32-5.07-1.05v-4.42c1.55.85 3.5 1.48 5.07 1.48 1.06 0 1.83-.28 1.83-1.13 0-.84-.96-1.18-2.78-1.78C4.3 14.42.93 13.2.93 9.16.93 6.05 3.36 4 7.18 4c1.53 0 3.06.23 4.59.86V9.2c-1.4-.74-3.18-1.13-4.6-1.13-1 0-1.62.28-1.62.95l.01-.1z" fill="#635BFF"/>
+              </svg>
+            </span>
+          }
           status={isFullyConnected ? 'connected' : 'pending'}
         >
           {loading ? (
@@ -133,13 +185,10 @@ export function PaymentsTabPanel({
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
-              <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-                Свържи своя Stripe акаунт (или създай нов), за да можеш да приемаш онлайн плащания от клиенти директно в своята сметка.
-              </p>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.8 }}>
-                <li>Парите отиват директно при теб</li>
-                <li>Clicka не взима комисиона</li>
-                <li>Сигурно — управлявано от Stripe</li>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
+                <BulletRow>Свържи своя Stripe акаунт (или създай нов), за да приемаш онлайн плащания директно в своята сметка</BulletRow>
+                <BulletRow>Парите отиват директно при теб — Clicka не взима комисиона</BulletRow>
+                <BulletRow>Сигурно — управлявано от Stripe</BulletRow>
               </ul>
               <button
                 type="button"
@@ -160,6 +209,15 @@ export function PaymentsTabPanel({
         </AdminInfoCard>
       </div>
     </AdminSection>
+  );
+}
+
+function BulletRow({ children }: { children: ReactNode }) {
+  return (
+    <li style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: '#a855f7', flexShrink: 0 }} />
+      <span>{children}</span>
+    </li>
   );
 }
 

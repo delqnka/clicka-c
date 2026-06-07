@@ -25,6 +25,7 @@ export async function ensureStaffSchema() {
           telegram_chat_id                text        UNIQUE,
           calendar_feed_token             text,
           onboarding_code                 text UNIQUE,
+          portal_token                    text,
           is_active                       boolean     NOT NULL DEFAULT true,
           created_at                      timestamptz NOT NULL DEFAULT now()
         )
@@ -36,6 +37,11 @@ export async function ensureStaffSchema() {
       await sql`
         CREATE UNIQUE INDEX IF NOT EXISTS staff_members_salon_slug_uniq
           ON staff_members(salon_id, slug)
+      `;
+      await sql`ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS portal_token text`;
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS staff_members_portal_token_uniq
+          ON staff_members(portal_token) WHERE portal_token IS NOT NULL
       `;
 
       // staff_services junction

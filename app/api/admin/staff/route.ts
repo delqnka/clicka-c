@@ -7,8 +7,11 @@ import {
   updateStaffMember,
   deleteStaffMember,
   getStaffLimit,
+  ensureStaffPortalToken,
 } from '@/lib/staff-members';
+import { getPlatformPublicUrl } from '@/lib/domain-routing';
 import { sendStaffInviteEmail } from '@/lib/resend';
+import { runAfterResponse } from '@/lib/run-after-response';
 
 function slugify(name: string): string {
   return name
@@ -89,9 +92,22 @@ export async function POST(request: NextRequest) {
   });
 
   if (member.email && member.onboardingCode) {
-    sendStaffInviteEmail(member.email, member.name, auth.salon.name, member.onboardingCode).catch((err) => {
-      console.error('Failed to send staff invite email:', err);
-    });
+    const memberEmail = member.email;
+    const onboardingCode = member.onboardingCode;
+    runAfterResponse(
+      ensureStaffPortalToken(member.id, salonId)
+        .then((token) => `${getPlatformPublicUrl(auth.salon.slug)}/staff-portal?token=${token}`)
+        .catch((err) => {
+          console.error('Failed to generate staff portal link:', err);
+          return null;
+        })
+        .then((portalUrl) =>
+          sendStaffInviteEmail(memberEmail, member.name, auth.salon.name, onboardingCode, portalUrl)
+        )
+        .catch((err) => {
+          console.error('Failed to send staff invite email:', err);
+        })
+    );
   }
 
   return NextResponse.json({ staff: member }, { status: 201 });

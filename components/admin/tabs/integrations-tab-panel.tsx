@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, Copy, RefreshCw } from 'lucide-react';
-import { type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { GOOGLE_PLACE_ID_FINDER_URL } from '@/components/admin/admin-constants';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
@@ -91,15 +91,21 @@ export function IntegrationsTabPanel({
               <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
                 Telegram ботът е свързан
               </p>
-              <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-                Получаваш известия при нова резервация, отказ или промяна. Можеш и да блокираш часове, като напишеш директно на бота.
-              </p>
-              <div style={{ background: '#F4F4F5', borderRadius: 8, padding: '10px 12px', marginTop: 2 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ADMIN_T.text }}>Пример:</p>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: ADMIN_T.muted, fontFamily: 'monospace' }}>
-                  зает 14:00-16:00 утре
-                </p>
-              </div>
+              <details>
+                <summary style={{ fontSize: 13, fontWeight: 600, color: ADMIN_T.text, cursor: 'pointer' }}>
+                  Какво можеш да правиш през бота?
+                </summary>
+                <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 6, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.5 }}>
+                  <BulletRow>Получаваш известия за нови резервации, отмени и промени</BulletRow>
+                  <BulletRow>Питаш за резервациите си — „колко часа имам утре", „кой е следващият ми клиент"</BulletRow>
+                  <BulletRow>Виждаш оборот и статистика — „оборот тази седмица", „топ услуги"</BulletRow>
+                  <BulletRow>Потвърждаваш, отменяш или местиш резервации с едно съобщение</BulletRow>
+                  <BulletRow>Добавяш нов клиент и записваш час направо от чата</BulletRow>
+                  <BulletRow>Блокираш часове или цели дни — „зает 14:00-16:00 утре", „почивен ден утре"</BulletRow>
+                  <BulletRow>Изпращаш SMS напомняния на клиенти</BulletRow>
+                  <BulletRow>Управляваш услугите си — добавяне, редакция на цена, изтриване</BulletRow>
+                </ul>
+              </details>
             </div>
           ) : (
             <>
@@ -172,18 +178,14 @@ export function IntegrationsTabPanel({
                         ? 'Outscraper още обработва заявката. Изчакай малко и натисни „Обнови статуса".'
                         : 'Place ID е запазен. Натисни „Извлечи ревютата", за да ги заредим на сайта.'
               : (
-                  <>
-                    Добави Google Place ID или Maps линк в раздел <strong>Сайт</strong> — виж{' '}
-                    <a
-                      href={GOOGLE_PLACE_ID_FINDER_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: ADMIN_T.accent, fontWeight: 600 }}
-                    >
-                      Place ID Finder
-                    </a>
-                    .
-                  </>
+                  <a
+                    href={GOOGLE_PLACE_ID_FINDER_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: ADMIN_T.accent, fontWeight: 600 }}
+                  >
+                    Place ID Finder
+                  </a>
                 )}
           </p>
           {reviewsFetch.result ? (
@@ -236,7 +238,7 @@ export function IntegrationsTabPanel({
             </div>
           ) : null}
           <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>Търси бизнес в Google и избери правилния профил:</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>Намери бизнеса си и избери правилния профил</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 value={googleBizQuery}
@@ -290,5 +292,14 @@ export function IntegrationsTabPanel({
         </AdminInfoCard>
       </div>
     </AdminSection>
+  );
+}
+
+function BulletRow({ children }: { children: ReactNode }) {
+  return (
+    <li style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: '#a855f7', flexShrink: 0 }} />
+      <span>{children}</span>
+    </li>
   );
 }

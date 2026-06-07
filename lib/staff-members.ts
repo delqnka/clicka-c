@@ -15,6 +15,7 @@ export type StaffMember = {
   telegramChatId: string | null;
   serviceIds: string[];
   onboardingCode: string | null;
+  portalToken: string | null;
 };
 
 type StaffRow = {
@@ -30,6 +31,7 @@ type StaffRow = {
   telegram_chat_id: string | null;
   service_ids: string[] | null;
   onboarding_code: string | null;
+  portal_token: string | null;
 };
 
 function rowToStaffMember(row: StaffRow): StaffMember {
@@ -46,6 +48,7 @@ function rowToStaffMember(row: StaffRow): StaffMember {
     telegramChatId: row.telegram_chat_id,
     serviceIds: row.service_ids ?? [],
     onboardingCode: row.onboarding_code ?? null,
+    portalToken: row.portal_token ?? null,
   };
 }
 
@@ -54,7 +57,7 @@ export async function getStaffMembers(salonId: string): Promise<StaffMember[]> {
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids
     FROM staff_members sm
     LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
@@ -73,7 +76,7 @@ export async function getStaffMemberBySlug(
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids
     FROM staff_members sm
     LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
@@ -92,7 +95,7 @@ export async function getStaffMemberByTelegramChatId(
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids,
       s.slug AS salon_slug, s.name AS salon_name
     FROM staff_members sm
@@ -112,7 +115,7 @@ export async function getStaffMemberById(id: string): Promise<StaffMember | null
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids
     FROM staff_members sm
     LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
@@ -129,7 +132,47 @@ export function isTeamPlan(plan: string): boolean {
 }
 
 export function getStaffLimit(plan: string): number {
-  return isTeamPlan(plan) ? 3 : 1;
+  return isTeamPlan(plan) ? 2 : 1;
+}
+
+export async function getStaffMemberByPortalToken(token: string): Promise<StaffMember | null> {
+  await ensureStaffSchema();
+  const rows = await sql`
+    SELECT
+      sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token,
+      ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids
+    FROM staff_members sm
+    LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
+    WHERE sm.portal_token = ${token}
+    GROUP BY sm.id
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return rowToStaffMember(rows[0] as StaffRow);
+}
+
+export async function ensureStaffPortalToken(id: string, salonId: string): Promise<string> {
+  await ensureStaffSchema();
+  const existing = await sql`
+    SELECT portal_token FROM staff_members WHERE id = ${id}::uuid AND salon_id = ${salonId}
+  `;
+  if (existing.length === 0) throw new Error('Staff member not found');
+  const current = (existing[0] as { portal_token: string | null }).portal_token;
+  if (current) return current;
+  return regenerateStaffPortalToken(id, salonId);
+}
+
+export async function regenerateStaffPortalToken(id: string, salonId: string): Promise<string> {
+  await ensureStaffSchema();
+  const token = crypto.randomBytes(24).toString('hex');
+  const rows = await sql`
+    UPDATE staff_members SET portal_token = ${token}
+    WHERE id = ${id}::uuid AND salon_id = ${salonId}
+    RETURNING id
+  `;
+  if (rows.length === 0) throw new Error('Staff member not found');
+  return token;
 }
 
 export async function createStaffMember(input: {
@@ -145,7 +188,7 @@ export async function createStaffMember(input: {
     INSERT INTO staff_members (salon_id, name, slug, email, onboarding_code)
     VALUES (${input.salonId}, ${input.name}, ${input.slug}, ${input.email ?? null}, ${onboardingCode})
     RETURNING id, salon_id, name, slug, email, bio, avatar_url, is_owner, is_active,
-              telegram_chat_id, onboarding_code
+              telegram_chat_id, onboarding_code, portal_token
   `;
   const row = rows[0] as StaffRow;
   const member = rowToStaffMember({ ...row, service_ids: [] });
