@@ -113,6 +113,24 @@ function CreatePageContent() {
   const [salonName,     setSalonName]     = useState('');
   const [slug,          setSlug]          = useState('');
   const [slugEdited,    setSlugEdited]    = useState(false);
+
+  // Възстановяваме името/адреса при връщане от Stripe (различен домейн → загубено React състояние)
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('clicka_create_draft');
+      if (!saved) return;
+      const draft = JSON.parse(saved) as { salonName?: string; slug?: string; slugEdited?: boolean };
+      if (draft.salonName) setSalonName(draft.salonName);
+      if (draft.slug) setSlug(draft.slug);
+      if (draft.slugEdited) setSlugEdited(true);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('clicka_create_draft', JSON.stringify({ salonName, slug, slugEdited }));
+    } catch { /* ignore */ }
+  }, [salonName, slug, slugEdited]);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [wantsInvoice,  setWantsInvoice]  = useState(false);
   const [companyName,   setCompanyName]   = useState('');
