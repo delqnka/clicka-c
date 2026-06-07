@@ -18,7 +18,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
     <>
       {children}
       {showFooter && <SiteFooter />}
-      <ChatWidget />
+      <ChatWidget mobileBottomOffset={showFooter ? 110 : 0} />
       <ClarityScript />
       <CookieConsentBanner />
     </>

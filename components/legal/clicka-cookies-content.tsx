@@ -34,7 +34,7 @@ export function ClickaCookiesContent() {
           сесията).
         </li>
         <li>
-          <strong>clicka-cookie-consent</strong> — запазва вашия избор за бисквитки (срок: 1
+          <strong>cookie-consent</strong> — запазва вашия избор за бисквитки (срок: 1
           година).
         </li>
       </ul>
@@ -44,18 +44,63 @@ export function ClickaCookiesContent() {
         Запомнят предпочитания (език, тема и др.) за по-добро потребителско изживяване.
       </p>
 
-      <h3>2.3. Аналитични бисквитки (изискват съгласие)</h3>
+      <h3>2.3. Аналитични и рекламни бисквитки (изискват съгласие)</h3>
       <p>
-        Събират анонимизирана информация за начина на ползване на платформата с цел подобряването
-        й. Активират се само при ваше изрично съгласие.
+        Събират информация за начина на ползване на платформата и за ефективността на рекламните
+        кампании на Clicka. Зареждат се единствено след даденото от вас изрично съгласие чрез
+        банера за бисквитки. При отказ на аналитични и рекламни бисквитки Google Analytics 4,
+        Meta Pixel и Microsoft Clarity няма да бъдат заредени на устройството ви. Конкретно
+        използваме:
       </p>
+      <ul>
+        <li>
+          <strong>Google Analytics 4 (GA4)</strong> — статистика за посещаемостта и ползването на
+          платформата.{' '}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">
+            Политика за поверителност на Google
+          </a>
+          .
+        </li>
+        <li>
+          <strong>Microsoft Clarity</strong> — анализ на поведението на посетителите (топлинни
+          карти, записи на сесии) с цел подобряване на платформата.{' '}
+          <a href="https://privacy.microsoft.com/" target="_blank" rel="noopener noreferrer">
+            Политика за поверителност на Microsoft
+          </a>
+          .
+        </li>
+        <li>
+          <strong>Meta Pixel (Facebook/Instagram)</strong> — измерване на ефективността на
+          рекламните кампании на Clicka в платформите на Meta.{' '}
+          <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener noreferrer">
+            Политика за поверителност на Meta
+          </a>
+          .
+        </li>
+        <li>
+          <strong>Vercel Analytics / Speed Insights</strong> — агрегирана статистика за
+          производителността и използването на платформата. В зависимост от конфигурацията може
+          да не използва бисквитки и да обработва единствено анонимизирани технически данни.{' '}
+          <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">
+            Политика за поверителност на Vercel
+          </a>
+          .
+        </li>
+      </ul>
 
       <h3>2.4. Бисквитки на трети страни</h3>
       <p>
-        <strong>Stripe</strong> може да постави бисквитки при обработка на плащания — необходими за
-        предотвратяване на измами. Тяхното поведение се определя от{' '}
+        <strong>Stripe</strong> и <strong>Neon</strong> могат да поставят бисквитки —
+        съответно при обработка на плащания (необходими за предотвратяване на измами) и за
+        автентикация и управление на потребителски сесии. Тези бисквитки могат да бъдат поставяни
+        както от Clicka, така и директно от съответния доставчик в хода на съответния процес.
+        Тяхното поведение се определя от{' '}
         <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer">
           Политиката за поверителност на Stripe
+        </a>{' '}
+        и{' '}
+        <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">
+          Политиката за поверителност на Neon
         </a>
         .
       </p>

@@ -909,6 +909,22 @@ export function SalonBookingModal({
                 (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime);
               return (
                 <div className="grid grid-cols-2 gap-2.5">
+                  {isLastStep ? (
+                    <p className="col-span-2 text-center text-[11px] leading-snug text-black/40">
+                      За завършване на резервацията са необходими име, телефон и имейл адрес — те
+                      се използват единствено за управление на резервацията и свързаните с нея
+                      потвърждения, напомняния и известия. С натискането на бутона по-долу се
+                      съгласявате данните Ви да бъдат обработени за целите на резервацията съгласно{' '}
+                      <a href={termsHref} target="_blank" rel="noopener noreferrer" className="underline">
+                        Общите условия
+                      </a>{' '}
+                      и{' '}
+                      <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline">
+                        Политиката за поверителност
+                      </a>
+                      .
+                    </p>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4) : s))}

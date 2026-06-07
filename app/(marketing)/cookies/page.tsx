@@ -7,33 +7,33 @@ export const metadata = {
 
 export default function CookiesPage() {
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: '#ffffff',
-        maxWidth: 780,
-        margin: '0 auto',
-        padding: '48px 24px 80px',
-        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
-        color: '#1a1a1a',
-        lineHeight: 1.7,
-      }}
-    >
-      <a
-        href="/"
+    <main style={{ minHeight: '100vh', background: '#ffffff' }}>
+      <div
         style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
-          color: '#6b7280',
-          textDecoration: 'none',
-          marginBottom: 32,
+          maxWidth: 780,
+          margin: '0 auto',
+          padding: '48px 24px 80px',
+          fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+          color: '#1a1a1a',
+          lineHeight: 1.7,
         }}
       >
-        ← Обратно към Clicka.bg
-      </a>
-      <ClickaCookiesContent />
+        <a
+          href="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13,
+            color: '#6b7280',
+            textDecoration: 'none',
+            marginBottom: 32,
+          }}
+        >
+          ← Обратно към Clicka.bg
+        </a>
+        <ClickaCookiesContent />
+      </div>
     </main>
   );
 }

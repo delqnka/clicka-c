@@ -255,16 +255,19 @@ export async function sendStaffInviteEmail(
         <h2 style="margin: 0 0 16px; color: #000;">Добре дошли в екипа!</h2>
         <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(firstName)}</strong>!</p>
         <p style="line-height: 1.7;">
-          Бяхте добавени като служител в <strong>${escapeHtml(salonName)}</strong> в Clicka.bg.
+          Бяхте добавени като служител в <strong>${escapeHtml(salonName)}</strong>.
         </p>
         <p style="line-height: 1.7;">
           За да получавате известия за резервации в Telegram, натиснете бутона по-долу — ботът ще отвори директно с вашия код:
         </p>
         <p style="margin: 20px 0; text-align: center;">
-          <a href="https://t.me/clicka_booking_bot?start=${encodeURIComponent(onboardingCode)}" style="display:inline-block;background:#000;color:#fff;font-weight:700;font-size:15px;
+          <a href="https://t.me/clicka_booking_bot?start=${encodeURIComponent(onboardingCode)}" style="display:inline-block;background:#229ED9;color:#fff;font-weight:700;font-size:15px;
                        padding:14px 28px;border-radius:12px;text-decoration:none;">
             Отвори бота в Telegram
           </a>
+        </p>
+        <p style="margin: -12px 0 16px; text-align: center; font-size: 13px; color: #229ED9;">
+          Ботът се казва <strong>@clicka_booking_bot</strong>
         </p>
         <p style="font-size: 12px; line-height: 1.6; color: #999; text-align: center;">
           Ако бутонът не отвори бота автоматично, изпратете ръчно този код:

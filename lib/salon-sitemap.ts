@@ -17,19 +17,7 @@ export async function buildSalonSitemapEntries(
       url: baseUrl,
       lastModified,
       changeFrequency: 'weekly',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified,
-      changeFrequency: 'yearly',
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified,
-      changeFrequency: 'yearly',
-      priority: 0.3,
+      priority: 0.8,
     },
   ];
 
@@ -45,7 +33,7 @@ export async function buildSalonSitemapEntries(
       url: `${baseUrl}/blog`,
       lastModified,
       changeFrequency: 'weekly',
-      priority: 0.75,
+      priority: 0.7,
     });
   }
 
@@ -66,7 +54,7 @@ export async function buildSalonSitemapEntries(
       url: `${baseUrl}/blog/${encodeURIComponent(postSlug)}`,
       lastModified: postUpdated ? new Date(String(postUpdated)) : lastModified,
       changeFrequency: 'monthly',
-      priority: 0.65,
+      priority: 0.6,
     });
   }
 

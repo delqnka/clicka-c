@@ -2345,10 +2345,9 @@ export default function AdminDashboardClient({
                       }}
                     >
                       <p style={{
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: 700,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
+                        letterSpacing: '0.01em',
                         margin: 0,
                         fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
                         background: ICON_GRADIENT,
@@ -2446,8 +2445,8 @@ export default function AdminDashboardClient({
               {/* ── Чат поддръжка — 4-та секция ── */}
               <div>
                 <p style={{
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                  textTransform: 'uppercase', margin: '0 4px 8px',
+                  fontSize: 13, fontWeight: 700, letterSpacing: '0.01em',
+                  margin: '0 4px 8px',
                   background: ICON_GRADIENT, WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent',
                 }}>Чат с поддръжка</p>

@@ -53,7 +53,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, slug, custom_domain, domain_status, updated_at
     FROM salons
-    WHERE is_active = true AND site_status = 'active'
+    WHERE is_active = true
+      AND site_status = 'active'
+      AND slug !~* '(test|demo|smoke|sandbox)'
     ORDER BY updated_at DESC
     LIMIT 500
   `;
