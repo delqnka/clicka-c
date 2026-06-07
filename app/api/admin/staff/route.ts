@@ -8,6 +8,7 @@ import {
   deleteStaffMember,
   getStaffLimit,
 } from '@/lib/staff-members';
+import { sendStaffInviteEmail } from '@/lib/resend';
 
 function slugify(name: string): string {
   return name
@@ -86,6 +87,12 @@ export async function POST(request: NextRequest) {
     email: body.email ?? null,
     serviceIds: body.serviceIds ?? [],
   });
+
+  if (member.email && member.onboardingCode) {
+    sendStaffInviteEmail(member.email, member.name, auth.salon.name, member.onboardingCode).catch((err) => {
+      console.error('Failed to send staff invite email:', err);
+    });
+  }
 
   return NextResponse.json({ staff: member }, { status: 201 });
 }

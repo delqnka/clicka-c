@@ -238,6 +238,57 @@ export async function sendEmailChangedConfirmation(newEmail: string): Promise<vo
   });
 }
 
+export async function sendStaffInviteEmail(
+  staffEmail: string,
+  staffName: string,
+  salonName: string,
+  onboardingCode: string,
+): Promise<void> {
+  const firstName = staffName.split(' ')[0] ?? staffName;
+  await sendResendWithRetry({
+    from: senderFromSalonName(salonName),
+    to: staffEmail,
+    subject: `Добавени сте като служител в ${salonName} — Clicka.bg`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">Добре дошли в екипа!</h2>
+        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(firstName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          Бяхте добавени като служител в <strong>${escapeHtml(salonName)}</strong> в Clicka.bg.
+        </p>
+        <p style="line-height: 1.7;">
+          За да получавате известия за резервации в Telegram, отворете бота и изпратете следния код:
+        </p>
+        <p style="margin: 20px 0; text-align: center;">
+          <span style="display:inline-block;background:#000;color:#fff;font-weight:700;font-size:20px;
+                       letter-spacing:2px;padding:12px 24px;border-radius:12px;">
+            ${escapeHtml(onboardingCode)}
+          </span>
+        </p>
+        <p style="line-height: 1.7;">След като се свържете, директно от Telegram ще можете да:</p>
+        <ul style="line-height: 1.8; padding-left: 20px;">
+          <li>получавате известия за нови резервации в реално време;</li>
+          <li>блокирате часове — напр. <i>„зает 14:00-16:00 утре"</i>;</li>
+          <li>отбелязвате почивни дни — напр. <i>„утре почивам"</i>;</li>
+          <li>задавате работно време — напр. <i>„работя до 19:00 тази седмица"</i>;</li>
+          <li>добавяте и променяте услуги и цени;</li>
+          <li>качвате ценоразпис чрез снимка;</li>
+          <li>проверявате справки — напр. <i>„колко записа имам за утре"</i>, <i>„приходът ми тази седмица"</i>;</li>
+          <li>препращате (forward) скрийншот на резервация от друга платформа — часовете се блокират автоматично;</li>
+          <li>променяте биото и снимката на профила си.</li>
+        </ul>
+        <p style="font-size: 13px; line-height: 1.7; color: #666;">
+          Пълният списък с команди е достъпен по всяко време с <code>/help</code> в бота.
+          Ако имате въпроси, свържете се със собственика на салона.
+        </p>
+        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
+          Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendBookingNotification(
   salonEmail: string,
   booking: BookingDetails

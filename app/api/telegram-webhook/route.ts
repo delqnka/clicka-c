@@ -567,7 +567,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         '<code>следващият ми клиент</code>',
         '<code>приходът ми тази седмица</code>',
         '',
-        '📩 <b>Forward от Fresha/Studio24</b> — forward-ни нотификацията и часът се блокира.',
+        '📩 <b>Скрийншот от резервационна платформа</b> — forward-ни съобщение със снимка (или скрийншот на резервация) и часовете се блокират автоматично.',
       ].join('\n'),
     );
     return NextResponse.json({ ok: true });
@@ -676,7 +676,6 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
 
     const imageUrl = getTelegramFileUrl(filePath);
     const caption = (message.caption ?? '').trim();
-    const isForwarded = !!message.forward_date;
     const photoTarget = photoTargetFromCaption(caption);
 
     // Price list photo
@@ -685,14 +684,14 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       return NextResponse.json({ ok: true });
     }
 
-    // Forwarded photo without special caption → try booking screenshot parse
-    if (isForwarded && !caption) {
+    // Photo without special caption → try booking screenshot/notes parse first
+    if (!caption) {
       await sendTelegramMessage(chatId, '🔍 Анализирам снимката...');
       const bookings = await parseBookingsFromPhoto(imageUrl);
       if (bookings.length > 0) {
         let blockedCount = 0;
         for (const b of bookings) {
-          const block: BookingBlock = { date: b.date, allDay: false, start: b.start, end: b.end, note: 'От снимка (Fresha/друго приложение)' };
+          const block: BookingBlock = { date: b.date, allDay: false, start: b.start, end: b.end, note: 'От снимка' };
           await addBookingBlock(salon.salonId, salon.slug, block);
           blockedCount++;
         }
@@ -706,7 +705,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         await sendTelegramMessage(chatId, lines.join('\n'));
         return NextResponse.json({ ok: true });
       }
-      // Forwarded but no bookings found — fall through to gallery
+      // No bookings recognized — fall through to gallery/price-list prompt
     }
 
     // No caption → save URL in DB state, ask what to do via inline buttons
