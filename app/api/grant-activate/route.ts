@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
   if (rl.limited) return NextResponse.json({ error: 'Твърде много опити. Изчакай малко.' }, { status: 429 });
 
   const body = await request.json().catch(() => ({}));
-  const { token } = body as { token?: string };
+  const { token, salonName: rawSalonName } = body as { token?: string; salonName?: string };
+  const salonName = (rawSalonName ?? '').trim().slice(0, 64);
   if (!token) return NextResponse.json({ error: 'Липсва токен' }, { status: 400 });
 
   const rows = await sql`
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
   }
 
   const emailPrefix = grant.email.split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 16) || 'salon';
-  const slug = await generateUniqueSalonSlug(emailPrefix);
+  const slug = await generateUniqueSalonSlug(salonName || emailPrefix);
   const salonId = crypto.randomUUID();
   const months = planToMonths(grant.plan_type);
 
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       billing_period, plan_expires_at,
       onboarding_code
     ) VALUES (
-      ${salonId}, ${slug}, ${''}, ${''}, ${''}, ${grant.email},
+      ${salonId}, ${slug}, ${salonName}, ${''}, ${''}, ${grant.email},
       ${''}, ${''}, ${''},
       ${''}, ${''}, ${'[]'}::jsonb,
       ${''}, ${''}, ${''},

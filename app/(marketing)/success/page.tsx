@@ -96,6 +96,7 @@ export default async function SuccessPage({
 
         if (session.payment_status === 'paid') {
           const email = session.customer_details?.email ?? '';
+          const salonName = (session.metadata?.salonName ?? '').trim();
           const planType = session.metadata?.planType ?? 'solo';
           const billingPeriod = session.metadata?.billingPeriod ?? '12m';
           const prices: Record<string, Record<string, number>> = { solo: { '12m': 299, '6m': 169 }, team: { '12m': 499, '6m': 279 } };
@@ -104,7 +105,7 @@ export default async function SuccessPage({
 
           if (email) {
             const emailPrefix = email.split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 16) || 'salon';
-            const slug = await generateUniqueSalonSlug(emailPrefix);
+            const slug = await generateUniqueSalonSlug(salonName || emailPrefix);
             const salonId = crypto.randomUUID();
 
             await sql`
@@ -120,7 +121,7 @@ export default async function SuccessPage({
                 billing_period, plan_expires_at,
                 onboarding_code, stripe_session_id
               ) VALUES (
-                ${salonId}, ${slug}, ${''}, ${''}, ${''}, ${email},
+                ${salonId}, ${slug}, ${salonName}, ${''}, ${''}, ${email},
                 ${''}, ${''}, ${''},
                 ${''}, ${''}, ${'[]'}::jsonb,
                 ${''}, ${''},

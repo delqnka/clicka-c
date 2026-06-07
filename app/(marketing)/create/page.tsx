@@ -93,6 +93,7 @@ function CreatePageContent() {
   const [expanded, setExpanded] = useState<Expanded>({ solo: false, team: false });
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [error,         setError]         = useState('');
+  const [salonName,     setSalonName]     = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [wantsInvoice,  setWantsInvoice]  = useState(false);
   const [companyName,   setCompanyName]   = useState('');
@@ -106,13 +107,14 @@ function CreatePageContent() {
   async function handlePay() {
     if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'InitiateCheckout');
     if (grantToken) {
+      if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
       setIsSubmitting(true);
       setError('');
       try {
         const res = await fetch('/api/grant-activate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: grantToken }),
+          body: JSON.stringify({ token: grantToken, salonName: salonName.trim() }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Грешка');
@@ -125,6 +127,7 @@ function CreatePageContent() {
       return;
     }
 
+    if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
     if (wantsInvoice) {
       if (!companyName.trim()) { setError('Въведи наименование на фирмата.'); return; }
@@ -142,6 +145,7 @@ function CreatePageContent() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           planKey,
+          salonName: salonName.trim(),
           ...(wantsInvoice && {
             billingInfo: {
               companyName: companyName.trim(),
@@ -445,6 +449,23 @@ function CreatePageContent() {
           </button>
         </div>
 
+        {/* ── Salon name ── */}
+        <div className="mt-8">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
+            Име на салона
+          </label>
+          <input
+            type="text"
+            value={salonName}
+            onChange={e => setSalonName(e.target.value)}
+            placeholder="напр. Salon Urban"
+            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]"
+          />
+          <p className="mt-1.5 text-[12px] text-[#6b7280]">
+            По това име ще генерираме безплатния ти адрес — напр. salonurban.clicka.bg
+          </p>
+        </div>
+
         {/* ── Terms ── */}
         <label className="mt-8 flex cursor-pointer items-start gap-3">
           <span
@@ -556,7 +577,7 @@ function CreatePageContent() {
                 ? 'Активирай безплатния абонамент'
                 : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
             onClick={handlePay}
-            disabled={isSubmitting || (!grantToken && !termsAccepted)}
+            disabled={isSubmitting || !salonName.trim() || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
           <p className="mt-2 text-center text-[12px] text-[#6b7280]">

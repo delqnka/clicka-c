@@ -28,7 +28,7 @@ interface BillingInfo {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { planKey: string; smsAddon?: boolean; billingInfo?: BillingInfo };
+  let body: { planKey: string; salonName?: string; smsAddon?: boolean; billingInfo?: BillingInfo };
 
   try {
     body = await request.json();
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
   }
 
-  const { planKey, smsAddon, billingInfo } = body;
+  const { planKey, salonName, smsAddon, billingInfo } = body;
   const option = PLAN_OPTIONS[planKey];
 
   if (!option) {
@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         planType: option.plan,
         billingPeriod: option.billingPeriod,
+        salonName: (salonName ?? '').slice(0, 64),
         smsAddon: smsAddon ? '1' : '0',
         ...(billingInfo && {
           invoiceCompanyName: billingInfo.companyName,
