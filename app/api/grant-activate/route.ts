@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const { token, ownerName: rawOwnerName, salonName: rawSalonName, slug: rawSlug } = body as { token?: string; ownerName?: string; salonName?: string; slug?: string };
+  if (!token) return NextResponse.json({ error: 'Липсва токен' }, { status: 400 });
   const ownerName = (rawOwnerName ?? '').trim().slice(0, 64);
   const salonName = (rawSalonName ?? '').trim().slice(0, 64);
   const desiredSlug = toSlug((rawSlug ?? '').trim());
-  if (!token) return NextResponse.json({ error: 'Липсва токен' }, { status: 400 });
 
   const rows = await sql`
     SELECT id, email, plan_type, used_at FROM plan_grants WHERE token = ${token} LIMIT 1

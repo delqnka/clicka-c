@@ -13,10 +13,14 @@ export default function SuccessClient({
   slug,
   email,
   purchaseValue = 0,
+  provisionError = false,
+  sessionRef = '',
 }: {
   slug: string;
   email: string;
   purchaseValue?: number;
+  provisionError?: boolean;
+  sessionRef?: string;
 }) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -131,7 +135,19 @@ export default function SuccessClient({
           </svg>
         </div>
 
-        {confirmed ? (
+        {provisionError ? (
+          <>
+            <h1 className="fade-1" style={{ fontSize: 'clamp(24px,6vw,38px)', fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.15, color: '#0D0D12' }}>
+              Плащането мина успешно!
+            </h1>
+            <p className="fade-2" style={{ fontSize: 15, color: '#667085', maxWidth: 360, lineHeight: 1.65, margin: '0 0 24px' }}>
+              Възникна техническа грешка при настройването на твоя салон. Не се притеснявай — плащането е минало и ще оправим всичко ръчно. Пиши ни на <strong style={{ color: '#0D0D12' }}>support@clicka.bg</strong>{sessionRef ? <> с референция <strong style={{ color: '#0D0D12' }}>{sessionRef}</strong></> : null}.
+            </p>
+            <a href="mailto:support@clicka.bg" className="fade-3" style={{ display: 'inline-block', padding: '13px 28px', background: GRAD, color: '#fff', borderRadius: 100, fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: GRAD_SHADOW, fontFamily: FONT }}>
+              Свържи се с поддръжка →
+            </a>
+          </>
+        ) : confirmed ? (
           <>
             <h1 className="fade-1" style={{ fontSize: 'clamp(26px,6vw,40px)', fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.15, color: '#0D0D12' }}>
               {isNewUser ? 'Последна стъпка!' : 'Добре дошъл в панела!'}

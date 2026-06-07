@@ -476,14 +476,19 @@ export async function destroyAllOtherOwnerSessions(ownerId: string, currentSessi
 }
 
 export function setAdminSessionCookie(response: NextResponse, request: NextRequest, sessionId: string, expiresAt: Date) {
+  const hostname = request.nextUrl.hostname;
+  const isPlatformHost = hostname === ROOT_DOMAIN || hostname.endsWith(`.${ROOT_DOMAIN}`);
+
   response.cookies.set({
     name: ADMIN_COOKIE_NAME,
     value: sessionId,
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: 'lax',
     secure: request.nextUrl.protocol === 'https:',
     path: '/',
     expires: expiresAt,
+    // Share the session across the apex and salon subdomains (e.g. clicka.bg ↔ didisalon.clicka.bg).
+    domain: isPlatformHost ? `.${ROOT_DOMAIN}` : undefined,
   });
 }
 
