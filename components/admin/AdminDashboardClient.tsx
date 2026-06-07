@@ -409,6 +409,10 @@ export default function AdminDashboardClient({
   const [pwaInstallOpen, setPwaInstallOpen] = useState(false);
   const [blogActiveIndex, setBlogActiveIndex] = useState(0);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [newClientDraft, setNewClientDraft] = useState({ name: '', phone: '' });
+  const [clientSaving, setClientSaving] = useState(false);
+  const [extraClients, setExtraClients] = useState<ClientSummary[]>([]);
   const [selectedAdminServiceCategory, setSelectedAdminServiceCategory] = useState<string | null>(null);
   const [newServiceDraft, setNewServiceDraft] = useState({
     name: '',
@@ -2250,8 +2254,8 @@ export default function AdminDashboardClient({
                 width: isMobile ? 36 : undefined, height: isMobile ? 36 : undefined,
                 borderRadius: isMobile ? 10 : T.radiusSm,
                 border: isMobile ? 'none' : `1px solid ${T.border}`,
-                background: isMobile ? '#F4F4F5' : 'transparent',
-                color: T.muted,
+                background: 'transparent',
+                color: '#000',
                 padding: isMobile ? 0 : '6px 12px',
                 fontSize: 13, cursor: 'pointer',
               }}
@@ -2498,7 +2502,7 @@ export default function AdminDashboardClient({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     width: '100%', padding: '10px 12px', borderRadius: 12,
-                    border: `1px solid ${T.border}`, background: '#fff',
+                    border: 'none', background: '#fff',
                     cursor: 'pointer', fontSize: 14, fontWeight: 500,
                     color: '#18181B', WebkitTapHighlightColor: 'transparent',
                   }}
@@ -2512,7 +2516,7 @@ export default function AdminDashboardClient({
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                   </span>
-                  Напиши ни
+                  Имаш въпрос?
                 </button>
               </div>
             </div>
@@ -3292,13 +3296,158 @@ export default function AdminDashboardClient({
             <Section
               title="Клиенти"
               action={
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
-                  {clients.length} уникални
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
+                    {clients.length + extraClients.length} уникални
+                  </span>
+                  <button
+                    type="button"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      borderRadius: 8,
+                      border: 'none',
+                      color: '#fff',
+                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+                      boxShadow: '0 4px 12px rgba(219,39,119,0.18)',
+                      padding: '6px 10px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onClick={() => { setNewClientDraft({ name: '', phone: '' }); setClientModalOpen(true); }}
+                  >
+                    <Plus size={13} />
+                    Добави
+                  </button>
+                </div>
               }
             >
-              <ClientsPanel clients={clients} isMobile={isMobile} T={T} />
+              <ClientsPanel clients={[...clients, ...extraClients]} isMobile={isMobile} T={T} />
             </Section>
+          )}
+
+          {clientModalOpen && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 200,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(0,0,0,0.4)',
+                padding: 16,
+              }}
+              onClick={() => setClientModalOpen(false)}
+            >
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: 16,
+                  padding: 20,
+                  width: '100%',
+                  maxWidth: 360,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#000' }}>Нов клиент</h3>
+                <input
+                  type="text"
+                  placeholder="Име"
+                  value={newClientDraft.name}
+                  onChange={(e) => setNewClientDraft((d) => ({ ...d, name: e.target.value }))}
+                  style={{
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    color: '#000',
+                  }}
+                />
+                <input
+                  type="tel"
+                  placeholder="Телефон (по желание)"
+                  value={newClientDraft.phone}
+                  onChange={(e) => setNewClientDraft((d) => ({ ...d, phone: e.target.value }))}
+                  style={{
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    color: '#000',
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setClientModalOpen(false)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: T.muted,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: '8px 12px',
+                    }}
+                  >
+                    Отказ
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!newClientDraft.name.trim() || clientSaving}
+                    onClick={async () => {
+                      const name = newClientDraft.name.trim();
+                      if (!name) return;
+                      setClientSaving(true);
+                      try {
+                        const res = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ name, phone: newClientDraft.phone.trim() || null }),
+                        });
+                        if (res.ok) {
+                          setExtraClients((prev) => [
+                            ...prev,
+                            {
+                              key: `manual-${name.toLowerCase()}`,
+                              name,
+                              phone: newClientDraft.phone.trim(),
+                              email: '',
+                              visits: 0,
+                              totalSpent: 0,
+                              lastVisit: '',
+                            },
+                          ]);
+                          setClientModalOpen(false);
+                        }
+                      } finally {
+                        setClientSaving(false);
+                      }
+                    }}
+                    style={{
+                      border: 'none',
+                      borderRadius: 8,
+                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+                      color: '#fff',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: '8px 16px',
+                      opacity: !newClientDraft.name.trim() || clientSaving ? 0.6 : 1,
+                    }}
+                  >
+                    {clientSaving ? 'Записване…' : 'Запази'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ── Домейн ── */}
@@ -3519,12 +3668,15 @@ export default function AdminDashboardClient({
             position: 'fixed',
             left: 0,
             right: 0,
-            bottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+            bottom: 0,
+            paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
             zIndex: 50,
             pointerEvents: 'none',
             width: 'calc(100% - 32px)',
             maxWidth: 320,
             margin: '0 auto',
+            transform: 'translateZ(0)',
+            willChange: 'transform',
           }}
         >
           <div

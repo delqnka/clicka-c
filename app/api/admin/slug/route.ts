@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest) {
   await sql`
     CREATE TABLE IF NOT EXISTS salon_slug_history (
       old_slug   text        PRIMARY KEY,
-      salon_id   bigint      NOT NULL REFERENCES salons(id) ON DELETE CASCADE,
+      salon_id   text        NOT NULL,
       changed_at timestamptz NOT NULL DEFAULT now()
     )
   `;

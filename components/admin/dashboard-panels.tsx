@@ -404,7 +404,7 @@ export function ClientsPanel({
 }) {
   if (clients.length === 0) {
     return (
-      <div style={{ border: `1px dashed ${T.border}`, borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
+      <div style={{ borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
         Няма клиенти.
       </div>
     );

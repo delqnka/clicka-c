@@ -7,6 +7,10 @@ function blockCyrillic(e: React.KeyboardEvent<HTMLInputElement>) {
   if (/[Ѐ-ӿ]/.test(e.key)) e.preventDefault();
 }
 
+function stripCyrillic(value: string) {
+  return value.replace(/[Ѐ-ӿ]/g, '');
+}
+
 export default function PlatformAdminSignIn() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -76,7 +80,7 @@ export default function PlatformAdminSignIn() {
                 inputMode="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(stripCyrillic(e.target.value))}
                 onKeyDown={blockCyrillic}
                 autoFocus
                 required
@@ -98,7 +102,7 @@ export default function PlatformAdminSignIn() {
                   autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(stripCyrillic(e.target.value))}
                   onKeyDown={blockCyrillic}
                   required
                   className="w-full px-4 py-3 pr-11 text-sm border border-gray-200 rounded-xl bg-white

@@ -75,6 +75,11 @@ export function isValidDomain(domain: string) {
 export async function ensureAdminAuthSchema() {
   if (!ensureSchemaPromise) {
     ensureSchemaPromise = (async () => {
+      const [{ exists }] = await sql`
+        SELECT to_regclass('owner_sessions') IS NOT NULL AS exists
+      ` as [{ exists: boolean }];
+      if (exists) return;
+
       await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
       await sql`
         CREATE TABLE IF NOT EXISTS admin_login_tokens (

@@ -6,6 +6,10 @@ function blockCyrillic(e: React.KeyboardEvent<HTMLInputElement>) {
   if (/[Ѐ-ӿ]/.test(e.key)) e.preventDefault();
 }
 
+function stripCyrillic(value: string) {
+  return value.replace(/[Ѐ-ӿ]/g, '');
+}
+
 export default function AdminSignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -95,7 +99,7 @@ export default function AdminSignInPage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => setEmail(stripCyrillic(e.target.value))}
                   onKeyDown={blockCyrillic}
                   required
                   autoComplete="email"
@@ -110,7 +114,7 @@ export default function AdminSignInPage() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={e => setPassword(stripCyrillic(e.target.value))}
                     onKeyDown={blockCyrillic}
                     required
                     autoComplete="current-password"
@@ -186,7 +190,7 @@ export default function AdminSignInPage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => setEmail(stripCyrillic(e.target.value))}
                   onKeyDown={blockCyrillic}
                   required
                   autoComplete="email"

@@ -149,12 +149,22 @@ export function SlugEditor({
       </button>
       </div>
 
-      <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.7 }}>
-        <p style={{ margin: '0 0 4px' }}>* Ако смениш адреса:</p>
-        <p style={{ margin: '0 0 2px', paddingLeft: 8 }}>· Линкът, който сте споделяли, спира да работи</p>
-        <p style={{ margin: '0 0 2px', paddingLeft: 8 }}>· QR кодовете трябва да се генерират наново</p>
-        <p style={{ margin: 0, paddingLeft: 8 }}>· Google ще трябва да намери отново сайта ти</p>
-      </div>
+      <details style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.7, textAlign: 'center' }}>
+        <summary style={{
+          cursor: 'pointer',
+          listStyle: 'none',
+          fontWeight: 600,
+          color: '#6b7280',
+          textAlign: 'center',
+        }}>
+          Какво става ако сменя адреса?
+        </summary>
+        <div style={{ marginTop: 6, textAlign: 'left', display: 'inline-block' }}>
+          <p style={{ margin: '0 0 2px' }}>· Линкът, който сте споделяли, спира да работи</p>
+          <p style={{ margin: '0 0 2px' }}>· QR кодовете трябва да се генерират наново</p>
+          <p style={{ margin: 0 }}>· Google ще трябва да намери отново сайта ти</p>
+        </div>
+      </details>
     </div>
   );
 }
