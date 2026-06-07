@@ -691,7 +691,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       if (bookings.length > 0) {
         let blockedCount = 0;
         for (const b of bookings) {
-          const block: BookingBlock = { date: b.date, allDay: false, start: b.start, end: b.end, note: 'От снимка' };
+          const block: BookingBlock = { date: b.date, allDay: false, start: b.start, end: b.end, note: b.note ? `От снимка — ${b.note}` : 'От снимка' };
           await addBookingBlock(salon.salonId, salon.slug, block);
           blockedCount++;
         }
@@ -699,7 +699,8 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         const lines = [`🔒 <b>Блокирани ${blockedCount} часа от снимката:</b>`, ''];
         for (const b of bookings) {
           const d = new Date(`${b.date}T12:00:00`);
-          lines.push(`📅 ${d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'long' })} — ${b.start} – ${b.end}`);
+          const suffix = b.note ? ` (${b.note})` : '';
+          lines.push(`📅 ${d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'long' })} — ${b.start} – ${b.end}${suffix}`);
         }
         lines.push('', '💡 Ако нещо е грешно, деблокирай с /unblock');
         await sendTelegramMessage(chatId, lines.join('\n'));

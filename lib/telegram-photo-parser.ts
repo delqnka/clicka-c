@@ -6,26 +6,41 @@ import {
 
 const VISION_MODEL = 'google/gemini-2.5-flash-preview';
 
-const SYSTEM_PROMPT = `You are an OCR assistant that extracts booking appointments from screenshots of salon booking apps (Fresha, Studio24, Booksy, etc).
+function buildSystemPrompt(): string {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const weekdayBg = today.toLocaleDateString('bg-BG', { weekday: 'long' });
 
-Extract ALL visible appointments/bookings from the screenshot. For each one, return:
-- date: in YYYY-MM-DD format
+  return `You are an OCR/handwriting assistant that extracts salon appointments from images. The image can be EITHER:
+(a) a screenshot of a booking app (Fresha, Studio24, Booksy, etc), OR
+(b) a photo of a handwritten note / page in a notebook / sticky note listing appointments (often in Bulgarian, Cyrillic handwriting).
+
+Today's date is ${todayStr} (${weekdayBg}). Use it to resolve ANY relative or partial date references, including:
+- relative words: "днес" (today), "утре" (tomorrow), "вдругиден" (day after tomorrow)
+- weekday names: "понеделник", "вторник", "сряда", "четвъртък", "петък", "събота", "неделя" (the NEXT occurrence of that weekday from today, including today if it matches)
+- partial dates like "10.06" or "10/06" → DD.MM, assume current year ${today.getFullYear()} (or next year if that date has already passed relative to today)
+- dates like "Mon 2 Jun" or "Пон 2 Юни" → convert using the same logic
+
+Extract ALL visible appointments/bookings from the image. For each one, return:
+- date: in YYYY-MM-DD format (resolved to an absolute date as described above)
 - start: start time in HH:mm format
 - end: end time in HH:mm format
+- note: optional short string with any extra legible context (e.g. client name, service) — omit if nothing legible
 
-If only a start time and duration are visible (no explicit end time), calculate the end time from duration.
-If the year is not visible, assume the current year (2026).
-If you see a date like "Mon 2 Jun" or "Пон 2 Юни", convert it to YYYY-MM-DD.
+If only a start time and a duration (e.g. "45 мин") are visible, calculate the end time from the duration. If neither duration nor end time is visible, assume a 1-hour appointment.
+Do your best with messy handwriting — a partial/uncertain read is better than skipping an entry, as long as you can identify a date and a start time.
 
 Return ONLY a valid JSON array. No markdown, no explanation. Example:
-[{"date":"2026-06-02","start":"10:00","end":"11:00"},{"date":"2026-06-02","start":"14:30","end":"15:30"}]
+[{"date":"2026-06-02","start":"10:00","end":"11:00","note":"Светлана — подстригване"},{"date":"2026-06-02","start":"14:30","end":"15:30"}]
 
-If you cannot read any bookings, return [].`;
+If you genuinely cannot read any appointments at all, return [].`;
+}
 
 export type ParsedPhotoBooking = {
   date: string;
   start: string;
   end: string;
+  note?: string;
 };
 
 export async function parseBookingsFromPhoto(
@@ -40,12 +55,12 @@ export async function parseBookingsFromPhoto(
     body: JSON.stringify({
       model: VISION_MODEL,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: buildSystemPrompt() },
         {
           role: 'user',
           content: [
             { type: 'image_url', image_url: { url: imageUrl } },
-            { type: 'text', text: 'Extract all bookings from this screenshot.' },
+            { type: 'text', text: 'Extract all appointments from this image (screenshot or handwritten note).' },
           ],
         },
       ],
@@ -95,7 +110,9 @@ function extractBookingsArray(raw: string): ParsedPhotoBooking[] {
     const start = String(row.start ?? '').trim();
     const end = String(row.end ?? '').trim();
     if (!dateRe.test(date) || !timeRe.test(start) || !timeRe.test(end)) continue;
-    results.push({ date, start, end });
+    const noteRaw = row.note;
+    const note = typeof noteRaw === 'string' && noteRaw.trim() ? noteRaw.trim().slice(0, 200) : undefined;
+    results.push(note ? { date, start, end, note } : { date, start, end });
   }
 
   return results;
