@@ -258,11 +258,18 @@ export async function sendStaffInviteEmail(
           Бяхте добавени като служител в <strong>${escapeHtml(salonName)}</strong> в Clicka.bg.
         </p>
         <p style="line-height: 1.7;">
-          За да получавате известия за резервации в Telegram, отворете бота и изпратете следния код:
+          За да получавате известия за резервации в Telegram, натиснете бутона по-долу — ботът ще отвори директно с вашия код:
         </p>
         <p style="margin: 20px 0; text-align: center;">
-          <span style="display:inline-block;background:#000;color:#fff;font-weight:700;font-size:20px;
-                       letter-spacing:2px;padding:12px 24px;border-radius:12px;">
+          <a href="https://t.me/clicka_booking_bot?start=${encodeURIComponent(onboardingCode)}" style="display:inline-block;background:#000;color:#fff;font-weight:700;font-size:15px;
+                       padding:14px 28px;border-radius:12px;text-decoration:none;">
+            Отвори бота в Telegram
+          </a>
+        </p>
+        <p style="font-size: 12px; line-height: 1.6; color: #999; text-align: center;">
+          Ако бутонът не отвори бота автоматично, изпратете ръчно този код:
+          <span style="display:inline-block;background:#000;color:#fff;font-weight:700;font-size:14px;
+                       letter-spacing:2px;padding:6px 14px;border-radius:8px;margin-top:6px;">
             ${escapeHtml(onboardingCode)}
           </span>
         </p>
@@ -294,7 +301,7 @@ export async function sendStaffInviteEmail(
         </ul>
         <p style="font-size: 13px; line-height: 1.7; color: #666;">
           Пълният списък с команди е достъпен по всяко време с <code>/help</code> в бота.
-          Ако имате въпроси, свържете се със собственика на салона.
+          Ако имате въпроси, свържете се с нас на <a href="https://t.me/clickabg_support" style="color:#666;">@clickabg_support</a>.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
           Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
