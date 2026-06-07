@@ -5,6 +5,23 @@ import { useSearchParams } from 'next/navigation';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 
+const SLUG_TRANSLIT: Record<string, string> = {
+  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',
+  и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',
+  р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'ts',ч:'ch',
+  ш:'sh',щ:'sht',ъ:'a',ь:'',ю:'yu',я:'ya',
+};
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .split('')
+    .map(c => SLUG_TRANSLIT[c] ?? c)
+    .join('')
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 32);
+}
+
 type Plan   = 'solo' | 'team';
 type Period = '12m'  | '6m';
 type Expanded = { solo: boolean; team: boolean };
@@ -94,6 +111,8 @@ function CreatePageContent() {
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [error,         setError]         = useState('');
   const [salonName,     setSalonName]     = useState('');
+  const [slug,          setSlug]          = useState('');
+  const [slugEdited,    setSlugEdited]    = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [wantsInvoice,  setWantsInvoice]  = useState(false);
   const [companyName,   setCompanyName]   = useState('');
@@ -108,13 +127,14 @@ function CreatePageContent() {
     if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'InitiateCheckout');
     if (grantToken) {
       if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
+      if (!slug.trim()) { setError('Въведи адрес на сайта.'); return; }
       setIsSubmitting(true);
       setError('');
       try {
         const res = await fetch('/api/grant-activate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: grantToken, salonName: salonName.trim() }),
+          body: JSON.stringify({ token: grantToken, salonName: salonName.trim(), slug: slug.trim() }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Грешка');
@@ -128,6 +148,7 @@ function CreatePageContent() {
     }
 
     if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
+    if (!slug.trim()) { setError('Въведи адрес на сайта.'); return; }
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
     if (wantsInvoice) {
       if (!companyName.trim()) { setError('Въведи наименование на фирмата.'); return; }
@@ -146,6 +167,7 @@ function CreatePageContent() {
         body:    JSON.stringify({
           planKey,
           salonName: salonName.trim(),
+          slug: slug.trim(),
           ...(wantsInvoice && {
             billingInfo: {
               companyName: companyName.trim(),
@@ -457,12 +479,28 @@ function CreatePageContent() {
           <input
             type="text"
             value={salonName}
-            onChange={e => setSalonName(e.target.value)}
+            onChange={e => {
+              const value = e.target.value;
+              setSalonName(value);
+              if (!slugEdited) setSlug(slugify(value));
+            }}
             placeholder="напр. Salon Urban"
             className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]"
           />
+
+          <label className="mb-1.5 mt-4 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
+            Адрес на сайта (по желание промени)
+          </label>
+          <input
+            type="text"
+            value={slug}
+            onChange={e => { setSlugEdited(true); setSlug(slugify(e.target.value)); }}
+            placeholder="salonurban"
+            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]"
+          />
           <p className="mt-1.5 text-[12px] text-[#6b7280]">
-            По това име ще генерираме безплатния ти адрес — напр. salonurban.clicka.bg
+            Безплатният ти адрес ще бъде:{' '}
+            <span className="font-semibold text-[#0a0a0a]">{slug || 'salonurban'}.clicka.bg</span>
           </p>
         </div>
 
@@ -577,7 +615,7 @@ function CreatePageContent() {
                 ? 'Активирай безплатния абонамент'
                 : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
             onClick={handlePay}
-            disabled={isSubmitting || !salonName.trim() || (!grantToken && !termsAccepted)}
+            disabled={isSubmitting || !salonName.trim() || !slug.trim() || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
           <p className="mt-2 text-center text-[12px] text-[#6b7280]">
