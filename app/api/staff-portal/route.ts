@@ -5,7 +5,7 @@ import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 import { insertBookingIfNoOverlap } from '@/lib/booking-insert';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 import { isCancelledStatus } from '@/lib/booking-time';
-import { getStaffMemberByPortalToken } from '@/lib/staff-members';
+import { getStaffMemberByPortalToken, updateStaffMember } from '@/lib/staff-members';
 import { normalizeServices } from '@/lib/salon-services';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { runAfterResponse } from '@/lib/run-after-response';
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     : allServices;
 
   return NextResponse.json({
-    staff: { id: staff.id, name: staff.name, slug: staff.slug },
+    staff: { id: staff.id, name: staff.name, slug: staff.slug, bio: staff.bio, avatarUrl: staff.avatarUrl },
     salon: { name: String(salon.name ?? ''), slug: String(salon.slug ?? '') },
     services: services.map((s) => ({ id: s.id, name: s.name, price: s.price, durationMin: s.duration_min })),
     bookings,
@@ -221,4 +221,37 @@ export async function POST(request: NextRequest) {
   );
 
   return NextResponse.json({ success: true, bookingId: inserted.id });
+}
+
+export async function PATCH(request: NextRequest) {
+  const ip = getClientIp(request as unknown as Request);
+  const rl = await checkRateLimit('staff-portal-patch', ip, 15, 60 * 1000);
+  if (rl.limited) {
+    return NextResponse.json({ error: 'Твърде много заявки.' }, { status: 429 });
+  }
+
+  let body: { token?: string; bio?: string | null; avatarUrl?: string | null };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
+  }
+
+  const token = body.token?.trim() || '';
+  if (!token || token.length < 16) {
+    return NextResponse.json({ error: 'Невалиден линк' }, { status: 404 });
+  }
+
+  const resolved = await resolveStaffByToken(token);
+  if (!resolved) {
+    return NextResponse.json({ error: 'Невалиден или изтекъл линк' }, { status: 404 });
+  }
+  const { staff } = resolved;
+
+  await updateStaffMember(staff.id, staff.salonId, {
+    bio: body.bio !== undefined ? body.bio : undefined,
+    avatarUrl: body.avatarUrl !== undefined ? body.avatarUrl : undefined,
+  });
+
+  return NextResponse.json({ ok: true });
 }

@@ -209,6 +209,7 @@ export async function updateStaffMember(
     slug?: string;
     email?: string | null;
     bio?: string | null;
+    avatarUrl?: string | null;
     isActive?: boolean;
     serviceIds?: string[];
   },
@@ -229,6 +230,10 @@ export async function updateStaffMember(
   if (input.bio !== undefined) {
     const bioVal = input.bio?.trim() || null;
     await sql`UPDATE staff_members SET bio = ${bioVal} WHERE id = ${id}::uuid AND salon_id = ${salonId}`;
+  }
+  if (input.avatarUrl !== undefined) {
+    const avatarVal = input.avatarUrl?.trim() || null;
+    await sql`UPDATE staff_members SET avatar_url = ${avatarVal} WHERE id = ${id}::uuid AND salon_id = ${salonId}`;
   }
   if (input.isActive !== undefined) {
     await sql`UPDATE staff_members SET is_active = ${input.isActive} WHERE id = ${id}::uuid AND salon_id = ${salonId}`;

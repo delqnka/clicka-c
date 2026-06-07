@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties, type ChangeEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 type ServiceOption = { id?: string; name: string; price: number; durationMin: number };
@@ -18,7 +18,7 @@ type BookingItem = {
 };
 
 type PortalData = {
-  staff: { id: string; name: string; slug: string };
+  staff: { id: string; name: string; slug: string; bio: string | null; avatarUrl: string | null };
   salon: { name: string; slug: string };
   services: ServiceOption[];
   bookings: BookingItem[];
@@ -65,6 +65,14 @@ export default function StaffPortalPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [showProfile, setShowProfile] = useState(false);
+  const [bio, setBio] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
   const [showForm, setShowForm] = useState(false);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -91,6 +99,8 @@ export default function StaffPortalPage() {
         return;
       }
       setData(json);
+      setBio(json.staff?.bio ?? '');
+      setAvatarUrl(json.staff?.avatarUrl ?? null);
     } catch {
       setError('Грешка при зареждане.');
     } finally {
@@ -99,6 +109,55 @@ export default function StaffPortalPage() {
   }, [token]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setProfileError('');
+    setProfileSuccess('');
+    setAvatarUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('token', token);
+      fd.append('file', file);
+      const res = await fetch('/api/staff-portal/upload', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!res.ok) {
+        setProfileError(json.error || 'Грешка при качване.');
+        return;
+      }
+      setAvatarUrl(json.url);
+    } catch {
+      setProfileError('Грешка при свързване със сървъра.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleProfileSave = async () => {
+    setProfileError('');
+    setProfileSuccess('');
+    setProfileSaving(true);
+    try {
+      const res = await fetch('/api/staff-portal', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, bio, avatarUrl }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setProfileError(json.error || 'Грешка при запис.');
+        return;
+      }
+      setProfileSuccess('Профилът е запазен.');
+      void load();
+    } catch {
+      setProfileError('Грешка при свързване със сървъра.');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setFormError('');
@@ -173,11 +232,70 @@ export default function StaffPortalPage() {
             ) : null}
 
             <div style={{ marginBottom: 16 }}>
+              {!showProfile ? (
+                <button
+                  type="button"
+                  onClick={() => { setShowProfile(true); setProfileSuccess(''); setProfileError(''); }}
+                  style={{ padding: '10px 18px', borderRadius: 999, border: '1px solid #ddd', background: '#fff', color: '#000', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Моят профил (снимка и био)
+                </button>
+              ) : (
+                <div style={{ background: '#fff', borderRadius: 14, padding: 18, display: 'grid', gap: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#000' }}>Моят профил</p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarUrl} alt={data.staff.name} style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '1px solid #eee' }} />
+                    ) : (
+                      <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#f1f1f1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: 13 }}>
+                        Без снимка
+                      </div>
+                    )}
+                    <label style={{ padding: '8px 16px', borderRadius: 999, border: '1px solid #000', background: avatarUploading ? '#999' : '#000', color: '#fff', fontSize: 13, fontWeight: 600, cursor: avatarUploading ? 'default' : 'pointer' }}>
+                      {avatarUploading ? 'Качване...' : 'Качи снимка'}
+                      <input type="file" accept="image/*" onChange={handleAvatarChange} disabled={avatarUploading} style={{ display: 'none' }} />
+                    </label>
+                  </div>
+
+                  <textarea
+                    style={{ ...inputStyle, minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
+                    placeholder="Кратко био — разкажи на клиентите малко за себе си"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                  />
+
+                  {profileError ? <p style={{ margin: 0, color: '#dc2626', fontSize: 13 }}>{profileError}</p> : null}
+                  {profileSuccess ? <p style={{ margin: 0, color: '#15803d', fontSize: 13, fontWeight: 600 }}>{profileSuccess}</p> : null}
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowProfile(false)}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 999, border: '1px solid #ddd', background: '#fff', color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Затвори
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleProfileSave}
+                      disabled={profileSaving}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 999, border: 'none', background: profileSaving ? '#999' : '#16a34a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: profileSaving ? 'default' : 'pointer' }}
+                    >
+                      {profileSaving ? 'Запазване...' : 'Запази'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
               {!showForm ? (
                 <button
                   type="button"
                   onClick={() => { setShowForm(true); setSuccess(''); }}
-                  style={{ width: '100%', padding: 14, borderRadius: 10, border: '1px solid #000', background: '#000', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '10px 18px', borderRadius: 999, border: '1px solid #000', background: '#000', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                 >
                   + Добави резервация
                 </button>
@@ -202,14 +320,14 @@ export default function StaffPortalPage() {
                       type="button"
                       onClick={() => void handleSubmit()}
                       disabled={submitting}
-                      style={{ flex: 1, padding: 12, borderRadius: 8, border: 'none', background: '#000', color: '#fff', fontSize: 14, fontWeight: 600, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 999, border: 'none', background: '#000', color: '#fff', fontSize: 13, fontWeight: 600, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}
                     >
                       {submitting ? 'Записваме…' : 'Запази резервация'}
                     </button>
                     <button
                       type="button"
                       onClick={() => { setShowForm(false); setFormError(''); }}
-                      style={{ padding: 12, borderRadius: 8, border: '1px solid #ddd', background: '#fff', color: '#666', fontSize: 14, cursor: 'pointer' }}
+                      style={{ padding: '10px 14px', borderRadius: 999, border: '1px solid #ddd', background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' }}
                     >
                       Отказ
                     </button>
