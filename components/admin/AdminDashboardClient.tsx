@@ -2976,7 +2976,7 @@ export default function AdminDashboardClient({
             />
           ) : null}
 
-          {activeTab === 'staff' ? (
+          {activeTab === 'staff' && staffLoaded ? (
             <LazyStaffTabPanel
               salonSlug={slug}
               initialStaff={staffMembers}
