@@ -58,9 +58,15 @@ function useOnboardingSteps(site: AdminSitePayload) {
     },
     {
       id: 'specialist',
-      label: 'Добави себе си',
+      label: site.plan === 'team' ? 'Добави себе си и екипа си' : 'Добави себе си',
       done: !!site.ownerName && site.ownerName.trim().length > 1,
       tab: 'specialist',
+    },
+    {
+      id: 'stripe',
+      label: 'Свържи Stripe за плащания',
+      done: !!site.stripeConnected,
+      tab: 'payments',
     },
     {
       id: 'address',
@@ -174,7 +180,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
           <button
             key={step.id}
             type="button"
-            onClick={() => !step.done && onGoToTab(step.tab, (step as { subtab?: string }).subtab)}
+            onClick={() => onGoToTab(step.tab, (step as { subtab?: string }).subtab)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -183,7 +189,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
               border: step.done ? '1px solid #f3f4f6' : '1px solid rgba(219,39,119,0.1)',
               borderRadius: 9,
               padding: '8px 10px',
-              cursor: step.done ? 'default' : 'pointer',
+              cursor: 'pointer',
               textAlign: 'left',
               width: '100%',
               boxShadow: step.done ? 'none' : '0 2px 6px rgba(0,0,0,0.06)',

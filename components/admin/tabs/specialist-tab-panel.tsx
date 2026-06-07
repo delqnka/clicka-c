@@ -106,6 +106,7 @@ export function SpecialistTabPanel({
   return (
     <AdminSection
       title="Специалист"
+      desc="Това е твоят собствен публичен профил — снимка, име, роля и кратко представяне, които клиентите виждат на сайта ти."
       action={
         <button
           type="button"

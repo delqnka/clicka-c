@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       working_hours, services,
       template_id, primary_color, primary_color_light,
       plan_type, plan, is_active, site_status,
-      billing_period, plan_expires_at,
+      billing_period, plan_started_at, plan_expires_at,
       onboarding_code, owner_name
     ) VALUES (
       ${salonId}, ${slug}, ${salonName}, ${''}, ${''}, ${grant.email},
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       ${JSON.stringify(DEFAULT_HOURS)}::jsonb, ${'[]'}::jsonb,
       ${1}, ${'#111111'}, ${'#f3f4f6'},
       ${grant.plan_type}, ${grant.plan_type.startsWith('team') ? 'team' : 'solo'}, true, ${'setup'},
-      ${months === 6 ? '6m' : '12m'}, now() + (${String(months)} || ' months')::interval,
+      ${months === 6 ? '6m' : '12m'}, now(), now() + (${String(months)} || ' months')::interval,
       ${crypto.randomBytes(4).toString('hex').toUpperCase()}, ${ownerName}
     )
   `;

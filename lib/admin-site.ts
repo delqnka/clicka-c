@@ -75,6 +75,7 @@ export type AdminSitePayload = {
   ownerPublicRole: string;
   ownerPublicPhotoUrl: string;
   ownerPublicBio: string;
+  stripeConnected: boolean;
   services: ServiceItem[];
   workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
@@ -95,7 +96,10 @@ export type AdminSitePayload = {
   smsReminderMode: SmsReminderMode;
   plan: string;
   billingPeriod: string | null;
+  planStartedAt: string | null;
   planExpiresAt: string | null;
+  planPaidAmount: number | null;
+  planPaidCurrency: string | null;
   brandIds: string[];
   onboardingTourDone: boolean;
 };
@@ -222,7 +226,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       site_status, legal_info, latitude, longitude,
       faq_items, visitor_info, visitor_additional_info, venue_extras,
       sms_balance, sms_enabled, sms_reminder_mode, plan,
-      billing_period, plan_expires_at, brand_domains
+      billing_period, plan_started_at, plan_expires_at, plan_paid_amount, plan_paid_currency, brand_domains,
+      stripe_account_id, stripe_charges_enabled
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -261,6 +266,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     ownerPublicRole: String(row.owner_public_role ?? ''),
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),
     ownerPublicBio: String(row.owner_public_bio ?? ''),
+    stripeConnected: !!row.stripe_account_id && !!row.stripe_charges_enabled,
     services: normalizedServices,
     workingHours: normalizeWorkingHours(row.working_hours),
     bookingBlocks: normalizeBookingBlocks(
@@ -293,7 +299,10 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     smsReminderMode: normalizeSmsReminderMode(row.sms_reminder_mode),
     plan: String(row.plan ?? 'solo'),
     billingPeriod: row.billing_period ? String(row.billing_period) : null,
+    planStartedAt: row.plan_started_at ? String(row.plan_started_at) : null,
     planExpiresAt: row.plan_expires_at ? String(row.plan_expires_at) : null,
+    planPaidAmount: row.plan_paid_amount != null ? Number(row.plan_paid_amount) : null,
+    planPaidCurrency: row.plan_paid_currency ? String(row.plan_paid_currency) : null,
     brandIds: Array.isArray(row.brand_domains) ? row.brand_domains.map(String) : [],
   };
 }

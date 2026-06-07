@@ -445,8 +445,6 @@ export default function AdminDashboardClient({
   >([]);
   const [smsPanelLoading, setSmsPanelLoading] = useState(false);
   const [smsPendingReminders, setSmsPendingReminders] = useState(0);
-  const [tgCodeCopied, setTgCodeCopied] = useState(false);
-  const [tgBannerHidden, setTgBannerHidden] = useState(false);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
   const [portfolioPending, setPortfolioPending] = useState<Set<string>>(() => new Set());
   const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
@@ -2139,6 +2137,20 @@ export default function AdminDashboardClient({
               <div style={{ width: 28, height: 28, borderRadius: 7, background: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>c</div>
             )}
             <span style={{ fontSize: isMobile ? 17 : 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>{site.name || slug}</span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.05em',
+              padding: '3px 8px',
+              borderRadius: 999,
+              flexShrink: 0,
+              color: '#fff',
+              background: site.plan === 'team'
+                ? 'linear-gradient(135deg,#a855f7,#6366f1)'
+                : 'linear-gradient(135deg,#e11d48,#db2777)',
+            }}>
+              {site.plan === 'team' ? 'TEAM' : 'SOLO'}
+            </span>
             {!isMobile && (
               <span style={{ fontSize: 12, color: T.subtle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{ownerEmail}</span>
             )}
@@ -2783,6 +2795,44 @@ export default function AdminDashboardClient({
           {/* Toast messages */}
           {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
           {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
+
+          {/* ── Plan info (always visible) ── */}
+          {(() => {
+            const expiresAt = site.planExpiresAt ? new Date(site.planExpiresAt) : null;
+            if (!expiresAt || isNaN(expiresAt.getTime())) return null;
+            const planLabel = site.plan === 'team' ? 'TEAM' : 'SOLO';
+            const periodLabel = site.billingPeriod === '6m' ? '6 месеца' : '12 месеца';
+            const expiresLabel = expiresAt.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' });
+            const startedAt = site.planStartedAt ? new Date(site.planStartedAt) : null;
+            const startedLabel = startedAt && !isNaN(startedAt.getTime())
+              ? startedAt.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' })
+              : null;
+            const priceLabel = site.planPaidAmount != null
+              ? `${(site.planPaidAmount / 100).toFixed(2)} ${site.planPaidCurrency ?? 'EUR'}`
+              : null;
+
+            return (
+              <div style={{
+                marginBottom: 12,
+                padding: '12px 16px',
+                borderRadius: 14,
+                border: `1px solid ${T.border}`,
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+              }}>
+                <CreditCard size={16} style={{ color: T.subtle, flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: 13, color: T.text }}>
+                  План <strong>{planLabel}</strong> · {periodLabel}
+                  {startedLabel ? <> · платен на <strong>{startedLabel}</strong></> : null}
+                  {priceLabel ? <> за <strong>{priceLabel}</strong></> : null}
+                  {' '}· активен до <strong>{expiresLabel}</strong>
+                </p>
+              </div>
+            );
+          })()}
 
           {/* ── Plan renewal banner ── */}
           {(() => {
@@ -3482,126 +3532,6 @@ export default function AdminDashboardClient({
 
         </main>
       </div>
-
-      {/* ── Telegram connect banner ───────────────────── */}
-      {!site.telegramChatId && !tgBannerHidden && (
-        <div style={{
-          position: 'fixed',
-          bottom: isMobile ? 84 : 24,
-          left: 0,
-          right: 0,
-          width: 'calc(100% - 32px)',
-          maxWidth: 420,
-          margin: '0 auto',
-          zIndex: 49,
-          background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-          borderRadius: 16,
-          padding: '14px 18px',
-          boxShadow: '0 8px 32px rgba(219,39,119,.35)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          color: '#fff',
-        }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, opacity: 0.9 }}>
-            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.038 9.593c-.152.678-.549.843-1.112.524l-3.078-2.268-1.484 1.428c-.164.164-.302.302-.619.302l.221-3.131 5.703-5.152c.248-.221-.054-.344-.383-.123L7.12 14.073l-3.031-.947c-.658-.206-.671-.658.138-.975l11.84-4.564c.548-.197 1.028.134.495.661z"/>
-          </svg>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>Свържи Telegram</p>
-            {site.onboardingCode && (
-              <p style={{ margin: '4px 0 0', fontSize: 11, opacity: 0.75, lineHeight: 1.3 }}>
-                1. Отвори бота →{'  '}
-                2. Изпрати кода:{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
-                    setTgCodeCopied(true);
-                    setTimeout(() => setTgCodeCopied(false), 2000);
-                  }}
-                  title="Копирай кода"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '1px 7px',
-                    fontFamily: 'monospace',
-                    fontWeight: 800,
-                    fontSize: 13,
-                    letterSpacing: '0.05em',
-                    color: '#e11d48',
-                    cursor: 'pointer',
-                    verticalAlign: 'middle',
-                  }}
-                >
-                  {site.onboardingCode}
-                  {tgCodeCopied ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                    </svg>
-                  )}
-                </button>
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (site.onboardingCode) {
-                navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
-              }
-              window.open('https://t.me/clicka_booking_bot', '_blank');
-            }}
-            style={{
-              flexShrink: 0,
-              border: '2px solid rgba(255,255,255,0.6)',
-              background: 'rgba(255,255,255,0.15)',
-              color: '#fff',
-              borderRadius: 999,
-              padding: '7px 14px',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Отвори →
-          </button>
-          <button
-            type="button"
-            aria-label="Скрий банера"
-            onClick={() => setTgBannerHidden(true)}
-            style={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              background: 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: 999,
-              width: 22,
-              height: 22,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: '#fff',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-      )}
 
       {/* ── Mobile bottom tab bar (glass pill) ───────── */}
       {isMobile && (

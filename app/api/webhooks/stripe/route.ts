@@ -240,7 +240,10 @@ export async function POST(request: NextRequest) {
         plan_type = ${planType ?? null},
         plan = ${canonicalPlan},
         billing_period = ${billingPeriod},
+        plan_started_at = now(),
         plan_expires_at = now() + (${String(billingMonths)} || ' months')::interval,
+        plan_paid_amount = ${session.amount_total ?? null},
+        plan_paid_currency = ${session.currency ? session.currency.toUpperCase() : null},
         stripe_session_id = ${session.id},
         stripe_customer_id = ${(session.customer as string) ?? null}
       WHERE slug = ${salonSlug}

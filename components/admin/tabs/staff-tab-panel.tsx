@@ -342,7 +342,7 @@ export function StaffTabPanel({ salonSlug, initialStaff, planLimit, salonService
 
       <AdminSection
         title="Служители"
-        desc={`${nonOwners.length} / ${planLimit} служителя`}
+        desc={`${nonOwners.length} / ${planLimit} служителя — ти като собственик си в таб „Специалист" и не влизаш в това число`}
         action={
           canAdd ? (
             <button
