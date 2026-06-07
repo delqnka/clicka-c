@@ -373,8 +373,6 @@ export default function AdminDashboardClient({
   const [googleBizMessage, setGoogleBizMessage] = useState('');
   const [calendarIntegrationStatus, setCalendarIntegrationStatus] = useState({
     loading: false,
-    googleConnected: false,
-    googleConfigured: false,
     feedUrl: '',
     webcalUrl: '',
     externalIcsUrl: '',
@@ -792,8 +790,6 @@ export default function AdminDashboardClient({
         cache: 'no-store',
       });
       const data = (await readJson(res)) as {
-        googleConnected?: boolean;
-        googleConfigured?: boolean;
         feedUrl?: string;
         webcalUrl?: string;
         externalIcsUrl?: string;
@@ -801,8 +797,6 @@ export default function AdminDashboardClient({
       if (!res.ok) throw new Error('status_failed');
       setCalendarIntegrationStatus({
         loading: false,
-        googleConnected: data.googleConnected === true,
-        googleConfigured: data.googleConfigured === true,
         feedUrl: String(data.feedUrl ?? ''),
         webcalUrl: String(data.webcalUrl ?? ''),
         externalIcsUrl: String(data.externalIcsUrl ?? ''),
@@ -877,55 +871,17 @@ export default function AdminDashboardClient({
 
   useEffect(() => {
     if (activeTab !== 'bookings') return;
-    const hasExternal = calendarIntegrationStatus.externalIcsUrl || calendarIntegrationStatus.googleConnected;
+    const hasExternal = calendarIntegrationStatus.externalIcsUrl;
     const hasBlocks = (site.bookingBlocks ?? []).length > 0;
     if (!hasExternal && !hasBlocks) return;
     void loadExternalCalendarOverlay();
   }, [
     activeTab,
     calendarIntegrationStatus.externalIcsUrl,
-    calendarIntegrationStatus.googleConnected,
     site.bookingBlocks,
     loadExternalCalendarOverlay,
   ]);
 
-
-  const connectGoogleCalendar = useCallback(() => {
-    window.location.href = `/api/admin/calendar/google/connect?slug=${encodeURIComponent(slug)}`;
-  }, [slug]);
-
-  const disconnectGoogleCalendar = useCallback(async () => {
-    setBusyKey('calendar-disconnect');
-    setError('');
-    try {
-      const res = await fetch(`/api/admin/calendar/google?slug=${encodeURIComponent(slug)}`, {
-        method: 'POST',
-      });
-      await guardResponse(res);
-      setNotice('Google Calendar връзката е премахната.');
-      await loadCalendarIntegrationStatus();
-    } catch (e) {
-      handleErr(e);
-    } finally {
-      setBusyKey('');
-    }
-  }, [slug, loadCalendarIntegrationStatus]);
-
-  const resyncGoogleCalendar = useCallback(async () => {
-    setBusyKey('calendar-resync');
-    setError('');
-    try {
-      const res = await fetch(`/api/admin/calendar/google?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-      });
-      await guardResponse(res);
-      setNotice('Синхронизацията с Google Calendar започна.');
-    } catch (e) {
-      handleErr(e);
-    } finally {
-      setBusyKey('');
-    }
-  }, [slug]);
 
   useEffect(() => {
     if (activeTab !== 'integrations') return;
@@ -1086,16 +1042,6 @@ export default function AdminDashboardClient({
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') === 'notifications') {
       setActiveTab(params.get('smsPurchase') ? 'sms' : 'integrations');
-    }
-    if (params.get('calendar') === 'connected') {
-      setActiveTab('integrations');
-      setNotice('Google Calendar е свързан. Резервациите се синхронизират автоматично.');
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-    if (params.get('calendar') === 'error') {
-      setActiveTab('integrations');
-      setError('Google Calendar не беше свързан. Опитайте отново.');
-      window.history.replaceState({}, '', window.location.pathname);
     }
     if (params.get('smsPurchase') === 'success') {
       setActiveTab('sms');
@@ -3513,9 +3459,6 @@ export default function AdminDashboardClient({
               searchGoogleBusinesses={searchGoogleBusinesses}
               calendarStatus={calendarIntegrationStatus}
               loadCalendarStatus={loadCalendarIntegrationStatus}
-              onConnectGoogleCalendar={connectGoogleCalendar}
-              onDisconnectGoogleCalendar={disconnectGoogleCalendar}
-              onResyncGoogleCalendar={resyncGoogleCalendar}
               onSaveExternalIcsUrl={saveExternalIcsUrl}
             />
           ) : null}

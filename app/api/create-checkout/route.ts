@@ -17,7 +17,7 @@ type PlanOption = {
 const PLAN_OPTIONS: Record<string, PlanOption> = {
   solo_12m: { amount: 100,   plan: 'solo', billingPeriod: '12m', name: 'Solo сайт — 12 месеца' }, // TEST: временно 1 EUR (оригинал: 29900)
   solo_6m:  { amount: 16900, plan: 'solo', billingPeriod: '6m',  name: 'Solo сайт — 6 месеца' },
-  team_12m: { amount: 49900, plan: 'team', billingPeriod: '12m', name: 'Team сайт — 12 месеца' },
+  team_12m: { amount: 100,   plan: 'team', billingPeriod: '12m', name: 'Team сайт — 12 месеца' }, // TEST: временно 1 EUR (оригинал: 49900)
   team_6m:  { amount: 27900, plan: 'team', billingPeriod: '6m',  name: 'Team сайт — 6 месеца' },
 };
 
@@ -28,7 +28,7 @@ interface BillingInfo {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { planKey: string; salonName?: string; slug?: string; smsAddon?: boolean; billingInfo?: BillingInfo };
+  let body: { planKey: string; ownerName?: string; salonName?: string; slug?: string; smsAddon?: boolean; billingInfo?: BillingInfo };
 
   try {
     body = await request.json();
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
   }
 
-  const { planKey, salonName, slug, smsAddon, billingInfo } = body;
+  const { planKey, ownerName, salonName, slug, smsAddon, billingInfo } = body;
   const option = PLAN_OPTIONS[planKey];
 
   if (!option) {
@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         planType: option.plan,
         billingPeriod: option.billingPeriod,
+        ownerName: (ownerName ?? '').slice(0, 64),
         salonName: (salonName ?? '').slice(0, 64),
         salonSlug: (slug ?? '').slice(0, 32),
         smsAddon: smsAddon ? '1' : '0',

@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     // Load salon
     const salonRows = await sql`
-      SELECT CAST(id AS text) AS id, name, plan, email, telegram_chat_id,
+      SELECT CAST(id AS text) AS id, name, owner_name, plan, email, telegram_chat_id,
              services, working_hours
       FROM salons
       WHERE CAST(id AS text) = ${salonId} AND is_active = true
@@ -108,8 +108,10 @@ export async function POST(req: NextRequest) {
       telegramChatId: String(salon.telegram_chat_id ?? ''),
       staffEmail: staff?.email ?? null,
       staffTelegramChatId: staff?.telegram_chat_id ?? null,
+      staffName: staff?.name ?? null,
       bookingDetails: {
         salonName: String(salon.name ?? ''),
+        salonOwnerName: salon.owner_name ? String(salon.owner_name) : undefined,
         clientName,
         clientEmail: '',
         clientPhone,

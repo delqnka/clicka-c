@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { buildSalonCalendarFeed } from '@/lib/calendar-ics';
-import { resolveSalonByFeedToken } from '@/lib/google-calendar';
+import { resolveSalonByFeedToken } from '@/lib/calendar-feed';
 
 export const dynamic = 'force-dynamic';
 

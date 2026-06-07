@@ -94,6 +94,7 @@ export interface BookingDetails {
   time: string;
   notes?: string;
   salonName: string;
+  salonOwnerName?: string;
   salonEmail?: string;
   salonPhone?: string;
   salonAddress?: string;
@@ -242,6 +243,9 @@ export async function sendBookingNotification(
   booking: BookingDetails
 ): Promise<void> {
   const formattedDate = formatBgDateDMY(booking.date);
+  const ownerGreeting = booking.salonOwnerName?.trim()
+    ? `Здравей, ${escapeHtml(booking.salonOwnerName.trim())}!`
+    : 'Здравей!';
   const salonRows = [
     renderRow('Клиент', booking.clientName),
     renderRow('Телефон', booking.clientPhone),
@@ -262,6 +266,7 @@ export async function sendBookingNotification(
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="margin: 0 0 16px; color: #000;">Нова резервация</h2>
+        <p style="line-height: 1.7;">${ownerGreeting}</p>
         <p style="margin: 0 0 16px; line-height: 1.7;">
           Имате нова заявка за <strong>${escapeHtml(booking.salonName)}</strong>.
         </p>

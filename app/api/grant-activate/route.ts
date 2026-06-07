@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
   if (rl.limited) return NextResponse.json({ error: 'Твърде много опити. Изчакай малко.' }, { status: 429 });
 
   const body = await request.json().catch(() => ({}));
-  const { token, salonName: rawSalonName, slug: rawSlug } = body as { token?: string; salonName?: string; slug?: string };
+  const { token, ownerName: rawOwnerName, salonName: rawSalonName, slug: rawSlug } = body as { token?: string; ownerName?: string; salonName?: string; slug?: string };
+  const ownerName = (rawOwnerName ?? '').trim().slice(0, 64);
   const salonName = (rawSalonName ?? '').trim().slice(0, 64);
   const desiredSlug = toSlug((rawSlug ?? '').trim());
   if (!token) return NextResponse.json({ error: 'Липсва токен' }, { status: 400 });
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       template_id, primary_color, primary_color_light,
       plan_type, plan, is_active, site_status,
       billing_period, plan_expires_at,
-      onboarding_code
+      onboarding_code, owner_name
     ) VALUES (
       ${salonId}, ${slug}, ${salonName}, ${''}, ${''}, ${grant.email},
       ${''}, ${''}, ${''},
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
       ${1}, ${'#111111'}, ${'#f3f4f6'},
       ${grant.plan_type}, ${grant.plan_type.startsWith('team') ? 'team' : 'solo'}, true, ${'setup'},
       ${months === 6 ? '6m' : '12m'}, now() + (${String(months)} || ' months')::interval,
-      ${crypto.randomBytes(4).toString('hex').toUpperCase()}
+      ${crypto.randomBytes(4).toString('hex').toUpperCase()}, ${ownerName}
     )
   `;
 

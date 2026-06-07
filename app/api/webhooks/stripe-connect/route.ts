@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
             b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration,
             b.date, b.time, b.notes, b.manage_token, b.staff_member_id,
-            s.name AS salon_name, s.email AS salon_email,
+            s.name AS salon_name, s.owner_name AS salon_owner_name, s.email AS salon_email,
             s.phone AS salon_phone, s.address AS salon_address,
             s.city AS salon_city, s.slug AS salon_slug,
             s.telegram_chat_id
@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
             time: String(row.time ?? ''),
             notes: row.notes ? String(row.notes) : undefined,
             salonName: String(row.salon_name ?? ''),
+            salonOwnerName: row.salon_owner_name ? String(row.salon_owner_name) : undefined,
             salonEmail: row.salon_email ? String(row.salon_email) : undefined,
             salonPhone: row.salon_phone ? String(row.salon_phone) : undefined,
             salonAddress:

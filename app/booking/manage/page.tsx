@@ -62,6 +62,12 @@ export default function ManageBookingPage() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [done, setDone] = useState('');
 
+  const [rescheduling, setRescheduling] = useState(false);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [rescheduleError, setRescheduleError] = useState('');
+
   const loadBooking = useCallback(async () => {
     if (!id || !token) {
       setError('Невалиден линк.');
@@ -84,6 +90,37 @@ export default function ManageBookingPage() {
   }, [id, token]);
 
   useEffect(() => { void loadBooking(); }, [loadBooking]);
+
+  const handleReschedule = async () => {
+    setRescheduleError('');
+    if (!newDate || !newTime) {
+      setRescheduleError('Изберете дата и час.');
+      return;
+    }
+    setRescheduling(true);
+    try {
+      const res = await fetch(
+        `/api/bookings/manage?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reschedule', newDate, newTime }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setRescheduleError(data.error || 'Грешка при преместване.');
+        return;
+      }
+      setDone('Резервацията беше успешно преместена. Изпратихме потвърждение на имейла ви.');
+      setShowReschedule(false);
+      setBooking((prev) => prev ? { ...prev, date: data.date, time: data.time } : prev);
+    } catch {
+      setRescheduleError('Грешка при свързване със сървъра.');
+    } finally {
+      setRescheduling(false);
+    }
+  };
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -178,6 +215,80 @@ export default function ManageBookingPage() {
 
             {booking.canModify && !done ? (
               <div style={{ marginTop: 20, display: 'grid', gap: 10 }}>
+                {!showReschedule ? (
+                  <button
+                    type="button"
+                    onClick={() => { setShowReschedule(true); setRescheduleError(''); }}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      borderRadius: 10,
+                      border: '1px solid #000',
+                      background: '#fff',
+                      color: '#000',
+                      fontSize: 15,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Промени дата/час
+                  </button>
+                ) : (
+                  <div style={{ padding: 16, background: '#F9FAFB', borderRadius: 12, display: 'grid', gap: 10 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#000' }}>Изберете нова дата и час</p>
+                    <input
+                      type="date"
+                      value={newDate}
+                      min={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
+                    />
+                    <input
+                      type="time"
+                      value={newTime}
+                      onChange={(e) => setNewTime(e.target.value)}
+                      style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
+                    />
+                    {rescheduleError ? (
+                      <p style={{ margin: 0, fontSize: 13, color: '#dc2626' }}>{rescheduleError}</p>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => void handleReschedule()}
+                        disabled={rescheduling}
+                        style={{
+                          padding: '10px 24px',
+                          borderRadius: 8,
+                          border: 'none',
+                          background: '#000',
+                          color: '#fff',
+                          fontSize: 14,
+                          fontWeight: 600,
+                          cursor: rescheduling ? 'wait' : 'pointer',
+                          opacity: rescheduling ? 0.7 : 1,
+                        }}
+                      >
+                        {rescheduling ? 'Записваме...' : 'Запази промяната'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowReschedule(false); setRescheduleError(''); }}
+                        style={{
+                          padding: '10px 24px',
+                          borderRadius: 8,
+                          border: '1px solid #ddd',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: 14,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Отказ
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {!confirmCancel ? (
                   <button
                     type="button"

@@ -13,8 +13,6 @@ export type StaffMember = {
   isOwner: boolean;
   isActive: boolean;
   telegramChatId: string | null;
-  googleCalendarId: string | null;
-  googleCalendarRefreshToken: string | null;
   serviceIds: string[];
   onboardingCode: string | null;
 };
@@ -30,8 +28,6 @@ type StaffRow = {
   is_owner: boolean;
   is_active: boolean;
   telegram_chat_id: string | null;
-  google_calendar_id: string | null;
-  google_calendar_refresh_token: string | null;
   service_ids: string[] | null;
   onboarding_code: string | null;
 };
@@ -48,8 +44,6 @@ function rowToStaffMember(row: StaffRow): StaffMember {
     isOwner: row.is_owner,
     isActive: row.is_active ?? true,
     telegramChatId: row.telegram_chat_id,
-    googleCalendarId: row.google_calendar_id,
-    googleCalendarRefreshToken: row.google_calendar_refresh_token,
     serviceIds: row.service_ids ?? [],
     onboardingCode: row.onboarding_code ?? null,
   };
@@ -60,8 +54,7 @@ export async function getStaffMembers(salonId: string): Promise<StaffMember[]> {
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.google_calendar_id,
-      sm.google_calendar_refresh_token, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids
     FROM staff_members sm
     LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
@@ -80,8 +73,7 @@ export async function getStaffMemberBySlug(
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.google_calendar_id,
-      sm.google_calendar_refresh_token, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids
     FROM staff_members sm
     LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
@@ -100,8 +92,7 @@ export async function getStaffMemberByTelegramChatId(
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.google_calendar_id,
-      sm.google_calendar_refresh_token, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids,
       s.slug AS salon_slug, s.name AS salon_name
     FROM staff_members sm
@@ -121,8 +112,7 @@ export async function getStaffMemberById(id: string): Promise<StaffMember | null
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.google_calendar_id,
-      sm.google_calendar_refresh_token, sm.onboarding_code,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids
     FROM staff_members sm
     LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
@@ -155,7 +145,7 @@ export async function createStaffMember(input: {
     INSERT INTO staff_members (salon_id, name, slug, email, onboarding_code)
     VALUES (${input.salonId}, ${input.name}, ${input.slug}, ${input.email ?? null}, ${onboardingCode})
     RETURNING id, salon_id, name, slug, email, bio, avatar_url, is_owner, is_active,
-              telegram_chat_id, google_calendar_id, google_calendar_refresh_token, onboarding_code
+              telegram_chat_id, onboarding_code
   `;
   const row = rows[0] as StaffRow;
   const member = rowToStaffMember({ ...row, service_ids: [] });

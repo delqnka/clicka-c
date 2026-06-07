@@ -13,6 +13,7 @@ import {
   type BookingCatalogService,
 } from '@/lib/booking-modal-catalog';
 import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-service-categories';
+import { formatPolicySummary, type CancelPolicyAction } from '@/lib/cancellation-policy';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { BookingSuccessView } from '@/components/salon/BookingSuccessView';
 
@@ -62,6 +63,8 @@ type SalonBookingModalProps = {
   timeSlots: string[] | 'closed' | null;
   paymentType?: 'none' | 'deposit' | 'full';
   depositAmount?: number;
+  cancelPolicyHours?: number;
+  cancelPolicyAction?: CancelPolicyAction;
   isSubmitting: boolean;
   bookingError: string;
   bookingSuccess: string;
@@ -137,6 +140,8 @@ export function SalonBookingModal({
   timeSlots,
   paymentType = 'none',
   depositAmount,
+  cancelPolicyHours,
+  cancelPolicyAction,
   isSubmitting,
   bookingError,
   bookingSuccess,
@@ -884,6 +889,15 @@ export function SalonBookingModal({
                 <p className="text-[11px] text-black/35">
                   Защитено плащане чрез <span className="font-bold text-[#635BFF]">Stripe</span>
                 </p>
+                {cancelPolicyHours ? (
+                  <p className="mx-auto max-w-[320px] text-[11px] leading-relaxed text-black/45">
+                    {formatPolicySummary({
+                      cancelPolicyHours,
+                      cancelPolicyAction: cancelPolicyAction ?? 'keep_deposit',
+                      depositAmountEuros: depositAmount,
+                    })}
+                  </p>
+                ) : null}
               </div>
             )}
             {(() => {

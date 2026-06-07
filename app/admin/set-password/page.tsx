@@ -11,6 +11,59 @@ function stripCyrillic(value: string) {
   return value.replace(/[Ѐ-ӿ]/g, '');
 }
 
+const CONFETTI_COLORS = ['#e11d48', '#db2777', '#a855f7', '#f59e0b', '#22c55e', '#3b82f6'];
+
+function ConfettiBurst() {
+  const pieces = Array.from({ length: 26 }, (_, i) => {
+    const angle = (i / 26) * 360 + (i % 2 === 0 ? 8 : -8);
+    const distance = 70 + (i % 5) * 18;
+    const dx = Math.cos((angle * Math.PI) / 180) * distance;
+    const dy = Math.sin((angle * Math.PI) / 180) * distance;
+    const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    const delay = (i % 6) * 0.03;
+    const duration = 0.9 + (i % 4) * 0.15;
+    const isCircle = i % 3 === 0;
+    return (
+      <span
+        key={i}
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: isCircle ? 8 : 6,
+          height: isCircle ? 8 : 12,
+          marginTop: -6,
+          marginLeft: -3,
+          background: color,
+          borderRadius: isCircle ? '50%' : 2,
+          opacity: 0,
+          transform: 'translate(0, 0) rotate(0deg) scale(0.6)',
+          animation: `clicka-confetti-piece ${duration}s cubic-bezier(.21,.84,.49,1) ${delay}s forwards`,
+          ...({ '--dx': `${dx}px`, '--dy': `${dy}px`, '--rot': `${(i % 2 === 0 ? 1 : -1) * (220 + i * 11)}deg` } as React.CSSProperties),
+        }}
+      />
+    );
+  });
+
+  return (
+    <div style={{ position: 'relative', width: 1, height: 1, margin: '0 auto' }} aria-hidden="true">
+      <style>{`
+        @keyframes clicka-confetti-piece {
+          0%   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(0.6); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + 60px)) rotate(var(--rot)) scale(0.9); }
+        }
+        @keyframes clicka-badge-pop {
+          0%   { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+          60%  { transform: scale(1.08) rotate(4deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+      `}</style>
+      {pieces}
+    </div>
+  );
+}
+
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -102,8 +155,27 @@ function SetPasswordForm() {
 
   if (done) {
     return (
-      <div style={{ textAlign: 'center', padding: '32px 0' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+      <div style={{ textAlign: 'center', padding: '32px 0', position: 'relative' }}>
+        <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
+          <ConfettiBurst />
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+              boxShadow: '0 8px 24px rgba(219,39,119,0.35)',
+              animation: 'clicka-badge-pop 0.55s cubic-bezier(.21,1.02,.49,1) both',
+            }}
+          >
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </div>
+        </div>
         <p style={{ fontWeight: 800, fontSize: 20, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
           Акаунтът е създаден!
         </p>

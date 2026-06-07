@@ -51,10 +51,6 @@ export async function ensureBookingsSchema() {
       `;
       await sql`
         ALTER TABLE bookings
-        ADD COLUMN IF NOT EXISTS google_calendar_event_id text
-      `;
-      await sql`
-        ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS manage_token text
       `;
       await sql`

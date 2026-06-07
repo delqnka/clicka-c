@@ -9,8 +9,6 @@ import type { AdminSitePayload } from '@/lib/admin-site';
 
 type CalendarStatus = {
   loading: boolean;
-  googleConnected: boolean;
-  googleConfigured: boolean;
   feedUrl: string;
   webcalUrl: string;
   externalIcsUrl: string;
@@ -60,9 +58,6 @@ export function IntegrationsTabPanel({
   searchGoogleBusinesses,
   calendarStatus,
   loadCalendarStatus,
-  onConnectGoogleCalendar,
-  onDisconnectGoogleCalendar,
-  onResyncGoogleCalendar,
   onSaveExternalIcsUrl,
 }: {
   site: AdminSitePayload;
@@ -85,9 +80,6 @@ export function IntegrationsTabPanel({
   searchGoogleBusinesses: () => void | Promise<void>;
   calendarStatus: CalendarStatus;
   loadCalendarStatus: () => void | Promise<void>;
-  onConnectGoogleCalendar: () => void;
-  onDisconnectGoogleCalendar: () => void | Promise<void>;
-  onResyncGoogleCalendar: () => void | Promise<void>;
   onSaveExternalIcsUrl: (url: string) => void | Promise<void>;
 }) {
   return (

@@ -445,6 +445,9 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
                       <LiveMessagesList messages={liveMessages} GRAD={GRAD} sending={liveSending} onOpenBooking={onOpenBooking} />
                       <div ref={bottomRef} />
                     </div>
+                    <div style={{ padding: '6px 14px', fontSize: 11, lineHeight: 1.4, color: '#000', background: '#fff' }}>
+                      Разговаряш с AI асистент. Изпращайки съобщение, се съгласяваш данните ти (име, телефон, имейл, съдържание на разговора) да бъдат обработени с цел отговор на запитването, включително от AI доставчик. Виж <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#000', textDecoration: 'underline' }}>политиката за поверителност</a>.
+                    </div>
                     <div style={{
                       flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
                       padding: '10px 12px',

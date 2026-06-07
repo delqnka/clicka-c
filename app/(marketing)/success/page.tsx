@@ -96,6 +96,7 @@ export default async function SuccessPage({
 
         if (session.payment_status === 'paid') {
           const email = session.customer_details?.email ?? '';
+          const ownerName = (session.metadata?.ownerName ?? '').trim();
           const salonName = (session.metadata?.salonName ?? '').trim();
           const desiredSlug = toSlug((session.metadata?.salonSlug ?? '').trim());
           const planType = session.metadata?.planType ?? 'solo';
@@ -120,7 +121,8 @@ export default async function SuccessPage({
                 template_id, primary_color, primary_color_light,
                 plan_type, plan, is_active, site_status,
                 billing_period, plan_expires_at,
-                onboarding_code, stripe_session_id
+                onboarding_code, stripe_session_id,
+                owner_name
               ) VALUES (
                 ${salonId}, ${slug}, ${salonName}, ${''}, ${''}, ${email},
                 ${''}, ${''}, ${''},
@@ -132,7 +134,8 @@ export default async function SuccessPage({
                 ${planType}, ${planType === 'ekip' ? 'team' : planType}, true, ${'setup'},
                 ${billingPeriod}, now() + (${String(billingMonths)} || ' months')::interval,
                 ${crypto.randomBytes(4).toString('hex').toUpperCase()},
-                ${sessionId}
+                ${sessionId},
+                ${ownerName}
               )
             `;
 

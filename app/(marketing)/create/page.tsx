@@ -110,6 +110,7 @@ function CreatePageContent() {
   const [expanded, setExpanded] = useState<Expanded>({ solo: false, team: false });
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [error,         setError]         = useState('');
+  const [ownerName,     setOwnerName]     = useState('');
   const [salonName,     setSalonName]     = useState('');
   const [slug,          setSlug]          = useState('');
   const [slugEdited,    setSlugEdited]    = useState(false);
@@ -120,7 +121,8 @@ function CreatePageContent() {
     try {
       const saved = sessionStorage.getItem('clicka_create_draft');
       if (!saved) return;
-      const draft = JSON.parse(saved) as { salonName?: string; slug?: string; slugEdited?: boolean };
+      const draft = JSON.parse(saved) as { ownerName?: string; salonName?: string; slug?: string; slugEdited?: boolean };
+      if (draft.ownerName) setOwnerName(draft.ownerName);
       if (draft.salonName) setSalonName(draft.salonName);
       if (draft.slug) setSlug(draft.slug);
       if (draft.slugEdited) setSlugEdited(true);
@@ -129,9 +131,9 @@ function CreatePageContent() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem('clicka_create_draft', JSON.stringify({ salonName, slug, slugEdited }));
+      sessionStorage.setItem('clicka_create_draft', JSON.stringify({ ownerName, salonName, slug, slugEdited }));
     } catch { /* ignore */ }
-  }, [salonName, slug, slugEdited]);
+  }, [ownerName, salonName, slug, slugEdited]);
 
   // Live проверка дали slug-ът е свободен (debounce)
   useEffect(() => {
@@ -162,6 +164,7 @@ function CreatePageContent() {
   async function handlePay() {
     if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'InitiateCheckout');
     if (grantToken) {
+      if (!ownerName.trim()) { setError('Въведи твоето име.'); return; }
       if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
       if (!slug.trim()) { setError('Въведи адрес на сайта.'); return; }
       if (slugStatus === 'taken') { setError('Този адрес вече е зает — избери друг.'); return; }
@@ -171,7 +174,7 @@ function CreatePageContent() {
         const res = await fetch('/api/grant-activate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: grantToken, salonName: salonName.trim(), slug: slug.trim() }),
+          body: JSON.stringify({ token: grantToken, ownerName: ownerName.trim(), salonName: salonName.trim(), slug: slug.trim() }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Грешка');
@@ -184,6 +187,7 @@ function CreatePageContent() {
       return;
     }
 
+    if (!ownerName.trim()) { setError('Въведи твоето име.'); return; }
     if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
     if (!slug.trim()) { setError('Въведи адрес на сайта.'); return; }
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
@@ -203,6 +207,7 @@ function CreatePageContent() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           planKey,
+          ownerName: ownerName.trim(),
           salonName: salonName.trim(),
           slug: slug.trim(),
           ...(wantsInvoice && {
@@ -508,8 +513,22 @@ function CreatePageContent() {
           </button>
         </div>
 
-        {/* ── Salon name ── */}
+        {/* ── Owner name ── */}
         <div className="mt-8">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
+            Твоето име
+          </label>
+          <input
+            type="text"
+            value={ownerName}
+            onChange={e => setOwnerName(e.target.value)}
+            placeholder="напр. Деляна Иванова"
+            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]"
+          />
+        </div>
+
+        {/* ── Salon name ── */}
+        <div className="mt-6">
           <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
             Име на салона
           </label>
@@ -661,7 +680,7 @@ function CreatePageContent() {
                 ? 'Активирай безплатния абонамент'
                 : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
             onClick={handlePay}
-            disabled={isSubmitting || !salonName.trim() || !slug.trim() || slugStatus === 'taken' || slugStatus === 'checking' || (!grantToken && !termsAccepted)}
+            disabled={isSubmitting || !ownerName.trim() || !salonName.trim() || !slug.trim() || slugStatus === 'taken' || slugStatus === 'checking' || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
           <p className="mt-2 text-center text-[12px] text-[#6b7280]">

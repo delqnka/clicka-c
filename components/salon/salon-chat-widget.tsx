@@ -293,6 +293,10 @@ export function SalonChatWidget({ salonId, salonName, primaryColor = '#e11d48', 
                   <div ref={bottomRef} />
                 </div>
 
+                {/* GDPR disclaimer */}
+                <div style={{ padding: '6px 14px', fontSize: 11, lineHeight: 1.4, color: '#000', background: '#fff' }}>
+                  Изпращайки съобщение, се съгласяваш данните ти да бъдат обработени с цел отговор на запитването. Виж <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#000', textDecoration: 'underline' }}>политиката за поверителност</a>.
+                </div>
                 {/* Input */}
                 <div style={{
                   flexShrink: 0,

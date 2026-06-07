@@ -21,10 +21,6 @@ import { normalizeServices } from '@/lib/salon-services';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { runAfterResponse } from '@/lib/run-after-response';
 import {
-  loadBookingForCalendarSync,
-  syncBookingToGoogleCalendar,
-} from '@/lib/calendar-sync';
-import {
   cancelBookingSmsReminders,
   scheduleBookingSmsReminders,
 } from '@/lib/sms-reminders';
@@ -55,7 +51,7 @@ async function resolveSalonFromRequest(request: NextRequest) {
 
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address,
-           telegram_chat_id, google_place_id, opening_hours,
+           owner_name, telegram_chat_id, google_place_id, opening_hours,
            sms_enabled, sms_reminder_mode
     FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
@@ -407,6 +403,7 @@ export async function POST(request: NextRequest) {
     time,
     notes: normalizedNotes || undefined,
     salonName: resolved.salon.name,
+    salonOwnerName: resolved.salon.owner_name ? String(resolved.salon.owner_name) : undefined,
     salonEmail: resolved.salon.email || undefined,
     salonPhone: resolved.salon.phone || undefined,
     salonAddress:
@@ -434,6 +431,7 @@ export async function POST(request: NextRequest) {
         },
         staffEmail: staffMember?.email ?? null,
         staffTelegramChatId: staffMember?.telegramChatId ?? null,
+        staffName: staffMember?.name ?? null,
       }),
     );
   }
@@ -448,24 +446,6 @@ export async function POST(request: NextRequest) {
       smsReminderMode: (resolved.salon as Record<string, unknown>).sms_reminder_mode,
       smsReminderConsent: hasSmsReminderConsent,
     }),
-  );
-
-  runAfterResponse(
-    syncBookingToGoogleCalendar({
-      id: insertedBooking.id,
-      salonId,
-      salonName: String(resolved.salon.name ?? ''),
-      clientName,
-      clientPhone,
-      clientEmail: normalizedClientEmail,
-      serviceName: resolvedServiceName,
-      serviceDuration: durationValue,
-      date,
-      time,
-      status: 'pending',
-      notes: normalizedNotes || null,
-      googleCalendarEventId: null,
-    }).catch((err) => console.error('[bookings POST] calendar sync', err)),
   );
 
   return NextResponse.json({
@@ -518,7 +498,7 @@ export async function PATCH(request: NextRequest) {
         completed_at = CASE WHEN ${status} = 'completed' THEN now() ELSE completed_at END
     WHERE id = ${bookingId} AND salon_id = ${salonId}
     RETURNING id, client_email, client_name, service_name, client_phone,
-              service_duration, date, time, notes, google_calendar_event_id, status
+              service_duration, date, time, notes, status
   `;
 
   if (updated.length === 0) {
@@ -530,12 +510,6 @@ export async function PATCH(request: NextRequest) {
       console.error('[bookings PATCH] cancel SMS', err),
     );
   }
-
-  runAfterResponse(
-    loadBookingForCalendarSync(bookingId, salonId)
-      .then((booking) => (booking ? syncBookingToGoogleCalendar(booking) : null))
-      .catch((err) => console.error('[bookings PATCH] calendar sync', err)),
-  );
 
   const reviewInvite = {
     attempted: false,

@@ -327,8 +327,7 @@ export function ChatWidget({ mobileBottomOffset = 0, hideBubble = false }: { mob
                       padding: '9px 13px',
                       borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                       fontSize: 15, lineHeight: 1.5,
-                      backgroundImage: isUser ? undefined : GRAD,
-                      background: isUser ? '#2a2a2a' : undefined,
+                      background: isUser ? '#a855f7' : '#2a2a2a',
                       color: '#fff',
                       border: isUser ? 'none' : '1px solid #333',
                       wordBreak: 'break-word',
@@ -364,6 +363,9 @@ export function ChatWidget({ mobileBottomOffset = 0, hideBubble = false }: { mob
               borderTop: '1px solid #2a2a2a',
               paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))',
             }}>
+              <div style={{ padding: '6px 14px', fontSize: 11, lineHeight: 1.4, color: '#000', background: '#fff' }}>
+                Изпращайки съобщение, се съгласяваш данните ти да бъдат обработени с цел отговор на запитването. Виж <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#000', textDecoration: 'underline' }}>политиката за поверителност</a>.
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
                 <input
                   ref={inputRef}

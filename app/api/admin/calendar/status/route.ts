@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import {
   ensureCalendarFeedToken,
-  isGoogleCalendarConfigured,
-  loadGoogleCalendarConnection,
   loadSalonExternalIcsUrl,
   saveSalonExternalIcsUrl,
-} from '@/lib/google-calendar';
+} from '@/lib/calendar-feed';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +17,7 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  const [connection, feedToken, externalIcsUrl] = await Promise.all([
-    loadGoogleCalendarConnection(auth.salon.salonId),
+  const [feedToken, externalIcsUrl] = await Promise.all([
     ensureCalendarFeedToken(auth.salon.salonId),
     loadSalonExternalIcsUrl(auth.salon.salonId),
   ]);
@@ -29,11 +26,8 @@ export async function GET(request: NextRequest) {
   const webcalUrl = feedUrl.replace(/^https?:/, 'webcal:');
 
   return NextResponse.json({
-    googleConnected: Boolean(connection),
-    googleConfigured: isGoogleCalendarConfigured(),
     feedUrl,
     webcalUrl,
-    googleCalendarId: connection?.calendarId ?? null,
     externalIcsUrl,
   });
 }

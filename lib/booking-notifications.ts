@@ -12,6 +12,7 @@ export async function dispatchBookingNotifications({
   // take priority over the salon-level ones for owner notifications.
   staffEmail,
   staffTelegramChatId,
+  staffName,
 }: {
   salonEmail?: string | null;
   clientEmail: string;
@@ -20,6 +21,7 @@ export async function dispatchBookingNotifications({
   telegramDetails: BookingTelegramDetails;
   staffEmail?: string | null;
   staffTelegramChatId?: string | null;
+  staffName?: string | null;
 }) {
   // Normalize empty strings to null so ?? correctly falls back to salon-level values.
   const notifyEmail = (staffEmail || null) ?? salonEmail;
@@ -30,7 +32,12 @@ export async function dispatchBookingNotifications({
   ];
 
   if (notifyEmail) {
-    tasks.push(sendBookingNotification(notifyEmail, bookingDetails));
+    // When the booking is routed to a specific staff member, greet them by
+    // their own name instead of the salon owner's.
+    const ownerNameForNotification = (staffEmail || null) && staffName?.trim()
+      ? staffName.trim()
+      : bookingDetails.salonOwnerName;
+    tasks.push(sendBookingNotification(notifyEmail, { ...bookingDetails, salonOwnerName: ownerNameForNotification }));
   }
 
   if (notifyTelegram) {

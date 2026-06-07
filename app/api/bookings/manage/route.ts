@@ -2,13 +2,9 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
-import { isCancelledStatus } from '@/lib/booking-time';
+import { isCancelledStatus, bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { runAfterResponse } from '@/lib/run-after-response';
-import {
-  loadBookingForCalendarSync,
-  syncBookingToGoogleCalendar,
-} from '@/lib/calendar-sync';
 import { cancelBookingSmsReminders } from '@/lib/sms-reminders';
 import { stripe } from '@/lib/stripe';
 import { parseSalonServices } from '@/lib/salon-services';
@@ -40,6 +36,7 @@ type BookingRow = {
   status: string;
   notes: string | null;
   manage_token: string | null;
+  staff_member_id: string | null;
   payment_status: string;
   amount_paid: number | null;
   stripe_checkout_session_id: string | null;
@@ -64,7 +61,7 @@ async function loadBookingByToken(
     SELECT
       b.id, b.salon_id, b.client_name, b.client_phone, b.client_email,
       b.service_name, b.service_price, b.service_duration,
-      b.date, b.time, b.status, b.notes, b.manage_token,
+      b.date, b.time, b.status, b.notes, b.manage_token, b.staff_member_id,
       b.payment_status, b.amount_paid, b.stripe_checkout_session_id,
       s.name AS salon_name, s.slug AS salon_slug, s.telegram_chat_id,
       s.stripe_account_id, s.services AS services_json
@@ -153,7 +150,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Липсват параметри.' }, { status: 400 });
   }
 
-  let body: { action: string };
+  let body: { action: string; newDate?: string; newTime?: string };
   try {
     body = await request.json();
   } catch {
@@ -232,12 +229,6 @@ export async function PATCH(request: NextRequest) {
       console.error('[manage] cancel SMS', err),
     );
 
-    runAfterResponse(
-      loadBookingForCalendarSync(id, booking.salon_id)
-        .then((b) => (b ? syncBookingToGoogleCalendar(b) : null))
-        .catch((err) => console.error('[manage] calendar sync', err)),
-    );
-
     if (telegramChatId) {
       runAfterResponse(
         sendTelegramMessage(
@@ -255,6 +246,99 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, status: 'cancelled', refundMessage });
+  }
+
+  if (body.action === 'reschedule') {
+    const { newDate, newTime } = body;
+    if (!newDate || !newTime || !/^\d{4}-\d{2}-\d{2}$/.test(newDate) || !/^\d{2}:\d{2}$/.test(newTime)) {
+      return NextResponse.json({ error: 'Невалидна дата или час.' }, { status: 400 });
+    }
+
+    const newDatetime = new Date(`${newDate}T${newTime}:00`);
+    if (Number.isNaN(newDatetime.getTime()) || newDatetime.getTime() <= Date.now()) {
+      return NextResponse.json({ error: 'Изберете бъдеща дата и час.' }, { status: 400 });
+    }
+
+    const oldDate = booking.date;
+    const oldTime = booking.time;
+    const legacyNewDate = formatLegacyDateDMY(newDate) ?? newDate;
+    const requestedStart = bookingStartMinutesFromTimeString(newTime);
+    const requestedEnd = requestedStart + Math.max(5, booking.service_duration || 30);
+    const staffMemberId = booking.staff_member_id ?? null;
+
+    const updated = await sql`
+      UPDATE bookings
+      SET date = ${newDate}, time = ${newTime}
+      WHERE id = ${id}
+        AND status NOT IN ('cancelled', 'completed')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM bookings b
+          WHERE b.salon_id = ${booking.salon_id}
+            AND CAST(b.id AS text) <> CAST(${id} AS text)
+            AND b.date IN (${newDate}, ${legacyNewDate})
+            AND lower(trim(coalesce(b.status, ''))) NOT IN (
+              'cancelled', 'canceled', 'отказана', 'анулирана'
+            )
+            AND (
+              ${staffMemberId}::uuid IS NULL
+              OR b.staff_member_id = ${staffMemberId}::uuid
+              OR b.staff_member_id IS NULL
+            )
+            AND (
+              (
+                COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60
+                + COALESCE(NULLIF(split_part(trim(b.time), ':', 2), '')::int, 0)
+              ) < ${requestedEnd}
+              AND (
+                (
+                  COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60
+                  + COALESCE(NULLIF(split_part(trim(b.time), ':', 2), '')::int, 0)
+                ) + GREATEST(5, COALESCE(b.service_duration, 30))
+              ) > ${requestedStart}
+            )
+        )
+      RETURNING id
+    `;
+
+    if (updated.length === 0) {
+      return NextResponse.json({ error: 'Избраният час вече е зает. Моля, изберете друг.' }, { status: 409 });
+    }
+
+    void cancelBookingSmsReminders(id).catch((err) =>
+      console.error('[manage] reschedule cancel SMS', err),
+    );
+
+    const { onBookingRescheduled } = await import('@/lib/booking-reschedule');
+    runAfterResponse(
+      onBookingRescheduled({
+        bookingId: id,
+        salonId: booking.salon_id,
+        oldDate,
+        oldTime,
+        newDate,
+        newTime,
+      }).catch((err) => console.error('[manage] onBookingRescheduled', err)),
+    );
+
+    if (telegramChatId) {
+      runAfterResponse(
+        sendTelegramMessage(
+          telegramChatId,
+          [
+            `🔄 <b>Преместена резервация</b>`,
+            `👤 ${booking.client_name}`,
+            `✂️ ${booking.service_name}`,
+            `🗓 Стара: ${formatBgDate(oldDate)} в ${oldTime}`,
+            `🗓 Нова: ${formatBgDate(newDate)} в ${newTime}`,
+            '',
+            'Клиентът премести часа си.',
+          ].join('\n'),
+        ).catch((err) => console.error('[manage] telegram notify', err)),
+      );
+    }
+
+    return NextResponse.json({ success: true, status: booking.status, date: newDate, time: newTime });
   }
 
   return NextResponse.json({ error: 'Невалидно действие.' }, { status: 400 });

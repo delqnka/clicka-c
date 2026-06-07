@@ -221,6 +221,8 @@ type ServiceRow = {
   variants?: { label: string; price: number; duration?: number }[];
   payment_type?: 'none' | 'deposit' | 'full';
   deposit_amount?: number;
+  cancel_policy_hours?: number;
+  cancel_policy_action?: 'full_refund' | 'keep_deposit' | 'keep_full';
 };
 
 type ServiceVariant = NonNullable<ServiceRow['variants']>[number];
@@ -2190,6 +2192,8 @@ export default function SalonPublicParity({
         timeSlots={timeSlots}
         paymentType={selectedBookingServices[0]?.payment_type ?? 'none'}
         depositAmount={selectedBookingServices[0]?.deposit_amount}
+        cancelPolicyHours={selectedBookingServices[0]?.cancel_policy_hours}
+        cancelPolicyAction={selectedBookingServices[0]?.cancel_policy_action}
         isSubmitting={isSubmitting}
         bookingError={bookingError}
         bookingSuccess={bookingSuccess}

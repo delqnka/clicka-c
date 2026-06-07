@@ -9,6 +9,8 @@ export default function PrivacyPage() {
   return (
     <main
       style={{
+        minHeight: '100vh',
+        background: '#ffffff',
         maxWidth: 780,
         margin: '0 auto',
         padding: '48px 24px 80px',

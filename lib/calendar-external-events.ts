@@ -4,51 +4,29 @@ import {
   filterExternalEventsInRange,
   type ExternalCalendarEvent,
 } from '@/lib/external-calendar-ics';
-import {
-  listGoogleCalendarEvents,
-  loadGoogleCalendarConnection,
-  loadSalonExternalIcsUrl,
-} from '@/lib/google-calendar';
+import { loadSalonExternalIcsUrl } from '@/lib/calendar-feed';
 
 export async function loadExternalCalendarEventsForRange(
   salonId: string,
   fromYmd: string,
   toYmd: string,
 ): Promise<ExternalCalendarEvent[]> {
-  const [connection, icsUrl] = await Promise.all([
-    loadGoogleCalendarConnection(salonId),
-    loadSalonExternalIcsUrl(salonId),
-  ]);
+  const icsUrl = await loadSalonExternalIcsUrl(salonId);
 
-  const tasks: Promise<ExternalCalendarEvent[]>[] = [];
+  if (!icsUrl) return [];
 
-  if (connection) {
-    tasks.push(
-      listGoogleCalendarEvents(connection, fromYmd, toYmd).catch(() => []),
-    );
-  }
+  const events = await fetchIcsEventsFromUrl(icsUrl)
+    .then((events) => filterExternalEventsInRange(events, fromYmd, toYmd))
+    .catch(() => []);
 
-  if (icsUrl) {
-    tasks.push(
-      fetchIcsEventsFromUrl(icsUrl)
-        .then((events) => filterExternalEventsInRange(events, fromYmd, toYmd))
-        .catch(() => []),
-    );
-  }
-
-  if (!tasks.length) return [];
-
-  const batches = await Promise.all(tasks);
   const merged: ExternalCalendarEvent[] = [];
   const seen = new Set<string>();
 
-  for (const batch of batches) {
-    for (const ev of batch) {
-      const key = `${ev.source}:${ev.id}:${ev.date}:${ev.startTime}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(ev);
-    }
+  for (const ev of events) {
+    const key = `${ev.source}:${ev.id}:${ev.date}:${ev.startTime}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(ev);
   }
 
   merged.sort((a, b) => `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`));
