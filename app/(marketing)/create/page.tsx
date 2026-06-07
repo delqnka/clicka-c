@@ -113,6 +113,7 @@ function CreatePageContent() {
   const [salonName,     setSalonName]     = useState('');
   const [slug,          setSlug]          = useState('');
   const [slugEdited,    setSlugEdited]    = useState(false);
+  const [slugStatus,    setSlugStatus]    = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
   // Възстановяваме името/адреса при връщане от Stripe (различен домейн → загубено React състояние)
   useEffect(() => {
@@ -131,6 +132,23 @@ function CreatePageContent() {
       sessionStorage.setItem('clicka_create_draft', JSON.stringify({ salonName, slug, slugEdited }));
     } catch { /* ignore */ }
   }, [salonName, slug, slugEdited]);
+
+  // Live проверка дали slug-ът е свободен (debounce)
+  useEffect(() => {
+    const candidate = slug.trim();
+    if (!candidate) { setSlugStatus('idle'); return; }
+    setSlugStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/slug-availability?slug=${encodeURIComponent(candidate)}`);
+        const data = await res.json();
+        setSlugStatus(data.available ? 'available' : 'taken');
+      } catch {
+        setSlugStatus('idle');
+      }
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [slug]);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [wantsInvoice,  setWantsInvoice]  = useState(false);
   const [companyName,   setCompanyName]   = useState('');
@@ -146,6 +164,7 @@ function CreatePageContent() {
     if (grantToken) {
       if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
       if (!slug.trim()) { setError('Въведи адрес на сайта.'); return; }
+      if (slugStatus === 'taken') { setError('Този адрес вече е зает — избери друг.'); return; }
       setIsSubmitting(true);
       setError('');
       try {
@@ -520,6 +539,15 @@ function CreatePageContent() {
             Безплатният ти адрес ще бъде:{' '}
             <span className="font-semibold text-[#0a0a0a]">{slug || 'salonurban'}.clicka.bg</span>
           </p>
+          {slugStatus === 'checking' && (
+            <p className="mt-1 text-[12px] text-[#6b7280]">Проверка на адреса…</p>
+          )}
+          {slugStatus === 'available' && (
+            <p className="mt-1 text-[12px] font-semibold text-emerald-600">✓ Адресът е свободен</p>
+          )}
+          {slugStatus === 'taken' && (
+            <p className="mt-1 text-[12px] font-semibold text-red-600">Този адрес вече е зает — избери друг</p>
+          )}
         </div>
 
         {/* ── Terms ── */}
@@ -633,7 +661,7 @@ function CreatePageContent() {
                 ? 'Активирай безплатния абонамент'
                 : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
             onClick={handlePay}
-            disabled={isSubmitting || !salonName.trim() || !slug.trim() || (!grantToken && !termsAccepted)}
+            disabled={isSubmitting || !salonName.trim() || !slug.trim() || slugStatus === 'taken' || slugStatus === 'checking' || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
           />
           <p className="mt-2 text-center text-[12px] text-[#6b7280]">
