@@ -43,22 +43,11 @@ export default async function AdminEntryPage() {
     );
   }
 
-  console.log('[admin/page] gate.kind=', gate.kind, 'slug=', gate.salon.slug);
-
-  let site, initialOffers, initialAccount;
-  try {
-    [site, initialOffers, initialAccount] = await Promise.all([
-      loadAdminSiteDataBySlug(gate.salon.slug),
-      loadAdminOffersBySalonId(gate.salon.salonId),
-      loadAdminAccountInfo(gate.session.ownerId),
-    ]);
-    console.log('[admin/page] data loaded, site=', site ? 'ok' : 'null');
-  } catch (err: unknown) {
-    const e = err as Error;
-    console.error('[admin/page] CRASH:', e?.message);
-    console.error('[admin/page] STACK:', e?.stack);
-    throw err;
-  }
+  const [site, initialOffers, initialAccount] = await Promise.all([
+    loadAdminSiteDataBySlug(gate.salon.slug),
+    loadAdminOffersBySalonId(gate.salon.salonId),
+    loadAdminAccountInfo(gate.session.ownerId),
+  ]);
 
   if (!site) notFound();
 

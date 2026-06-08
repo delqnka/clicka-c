@@ -17,6 +17,7 @@ import {
   type SalonVenueExtras,
 } from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
+import { ensureOnboardingTourSchema } from '@/lib/ensure-onboarding-schema';
 import { normalizeSmsReminderMode, type SmsReminderMode } from '@/lib/sms-shared';
 
 export { mergeUniqueImageLists } from '@/lib/admin-image-utils';
@@ -214,7 +215,7 @@ export async function loadAdminImageFieldsBySlug(slug: string): Promise<AdminIma
 }
 
 export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
-  console.log('[loadAdminSiteDataBySlug] START slug=', slug);
+  await ensureOnboardingTourSchema();
   const rows = await sql`
     SELECT
       slug, name, category, phone, email, city, address, about,
@@ -234,10 +235,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     LIMIT 1
   `;
 
-  console.log('[loadAdminSiteDataBySlug] SQL done, rows=', rows.length);
   if (rows.length === 0) return null;
   const row = rows[0] as Record<string, unknown>;
-  console.log('[loadAdminSiteDataBySlug] row keys=', Object.keys(row).join(','));
   const normalizedServices = normalizeServices(row.services);
 
   if (!row.onboarding_code) {

@@ -1,5 +1,9 @@
 /* Admin dashboard — mobile-first touch & form fixes (iOS Safari) */
 
+html:has(.admin-mobile-root) {
+  background: #ffffff;
+}
+
 .admin-mobile-root {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;

@@ -628,13 +628,13 @@ export default function AdminDashboardClient({
     if (t && TABS.some(tab => tab.id === t)) setActiveTab(t as TabId);
   }, []);
 
-  // Prevent browser back-swipe from leaving the admin
+  // Trap browser back-swipe without adding a duplicate history entry on load.
   useEffect(() => {
-    const url = window.location.href;
-    window.history.pushState({ admin: true }, '', url);
+    if (!window.location.pathname.includes('/admin')) return;
+    window.history.replaceState({ ...(window.history.state ?? {}), admin: true }, '', window.location.href);
     const onPopState = () => {
-      // Go forward immediately to cancel the back navigation
-      window.history.go(1);
+      if (!window.location.pathname.includes('/admin')) return;
+      window.history.pushState({ admin: true }, '', window.location.href);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
