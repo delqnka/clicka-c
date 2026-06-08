@@ -40,6 +40,7 @@ export type DomainPurchaseRequest = {
   companyId: string;
   registrantEmail: string;
   registrantPhone: string;
+  registrantViber: string;
   addressLine1: string;
   city: string;
   postalCode: string;

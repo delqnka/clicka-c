@@ -29,6 +29,7 @@ type FormState = {
   companyId: string;
   registrantEmail: string;
   registrantPhone: string;
+  registrantViber: string;
   addressLine1: string;
   city: string;
   postalCode: string;
@@ -233,6 +234,7 @@ export default function DomainPurchaseSection({
     companyId: '',
     registrantEmail: siteEmail,
     registrantPhone: sitePhone,
+    registrantViber: '',
     addressLine1: siteAddress,
     city: siteCity,
     postalCode: '',
@@ -276,6 +278,7 @@ export default function DomainPurchaseSection({
             companyId: current.companyId || prev.companyId,
             registrantEmail: current.registrantEmail || prev.registrantEmail,
             registrantPhone: current.registrantPhone || prev.registrantPhone,
+            registrantViber: current.registrantViber || prev.registrantViber,
             addressLine1: current.addressLine1 || prev.addressLine1,
             city: current.city || prev.city,
             postalCode: current.postalCode || prev.postalCode,
@@ -508,6 +511,14 @@ export default function DomainPurchaseSection({
               <input
                 value={form.registrantPhone}
                 onChange={e => setForm(prev => ({ ...prev, registrantPhone: e.target.value }))}
+                style={inputStyle}
+              />
+            </FieldShell>
+
+            <FieldShell label="Viber (по избор)">
+              <input
+                value={form.registrantViber}
+                onChange={e => setForm(prev => ({ ...prev, registrantViber: e.target.value }))}
                 style={inputStyle}
               />
             </FieldShell>

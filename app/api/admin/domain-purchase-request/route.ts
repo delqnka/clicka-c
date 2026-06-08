@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
   const companyId = String(body.companyId ?? '').trim();
   const registrantEmail = String(body.registrantEmail ?? '').trim();
   const registrantPhone = String(body.registrantPhone ?? '').trim();
+  const registrantViber = String(body.registrantViber ?? '').trim();
   const addressLine1 = String(body.addressLine1 ?? '').trim();
   const city = String(body.city ?? '').trim();
   const postalCode = String(body.postalCode ?? '').trim();
@@ -185,6 +186,7 @@ export async function POST(request: NextRequest) {
       company_id,
       registrant_email,
       registrant_phone,
+      registrant_viber,
       address_line1,
       city,
       postal_code,
@@ -209,6 +211,7 @@ export async function POST(request: NextRequest) {
       ${companyId},
       ${registrantEmail},
       ${registrantPhone},
+      ${registrantViber},
       ${addressLine1},
       ${city},
       ${postalCode},

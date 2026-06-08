@@ -41,6 +41,7 @@ function mapDomainPurchaseRow(row: Record<string, unknown>): DomainPurchaseReque
     companyId: String(row.company_id ?? ''),
     registrantEmail: String(row.registrant_email ?? ''),
     registrantPhone: String(row.registrant_phone ?? ''),
+    registrantViber: String(row.registrant_viber ?? ''),
     addressLine1: String(row.address_line1 ?? ''),
     city: String(row.city ?? ''),
     postalCode: String(row.postal_code ?? ''),
@@ -77,6 +78,7 @@ export async function ensureDomainPurchaseSchema() {
           company_id text NOT NULL DEFAULT '',
           registrant_email text NOT NULL,
           registrant_phone text NOT NULL,
+          registrant_viber text NOT NULL DEFAULT '',
           address_line1 text NOT NULL,
           city text NOT NULL,
           postal_code text NOT NULL DEFAULT '',
@@ -93,6 +95,10 @@ export async function ensureDomainPurchaseSchema() {
           created_at timestamptz NOT NULL DEFAULT now(),
           updated_at timestamptz NOT NULL DEFAULT now()
         )
+      `;
+      await sql`
+        ALTER TABLE domain_purchase_requests
+        ADD COLUMN IF NOT EXISTS registrant_viber text NOT NULL DEFAULT ''
       `;
       await sql`
         CREATE INDEX IF NOT EXISTS domain_purchase_requests_salon_id_idx
