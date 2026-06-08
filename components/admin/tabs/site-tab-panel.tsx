@@ -180,7 +180,7 @@ export function SiteTabPanel({
             onSaved={onSlugSaved}
           />
           {onNavigateToDomain && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}` }}>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}`, textAlign: 'center' }}>
               <p style={{ margin: '0 0 10px', fontSize: 13, color: ADMIN_T.muted }}>
                 Имаш собствен домейн (например <em>moisalon.com</em>)?
               </p>
@@ -188,13 +188,13 @@ export function SiteTabPanel({
                 type="button"
                 onClick={onNavigateToDomain}
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
                   color: '#fff', border: 'none', borderRadius: 999,
                   padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                🌐 Свържи своя домейн →
+                Свържи своя домейн
               </button>
             </div>
           )}

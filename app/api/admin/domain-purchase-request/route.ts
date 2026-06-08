@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
           currency: pricing.currency,
           unit_amount: pricing.totalFeeCents,
           product_data: {
-            name: `Clicka.bg – Домейн ${fullDomain}`,
+            name: `Clicka.bg Домейн ${fullDomain}`,
             description: 'Домейн за 1 година + Техническа администрация и конфигуриране',
           },
         },

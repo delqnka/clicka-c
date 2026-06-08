@@ -1,6 +1,6 @@
 export const DOMAIN_PURCHASE_CURRENCY = 'eur';
-export const DOMAIN_SETUP_FEE_CENTS = 0; // TEST: временно 0 (оригинал: 2500)
-export const DOMAIN_SETUP_FEE_BGN_CENTS = 0; // TEST: временно 0 (оригинал: 4890)
+export const DOMAIN_SETUP_FEE_CENTS = 100; // TEST: 1 EUR (оригинал: 2500)
+export const DOMAIN_SETUP_FEE_BGN_CENTS = 100; // TEST: 1 EUR (оригинал: 4890)
 
 export type DomainTldOption = {
   value: string;

@@ -3519,8 +3519,8 @@ export default function AdminDashboardClient({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-around',
-              gap: 4,
-              padding: '8px 10px',
+              gap: 2,
+              padding: '6px 8px',
               borderRadius: 9999,
               background: 'rgba(255,255,255,0.68)',
               backdropFilter: 'blur(20px) saturate(180%)',
@@ -3545,12 +3545,12 @@ export default function AdminDashboardClient({
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 3,
-                    padding: '4px 6px',
+                    gap: 2,
+                    padding: '3px 4px',
                     border: 'none',
                     background: 'transparent',
                     cursor: 'pointer',
-                    minHeight: 48,
+                    minHeight: 40,
                     WebkitTapHighlightColor: 'transparent',
                   }}
                 >
@@ -3559,8 +3559,8 @@ export default function AdminDashboardClient({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: active ? 36 : 30,
-                      height: active ? 36 : 30,
+                      width: active ? 30 : 26,
+                      height: active ? 30 : 26,
                       borderRadius: 999,
                       background: active ? ICON_GRADIENT : 'transparent',
                       color: active ? '#fff' : '#18181B',
@@ -3568,11 +3568,11 @@ export default function AdminDashboardClient({
                       transition: 'all 180ms ease',
                     }}
                   >
-                    <Icon size={active ? 22 : 20} strokeWidth={active ? 2.25 : 1.85} />
+                    <Icon size={active ? 18 : 16} strokeWidth={active ? 2.2 : 1.8} />
                   </div>
                   <span
                     style={{
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: active ? 700 : 500,
                       letterSpacing: '-0.01em',
                       color: active ? '#db2777' : '#18181B',

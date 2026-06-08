@@ -58,7 +58,7 @@ function useOnboardingSteps(site: AdminSitePayload) {
     },
     {
       id: 'specialist',
-      label: site.plan === 'team' ? 'Добави себе си и екипа си' : 'Добави себе си',
+      label: site.plan === 'team' ? 'Добави себе си + екипа' : 'Добави себе си',
       done: !!site.ownerName && site.ownerName.trim().length > 1,
       tab: 'specialist',
     },
@@ -92,6 +92,12 @@ function useOnboardingSteps(site: AdminSitePayload) {
       label: 'Свържи Google ревюта',
       done: !!site.googlePlaceId && site.googlePlaceId.trim().length > 0,
       tab: 'integrations',
+    },
+    {
+      id: 'customDomain',
+      label: 'Свържи или купи собствен домейн',
+      done: !!site.customDomain && site.customDomain.trim().length > 0,
+      tab: 'domain',
     },
   ];
 }

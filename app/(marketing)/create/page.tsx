@@ -554,23 +554,22 @@ function CreatePageContent() {
           <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
             Имейл
           </label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="napr. ime@email.com"
-            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]"
-          />
-          {emailStatus === 'checking' && (
-            <p className="mt-1 text-[12px] text-[#6b7280]">Проверка на имейла…</p>
-          )}
+          <div className="relative">
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="napr. ime@email.com"
+              className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 pr-10 text-[15px] outline-none focus:border-[#a855f7]"
+            />
+            {emailStatus === 'free' && (
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 text-[16px] font-bold">✓</span>
+            )}
+          </div>
           {emailStatus === 'exists' && (
             <p className="mt-1 text-[12px] font-semibold text-red-600">
-              Вече има акаунт с този имейл — <a href="/admin" className="underline">влез оттук</a>, вместо да купуваш нов план.
+              Имейлът вече съществува в системата, моля използвайте друг.
             </p>
-          )}
-          {emailStatus === 'free' && (
-            <p className="mt-1 text-[12px] font-semibold text-emerald-600">✓ Имейлът е свободен</p>
           )}
         </div>
 

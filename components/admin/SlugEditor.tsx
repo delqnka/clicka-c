@@ -111,7 +111,7 @@ export function SlugEditor({
           <>⚠ {validationErr}</>
         ) : (
           <>
-            <span style={{ color: '#a1a1aa' }}>Адрес:</span>
+            <span style={{ color: '#a1a1aa' }}>Адрес на сайта:</span>
             <span style={{ fontWeight: 600, color: ADMIN_T.text }}>
               {value || currentSlug}.{rootDomain}
             </span>

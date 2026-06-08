@@ -127,8 +127,8 @@ const fieldLabelStyle: CSSProperties = {
 
 const choiceGridStyle: CSSProperties = {
   display: 'grid',
-  gap: 12,
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))',
+  gap: 10,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(130px, 100%), 1fr))',
 };
 
 const twoColumnGridStyle: CSSProperties = {
@@ -137,16 +137,22 @@ const twoColumnGridStyle: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
 };
 
+const ACTIVE_GRADIENT = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
+
 function choiceButtonStyle(active: boolean): CSSProperties {
   return {
     display: 'grid',
-    gap: 8,
+    gap: 6,
     textAlign: 'left',
-    padding: 16,
+    padding: 'clamp(12px, 3vw, 16px)',
     borderRadius: 22,
-    border: active ? '1px solid #000' : '1px solid rgba(0,0,0,0.1)',
-    background: '#fff',
-    boxShadow: active ? '0 16px 34px rgba(0,0,0,0.22)' : '0 12px 28px rgba(0,0,0,0.12)',
+    border: '1px solid transparent',
+    backgroundImage: active
+      ? `linear-gradient(#fff, #fff), ${ACTIVE_GRADIENT}`
+      : 'linear-gradient(#fff, #fff), linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1))',
+    backgroundOrigin: 'border-box',
+    backgroundClip: 'padding-box, border-box',
+    boxShadow: active ? '0 16px 34px rgba(168,85,247,0.22)' : '0 12px 28px rgba(0,0,0,0.12)',
     cursor: 'pointer',
     transition: 'all 160ms ease',
   };
@@ -356,7 +362,7 @@ export default function DomainPurchaseSection({
           <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Купи домейн през нас
           </p>
-          <h3 style={{ margin: 0, fontSize: 28, lineHeight: 1.14, fontWeight: 600 }}>
+          <h3 style={{ margin: 0, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: 1.2, fontWeight: 600 }}>
             Регистрираме домейна на твоето име и го свързваме вместо теб
           </h3>
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'rgba(0,0,0,0.78)' }}>
@@ -462,16 +468,13 @@ export default function DomainPurchaseSection({
 
           <div style={{ display: 'grid', gap: 12 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Регистрация като</p>
-            <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))' }}>
+            <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))' }}>
               <button
                 type="button"
                 onClick={() => setForm(prev => ({ ...prev, registrantType: 'individual' }))}
                 style={choiceButtonStyle(form.registrantType === 'individual')}
               >
                 <span style={{ fontSize: 16, fontWeight: 600 }}>Физическо лице</span>
-                <span style={{ fontSize: 14, fontWeight: 400, lineHeight: 1.6, color: 'rgba(0,0,0,0.7)' }}>
-                  Домейнът се регистрира на лично име.
-                </span>
               </button>
 
               <button
@@ -480,9 +483,6 @@ export default function DomainPurchaseSection({
                 style={choiceButtonStyle(form.registrantType === 'company')}
               >
                 <span style={{ fontSize: 16, fontWeight: 600 }}>Фирма</span>
-                <span style={{ fontSize: 14, fontWeight: 400, lineHeight: 1.6, color: 'rgba(0,0,0,0.7)' }}>
-                  Ползваме фирмени данни за регистрацията.
-                </span>
               </button>
             </div>
           </div>
@@ -608,20 +608,7 @@ export default function DomainPurchaseSection({
             </span>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gap: 12,
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
-              alignItems: 'center',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'rgba(0,0,0,0.78)' }}>
-              Поддържани домейни: {DOMAIN_TLD_OPTIONS.map(item => item.label).join(', ')}.
-            </p>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.65)' }}>
-              Таксата покрива DNS настройка, SSL сертификат, свързване към сайта и проверка. Обичаен срок за активиране: 24-72 часа.
-            </p>
+          <div style={{ display: 'grid' }}>
             <button type="button" onClick={submitRequest} style={primaryButtonStyle} disabled={busy}>
               {busy ? 'Подготвяме…' : `Заяви и плати ${formatDualPrice(totalCents, totalBgnCents)}`}
             </button>

@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import crypto from 'crypto';
 import { Resend } from 'resend';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
+import { getPlatformAdminUrl, getPlatformPublicUrl } from '@/lib/domain-routing';
+import { generateAdminMagicLink } from '@/lib/admin-auth';
 import { sendTelegramMessage } from '@/lib/telegram';
 import SuccessClient from './SuccessClient';
 
@@ -192,6 +194,52 @@ export default async function SuccessPage({
 
             salonSlug = insertedSlug;
             salonEmail = email;
+
+            if (process.env.RESEND_API_KEY) {
+              try {
+                const greeting = ownerName ? `Здравей, ${ownerName}!` : 'Здравей!';
+                const publicUrl = getPlatformPublicUrl(insertedSlug);
+                const adminUrl = getPlatformAdminUrl(insertedSlug);
+                const magicLink = await generateAdminMagicLink({
+                  salonId,
+                  slug: insertedSlug,
+                  email,
+                  expiresMs: 24 * 60 * 60 * 1000,
+                }).catch(() => adminUrl);
+
+                await resend.emails.send({
+                  from: `${salonName || 'Clicka.bg'} <noreply@clicka.bg>`,
+                  to: email,
+                  subject: `Твоят сайт е готов! ✅`,
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <h2 style="color: #000; margin: 0 0 16px;">Твоят сайт е готов!</h2>
+                      <p style="line-height: 1.7;">${greeting}</p>
+                      <p style="line-height: 1.7;">
+                        Сайтът на <strong>${salonName || 'твоя салон'}</strong> вече е активен на адрес:<br>
+                        <a href="${publicUrl}" style="color: #000; font-weight: 700;">${publicUrl}</a>
+                      </p>
+                      <p style="margin: 24px 0 8px; line-height: 1.7;">
+                        Натисни бутона, за да влезеш в контролния си панел и да персонализираш сайта:
+                      </p>
+                      <p style="margin: 0 0 24px;">
+                        <a href="${magicLink}"
+                           style="display:inline-block;background:#000;color:#fff;text-decoration:none;
+                                  padding:14px 24px;border-radius:999px;font-weight:700;font-size:15px;">
+                          Отвори панела →
+                        </a>
+                      </p>
+                      <p style="line-height: 1.7; color: #6b7280; font-size: 13px;">
+                        Запомни адреса на твоя контролен панел: <strong>${publicUrl}/admin</strong>
+                      </p>
+                      <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">
+                        Линкът е валиден 24 часа. Ако не сте поръчали сайт, игнорирайте имейла.
+                      </p>
+                    </div>
+                  `,
+                });
+              } catch { /* best-effort — don't block provisioning on email delivery */ }
+            }
           } else {
             provisionError = true;
             await alertProvisioningFailure({ sessionId, email, reason: 'Платена сесия без имейл от Stripe — не може да се създаде салон.' });
