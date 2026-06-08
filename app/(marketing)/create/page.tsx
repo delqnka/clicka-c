@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useId } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
-import { formatDualEur, formatDualEurText } from '@/lib/salon-currency';
+import { formatDualEur, formatDualEurText, formatDualEurParts } from '@/lib/salon-currency';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 
 const SLUG_TRANSLIT: Record<string, string> = {
@@ -412,7 +412,10 @@ function CreatePageContent() {
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  {formatDualEur(PRICES.solo[period])}
+                  {formatDualEurParts(PRICES.solo[period]).eur}
+                </p>
+                <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+                  {formatDualEurParts(PRICES.solo[period]).bgn}
                 </p>
                 <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>
                   {period === '12m' ? '/ година' : '/ 6 месеца'}
@@ -486,7 +489,10 @@ function CreatePageContent() {
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  {formatDualEur(PRICES.team[period])}
+                  {formatDualEurParts(PRICES.team[period]).eur}
+                </p>
+                <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+                  {formatDualEurParts(PRICES.team[period]).bgn}
                 </p>
                 <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>
                   {period === '12m' ? '/ година' : '/ 6 месеца'}

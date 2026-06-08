@@ -860,8 +860,8 @@ export function SalonBookingModal({
                 <p className="text-[13px] tabular-nums text-black/50">
                   Общо: {Math.max(0, totalDuration)} мин
                 </p>
-                <p className="text-[22px] font-bold tabular-nums text-black leading-tight">
-                  {formatDualEurText(totalPrice.toFixed(2))}
+                <p className="text-[17px] font-semibold tabular-nums text-black/70 leading-tight">
+                  Общо: {formatDualEurText(totalPrice.toFixed(2))}
                 </p>
                 {selectedTime ? (
                   <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-black">
@@ -909,23 +909,8 @@ export function SalonBookingModal({
                 (isTeam && step === 2 && (!selectedStaffMemberId || eligibleStaff.length === 0)) ||
                 (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime);
               return (
+                <>
                 <div className="grid grid-cols-2 gap-2.5">
-                  {isLastStep ? (
-                    <p className="col-span-2 text-center text-[11px] leading-snug text-black/40">
-                      За завършване на резервацията са необходими име, телефон и имейл адрес — те
-                      се използват единствено за управление на резервацията и свързаните с нея
-                      потвърждения, напомняния и известия. С натискането на бутона по-долу се
-                      съгласявате данните Ви да бъдат обработени за целите на резервацията съгласно{' '}
-                      <a href={termsHref} target="_blank" rel="noopener noreferrer" className="underline">
-                        Общите условия
-                      </a>{' '}
-                      и{' '}
-                      <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline">
-                        Политиката за поверителност
-                      </a>
-                      .
-                    </p>
-                  ) : null}
                   <button
                     type="button"
                     onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4) : s))}
@@ -959,6 +944,22 @@ export function SalonBookingModal({
                     </button>
                   )}
                 </div>
+                {isLastStep ? (
+                  <p className="mt-2.5 text-center text-[10.5px] leading-snug text-black/35">
+                    За да завършиш резервацията са нужни име, телефон и имейл — използваме ги само за
+                    управление на резервацията, потвърждения и напомняния.
+                    {' '}С изпращането приемаш{' '}
+                    <a href={termsHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                      Общите условия
+                    </a>{' '}
+                    и{' '}
+                    <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                      Политиката за поверителност
+                    </a>
+                    .
+                  </p>
+                ) : null}
+              </>
               );
             })()}
           </div>

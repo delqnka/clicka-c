@@ -33,6 +33,14 @@ export function formatDualEur(eurAmount: number): string {
   return `${eur} ${SALON_CURRENCY_SYMBOL} (${bgn} лв.)`;
 }
 
+/** Връща частите поотделно — за UI, където BGN трябва да е визуално по-малък/вторичен. */
+export function formatDualEurParts(eurAmount: number): { eur: string; bgn: string } {
+  const value = Number(eurAmount);
+  if (!Number.isFinite(value)) return { eur: `— ${SALON_CURRENCY_SYMBOL}`, bgn: '' };
+  const eur = Number.isInteger(value) ? String(value) : value.toFixed(2);
+  return { eur: `${eur} ${SALON_CURRENCY_SYMBOL}`, bgn: `≈ ${toBgn(value).toFixed(2)} лв.` };
+}
+
 /** Вариант за вече форматирано евро низ, напр. formatDualEurText("0.82") -> "0.82 € (1.60 лв.)" */
 export function formatDualEurText(eurText: string): string {
   const value = Number(eurText);

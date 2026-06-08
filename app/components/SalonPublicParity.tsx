@@ -2300,20 +2300,22 @@ export default function SalonPublicParity({
         </div>
       ) : null}
 
-      {/* AI assistant with optional live chat escalation to Telegram */}
-      <SalonAiBotWidget
-        salonId={salonId}
-        salonName={name}
-        primaryColor={primary}
-        hasTelegram={!!rawSalon.telegram_chat_id}
-        onOpenBooking={(serviceName) => {
-          if (serviceName) {
-            const svc = bookingModalServices.find((s) => s.name.toLowerCase() === serviceName.toLowerCase());
-            if (svc) { openBookingModal(svc.id); return; }
-          }
-          openBookingModal();
-        }}
-      />
+      {/* AI assistant with optional live chat escalation to Telegram — hidden while the booking modal is open so it doesn't compete for attention */}
+      {!bookingOpen ? (
+        <SalonAiBotWidget
+          salonId={salonId}
+          salonName={name}
+          primaryColor={primary}
+          hasTelegram={!!rawSalon.telegram_chat_id}
+          onOpenBooking={(serviceName) => {
+            if (serviceName) {
+              const svc = bookingModalServices.find((s) => s.name.toLowerCase() === serviceName.toLowerCase());
+              if (svc) { openBookingModal(svc.id); return; }
+            }
+            openBookingModal();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

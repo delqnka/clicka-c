@@ -68,6 +68,7 @@ import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 import { ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
+import { formatDomainPurchaseStatus, type DomainPurchaseRequest } from '@/lib/domain-purchase';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
@@ -4141,6 +4142,29 @@ function DomainTab({
 }) {
   const [copied, setCopied] = useState('');
   const [showPurchase, setShowPurchase] = useState(false);
+  const [purchaseRequest, setPurchaseRequest] = useState<DomainPurchaseRequest | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/domain-purchase-request?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setPurchaseRequest((data.request as DomainPurchaseRequest | null) ?? null);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  const activePurchaseStatuses = ['requested', 'paid', 'processing', 'pending', 'registered'];
+  const hasActivePurchaseRequest = Boolean(
+    purchaseRequest &&
+    activePurchaseStatuses.includes(purchaseRequest.status) &&
+    (!site.customDomain || purchaseRequest.fullDomain.toLowerCase() === site.customDomain.toLowerCase())
+  );
 
   function copyVal(value: string, key: string) {
     navigator.clipboard.writeText(value).catch(() => null);
@@ -4186,7 +4210,30 @@ function DomainTab({
             <p style={{ margin: '0 0 14px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
               Нямаш домейн? Ще го купим и регистрираме вместо теб
             </p>
-            {showPurchase ? (
+            {hasActivePurchaseRequest && purchaseRequest ? (
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: T.radiusLg }}>
+                  <Globe size={18} style={{ color: '#92400E', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#92400E' }}>
+                      Заявката ти за <strong>{purchaseRequest.fullDomain}</strong> е приета — обработваме покупката.
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#92400E' }}>
+                      Статус: {formatDomainPurchaseStatus(purchaseRequest.status)} · Ще те уведомим, щом домейнът е готов и свързан. Не е нужно да правиш нищо.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    disabled
+                    style={{ ...btn('primary'), background: '#10B981', borderColor: '#10B981', opacity: 0.5, cursor: 'not-allowed' }}
+                  >
+                    Купи домейн чрез нас
+                  </button>
+                </div>
+              </div>
+            ) : showPurchase ? (
               <DomainPurchaseSection
                 slug={slug}
                 siteName={site.name || ''}
@@ -4253,6 +4300,25 @@ function DomainTab({
   const instructions = Array.from(instructionsByType.values());
   const verifications = domainMeta.verificationInstructions;
   const isPending = isPendingDomainStatus(site.domainStatus ?? '');
+
+  if (hasActivePurchaseRequest && purchaseRequest) {
+    return (
+      <Section title="Купуваме домейна вместо теб" desc={`Заявката ти за ${purchaseRequest.fullDomain} се обработва.`}>
+        <div style={{ ...maxW, display: 'grid', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: T.radiusLg }}>
+            <Globe size={22} style={{ color: '#92400E', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#92400E' }}>{purchaseRequest.fullDomain}</p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
+                Статус: <strong>{formatDomainPurchaseStatus(purchaseRequest.status)}</strong> — обработваме регистрацията и свързването.
+                Ще получиш известие, щом домейнът е активен. Не е нужно да правиш нищо междувременно.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
+    );
+  }
 
   return (
     <Section
