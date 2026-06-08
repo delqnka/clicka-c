@@ -208,19 +208,22 @@ export function AdminSaveBtn({
         title={label}
         style={{
           border: 'none',
-          background: 'none',
-          padding: '4px 8px',
+          background: saved ? '#16a34a' : 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+          padding: '6px 16px',
+          borderRadius: 999,
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 700,
+          color: '#fff',
           display: 'inline-flex',
           alignItems: 'center',
           gap: 4,
-          ...gradText,
+          opacity: busy ? 0.7 : 1,
+          boxShadow: '0 2px 8px rgba(219,39,119,0.25)',
         }}
       >
-        {busy ? 'Запазване…' : saved ? '✓ Запазено' : 'Запази'}
+        {busy ? 'Запазване…' : saved ? '✓ Запазено' : label}
       </button>
     );
   }

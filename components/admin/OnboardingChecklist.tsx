@@ -107,7 +107,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
   const doneCount = steps.filter((s) => s.done).length;
   const total = steps.length;
   const allDone = doneCount === total;
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   if (allDone) return null;
 
@@ -117,10 +117,12 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
     <div
       style={{
         background: '#fff',
-        border: '1px solid rgba(219,39,119,0.15)',
-        borderRadius: 14,
+        border: '1px solid rgba(219,39,119,0.12)',
+        borderRadius: 16,
         padding: '14px 16px',
         marginBottom: 16,
+        boxShadow: '0 8px 24px rgba(219,39,119,0.1), 0 2px 8px rgba(0,0,0,0.06)',
+        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
       }}
     >
       {/* Header */}
@@ -139,8 +141,8 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
           <span style={{
             fontSize: 13,
             fontWeight: 700,
-            color: '#db2777',
-            background: 'rgba(219,39,119,0.08)',
+            color: '#007AFF',
+            background: 'none',
             borderRadius: 999,
             padding: '2px 10px',
           }}>

@@ -21,6 +21,7 @@ import {
   UsersRound,
   Users,
   ExternalLink,
+  Eye,
   LogOut,
   BarChart3,
   CheckCircle2,
@@ -147,12 +148,13 @@ const TABS = [
   { id: 'account',       label: 'Профил',         Icon: KeyRound },
 ] as const;
 
-const TAB_BAR_IDS = new Set<TabId>(['bookings', 'clients', 'services', 'site']);
-const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
+const TAB_BAR_IDS = new Set<TabId>(['site', 'bookings', 'services', 'images', 'clients']);
+const TAB_BAR_ORDER: TabId[] = ['site', 'bookings', 'services', 'images', 'clients'];
+const TAB_BAR_TABS = TAB_BAR_ORDER.map(id => TABS.find(t => t.id === id)!);
 
 const SHEET_GROUPS: { label: string; ids: TabId[] }[] = [
-  { label: 'Съдържание', ids: ['images', 'offers', 'brands', 'blog'] },
-  { label: 'Екип',       ids: ['specialist', 'staff'] },
+  { label: 'Съдържание', ids: ['offers', 'brands', 'blog'] },
+  { label: 'Екип',      ids: ['specialist', 'staff'] },
   { label: 'Настройки',  ids: ['hours', 'domain', 'payments', 'sms', 'integrations', 'marketing', 'legal', 'account'] },
 ];
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
@@ -2082,7 +2084,7 @@ export default function AdminDashboardClient({
     >
       {/* Background grid + gradient */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', willChange: 'transform', contain: 'strict' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 120% 60% at 80% 0%, rgba(219,39,119,0.07) 0%, rgba(168,85,247,0.05) 50%, transparent 80%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: '#fff' }} />
       </div>
 
       {/* ── Top nav ───────────────────────────────────── */}
@@ -2135,7 +2137,7 @@ export default function AdminDashboardClient({
               color: '#fff',
               background: site.plan === 'team'
                 ? 'linear-gradient(135deg,#a855f7,#6366f1)'
-                : 'linear-gradient(135deg,#e11d48,#db2777)',
+                : 'linear-gradient(135deg,#0071E3,#007AFF,#34AADC)',
             }}>
               {site.plan === 'team' ? 'TEAM' : 'SOLO'}
             </span>
@@ -2174,14 +2176,14 @@ export default function AdminDashboardClient({
                 width: isMobile ? 36 : undefined, height: isMobile ? 36 : undefined,
                 borderRadius: isMobile ? 10 : T.radiusSm,
                 border: isMobile ? 'none' : `1px solid ${T.border}`,
-                background: isMobile ? ICON_GRADIENT : 'transparent',
-                boxShadow: isMobile ? '0 6px 16px rgba(219,39,119,0.22)' : 'none',
-                textDecoration: 'none', color: isMobile ? '#fff' : T.muted,
+                background: 'transparent',
+                boxShadow: 'none',
+                textDecoration: 'none', color: isMobile ? '#18181b' : T.muted,
                 padding: isMobile ? 0 : '6px 12px',
                 fontSize: 13, cursor: 'pointer',
               }}
             >
-              <ExternalLink size={isMobile ? 16 : 13} />
+              <Eye size={isMobile ? 16 : 13} color="#db2777" />
               {!isMobile && <span style={{ marginLeft: 6 }}>Виж сайта</span>}
             </a>
             {showInstallButton && !isMobile && (
@@ -2333,9 +2335,9 @@ export default function AdminDashboardClient({
                       }}
                     >
                       <p style={{
-                        fontSize: 13,
+                        fontSize: 15,
                         fontWeight: 700,
-                        letterSpacing: '0.01em',
+                        letterSpacing: '-0.01em',
                         margin: 0,
                         fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
                         background: ICON_GRADIENT,
@@ -2369,58 +2371,53 @@ export default function AdminDashboardClient({
                       opacity: isGroupOpen ? 1 : 0,
                       transition: 'max-height 300ms ease, opacity 220ms ease',
                     }}>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                      gap: 8,
-                      paddingBottom: isGroupOpen ? 0 : 0,
-                    }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {visibleTabs.map(({ id, label, Icon }) => {
                         const active = activeTab === id;
                         return (
                           <button
                             key={id}
                             type="button"
-                            onClick={() => switchTab(id)}
+                            onClick={() => { setActiveTab(id); setError(''); setNotice(''); setTimeout(() => setNavOpen(false), 180); }}
                             style={{
                               display: 'flex',
-                              flexDirection: 'column',
                               alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 5,
-                              padding: '8px 6px',
+                              gap: 12,
+                              padding: '10px 12px',
                               borderRadius: 12,
-                              border: active ? '1.5px solid #C084FC' : `1px solid ${T.border}`,
-                              background: active ? 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)' : '#fff',
+                              border: 'none',
+                              background: active ? 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)' : 'transparent',
                               cursor: 'pointer',
-                              minHeight: 64,
+                              width: '100%',
+                              textAlign: 'left',
                               WebkitTapHighlightColor: 'transparent',
+                              fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
                             }}
                           >
                             <div style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              width: active ? 32 : 28, height: active ? 32 : 28,
-                              borderRadius: 999,
-                              background: active ? ICON_GRADIENT : 'transparent',
-                              color: active ? '#fff' : '#18181B',
-                              boxShadow: active ? '0 6px 16px rgba(219,39,119,0.22)' : 'none',
-                              transition: 'all 180ms ease',
+                              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                              background: active ? ICON_GRADIENT : 'none',
+                              color: active ? '#fff' : '#52525b',
+                              boxShadow: active ? '0 4px 12px rgba(219,39,119,0.2)' : 'none',
                             }}>
-                              <Icon size={active ? 20 : 18} strokeWidth={active ? 2.25 : 1.75} />
+                              <Icon size={17} strokeWidth={1.9} />
                             </div>
                             <span style={{
-                              fontSize: 11,
+                              fontSize: 14,
                               fontWeight: active ? 600 : 400,
                               letterSpacing: '-0.01em',
-                              textAlign: 'center',
-                              lineHeight: 1.2,
                               color: active ? 'transparent' : '#18181B',
                               background: active ? ICON_GRADIENT : 'none',
                               WebkitBackgroundClip: active ? 'text' : 'unset',
                               backgroundClip: active ? 'text' : 'unset',
+                              flex: 1,
                             }}>
                               {label}
                             </span>
+                            {active && (
+                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: ICON_GRADIENT, flexShrink: 0 }} />
+                            )}
                           </button>
                         );
                       })}
@@ -2432,12 +2429,6 @@ export default function AdminDashboardClient({
 
               {/* ── Чат поддръжка — 4-та секция ── */}
               <div>
-                <p style={{
-                  fontSize: 13, fontWeight: 700, letterSpacing: '0.01em',
-                  margin: '0 4px 8px',
-                  background: ICON_GRADIENT, WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent',
-                }}>Чат с поддръжка</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -2774,7 +2765,7 @@ export default function AdminDashboardClient({
             flex: 1,
             minWidth: 0,
             padding: isMobile
-              ? '16px 12px calc(88px + env(safe-area-inset-bottom)) 12px'
+              ? '16px 12px calc(72px + env(safe-area-inset-bottom)) 12px'
               : '28px 32px 48px',
           }}
         >
@@ -2879,9 +2870,9 @@ export default function AdminDashboardClient({
                     textDecoration: 'none',
                   }}
                 >
-                  <ExternalLink size={14} style={{ color: '#db2777', flexShrink: 0 }} />
+                  <ExternalLink size={14} style={{ color: '#007AFF', flexShrink: 0 }} />
                   <span style={{
-                    fontSize: 13, fontWeight: 600, color: '#db2777',
+                    fontSize: 13, fontWeight: 600, color: '#007AFF',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{publicSiteHost}</span>
                 </a>
@@ -2910,9 +2901,9 @@ export default function AdminDashboardClient({
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: 34, height: 34, borderRadius: 10, border: 'none',
-                    background: ICON_GRADIENT, color: '#fff',
+                    background: '#e4e4e7', color: '#52525b',
                     cursor: 'pointer', flexShrink: 0,
-                    boxShadow: '0 4px 12px rgba(219,39,119,0.30)',
+                    boxShadow: 'none',
                     WebkitTapHighlightColor: 'transparent',
                   }}
                 >
@@ -3495,7 +3486,7 @@ export default function AdminDashboardClient({
             left: 0,
             right: 0,
             bottom: 0,
-            paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+            paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
             zIndex: 50,
             pointerEvents: 'none',
             width: 'calc(100% - 32px)',
@@ -3512,7 +3503,7 @@ export default function AdminDashboardClient({
               alignItems: 'center',
               justifyContent: 'space-around',
               gap: 2,
-              padding: '6px 8px',
+              padding: '4px 6px',
               borderRadius: 9999,
               background: 'rgba(255,255,255,0.68)',
               backdropFilter: 'blur(20px) saturate(180%)',
@@ -3537,12 +3528,12 @@ export default function AdminDashboardClient({
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 2,
-                    padding: '3px 4px',
+                    gap: 1,
+                    padding: '2px 4px',
                     border: 'none',
                     background: 'transparent',
                     cursor: 'pointer',
-                    minHeight: 40,
+                    minHeight: 32,
                     WebkitTapHighlightColor: 'transparent',
                   }}
                 >
@@ -3551,8 +3542,8 @@ export default function AdminDashboardClient({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: active ? 30 : 26,
-                      height: active ? 30 : 26,
+                      width: active ? 24 : 20,
+                      height: active ? 24 : 20,
                       borderRadius: 999,
                       background: active ? ICON_GRADIENT : 'transparent',
                       color: active ? '#fff' : '#18181B',
@@ -3560,7 +3551,7 @@ export default function AdminDashboardClient({
                       transition: 'all 180ms ease',
                     }}
                   >
-                    <Icon size={active ? 18 : 16} strokeWidth={active ? 2.2 : 1.8} />
+                    <Icon size={active ? 14 : 13} strokeWidth={active ? 2.2 : 1.8} />
                   </div>
                   <span
                     style={{
@@ -3629,35 +3620,37 @@ function Section({
   const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
     <div style={{ animation: 'slideInUp 300ms ease' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: compact ? 'center' : 'flex-start',
-          gap: compact ? 10 : 16,
-          marginBottom: isMbl ? (compact ? 16 : 20) : (compact ? 14 : 18),
-          flexWrap: compact ? 'nowrap' : 'wrap',
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: isMbl ? (compact ? 20 : 24) : (compact ? 17 : 18),
-              fontWeight: 700,
-              letterSpacing: '-0.025em',
-              color: T.text,
-              lineHeight: 1.2,
-            }}
-          >
-            {title}
-          </h2>
-          {desc ? (
-            <p style={{ margin: isMbl ? '6px 0 0' : '4px 0 0', fontSize: isMbl ? 14 : 13, color: T.muted, lineHeight: 1.5 }}>{desc}</p>
-          ) : null}
+      {title ? (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: compact ? 'center' : 'flex-start',
+            gap: compact ? 10 : 16,
+            marginBottom: isMbl ? (compact ? 16 : 20) : (compact ? 14 : 18),
+            flexWrap: compact ? 'nowrap' : 'wrap',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: isMbl ? (compact ? 20 : 24) : (compact ? 17 : 18),
+                fontWeight: 700,
+                letterSpacing: '-0.025em',
+                color: T.text,
+                lineHeight: 1.2,
+              }}
+            >
+              {title}
+            </h2>
+            {desc ? (
+              <p style={{ margin: isMbl ? '6px 0 0' : '4px 0 0', fontSize: isMbl ? 14 : 13, color: T.muted, lineHeight: 1.5 }}>{desc}</p>
+            ) : null}
+          </div>
+          {action ? <div style={{ flexShrink: 0, marginLeft: 'auto' }}>{action}</div> : null}
         </div>
-        {action ? <div style={{ flexShrink: 0, marginLeft: 'auto' }}>{action}</div> : null}
-      </div>
+      ) : null}
       {children}
     </div>
   );
@@ -4001,7 +3994,7 @@ function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDis
     return (
       <div style={{
         position: 'fixed', left: 16, right: 16,
-        bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
         zIndex: 60,
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '14px 16px',
@@ -4021,11 +4014,11 @@ function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDis
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: T.radiusSm, border: `1px solid ${tone === 'error' ? '#FECACA' : '#A7F3D0'}`, background: tone === 'error' ? '#FEF2F2' : '#ECFDF5', marginBottom: 16 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: tone === 'error' ? '4px 0' : '10px 14px', borderRadius: tone === 'error' ? 0 : T.radiusSm, border: tone === 'error' ? 'none' : '1px solid #A7F3D0', background: tone === 'error' ? 'transparent' : '#ECFDF5', marginBottom: 12 }}>
       {tone === 'error'
         ? <XCircle size={14} style={{ color: '#EF4444', flexShrink: 0 }} />
         : <CheckCircle2 size={14} style={{ color: '#10B981', flexShrink: 0 }} />}
-      <span style={{ flex: 1, fontSize: 13, color: tone === 'error' ? '#991B1B' : '#065F46', lineHeight: 1.5 }}>{children}</span>
+      <span style={{ flex: 1, fontSize: 13, color: tone === 'error' ? '#b91c1c' : '#065F46', lineHeight: 1.5 }}>{children}</span>
       <button type="button" onClick={onDismiss} style={{ border: 'none', background: 'none', cursor: 'pointer', color: T.muted, padding: 2, fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
     </div>
   );
@@ -4132,7 +4125,7 @@ function DomainTab({
   slug: string;
 }) {
   const [copied, setCopied] = useState('');
-  const [showPurchase, setShowPurchase] = useState(false);
+  const [domainIntent, setDomainIntent] = useState<null | 'connect' | 'buy'>(null);
   const [purchaseRequest, setPurchaseRequest] = useState<DomainPurchaseRequest | null>(null);
 
   useEffect(() => {
@@ -4169,83 +4162,98 @@ function DomainTab({
 
   /* ── No domain yet ── */
   if (!hasDomain) {
-    return (
-      <Section title="Собствен домейн" desc="Свържи своя домейн: например moisalon.com или www.friziorvanesa.bg.">
-        <div style={{ ...maxW, display: 'grid', gap: 14 }}>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg, padding: 24 }}>
-            <p style={{ margin: '0 0 18px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
-              Въведи го тук и ние ще те преведем стъпка по стъпка как да го свържеш самостоятелно!
-            </p>
-            <Field label="Твоят домейн">
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  value={domainInput}
-                  onChange={e => setDomainInput(e.target.value)}
-                  placeholder="moisalon.com"
-                  style={{ ...inp, flex: 1 }}
-                  onKeyDown={e => { if (e.key === 'Enter' && domainInput.trim()) void connectDomain(); }}
-                />
-                <button
-                  type="button"
-                  style={{ ...btn('primary'), background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
-                  disabled={busyKey === 'domain' || !domainInput.trim()}
-                  onClick={() => void connectDomain()}
-                >
-                  {busyKey === 'domain' ? 'Проверяваме…' : 'Напред →'}
-                </button>
+    /* Choice screen */
+    if (!domainIntent) {
+      return (
+        <Section title="Собствен домейн" desc="Как искаш да продължим?">
+          <div style={{ ...maxW, display: 'grid', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => setDomainIntent('connect')}
+              style={{ textAlign: 'left', width: '100%', padding: '18px 20px', border: 'none', borderRadius: 18, background: 'linear-gradient(135deg,#0071E3,#007AFF,#34AADC)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 8px 28px rgba(0,113,227,0.32), 0 2px 8px rgba(0,122,255,0.2)' }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#fff' }}>Имам домейн</p>
+                <p style={{ margin: '3px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5 }}>Свържи съществуващ домейн към сайта си.</p>
               </div>
-            </Field>
+              <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDomainIntent('buy')}
+              style={{ textAlign: 'left', width: '100%', padding: '18px 20px', border: 'none', borderRadius: 18, background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 8px 28px rgba(219,39,119,0.32), 0 2px 8px rgba(168,85,247,0.2)' }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#fff' }}>Нямам домейн</p>
+                <p style={{ margin: '3px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5 }}>Ние ще го регистрираме и свържем вместо теб.</p>
+              </div>
+              <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
+            </button>
           </div>
+        </Section>
+      );
+    }
 
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg, padding: 24 }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
-              Нямаш домейн? Ще го купим и регистрираме вместо теб
-            </p>
-            {hasActivePurchaseRequest && purchaseRequest ? (
-              <div style={{ display: 'grid', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: T.radiusLg }}>
-                  <Globe size={18} style={{ color: '#92400E', flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#92400E' }}>
-                      Заявката ти за <strong>{purchaseRequest.fullDomain}</strong> е приета — обработваме покупката.
-                    </p>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#92400E' }}>
-                      Статус: {formatDomainPurchaseStatus(purchaseRequest.status)} · Ще те уведомим, щом домейнът е готов и свързан. Не е нужно да правиш нищо.
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <button
-                    type="button"
-                    disabled
-                    style={{ ...btn('primary'), background: '#10B981', borderColor: '#10B981', opacity: 0.5, cursor: 'not-allowed' }}
-                  >
-                    Купи домейн чрез нас
-                  </button>
-                </div>
-              </div>
-            ) : showPurchase ? (
-              <DomainPurchaseSection
-                slug={slug}
-                siteName={site.name || ''}
-                ownerName={site.ownerName || ''}
-                siteEmail={site.email || ''}
-                sitePhone={site.phone || ''}
-                siteAddress={site.address || ''}
-                siteCity={site.city || ''}
+    /* Connect existing domain */
+    if (domainIntent === 'connect') {
+      return (
+        <Section title="Собствен домейн" desc="Въведи домейна и ще те преведем стъпка по стъпка как да го свържеш.">
+          <div style={{ ...maxW, display: 'grid', gap: 14 }}>
+            <Field label="Твоят домейн">
+              <input
+                value={domainInput}
+                onChange={e => setDomainInput(e.target.value)}
+                placeholder="moisalon.com"
+                style={{ ...inp, width: '100%' }}
+                onKeyDown={e => { if (e.key === 'Enter' && domainInput.trim()) void connectDomain(); }}
               />
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button
-                  type="button"
-                  style={{ ...btn('primary'), background: '#10B981', borderColor: '#10B981' }}
-                  onClick={() => setShowPurchase(true)}
-                >
-                  Купи домейн чрез нас
-                </button>
-              </div>
-            )}
+            </Field>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={() => setDomainIntent(null)} style={{ ...btn('ghost'), flex: '0 0 auto' }}>
+                ← Назад
+              </button>
+              <button
+                type="button"
+                style={{ ...btn('primary'), flex: 1, background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
+                disabled={busyKey === 'domain' || !domainInput.trim()}
+                onClick={() => void connectDomain()}
+              >
+                {busyKey === 'domain' ? 'Проверяваме…' : 'Напред →'}
+              </button>
+            </div>
           </div>
+        </Section>
+      );
+    }
+
+    /* Buy domain */
+    return (
+      <Section title="" desc={undefined}>
+        <div style={{ ...maxW }}>
+          {hasActivePurchaseRequest && purchaseRequest ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: T.radiusLg }}>
+              <Globe size={18} style={{ color: '#92400E', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#92400E' }}>
+                  Заявката ти за <strong>{purchaseRequest.fullDomain}</strong> е приета — обработваме покупката.
+                </p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#92400E' }}>
+                  Статус: {formatDomainPurchaseStatus(purchaseRequest.status)} · Ще те уведомим, щом домейнът е готов и свързан. Не е нужно да правиш нищо.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <DomainPurchaseSection
+              slug={slug}
+              siteName={site.name || ''}
+              ownerName={site.ownerName || ''}
+              siteEmail={site.email || ''}
+              sitePhone={site.phone || ''}
+              siteAddress={site.address || ''}
+              siteCity={site.city || ''}
+              onBack={() => setDomainIntent(null)}
+            />
+          )}
         </div>
       </Section>
     );

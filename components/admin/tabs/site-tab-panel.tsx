@@ -13,7 +13,7 @@ const SITE_SECTIONS = [
   { id: 'address', label: 'WWW.' },
   { id: 'about', label: 'За салона' },
   { id: 'faq', label: 'FAQ' },
-  { id: 'amenities', label: 'Удобства' },
+  { id: 'amenities', label: 'Допълнителна' },
 ] as const;
 
 type SiteSectionId = (typeof SITE_SECTIONS)[number]['id'];
@@ -94,17 +94,27 @@ export function SiteTabPanel({
               type="button"
               onClick={() => setSection(id)}
               style={{
-                borderRadius: 999,
-                border: active ? '1px solid transparent' : `1px solid ${ADMIN_T.border}`,
-                background: active ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : '#fff',
-                color: active ? '#fff' : ADMIN_T.text,
-                boxShadow: active ? '0 4px 12px rgba(219,39,119,0.25)' : '0 2px 6px rgba(0,0,0,0.07)',
-                padding: '5px 11px',
-                fontSize: 12,
-                fontWeight: 500,
+                border: 'none',
+                borderBottom: active ? '2px solid transparent' : '2px solid transparent',
+                backgroundImage: active
+                  ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7), linear-gradient(135deg,#e11d48,#db2777,#a855f7)'
+                  : 'none',
+                backgroundSize: active ? '100% 2px, 100%' : 'auto',
+                backgroundPosition: active ? '0 100%, 0 0' : 'auto',
+                backgroundRepeat: 'no-repeat',
+                backgroundColor: 'transparent',
+                WebkitBackgroundClip: active ? 'border-box, text' : undefined,
+                backgroundClip: active ? 'border-box, text' : undefined,
+                WebkitTextFillColor: active ? 'transparent' : undefined,
+                color: active ? '#e11d48' : ADMIN_T.muted,
+                padding: '4px 2px',
+                marginRight: 14,
+                fontSize: 13,
+                fontWeight: active ? 600 : 400,
                 cursor: 'pointer',
                 flexShrink: 0,
                 whiteSpace: 'nowrap',
+                borderRadius: 0,
               }}
             >
               {label}
@@ -160,13 +170,13 @@ export function SiteTabPanel({
             ) : null}
           </div>
           <AdminField compact label="Instagram">
-            <input value={site.instagram} onChange={(e) => setSite((p) => ({ ...p, instagram: e.target.value }))} style={fieldInp} />
+            <input value={site.instagram} onChange={(e) => setSite((p) => ({ ...p, instagram: e.target.value }))} placeholder="salonnaprimer" style={fieldInp} />
           </AdminField>
           <AdminField compact label="Facebook">
-            <input value={site.facebook} onChange={(e) => setSite((p) => ({ ...p, facebook: e.target.value }))} style={fieldInp} />
+            <input value={site.facebook} onChange={(e) => setSite((p) => ({ ...p, facebook: e.target.value }))} placeholder="salonnaprimer" style={fieldInp} />
           </AdminField>
           <AdminField compact label="TikTok">
-            <input value={site.tiktok} onChange={(e) => setSite((p) => ({ ...p, tiktok: e.target.value }))} style={fieldInp} />
+            <input value={site.tiktok} onChange={(e) => setSite((p) => ({ ...p, tiktok: e.target.value }))} placeholder="salonnaprimer" style={fieldInp} />
           </AdminField>
         </div>
       ) : null}

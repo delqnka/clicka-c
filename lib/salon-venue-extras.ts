@@ -1,5 +1,4 @@
 export const SALON_VENUE_EXTRA_KEYS = [
-  'instantConfirmation',
   'showers',
   'lockers',
   'bathTowels',
@@ -47,7 +46,6 @@ export type SalonVenueExtras = Partial<Record<SalonVenueExtraKey, boolean>> &
   };
 
 export const SALON_VENUE_EXTRA_LABELS_BG: Record<SalonVenueExtraKey, string> = {
-  instantConfirmation: 'Незабавно потвърждение',
   showers: 'Душове',
   lockers: 'Шкафчета',
   bathTowels: 'Кърпи за баня',

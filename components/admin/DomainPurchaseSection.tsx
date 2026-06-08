@@ -18,6 +18,7 @@ type Props = {
   sitePhone: string;
   siteAddress: string;
   siteCity: string;
+  onBack?: () => void;
 };
 
 type FormState = {
@@ -72,71 +73,62 @@ async function readJson(res: Response) {
   }
 }
 
-const sectionCardStyle: CSSProperties = {
-  border: '1px solid rgba(0,0,0,0.12)',
-  borderRadius: 30,
-  background: '#fff',
-  boxShadow: '0 20px 54px rgba(0,0,0,0.16)',
-  padding: 'clamp(16px, 4vw, 26px)',
-};
-
-const insetCardStyle: CSSProperties = {
-  border: '1px solid rgba(0,0,0,0.1)',
-  borderRadius: 24,
-  background: '#fff',
-  boxShadow: '0 14px 36px rgba(0,0,0,0.14)',
-  padding: 20,
-};
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  border: '1px solid rgba(0,0,0,0.08)',
-  borderRadius: 18,
-  background: '#fff',
-  color: '#000',
-  padding: '14px 16px',
-  fontSize: 16,
-  fontWeight: 500,
-  outline: 'none',
-  boxShadow: '0 10px 24px rgba(0,0,0,0.1)',
-};
+const ACTIVE_GRADIENT = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
 
 const primaryButtonStyle: CSSProperties = {
   border: 'none',
   borderRadius: 999,
-  background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+  background: ACTIVE_GRADIENT,
   color: '#fff',
   fontWeight: 600,
   fontSize: 15,
   padding: '14px 20px',
   cursor: 'pointer',
   boxShadow: '0 14px 30px rgba(219,39,119,0.35)',
+  flex: 1,
 };
 
-const fieldShellStyle: CSSProperties = {
-  display: 'grid',
-  gap: 10,
-  padding: 16,
-  border: '1px solid rgba(0,0,0,0.1)',
-  borderRadius: 22,
+const backButtonStyle: CSSProperties = {
+  border: '1px solid rgba(0,0,0,0.12)',
+  borderRadius: 999,
   background: '#fff',
-  boxShadow: '0 12px 30px rgba(0,0,0,0.14)',
+  color: '#000',
+  fontWeight: 500,
+  fontSize: 15,
+  padding: '14px 20px',
+  cursor: 'pointer',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  flexShrink: 0,
+};
+
+const flatInputStyle: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  height: 48,
+  boxSizing: 'border-box',
+  border: '1px solid rgba(0,0,0,0.14)',
+  borderRadius: 12,
+  background: '#fff',
+  color: '#000',
+  padding: '0 14px',
+  fontSize: 15,
+  fontWeight: 500,
+  outline: 'none',
 };
 
 const fieldLabelStyle: CSSProperties = {
+  display: 'block',
   fontSize: 13,
   fontWeight: 500,
-  lineHeight: 1.4,
-  color: 'rgba(0,0,0,0.75)',
+  color: 'rgba(0,0,0,0.6)',
+  marginBottom: 6,
 };
 
 const choiceGridStyle: CSSProperties = {
   display: 'grid',
   gap: 10,
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(130px, 100%), 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))',
 };
-
-const ACTIVE_GRADIENT = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
 
 function choiceButtonStyle(active: boolean): CSSProperties {
   return {
@@ -144,14 +136,14 @@ function choiceButtonStyle(active: boolean): CSSProperties {
     gap: 6,
     textAlign: 'left',
     padding: 'clamp(12px, 3vw, 16px)',
-    borderRadius: 22,
+    borderRadius: 16,
     border: '1px solid transparent',
     backgroundImage: active
       ? `linear-gradient(#fff, #fff), ${ACTIVE_GRADIENT}`
       : 'linear-gradient(#fff, #fff), linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1))',
     backgroundOrigin: 'border-box',
     backgroundClip: 'padding-box, border-box',
-    boxShadow: active ? '0 16px 34px rgba(168,85,247,0.22)' : '0 12px 28px rgba(0,0,0,0.12)',
+    boxShadow: active ? '0 8px 24px rgba(168,85,247,0.2)' : '0 4px 14px rgba(0,0,0,0.08)',
     cursor: 'pointer',
     transition: 'all 160ms ease',
   };
@@ -164,47 +156,18 @@ const badgeStyle: CSSProperties = {
   padding: '5px 10px',
   borderRadius: 999,
   border: '1px solid rgba(0,0,0,0.1)',
-  boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
   fontSize: 11,
   fontWeight: 500,
   background: '#fff',
 };
 
-function FieldShell({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label style={fieldShellStyle}>
-      <span style={fieldLabelStyle}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-const flatFieldStyle: CSSProperties = {
-  display: 'grid',
-  gap: 4,
-};
-
-const flatInputStyle: CSSProperties = {
-  width: '100%',
-  height: 48,
-  boxSizing: 'border-box',
-  border: '1px solid rgba(0,0,0,0.14)',
-  borderRadius: 10,
-  background: '#fff',
-  color: '#000',
-  padding: '0 14px',
-  fontSize: 15,
-  fontWeight: 500,
-  outline: 'none',
-  boxShadow: 'none',
-};
-
 function FlatField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label style={flatFieldStyle}>
+    <div>
       <span style={fieldLabelStyle}>{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -218,26 +181,14 @@ function TldOptionCard({
   onSelect: () => void;
 }) {
   return (
-    <button type="button" onClick={onSelect} style={choiceButtonStyle(active)}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.1 }}>{option.label}</span>
-        {option.badge ? <span style={badgeStyle}>{option.badge}</span> : null}
-      </div>
-
-      <div style={{ display: 'grid', gap: 6 }}>
-        <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
+    <button type="button" onClick={onSelect} style={{ ...choiceButtonStyle(active), padding: '7px 10px', gap: 2 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{option.label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(0,0,0,0.55)' }}>
           {formatMoney(option.feeCents, 'EUR')}
         </span>
-        {option.originalFeeCents && option.originalFeeBgnCents ? (
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 400,
-              lineHeight: 1.5,
-              color: 'rgba(0,0,0,0.5)',
-              textDecoration: 'line-through',
-            }}
-          >
+        {option.originalFeeCents ? (
+          <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', textDecoration: 'line-through' }}>
             {formatMoney(option.originalFeeCents, 'EUR')}
           </span>
         ) : null}
@@ -245,6 +196,46 @@ function TldOptionCard({
     </button>
   );
 }
+
+function StepPill({ n, active, complete }: { n: number; active: boolean; complete: boolean }) {
+  const filled = active || complete;
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 28,
+        height: 28,
+        borderRadius: '50%',
+        fontSize: 11,
+        fontWeight: 700,
+        transition: 'all 200ms',
+        ...(filled
+          ? {
+              backgroundImage: ACTIVE_GRADIENT,
+              color: '#fff',
+              boxShadow: '0 4px 12px rgba(219,39,119,0.3)',
+            }
+          : {
+              background: '#fff',
+              color: 'rgba(0,0,0,0.35)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+              border: '1px solid rgba(0,0,0,0.08)',
+            }),
+      }}
+    >
+      {complete && !active ? '✓' : n}
+    </span>
+  );
+}
+
+const STEP_TITLES: Record<number, string> = {
+  1: 'Какъв домейн искаш?',
+  2: 'На кого да регистрираме?',
+  3: 'Данни за регистрация',
+  4: 'Преглед и плащане',
+};
 
 export default function DomainPurchaseSection({
   slug,
@@ -254,6 +245,7 @@ export default function DomainPurchaseSection({
   sitePhone,
   siteAddress,
   siteCity,
+  onBack,
 }: Props) {
   const [request, setRequest] = useState<DomainPurchaseRequest | null>(null);
   const [busy, setBusy] = useState(false);
@@ -290,7 +282,6 @@ export default function DomainPurchaseSection({
 
   useEffect(() => {
     let cancelled = false;
-
     async function loadRequest() {
       setLoading(true);
       try {
@@ -298,9 +289,7 @@ export default function DomainPurchaseSection({
           cache: 'no-store',
         });
         const data = await readJson(res);
-        if (!res.ok) {
-          throw new Error(data.error || 'Не успяхме да заредим заявката.');
-        }
+        if (!res.ok) throw new Error(data.error || 'Не успяхме да заредим заявката.');
         if (cancelled) return;
         setRequest((data.request as DomainPurchaseRequest | null) ?? null);
         if (data.request) {
@@ -324,55 +313,38 @@ export default function DomainPurchaseSection({
           }));
         }
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Не успяхме да заредим заявката.');
-        }
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Не успяхме да заредим заявката.');
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-
     void loadRequest();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [slug]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const status = params.get('domainPurchase');
-    if (status === 'success') {
-      setNotice('Плащането е успешно. Обработваме заявката ти за домейна.');
-    }
-    if (status === 'cancelled') {
-      setNotice('Плащането беше прекъснато. Можеш да опиташ отново.');
-    }
+    if (status === 'success') setNotice('Плащането е успешно. Обработваме заявката ти за домейна.');
+    if (status === 'cancelled') setNotice('Плащането беше прекъснато. Можеш да опиташ отново.');
   }, []);
 
   async function submitRequest() {
     setBusy(true);
     setError('');
     setNotice('');
-
     try {
       const res = await fetch('/api/admin/domain-purchase-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug,
-          ...form,
-        }),
+        body: JSON.stringify({ slug, ...form }),
       });
       const data = await readJson(res);
-      if (!res.ok) {
-        throw new Error(data.error || 'Не успяхме да създадем заявката.');
-      }
-
+      if (!res.ok) throw new Error(data.error || 'Не успяхме да създадем заявката.');
       if (typeof data.checkoutUrl === 'string' && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
         return;
       }
-
       setRequest((data.request as DomainPurchaseRequest | null) ?? null);
       setNotice(
         data.skipCheckout
@@ -386,451 +358,424 @@ export default function DomainPurchaseSection({
     }
   }
 
+  function handleNext() {
+    setStepError('');
+    if (step === 1) {
+      if (!form.requestedLabel.trim()) { setStepError('Моля, въведи желано име на домейна.'); return; }
+      if (!form.tld) { setStepError('Моля, избери разширение на домейна.'); return; }
+      setStep(2);
+    } else if (step === 2) {
+      setStep(3);
+    } else if (step === 3) {
+      if (!form.registrantName.trim() || !form.registrantEmail.trim() || !form.registrantPhone.trim() || !form.addressLine1.trim() || !form.city.trim()) {
+        setStepError('Моля, попълни име, имейл, телефон, адрес и град.');
+        return;
+      }
+      if (form.registrantType === 'company' && (!form.companyName.trim() || !form.companyId.trim())) {
+        setStepError('Моля, попълни фирма и ЕИК.');
+        return;
+      }
+      setStep(4);
+    } else {
+      void submitRequest();
+    }
+  }
+
+  function handleBack() {
+    setStepError('');
+    if (step === 1) { onBack?.(); return; }
+    setStep(s => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4) : s));
+  }
+
+  const isPayDisabled = busy || !form.agreedToActOnBehalf || !form.agreedToPolicies;
+
   return (
     <div style={{ display: 'grid', gap: 16, marginTop: 18 }}>
-      <div style={sectionCardStyle}>
-        <div style={{ display: 'grid', gap: 8 }}>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Купи домейн през нас
-          </p>
-          <h3 style={{ margin: 0, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: 1.2, fontWeight: 600 }}>
-            Регистрираме домейна на твоето име и го свързваме вместо теб
-          </h3>
-          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'rgba(0,0,0,0.78)' }}>
-            Избери име за своя домейн. Ние ще го регистрираме и свържем към сайта ти вместо теб.
-          </p>
-        </div>
 
-        {request ? (
-          <div style={{ ...insetCardStyle, marginTop: 20 }}>
-            <div style={{ display: 'grid', gap: 8 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Последна заявка
-              </p>
-              <p style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>{request.fullDomain}</p>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7 }}>
-                Статус: <strong>{formatDomainPurchaseStatus(request.status)}</strong>
-              </p>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7 }}>
-                Сума: <strong>{formatMoney(request.totalFeeCents, request.currency.toUpperCase())}</strong>
-              </p>
-              {request.createdAt ? (
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7 }}>
-                  Подадена на {new Date(request.createdAt).toLocaleString()}
-                </p>
-              ) : null}
+      {/* Existing request status */}
+      {request ? (
+        <div
+          style={{
+            border: '1px solid rgba(0,0,0,0.1)',
+            borderRadius: 20,
+            background: '#fff',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+            padding: 20,
+            display: 'grid',
+            gap: 8,
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.5)' }}>
+            Последна заявка
+          </p>
+          <p style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>{request.fullDomain}</p>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7 }}>
+            Статус: <strong>{formatDomainPurchaseStatus(request.status)}</strong>
+          </p>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7 }}>
+            Сума: <strong>{formatMoney(request.totalFeeCents, request.currency.toUpperCase())}</strong>
+          </p>
+          {request.createdAt ? (
+            <p style={{ margin: 0, fontSize: 14, color: 'rgba(0,0,0,0.5)' }}>
+              Подадена на {new Date(request.createdAt).toLocaleString()}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <p style={{ margin: 0, fontSize: 15, color: 'rgba(0,0,0,0.5)' }}>Зареждаме заявката…</p>
+      ) : null}
+
+      {/* Global messages */}
+      {error ? (
+        <div style={{ borderRadius: 14, border: '1px solid rgba(0,0,0,0.12)', background: '#fff8f8', padding: '14px 16px' }}>
+          <p style={{ margin: 0, fontSize: 14, color: '#b91c1c' }}>{error}</p>
+        </div>
+      ) : null}
+
+      {notice ? (
+        <div style={{ borderRadius: 14, border: '1px solid rgba(0,0,0,0.1)', background: '#f0fdf4', padding: '14px 16px' }}>
+          <p style={{ margin: 0, fontSize: 14, color: '#15803d' }}>{notice}</p>
+        </div>
+      ) : null}
+
+      {/* Wizard — only when not loading */}
+      {!loading ? (
+        <>
+          {/* Step pills — above the card */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingLeft: 4 }}>
+            {([1, 2, 3, 4] as const).map(n => (
+              <StepPill key={n} n={n} active={step === n} complete={step > n} />
+            ))}
+          </div>
+
+          <div
+            style={{
+              borderRadius: 24,
+              border: '1px solid rgba(0,0,0,0.1)',
+              background: '#fff',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              overflow: 'hidden',
+            }}
+          >
+          {/* Wizard header — step title only */}
+          <div
+            style={{
+              padding: '18px 20px 14px',
+              borderBottom: '1px solid rgba(0,0,0,0.06)',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 600, lineHeight: 1.25 }}>
+              {STEP_TITLES[step]}
+            </p>
+          </div>
+
+          {/* Step error */}
+          {stepError ? (
+            <div style={{ margin: '0 24px', marginTop: 12, padding: '0 2px' }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#b91c1c' }}>{stepError}</p>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {loading ? (
-          <p style={{ margin: '18px 0 0', fontSize: 15 }}>Зареждаме заявката…</p>
-        ) : null}
-
-        {error ? (
-          <div style={{ ...insetCardStyle, marginTop: 18, borderColor: '#000' }}>
-            <p style={{ margin: 0, fontSize: 14 }}>{error}</p>
-          </div>
-        ) : null}
-
-        {notice ? (
-          <div style={{ ...insetCardStyle, marginTop: 18, borderColor: '#000' }}>
-            <p style={{ margin: 0, fontSize: 14 }}>{notice}</p>
-          </div>
-        ) : null}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
-          {(['1. Домейн', '2. Регистрант', '3. Данни', '4. Преглед и плащане'] as const).map((label, idx) => (
-            <span
-              key={label}
-              style={{
-                ...badgeStyle,
-                ...(step === idx + 1
-                  ? { backgroundImage: `linear-gradient(#fff,#fff), ${ACTIVE_GRADIENT}`, backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box', border: '1px solid transparent' }
-                  : {}),
-              }}
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-
-        {stepError ? (
-          <div style={{ ...insetCardStyle, marginTop: 18, borderColor: '#000' }}>
-            <p style={{ margin: 0, fontSize: 14 }}>{stepError}</p>
-          </div>
-        ) : null}
-
-        {step === 1 ? (
-          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-            <FieldShell label="Желан домейн">
-              <input
-                value={form.requestedLabel}
-                onChange={e =>
-                  setForm(prev => ({
-                    ...prev,
-                    requestedLabel: normalizeSuggestedLabel(e.target.value),
-                  }))
-                }
-                placeholder="studioani"
-                style={inputStyle}
-              />
-            </FieldShell>
-
-            <div style={{ display: 'grid', gap: 12 }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Избери разширение</p>
-              <div style={choiceGridStyle}>
-                {DOMAIN_TLD_OPTIONS.map(option => (
-                  <TldOptionCard
-                    key={option.value}
-                    option={option}
-                    active={form.tld === option.value}
-                    onSelect={() => setForm(prev => ({ ...prev, tld: option.value }))}
+          {/* Step content */}
+          <div style={{ padding: '20px 24px' }}>
+            {/* ── Step 1: Domain ── */}
+            {step === 1 ? (
+              <div style={{ display: 'grid', gap: 20 }}>
+                <FlatField label="Желано име на домейна">
+                  <input
+                    value={form.requestedLabel}
+                    onChange={e => setForm(prev => ({ ...prev, requestedLabel: normalizeSuggestedLabel(e.target.value) }))}
+                    placeholder="studioani"
+                    style={flatInputStyle}
                   />
-                ))}
-              </div>
-            </div>
+                </FlatField>
 
-            <div style={{ ...insetCardStyle, display: 'grid', gap: 12 }}>
-              <div style={{ display: 'grid', gap: 6 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Преглед
-                </p>
-                <p style={{ margin: 0, fontSize: 24, fontWeight: 600, lineHeight: 1.2 }}>{fullDomainPreview}</p>
-              </div>
-
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 15, fontWeight: 500 }}>Домейн</span>
-                  <span style={{ fontSize: 15, fontWeight: 500 }}>
-                    {formatMoney(selectedTld.feeCents, 'EUR')}
-                  </span>
+                <div>
+                  <p style={{ ...fieldLabelStyle, marginBottom: 10 }}>Избери разширение</p>
+                  <div style={choiceGridStyle}>
+                    {DOMAIN_TLD_OPTIONS.map(option => (
+                      <TldOptionCard
+                        key={option.value}
+                        option={option}
+                        active={form.tld === option.value}
+                        onSelect={() => setForm(prev => ({ ...prev, tld: option.value }))}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 15, fontWeight: 500 }}>Регистрация и настройка</span>
-                  <span style={{ fontSize: 15, fontWeight: 500 }}>
-                    {formatMoney(DOMAIN_SETUP_FEE_CENTS, 'EUR')}
-                  </span>
-                </div>
-                <div style={{ height: 1, background: 'rgba(0,0,0,0.08)' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 16, fontWeight: 600 }}>Общо</span>
-                  <span style={{ fontSize: 16, fontWeight: 600 }}>{formatMoney(totalCents, 'EUR')}</span>
-                </div>
-              </div>
-            </div>
 
-            <div style={{ display: 'grid' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!form.requestedLabel.trim()) {
-                    setStepError('Моля, въведи желано име на домейна.');
-                    return;
-                  }
-                  if (!form.tld) {
-                    setStepError('Моля, избери разширение на домейна.');
-                    return;
-                  }
-                  setStepError('');
-                  setStep(2);
-                }}
-                style={primaryButtonStyle}
-              >
-                Напред
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {step === 2 ? (
-          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>На кого да регистрираме домейна?</p>
-              <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))' }}>
-                <button
-                  type="button"
-                  onClick={() => setForm(prev => ({ ...prev, registrantType: 'individual' }))}
-                  style={choiceButtonStyle(form.registrantType === 'individual')}
+                {/* Domain preview */}
+                <div
+                  style={{
+                    borderRadius: 16,
+                    border: '1px solid transparent',
+                    backgroundImage: `linear-gradient(#fff, #fff), ${ACTIVE_GRADIENT}`,
+                    backgroundOrigin: 'border-box',
+                    backgroundClip: 'padding-box, border-box',
+                    padding: '16px 20px',
+                    display: 'grid',
+                    gap: 12,
+                  }}
                 >
-                  <span style={{ fontSize: 16, fontWeight: 600 }}>Физическо лице</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setForm(prev => ({ ...prev, registrantType: 'company' }))}
-                  style={choiceButtonStyle(form.registrantType === 'company')}
-                >
-                  <span style={{ fontSize: 16, fontWeight: 600 }}>Фирма</span>
-                </button>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'rgba(0,0,0,0.45)' }}>
+                      Преглед
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: 24, fontWeight: 700 }}>{fullDomainPreview}</p>
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.6)' }}>Домейн</span>
+                      <span style={{ fontSize: 14, fontWeight: 500 }}>{formatMoney(selectedTld.feeCents, 'EUR')}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.6)' }}>Регистрация и настройка</span>
+                      <span style={{ fontSize: 14, fontWeight: 500 }}>{formatMoney(DOMAIN_SETUP_FEE_CENTS, 'EUR')}</span>
+                    </div>
+                    <div style={{ height: 1, background: 'rgba(0,0,0,0.08)' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <span style={{ fontSize: 15, fontWeight: 600 }}>Общо</span>
+                      <span style={{ fontSize: 15, fontWeight: 700 }}>{formatMoney(totalCents, 'EUR')}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => { setStepError(''); setStep(1); }}
-                style={{ ...primaryButtonStyle, background: '#fff', color: '#000', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 12px 28px rgba(0,0,0,0.1)', flex: '0 0 auto' }}
-              >
-                Назад
-              </button>
-              <button type="button" onClick={() => { setStepError(''); setStep(3); }} style={{ ...primaryButtonStyle, flex: 1 }}>
-                Напред
-              </button>
-            </div>
-          </div>
-        ) : null}
+            {/* ── Step 2: Registrant type ── */}
+            {step === 2 ? (
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))' }}>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, registrantType: 'individual' }))}
+                    style={choiceButtonStyle(form.registrantType === 'individual')}
+                  >
+                    <span style={{ fontSize: 16, fontWeight: 600 }}>Физическо лице</span>
+                    <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.5)' }}>Регистрираме на твое лично име</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, registrantType: 'company' }))}
+                    style={choiceButtonStyle(form.registrantType === 'company')}
+                  >
+                    <span style={{ fontSize: 16, fontWeight: 600 }}>Фирма</span>
+                    <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.5)' }}>Регистрираме на юридическо лице</span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
-        {step === 3 ? (
-          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Данни за регистрация {form.registrantType === 'company' ? '(Фирма)' : '(Физическо лице)'}
-              </p>
+            {/* ── Step 3: Personal/company details ── */}
+            {step === 3 ? (
+              <div style={{ display: 'grid', gap: 16 }}>
+                <FlatField label={form.registrantType === 'company' ? 'МОЛ (Материално отговорно лице)' : 'Ime и фамилия'}>
+                  <input
+                    value={form.registrantName}
+                    onChange={e => setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }))}
+                    style={flatInputStyle}
+                  />
+                </FlatField>
 
-              <FlatField label={form.registrantType === 'company' ? 'МОЛ' : 'Име и фамилия'}>
-                <input
-                  value={form.registrantName}
-                  onChange={e => setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }))}
-                  style={flatInputStyle}
-                />
-              </FlatField>
+                <FlatField label="Имейл">
+                  <input
+                    type="email"
+                    value={form.registrantEmail}
+                    onChange={e => setForm(prev => ({ ...prev, registrantEmail: e.target.value }))}
+                    style={flatInputStyle}
+                  />
+                </FlatField>
 
-              <FlatField label="Имейл">
-                <input
-                  type="email"
-                  value={form.registrantEmail}
-                  onChange={e => setForm(prev => ({ ...prev, registrantEmail: e.target.value }))}
-                  style={flatInputStyle}
-                />
-              </FlatField>
-
-              <FlatField label="Телефон">
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  value={form.registrantPhone}
-                  onChange={e =>
-                    setForm(prev => ({
+                <FlatField label="Телефон">
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={form.registrantPhone}
+                    onChange={e => setForm(prev => ({
                       ...prev,
                       registrantPhone: onlyDigitsPhone(e.target.value),
                       registrantViber: onlyDigitsPhone(e.target.value),
-                    }))
-                  }
-                  placeholder="0888 123 456"
-                  style={flatInputStyle}
-                />
-              </FlatField>
+                    }))}
+                    placeholder="0888 123 456"
+                    style={flatInputStyle}
+                  />
+                </FlatField>
 
-              {form.registrantType === 'company' ? (
-                <>
-                  <FlatField label="Фирма">
+                {form.registrantType === 'company' ? (
+                  <>
+                    <FlatField label="Фирма">
+                      <input
+                        value={form.companyName}
+                        onChange={e => setForm(prev => ({ ...prev, companyName: onlyCyrillic(e.target.value) }))}
+                        style={flatInputStyle}
+                      />
+                    </FlatField>
+                    <FlatField label="ЕИК">
+                      <input
+                        value={form.companyId}
+                        onChange={e => setForm(prev => ({ ...prev, companyId: e.target.value }))}
+                        style={flatInputStyle}
+                      />
+                    </FlatField>
+                  </>
+                ) : null}
+
+                <FlatField label="Адрес">
+                  <input
+                    value={form.addressLine1}
+                    onChange={e => setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }))}
+                    style={flatInputStyle}
+                  />
+                </FlatField>
+
+                <FlatField label="Град">
+                  <input
+                    value={form.city}
+                    onChange={e => setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }))}
+                    style={flatInputStyle}
+                  />
+                </FlatField>
+              </div>
+            ) : null}
+
+            {/* ── Step 4: Review & pay ── */}
+            {step === 4 ? (
+              <div style={{ display: 'grid', gap: 20 }}>
+                {/* Domain & price summary */}
+                <div
+                  style={{
+                    borderRadius: 16,
+                    border: '1px solid transparent',
+                    backgroundImage: `linear-gradient(#fff, #fff), ${ACTIVE_GRADIENT}`,
+                    backgroundOrigin: 'border-box',
+                    backgroundClip: 'padding-box, border-box',
+                    boxShadow: '0 8px 28px rgba(168,85,247,0.18)',
+                    padding: '20px 22px',
+                    display: 'grid',
+                    gap: 14,
+                  }}
+                >
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.45)' }}>
+                      Домейн
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: 'clamp(22px, 6vw, 30px)', fontWeight: 700, lineHeight: 1.15 }}>
+                      {fullDomainPreview}
+                    </p>
+                  </div>
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <span style={{ fontSize: 15, color: 'rgba(0,0,0,0.6)' }}>Домейн</span>
+                      <span style={{ fontSize: 15, fontWeight: 500 }}>{formatMoney(selectedTld.feeCents, 'EUR')}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <span style={{ fontSize: 15, color: 'rgba(0,0,0,0.6)' }}>Настройка</span>
+                      <span style={{ fontSize: 15, fontWeight: 500 }}>{formatMoney(DOMAIN_SETUP_FEE_CENTS, 'EUR')}</span>
+                    </div>
+                    <div style={{ height: 1, background: 'rgba(0,0,0,0.1)' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <span style={{ fontSize: 18, fontWeight: 700 }}>Общо</span>
+                      <span style={{ fontSize: 18, fontWeight: 700 }}>{formatMoney(totalCents, 'EUR')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Benefits list */}
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {[
+                    'Домейнът ще бъде регистриран на твое име',
+                    'Ще го свържем към сайта ти',
+                    'Не са нужни технически настройки от твоя страна',
+                    'Обикновено това става в рамките на същия ден',
+                    'Максимален срок: до 2 работни дни след плащането',
+                    'През това време сайтът ти работи нормално на безплатния адрес',
+                    'Ще получиш имейл на предоставения адрес щом домейнът е готов и свързан',
+                  ].map(benefit => (
+                    <div key={benefit} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.6, color: '#16a34a' }}>✓</span>
+                      <span style={{ fontSize: 14, lineHeight: 1.6, color: 'rgba(0,0,0,0.75)' }}>{benefit}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Consent checkboxes */}
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
                     <input
-                      value={form.companyName}
-                      onChange={e => setForm(prev => ({ ...prev, companyName: onlyCyrillic(e.target.value) }))}
-                      style={flatInputStyle}
+                      type="checkbox"
+                      checked={form.agreedToActOnBehalf}
+                      onChange={e => setForm(prev => ({ ...prev, agreedToActOnBehalf: e.target.checked }))}
+                      style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
                     />
-                  </FlatField>
+                    <span style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.75)' }}>
+                      Потвърждавам, че домейнът ще бъде регистриран на мое име или на посочената от мен фирма.
+                    </span>
+                  </label>
 
-                  <FlatField label="ЕИК">
+                  <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
                     <input
-                      value={form.companyId}
-                      onChange={e => setForm(prev => ({ ...prev, companyId: e.target.value }))}
-                      style={flatInputStyle}
+                      type="checkbox"
+                      checked={form.agreedToPolicies}
+                      onChange={e => setForm(prev => ({ ...prev, agreedToPolicies: e.target.checked }))}
+                      style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
                     />
-                  </FlatField>
-                </>
-              ) : null}
-
-              <FlatField label="Адрес">
-                <input
-                  value={form.addressLine1}
-                  onChange={e => setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }))}
-                  style={flatInputStyle}
-                />
-              </FlatField>
-
-              <FlatField label="Град">
-                <input
-                  value={form.city}
-                  onChange={e => setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }))}
-                  style={flatInputStyle}
-                />
-              </FlatField>
-
-              <FlatField label="Пощенски код">
-                <input
-                  inputMode="numeric"
-                  value={form.postalCode}
-                  onChange={e => setForm(prev => ({ ...prev, postalCode: onlyDigitsPhone(e.target.value) }))}
-                  style={flatInputStyle}
-                />
-              </FlatField>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                style={{ ...primaryButtonStyle, background: '#fff', color: '#000', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 12px 28px rgba(0,0,0,0.1)', flex: '0 0 auto' }}
-              >
-                Назад
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    !form.registrantName.trim() ||
-                    !form.registrantEmail.trim() ||
-                    !form.registrantPhone.trim() ||
-                    !form.addressLine1.trim() ||
-                    !form.city.trim()
-                  ) {
-                    setStepError('Моля, попълни име, имейл, телефон, адрес и град.');
-                    return;
-                  }
-                  if (form.registrantType === 'company' && (!form.companyName.trim() || !form.companyId.trim())) {
-                    setStepError('Моля, попълни фирма и ЕИК.');
-                    return;
-                  }
-                  setStepError('');
-                  setStep(4);
-                }}
-                style={{ ...primaryButtonStyle, flex: 1 }}
-              >
-                Напред
-              </button>
-            </div>
+                    <span style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.75)' }}>
+                      Съгласен/на съм с{' '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>Общите условия</a>,{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>Политиката за поверителност</a>{' '}
+                      и{' '}
+                      <a href="/cookies" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>Политиката за бисквитки</a>{' '}
+                      на Clicka.bg.
+                    </span>
+                  </label>
+                </div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
 
-        {step === 4 ? (
-          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-            <div
+          {/* Wizard footer — navigation buttons */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 10,
+              padding: '16px 24px 20px',
+              borderTop: '1px solid rgba(0,0,0,0.06)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={step === 1 && !onBack}
               style={{
-                ...insetCardStyle,
-                display: 'grid',
-                gap: 14,
-                padding: 'clamp(20px, 5vw, 30px)',
-                border: '1px solid transparent',
-                backgroundImage: `linear-gradient(#fff, #fff), ${ACTIVE_GRADIENT}`,
-                backgroundOrigin: 'border-box',
-                backgroundClip: 'padding-box, border-box',
-                boxShadow: '0 20px 50px rgba(168,85,247,0.25)',
+                ...backButtonStyle,
+                opacity: step === 1 ? 0.3 : 1,
+                cursor: step === 1 ? 'default' : 'pointer',
               }}
             >
-              <div style={{ display: 'grid', gap: 6 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.55)' }}>
-                  Домейн
-                </p>
-                <p style={{ margin: 0, fontSize: 'clamp(26px, 7vw, 34px)', fontWeight: 700, lineHeight: 1.15 }}>
-                  {fullDomainPreview}
-                </p>
-              </div>
-
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 16, fontWeight: 500 }}>Домейн</span>
-                  <span style={{ fontSize: 16, fontWeight: 500 }}>
-                    {formatMoney(selectedTld.feeCents, 'EUR')}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 16, fontWeight: 500 }}>Настройка</span>
-                  <span style={{ fontSize: 16, fontWeight: 500 }}>
-                    {formatMoney(DOMAIN_SETUP_FEE_CENTS, 'EUR')}
-                  </span>
-                </div>
-                <div style={{ height: 1, background: 'rgba(0,0,0,0.1)' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 22, fontWeight: 700 }}>Общо</span>
-                  <span style={{ fontSize: 22, fontWeight: 700 }}>{formatMoney(totalCents, 'EUR')}</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gap: 8 }}>
-              {[
-                'Домейнът ще бъде регистриран на твое име',
-                'Ще го свържем към сайта ти',
-                'Не са нужни технически настройки от твоя страна',
-                'Обикновено това става в рамките на същия ден',
-                'Максимален срок: до 2 работни дни след плащането',
-                'През това време сайтът ти работи нормално на безплатния адрес в Clicka и можеш да приемаш резервации още веднага',
-              ].map(benefit => (
-                <div key={benefit} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.5, color: '#16a34a' }}>✓</span>
-                  <span style={{ fontSize: 15, lineHeight: 1.6, color: 'rgba(0,0,0,0.8)' }}>{benefit}</span>
-                </div>
-              ))}
-            </div>
-
-            <div
+              Назад
+            </button>
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={step === 4 ? isPayDisabled : false}
               style={{
-                ...insetCardStyle,
-                display: 'grid',
-                gap: 12,
-                padding: 18,
+                ...primaryButtonStyle,
+                opacity: step === 4 && isPayDisabled ? 0.4 : 1,
+                cursor: step === 4 && isPayDisabled ? 'default' : 'pointer',
               }}
             >
-              <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <input
-                  type="checkbox"
-                  checked={form.agreedToActOnBehalf}
-                  onChange={e => setForm(prev => ({ ...prev, agreedToActOnBehalf: e.target.checked }))}
-                  style={{ marginTop: 4 }}
-                />
-                <span style={{ fontSize: 14, lineHeight: 1.7, color: 'rgba(0,0,0,0.8)' }}>
-                  Потвърждавам, че Clicka ще регистрира домейна от мое име с данните по-горе и ще го
-                  свърже към сайта ми.
-                </span>
-              </label>
-
-              <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <input
-                  type="checkbox"
-                  checked={form.agreedToPolicies}
-                  onChange={e => setForm(prev => ({ ...prev, agreedToPolicies: e.target.checked }))}
-                  style={{ marginTop: 4 }}
-                />
-                <span style={{ fontSize: 14, lineHeight: 1.7, color: 'rgba(0,0,0,0.8)' }}>
-                  Съгласен/на съм с{' '}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
-                    Общите условия
-                  </a>
-                  ,{' '}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
-                    Политиката за поверителност
-                  </a>{' '}
-                  и{' '}
-                  <a href="/cookies" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
-                    Политиката за бисквитки
-                  </a>{' '}
-                  на Clicka.bg.
-                </span>
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setStep(3)}
-                style={{ ...primaryButtonStyle, background: '#fff', color: '#000', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 12px 28px rgba(0,0,0,0.1)', flex: '0 0 auto' }}
-              >
-                Назад
-              </button>
-              <button
-                type="button"
-                onClick={submitRequest}
-                style={{ ...primaryButtonStyle, flex: 1 }}
-                disabled={busy || !form.agreedToActOnBehalf || !form.agreedToPolicies}
-              >
-                {busy ? 'Подготвяме…' : `Плати ${formatMoney(totalCents, 'EUR')}`}
-              </button>
-            </div>
+              {step === 4
+                ? busy
+                  ? 'Подготвяме…'
+                  : `Плати ${formatMoney(totalCents, 'EUR')}`
+                : 'Продължи'}
+            </button>
           </div>
-        ) : null}
-      </div>
+        </div>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -34,6 +34,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
   const [notice, setNotice] = useState('');
   const [status, setStatus] = useState<ToolStatus>({ ga4: 'idle', pixel: 'idle', clarity: 'idle' });
   const [metaTestResult, setMetaTestResult] = useState<'idle' | 'sent' | 'no_pixel'>('idle');
+  const [showTechDetails, setShowTechDetails] = useState(false);
 
   useEffect(() => {
     setGa4Id(site.ga4Id ?? '');
@@ -104,21 +105,10 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '4px 0' }}>
 
-      {/* Connection status overview */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 10,
-      }}>
-        <StatusCard label="Google Analytics 4" id={ga4Id} status={status.ga4} color="#e11d48" />
-        <StatusCard label="Meta Pixel" id={metaPixelId} status={status.pixel} color="#1877f2" />
-        <StatusCard label="Microsoft Clarity" id={clarityId} status={status.clarity} color="#0078d4" />
-      </div>
-
       <AdminSection
-        title="Google Analytics 4"
+        title={<>Google Analytics 4{site.ga4Id ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>Настроен</span> : null}</>}
         icon={<BarChart3 size={16} color="#e11d48" />}
-        desc="Проследявай трафик, конверсии и стойност на резервациите."
+        desc=""
       >
         <label style={labelStyle}>Measurement ID</label>
         <input
@@ -133,9 +123,9 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
       </AdminSection>
 
       <AdminSection
-        title="Meta Pixel"
+        title={<>Meta Pixel{site.metaPixelId ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>Настроен</span> : null}</>}
         icon={<Facebook size={16} color="#1877f2" />}
-        desc="Проследявай реализации от Facebook и Instagram реклами."
+        desc=""
       >
         <label style={labelStyle}>Pixel ID</label>
         <input
@@ -150,9 +140,9 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
       </AdminSection>
 
       <AdminSection
-        title="Microsoft Clarity"
+        title={<>Microsoft Clarity{site.clarityId ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>Настроен</span> : null}</>}
         icon={<Eye size={16} color="#0078d4" />}
-        desc="Безплатни session recordings и heatmaps. (по желание)"
+        desc=""
       >
         <label style={labelStyle}>Project ID</label>
         <input
@@ -167,30 +157,40 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
       </AdminSection>
 
       {/* Events info */}
-      <div style={{
-        background: '#fafaf9', border: `1px solid ${ADMIN_T.border}`,
-        borderRadius: ADMIN_T.radius, padding: 16,
-        display: 'flex', flexDirection: 'column', gap: 8,
-      }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
-          Автоматични събития
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
-          {[
-            ['Meta Pixel', 'Schedule, BookingCompleted, Lead, PageView'],
-            ['GA4', 'booking_started, booking_completed (+value), generate_lead'],
-          ].map(([tool, events]) => (
-            <div key={tool}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.muted }}>{tool}: </span>
-              <span style={{ fontSize: 12, color: ADMIN_T.subtle }}>{events}</span>
-            </div>
-          ))}
+      <button
+        type="button"
+        onClick={() => setShowTechDetails(v => !v)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6, color: ADMIN_T.muted, fontSize: 13 }}
+      >
+        <span style={{ display: 'inline-block', transition: 'transform 180ms', transform: showTechDetails ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+        Покажи технически детайли
+      </button>
+      {showTechDetails && (
+        <div style={{
+          background: '#fafaf9', border: `1px solid ${ADMIN_T.border}`,
+          borderRadius: ADMIN_T.radius, padding: 16,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
+            Автоматични събития
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
+            {[
+              ['Meta Pixel', 'Schedule, BookingCompleted, Lead, PageView'],
+              ['GA4', 'booking_started, booking_completed (+value), generate_lead'],
+            ].map(([tool, events]) => (
+              <div key={tool}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.muted }}>{tool}: </span>
+                <span style={{ fontSize: 12, color: ADMIN_T.subtle }}>{events}</span>
+              </div>
+            ))}
+          </div>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.5 }}>
+            При резервация се изпраща и стойността (EUR) — агенцията може да види 100 € реклама → 800 € резервации.
+            Скриптовете се активират само след cookie consent. Всеки салон използва само своите ID-та.
+          </p>
         </div>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.5 }}>
-          При резервация се изпраща и стойността (EUR) — агенцията може да види 100 € реклама → 800 € резервации.
-          Скриптовете се активират само след cookie consent. Всеки салон използва само своите ID-та.
-        </p>
-      </div>
+      )}
 
       {notice && (
         <p style={{ margin: 0, fontSize: 14, color: notice.includes('запазени') ? '#15803d' : '#be123c' }}>
@@ -198,22 +198,14 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
         <button
           onClick={handleSave}
           disabled={saving || !hasUnsavedChanges}
-          style={{ ...ADMIN_COMPACT_SAVE_BTN, opacity: saving || !hasUnsavedChanges ? 0.6 : 1 }}
+          style={{ ...ADMIN_COMPACT_SAVE_BTN, opacity: saving || !hasUnsavedChanges ? 0.6 : 1, width: '100%', maxWidth: 320, justifyContent: 'center', padding: '14px 24px', fontSize: 16 }}
         >
           {saving && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', marginRight: 6 }} />}
           {saving ? 'Запис...' : 'Запази'}
-        </button>
-        <button
-          onClick={handleTest}
-          disabled={!anyConfigured}
-          style={{ ...testBtnStyle, opacity: anyConfigured ? 1 : 0.5 }}
-          title="Проверява формата на въведените ID-та"
-        >
-          Провери формат
         </button>
         {metaPixelId && (
           <button
@@ -308,7 +300,7 @@ const labelStyle: CSSProperties = {
 };
 
 const hintStyle: CSSProperties = {
-  margin: '6px 0 0', fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.4,
+  margin: '6px 0 0', fontSize: 12, color: '#007AFF', lineHeight: 1.4,
 };
 
 const testBtnStyle: CSSProperties = {

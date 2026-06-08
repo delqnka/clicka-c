@@ -240,9 +240,9 @@ export function SalonFaqVisitorFields({
 
       {showAmenities ? (
         <div>
-          {!compact || section === 'all' ? <SubLabel>Удобства и достъп</SubLabel> : null}
+          {!compact || section === 'all' ? <SubLabel>Допълнителна информация</SubLabel> : null}
 
-          <SubLabel>Удобства</SubLabel>
+          <SubLabel>Допълнителна информация</SubLabel>
           <CheckboxGrid
             compact={compact}
             items={amenityItems}
