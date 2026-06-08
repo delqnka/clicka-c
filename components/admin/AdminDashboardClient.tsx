@@ -688,22 +688,6 @@ export default function AdminDashboardClient({
   }, [slug]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-    if (!window.location.pathname.includes('/admin')) return;
-    void navigator.serviceWorker
-      .getRegistrations()
-      .then((regs) => {
-        for (const reg of regs) {
-          const script =
-            reg.active?.scriptURL ?? reg.installing?.scriptURL ?? reg.waiting?.scriptURL ?? '';
-          if (script.includes('sw-admin.js')) void reg.unregister();
-        }
-      })
-      .catch(() => { /* ignore */ });
-    void navigator.serviceWorker.register('/admin/sw.js', { scope: '/admin' }).catch(() => { /* ignore */ });
-  }, []);
-
-  useEffect(() => {
     if (!isMobile || !navOpen || typeof document === 'undefined') return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';

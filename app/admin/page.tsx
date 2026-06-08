@@ -1,6 +1,7 @@
 import { cookies, headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
+import { AdminLoadError } from '@/components/admin/AdminLoadError';
 import { OnboardingTour } from '@/components/admin/OnboardingTour';
 import { ADMIN_COOKIE_NAME, resolveAdminGate } from '@/lib/admin-auth';
 import { getHostAwareSalonPath } from '@/lib/domain-routing';
@@ -43,11 +44,21 @@ export default async function AdminEntryPage() {
     );
   }
 
-  const [site, initialOffers, initialAccount] = await Promise.all([
-    loadAdminSiteDataBySlug(gate.salon.slug),
-    loadAdminOffersBySalonId(gate.salon.salonId),
-    loadAdminAccountInfo(gate.session.ownerId),
-  ]);
+  let site: Awaited<ReturnType<typeof loadAdminSiteDataBySlug>>;
+  let initialOffers: Awaited<ReturnType<typeof loadAdminOffersBySalonId>>;
+  let initialAccount: Awaited<ReturnType<typeof loadAdminAccountInfo>>;
+
+  try {
+    [site, initialOffers, initialAccount] = await Promise.all([
+      loadAdminSiteDataBySlug(gate.salon.slug),
+      loadAdminOffersBySalonId(gate.salon.salonId),
+      loadAdminAccountInfo(gate.session.ownerId),
+    ]);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Грешка при зареждане на салона';
+    console.error('[admin/page] load failed:', message, err);
+    return <AdminLoadError message={message} />;
+  }
 
   if (!site) notFound();
 

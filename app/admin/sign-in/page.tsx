@@ -34,11 +34,12 @@ export default function AdminSignInPage() {
       const res = await fetch('/api/admin/sign-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Грешка при вход');
-      window.location.href = '/admin';
+      window.location.replace('/admin');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Грешка');
     } finally {

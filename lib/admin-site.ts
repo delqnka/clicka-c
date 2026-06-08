@@ -17,7 +17,7 @@ import {
   type SalonVenueExtras,
 } from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
-import { ensureOnboardingTourSchema } from '@/lib/ensure-onboarding-schema';
+import { ensureAdminSiteSchema } from '@/lib/ensure-admin-site-schema';
 import { normalizeSmsReminderMode, type SmsReminderMode } from '@/lib/sms-shared';
 
 export { mergeUniqueImageLists } from '@/lib/admin-image-utils';
@@ -215,7 +215,7 @@ export async function loadAdminImageFieldsBySlug(slug: string): Promise<AdminIma
 }
 
 export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
-  await ensureOnboardingTourSchema();
+  await ensureAdminSiteSchema();
   const rows = await sql`
     SELECT
       slug, name, category, phone, email, city, address, about,
