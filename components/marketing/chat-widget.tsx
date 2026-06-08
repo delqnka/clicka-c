@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { trackLead } from '@/lib/tracking-events';
 import { X, Send, Loader2 } from 'lucide-react';
 
 type Message = { role: 'user' | 'assistant' | 'human-support'; content: string };
@@ -150,7 +151,7 @@ export function ChatWidget({ mobileBottomOffset = 0, hideBubble = false }: { mob
     sendingRef.current = true;
     setInput('');
     const isFirstMessage = messages.filter((m) => m.role === 'user').length === 0;
-    if (isFirstMessage && typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Lead');
+    if (isFirstMessage) trackLead();
 
     if (humanMode) {
       setMessages((prev) => [...prev, { role: 'user', content: text }]);

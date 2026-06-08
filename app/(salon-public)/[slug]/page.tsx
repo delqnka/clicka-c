@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { SalonPublicPageView } from '@/components/salon/salon-public-page-view';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { buildSalonPageMetadata } from '@/lib/seo';
+import { SalonTrackingScripts } from '@/components/analytics/SalonTrackingScripts';
+import { CookieConsentBanner } from '@/components/analytics/CookieConsentBanner';
 
 export const revalidate = 60;
 
@@ -43,11 +45,21 @@ export default async function SalonSlugPage({ params, searchParams }: Props) {
   const tabParam =
     typeof tabRaw === 'string' ? tabRaw.trim() : Array.isArray(tabRaw) ? (tabRaw[0] ?? '').trim() : '';
 
+  const salon = pageData.salon as Record<string, unknown>;
+
   return (
-    <SalonPublicPageView
-      pageData={pageData}
-      highlightReviewId={highlightReviewId || null}
-      tabParam={tabParam || null}
-    />
+    <>
+      <SalonTrackingScripts
+        ga4Id={salon.ga4_id ? String(salon.ga4_id) : null}
+        metaPixelId={salon.meta_pixel_id ? String(salon.meta_pixel_id) : null}
+        clarityId={salon.clarity_id ? String(salon.clarity_id) : null}
+      />
+      <CookieConsentBanner cookiesPath={`/${params.slug}/cookies`} />
+      <SalonPublicPageView
+        pageData={pageData}
+        highlightReviewId={highlightReviewId || null}
+        tabParam={tabParam || null}
+      />
+    </>
   );
 }

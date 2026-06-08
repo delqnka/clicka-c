@@ -103,6 +103,9 @@ export type AdminSitePayload = {
   planPaidCurrency: string | null;
   brandIds: string[];
   onboardingTourDone: boolean;
+  ga4Id: string;
+  metaPixelId: string;
+  clarityId: string;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -229,7 +232,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       faq_items, visitor_info, visitor_additional_info, venue_extras,
       sms_balance, sms_enabled, sms_reminder_mode, plan,
       billing_period, plan_started_at, plan_expires_at, plan_paid_amount, plan_paid_currency, brand_domains,
-      stripe_account_id, stripe_charges_enabled
+      stripe_account_id, stripe_charges_enabled,
+      ga4_id, meta_pixel_id, clarity_id
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -306,6 +310,9 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     planPaidAmount: row.plan_paid_amount != null ? Number(row.plan_paid_amount) : null,
     planPaidCurrency: row.plan_paid_currency ? String(row.plan_paid_currency) : null,
     brandIds: Array.isArray(row.brand_domains) ? row.brand_domains.map(String) : [],
+    ga4Id: String(row.ga4_id ?? ''),
+    metaPixelId: String(row.meta_pixel_id ?? ''),
+    clarityId: String(row.clarity_id ?? ''),
   };
 }
 

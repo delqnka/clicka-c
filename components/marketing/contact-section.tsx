@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { trackLead } from '@/lib/tracking-events';
 import { MessageCircle, Mail, Send, ChevronDown } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import type { TurnstileInstance } from '@marsidev/react-turnstile';
@@ -24,7 +25,7 @@ export function ContactSection() {
       });
       if (res.ok) {
         setStatus('sent');
-        if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Lead');
+        trackLead();
       } else {
         setStatus('error');
         turnstileRef.current?.reset();
