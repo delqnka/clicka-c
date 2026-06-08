@@ -36,6 +36,7 @@ type FormState = {
   countryCode: string;
   notes: string;
   agreedToActOnBehalf: boolean;
+  agreedToPolicies: boolean;
 };
 
 function normalizeSuggestedLabel(value: string) {
@@ -45,6 +46,14 @@ function normalizeSuggestedLabel(value: string) {
     .replace(/[^a-z0-9-]+/g, '')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
+}
+
+function onlyCyrillic(value: string) {
+  return value.replace(/[^а-яА-Я0-9\s.,'"\-/№]+/g, '');
+}
+
+function onlyDigitsPhone(value: string) {
+  return value.replace(/[^0-9+\s]+/g, '');
 }
 
 function formatMoney(cents: number, currency = 'EUR') {
@@ -247,7 +256,9 @@ export default function DomainPurchaseSection({
     countryCode: 'BG',
     notes: '',
     agreedToActOnBehalf: false,
+    agreedToPolicies: false,
   });
+  const [step, setStep] = useState<1 | 2>(1);
 
   const selectedTld = useMemo(
     () => DOMAIN_TLD_OPTIONS.find(item => item.value === form.tld) ?? DOMAIN_TLD_OPTIONS[0],
@@ -408,212 +419,273 @@ export default function DomainPurchaseSection({
           </div>
         ) : null}
 
-        <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-          <FieldShell label="Желан домейн">
-            <input
-              value={form.requestedLabel}
-              onChange={e =>
-                setForm(prev => ({
-                  ...prev,
-                  requestedLabel: normalizeSuggestedLabel(e.target.value),
-                }))
-              }
-              placeholder="studioani"
-              style={inputStyle}
-            />
-          </FieldShell>
-
-          <div style={{ display: 'grid', gap: 12 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Избери разширение</p>
-            <div style={choiceGridStyle}>
-              {DOMAIN_TLD_OPTIONS.map(option => (
-                <TldOptionCard
-                  key={option.value}
-                  option={option}
-                  active={form.tld === option.value}
-                  onSelect={() => setForm(prev => ({ ...prev, tld: option.value }))}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div style={{ ...insetCardStyle, display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gap: 6 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Преглед
-              </p>
-              <p style={{ margin: 0, fontSize: 24, fontWeight: 600, lineHeight: 1.2 }}>{fullDomainPreview}</p>
-            </div>
-
-            <div style={{ display: 'grid', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 15, fontWeight: 500 }}>Домейн</span>
-                <span style={{ fontSize: 15, fontWeight: 500 }}>
-                  {formatDualPrice(selectedTld.feeCents, selectedTld.feeBgnCents)}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 15, fontWeight: 500 }}>Техническа администрация и конфигуриране</span>
-                <span style={{ fontSize: 15, fontWeight: 500 }}>
-                  {formatDualPrice(DOMAIN_SETUP_FEE_CENTS, DOMAIN_SETUP_FEE_BGN_CENTS)}
-                </span>
-              </div>
-              <div style={{ height: 1, background: 'rgba(0,0,0,0.08)' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 16, fontWeight: 600 }}>Общо</span>
-                <span style={{ fontSize: 16, fontWeight: 600 }}>{formatDualPrice(totalCents, totalBgnCents)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gap: 12 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Регистрация като</p>
-            <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))' }}>
-              <button
-                type="button"
-                onClick={() => setForm(prev => ({ ...prev, registrantType: 'individual' }))}
-                style={choiceButtonStyle(form.registrantType === 'individual')}
-              >
-                <span style={{ fontSize: 16, fontWeight: 600 }}>Физическо лице</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setForm(prev => ({ ...prev, registrantType: 'company' }))}
-                style={choiceButtonStyle(form.registrantType === 'company')}
-              >
-                <span style={{ fontSize: 16, fontWeight: 600 }}>Фирма</span>
-              </button>
-            </div>
-          </div>
-
-          <div style={twoColumnGridStyle}>
-            <FieldShell label="Име / получател">
-              <input
-                value={form.registrantName}
-                onChange={e => setForm(prev => ({ ...prev, registrantName: e.target.value }))}
-                style={inputStyle}
-              />
-            </FieldShell>
-
-            <FieldShell label="Имейл">
-              <input
-                type="email"
-                value={form.registrantEmail}
-                onChange={e => setForm(prev => ({ ...prev, registrantEmail: e.target.value }))}
-                style={inputStyle}
-              />
-            </FieldShell>
-          </div>
-
-          <div style={twoColumnGridStyle}>
-            <FieldShell label="Телефон">
-              <input
-                value={form.registrantPhone}
-                onChange={e => setForm(prev => ({ ...prev, registrantPhone: e.target.value }))}
-                style={inputStyle}
-              />
-            </FieldShell>
-
-            <FieldShell label="Viber (по избор)">
-              <input
-                value={form.registrantViber}
-                onChange={e => setForm(prev => ({ ...prev, registrantViber: e.target.value }))}
-                style={inputStyle}
-              />
-            </FieldShell>
-
-            <FieldShell label="Пощенски код">
-              <input
-                value={form.postalCode}
-                onChange={e => setForm(prev => ({ ...prev, postalCode: e.target.value }))}
-                style={inputStyle}
-              />
-            </FieldShell>
-          </div>
-
-          {form.registrantType === 'company' ? (
-            <div style={twoColumnGridStyle}>
-              <FieldShell label="Фирма">
-                <input
-                  value={form.companyName}
-                  onChange={e => setForm(prev => ({ ...prev, companyName: e.target.value }))}
-                  style={inputStyle}
-                />
-              </FieldShell>
-
-              <FieldShell label="ЕИК / VAT">
-                <input
-                  value={form.companyId}
-                  onChange={e => setForm(prev => ({ ...prev, companyId: e.target.value }))}
-                  style={inputStyle}
-                />
-              </FieldShell>
-            </div>
-          ) : null}
-
-          <div style={twoColumnGridStyle}>
-            <FieldShell label="Адрес">
-              <input
-                value={form.addressLine1}
-                onChange={e => setForm(prev => ({ ...prev, addressLine1: e.target.value }))}
-                style={inputStyle}
-              />
-            </FieldShell>
-
-            <FieldShell label="Град">
-              <input
-                value={form.city}
-                onChange={e => setForm(prev => ({ ...prev, city: e.target.value }))}
-                style={inputStyle}
-              />
-            </FieldShell>
-          </div>
-
-          <FieldShell label="Държава">
-            <input
-              value={form.countryCode}
-              onChange={e => setForm(prev => ({ ...prev, countryCode: e.target.value.toUpperCase() }))}
-              style={inputStyle}
-            />
-          </FieldShell>
-
-          <FieldShell label="Бележки">
-            <textarea
-              value={form.notes}
-              onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
-              rows={4}
-              style={{ ...inputStyle, resize: 'vertical', minHeight: 120 }}
-            />
-          </FieldShell>
-
-          <div
-            style={{
-              ...insetCardStyle,
-              display: 'flex',
-              gap: 12,
-              alignItems: 'flex-start',
-              padding: 18,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={form.agreedToActOnBehalf}
-              onChange={e => setForm(prev => ({ ...prev, agreedToActOnBehalf: e.target.checked }))}
-              style={{ marginTop: 4 }}
-            />
-            <span style={{ fontSize: 14, lineHeight: 1.7, color: 'rgba(0,0,0,0.8)' }}>
-              Потвърждавам, че Clicka ще регистрира домейна от мое име с данните по-горе и ще го
-              свърже към сайта ми.
-            </span>
-          </div>
-
-          <div style={{ display: 'grid' }}>
-            <button type="button" onClick={submitRequest} style={primaryButtonStyle} disabled={busy}>
-              {busy ? 'Подготвяме…' : `Заяви и плати ${formatDualPrice(totalCents, totalBgnCents)}`}
-            </button>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
+          <span style={{ ...badgeStyle, ...(step === 1 ? { backgroundImage: `linear-gradient(#fff,#fff), ${ACTIVE_GRADIENT}`, backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box', border: '1px solid transparent' } : {}) }}>
+            1. Тип регистрант
+          </span>
+          <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.1)' }} />
+          <span style={{ ...badgeStyle, ...(step === 2 ? { backgroundImage: `linear-gradient(#fff,#fff), ${ACTIVE_GRADIENT}`, backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box', border: '1px solid transparent' } : {}) }}>
+            2. Данни и плащане
+          </span>
         </div>
+
+        {step === 1 ? (
+          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
+            <FieldShell label="Желан домейн">
+              <input
+                value={form.requestedLabel}
+                onChange={e =>
+                  setForm(prev => ({
+                    ...prev,
+                    requestedLabel: normalizeSuggestedLabel(e.target.value),
+                  }))
+                }
+                placeholder="studioani"
+                style={inputStyle}
+              />
+            </FieldShell>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Избери разширение</p>
+              <div style={choiceGridStyle}>
+                {DOMAIN_TLD_OPTIONS.map(option => (
+                  <TldOptionCard
+                    key={option.value}
+                    option={option}
+                    active={form.tld === option.value}
+                    onSelect={() => setForm(prev => ({ ...prev, tld: option.value }))}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div style={{ ...insetCardStyle, display: 'grid', gap: 12 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Преглед
+                </p>
+                <p style={{ margin: 0, fontSize: 24, fontWeight: 600, lineHeight: 1.2 }}>{fullDomainPreview}</p>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 15, fontWeight: 500 }}>Домейн</span>
+                  <span style={{ fontSize: 15, fontWeight: 500 }}>
+                    {formatDualPrice(selectedTld.feeCents, selectedTld.feeBgnCents)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 15, fontWeight: 500 }}>Техническа администрация и конфигуриране</span>
+                  <span style={{ fontSize: 15, fontWeight: 500 }}>
+                    {formatDualPrice(DOMAIN_SETUP_FEE_CENTS, DOMAIN_SETUP_FEE_BGN_CENTS)}
+                  </span>
+                </div>
+                <div style={{ height: 1, background: 'rgba(0,0,0,0.08)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 16, fontWeight: 600 }}>Общо</span>
+                  <span style={{ fontSize: 16, fontWeight: 600 }}>{formatDualPrice(totalCents, totalBgnCents)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Регистрация като</p>
+              <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))' }}>
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, registrantType: 'individual' }))}
+                  style={choiceButtonStyle(form.registrantType === 'individual')}
+                >
+                  <span style={{ fontSize: 16, fontWeight: 600 }}>Физическо лице</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, registrantType: 'company' }))}
+                  style={choiceButtonStyle(form.registrantType === 'company')}
+                >
+                  <span style={{ fontSize: 16, fontWeight: 600 }}>Фирма</span>
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid' }}>
+              <button type="button" onClick={() => setStep(2)} style={primaryButtonStyle}>
+                Продължи към данните
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
+            <div style={{ ...insetCardStyle, display: 'grid', gap: 14 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Данни за регистрация {form.registrantType === 'company' ? '(Фирма)' : '(Физическо лице)'}
+              </p>
+
+              <div style={twoColumnGridStyle}>
+                <FieldShell label="Име / получател (на кирилица)">
+                  <input
+                    value={form.registrantName}
+                    onChange={e => setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }))}
+                    style={inputStyle}
+                  />
+                </FieldShell>
+
+                <FieldShell label="Имейл">
+                  <input
+                    type="email"
+                    value={form.registrantEmail}
+                    onChange={e => setForm(prev => ({ ...prev, registrantEmail: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </FieldShell>
+              </div>
+
+              <div style={twoColumnGridStyle}>
+                <FieldShell label="Телефон (и Viber)">
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={form.registrantPhone}
+                    onChange={e =>
+                      setForm(prev => ({
+                        ...prev,
+                        registrantPhone: onlyDigitsPhone(e.target.value),
+                        registrantViber: onlyDigitsPhone(e.target.value),
+                      }))
+                    }
+                    placeholder="0888 123 456"
+                    style={inputStyle}
+                  />
+                </FieldShell>
+
+                <FieldShell label="Пощенски код">
+                  <input
+                    inputMode="numeric"
+                    value={form.postalCode}
+                    onChange={e => setForm(prev => ({ ...prev, postalCode: onlyDigitsPhone(e.target.value) }))}
+                    style={inputStyle}
+                  />
+                </FieldShell>
+              </div>
+
+              {form.registrantType === 'company' ? (
+                <div style={twoColumnGridStyle}>
+                  <FieldShell label="Фирма (на кирилица)">
+                    <input
+                      value={form.companyName}
+                      onChange={e => setForm(prev => ({ ...prev, companyName: onlyCyrillic(e.target.value) }))}
+                      style={inputStyle}
+                    />
+                  </FieldShell>
+
+                  <FieldShell label="ЕИК / VAT">
+                    <input
+                      value={form.companyId}
+                      onChange={e => setForm(prev => ({ ...prev, companyId: e.target.value }))}
+                      style={inputStyle}
+                    />
+                  </FieldShell>
+                </div>
+              ) : null}
+
+              <div style={twoColumnGridStyle}>
+                <FieldShell label="Адрес (на кирилица)">
+                  <input
+                    value={form.addressLine1}
+                    onChange={e => setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }))}
+                    style={inputStyle}
+                  />
+                </FieldShell>
+
+                <FieldShell label="Град (на кирилица)">
+                  <input
+                    value={form.city}
+                    onChange={e => setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }))}
+                    style={inputStyle}
+                  />
+                </FieldShell>
+              </div>
+
+              <FieldShell label="Държава">
+                <input
+                  value={form.countryCode}
+                  onChange={e => setForm(prev => ({ ...prev, countryCode: e.target.value.toUpperCase() }))}
+                  style={inputStyle}
+                />
+              </FieldShell>
+
+              <FieldShell label="Бележки (на кирилица)">
+                <textarea
+                  value={form.notes}
+                  onChange={e => setForm(prev => ({ ...prev, notes: onlyCyrillic(e.target.value) }))}
+                  rows={4}
+                  style={{ ...inputStyle, resize: 'vertical', minHeight: 120 }}
+                />
+              </FieldShell>
+            </div>
+
+            <div
+              style={{
+                ...insetCardStyle,
+                display: 'grid',
+                gap: 12,
+                padding: 18,
+              }}
+            >
+              <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <input
+                  type="checkbox"
+                  checked={form.agreedToActOnBehalf}
+                  onChange={e => setForm(prev => ({ ...prev, agreedToActOnBehalf: e.target.checked }))}
+                  style={{ marginTop: 4 }}
+                />
+                <span style={{ fontSize: 14, lineHeight: 1.7, color: 'rgba(0,0,0,0.8)' }}>
+                  Потвърждавам, че Clicka ще регистрира домейна от мое име с данните по-горе и ще го
+                  свърже към сайта ми.
+                </span>
+              </label>
+
+              <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <input
+                  type="checkbox"
+                  checked={form.agreedToPolicies}
+                  onChange={e => setForm(prev => ({ ...prev, agreedToPolicies: e.target.checked }))}
+                  style={{ marginTop: 4 }}
+                />
+                <span style={{ fontSize: 14, lineHeight: 1.7, color: 'rgba(0,0,0,0.8)' }}>
+                  Съгласен/на съм с{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
+                    Общите условия
+                  </a>{' '}
+                  и{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
+                    Политиката за поверителност
+                  </a>{' '}
+                  на Clicka.bg.
+                </span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                style={{ ...primaryButtonStyle, background: '#fff', color: '#000', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 12px 28px rgba(0,0,0,0.1)', flex: '0 0 auto' }}
+              >
+                Назад
+              </button>
+              <button
+                type="button"
+                onClick={submitRequest}
+                style={{ ...primaryButtonStyle, flex: 1 }}
+                disabled={busy || !form.agreedToActOnBehalf || !form.agreedToPolicies}
+              >
+                {busy ? 'Подготвяме…' : `Заяви и плати ${formatDualPrice(totalCents, totalBgnCents)}`}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

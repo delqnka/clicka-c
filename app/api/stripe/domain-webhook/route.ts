@@ -115,6 +115,29 @@ async function sendAdminNotification(row: PurchaseRow) {
   }).catch(() => {});
 }
 
+async function sendCustomerConfirmation(row: PurchaseRow) {
+  if (!resend || !row.registrant_email) return;
+  const total = (Number(row.total_fee_cents) / 100).toFixed(2);
+  const currency = String(row.currency).toUpperCase();
+
+  await resend.emails.send({
+    from: 'Clicka.bg <noreply@clicka.bg>',
+    to: row.registrant_email,
+    subject: `Плащането за домейн ${row.full_domain} е успешно`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+        <h2>Благодарим Ви за заявката!</h2>
+        <p>Здравейте, ${row.registrant_name},</p>
+        <p>Плащането за домейн <strong>${row.full_domain}</strong> към <strong>${row.salon_name}</strong> е получено успешно.</p>
+        <p><strong>Сума (вкл. такса за регистрация на домейна и нашата такса за техническа администрация и конфигуриране):</strong> ${total} ${currency}</p>
+        <p>Нашият екип вече обработва заявката Ви и ще регистрира домейна и ще го свърже към Вашия сайт. Ще се свържем с Вас по Viber или имейл с допълнителна информация и потвърждение, когато домейнът е готов за използване.</p>
+        <hr style="margin: 24px 0;" />
+        <p>Поздрави,<br />Екипът на Clicka.bg</p>
+      </div>
+    `,
+  }).catch(() => {});
+}
+
 async function sendTelegramNotification(row: PurchaseRow) {
   const ownerChatId = process.env.CLICKA_OWNER_CHAT_ID;
   if (!ownerChatId) return;
@@ -172,6 +195,7 @@ async function handleDomainPurchase(requestId: string, salonSlug: string) {
 
   // Notify admin via email and Telegram
   await sendAdminNotification({ ...row, status: 'processing' });
+  await sendCustomerConfirmation({ ...row, status: 'processing' });
   await sendTelegramNotification({ ...row, status: 'processing' });
 
   console.log(`[domain-webhook] done — domain=${row.full_domain} salonSlug=${salonSlug}`);
@@ -206,8 +230,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  // Return 200 immediately, process async
-  void handleDomainPurchase(domainPurchaseRequestId, salonSlug);
+  // Vercel serverless freezes the lambda right after the response is sent,
+  // so fire-and-forget would never run — await it before responding.
+  await handleDomainPurchase(domainPurchaseRequestId, salonSlug);
 
   return NextResponse.json({ received: true });
 }

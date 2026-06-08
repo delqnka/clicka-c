@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const successBase = getOriginForHost(ROOT_DOMAIN);
+  const successBase = getOriginForHost(`${auth.salon.slug}.${ROOT_DOMAIN}`);
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     currency: pricing.currency,
