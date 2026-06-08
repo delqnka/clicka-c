@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { neon, neonConfig } from '@neondatabase/serverless';
 
 if (!process.env.DATABASE_URL) {

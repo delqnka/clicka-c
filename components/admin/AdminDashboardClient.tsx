@@ -68,7 +68,7 @@ import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 import { ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
-import { formatDomainPurchaseStatus, type DomainPurchaseRequest } from '@/lib/domain-purchase';
+import { formatDomainPurchaseStatus, type DomainPurchaseRequest } from '@/lib/domain-purchase-shared';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
