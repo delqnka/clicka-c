@@ -112,6 +112,8 @@ function CreatePageContent() {
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [error,         setError]         = useState('');
   const [ownerName,     setOwnerName]     = useState('');
+  const [email,         setEmail]         = useState('');
+  const [emailStatus,   setEmailStatus]   = useState<'idle' | 'checking' | 'free' | 'exists'>('idle');
   const [salonName,     setSalonName]     = useState('');
   const [slug,          setSlug]          = useState('');
   const [slugEdited,    setSlugEdited]    = useState(false);
@@ -152,6 +154,22 @@ function CreatePageContent() {
     }, 450);
     return () => clearTimeout(timer);
   }, [slug]);
+  // Live проверка дали вече има акаунт с този имейл (debounce)
+  useEffect(() => {
+    const candidate = email.trim();
+    if (!candidate || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate)) { setEmailStatus('idle'); return; }
+    setEmailStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/email-availability?email=${encodeURIComponent(candidate)}`);
+        const data = await res.json();
+        setEmailStatus(data.exists ? 'exists' : 'free');
+      } catch {
+        setEmailStatus('idle');
+      }
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [email]);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [wantsInvoice,  setWantsInvoice]  = useState(false);
   const [companyName,   setCompanyName]   = useState('');
@@ -189,6 +207,8 @@ function CreatePageContent() {
     }
 
     if (!ownerName.trim()) { setError('Въведи твоето име.'); return; }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError('Въведи валиден имейл.'); return; }
+    if (emailStatus === 'exists') { setError('Вече има акаунт с този имейл — влез от страницата за вход, вместо да купуваш нов план.'); return; }
     if (!salonName.trim()) { setError('Въведи име на салона.'); return; }
     if (!slug.trim()) { setError('Въведи адрес на сайта.'); return; }
     if (!termsAccepted) { setError('Моля, приемете условията и правилата.'); return; }
@@ -209,6 +229,7 @@ function CreatePageContent() {
         body:    JSON.stringify({
           planKey,
           ownerName: ownerName.trim(),
+          email: email.trim(),
           salonName: salonName.trim(),
           slug: slug.trim(),
           ...(wantsInvoice && {
@@ -526,6 +547,31 @@ function CreatePageContent() {
             placeholder="напр. Деляна Иванова"
             className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]"
           />
+        </div>
+
+        {/* ── Email ── */}
+        <div className="mt-6">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">
+            Имейл
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="napr. ime@email.com"
+            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]"
+          />
+          {emailStatus === 'checking' && (
+            <p className="mt-1 text-[12px] text-[#6b7280]">Проверка на имейла…</p>
+          )}
+          {emailStatus === 'exists' && (
+            <p className="mt-1 text-[12px] font-semibold text-red-600">
+              Вече има акаунт с този имейл — <a href="/admin" className="underline">влез оттук</a>, вместо да купуваш нов план.
+            </p>
+          )}
+          {emailStatus === 'free' && (
+            <p className="mt-1 text-[12px] font-semibold text-emerald-600">✓ Имейлът е свободен</p>
+          )}
         </div>
 
         {/* ── Salon name ── */}

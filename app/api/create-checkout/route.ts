@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { sql } from '@/lib/db';
+import { normalizeEmail } from '@/lib/admin-auth';
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -28,7 +30,7 @@ interface BillingInfo {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { planKey: string; ownerName?: string; salonName?: string; slug?: string; smsAddon?: boolean; billingInfo?: BillingInfo };
+  let body: { planKey: string; ownerName?: string; email?: string; salonName?: string; slug?: string; smsAddon?: boolean; billingInfo?: BillingInfo };
 
   try {
     body = await request.json();
@@ -36,11 +38,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
   }
 
-  const { planKey, ownerName, salonName, slug, smsAddon, billingInfo } = body;
+  const { planKey, ownerName, email, salonName, slug, smsAddon, billingInfo } = body;
   const option = PLAN_OPTIONS[planKey];
 
   if (!option) {
     return NextResponse.json({ error: 'Невалиден план' }, { status: 400 });
+  }
+
+  const emailNorm = normalizeEmail(email ?? '');
+  if (!emailNorm) {
+    return NextResponse.json({ error: 'Въведи валиден имейл' }, { status: 400 });
+  }
+
+  const existingOwner = await sql`SELECT id FROM site_owners WHERE email_norm = ${emailNorm} LIMIT 1`;
+  if (existingOwner.length > 0) {
+    return NextResponse.json(
+      { error: 'Вече има акаунт с този имейл. Влез от страницата за вход, вместо да купуваш нов план.' },
+      { status: 409 },
+    );
   }
 
   try {
@@ -51,6 +66,7 @@ export async function POST(request: NextRequest) {
     const session = await getStripe().checkout.sessions.create({
       mode: 'payment',
       currency: 'eur',
+      customer_email: emailNorm,
       line_items: [
         {
           quantity: 1,
