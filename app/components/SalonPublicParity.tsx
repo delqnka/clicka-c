@@ -1920,10 +1920,9 @@ export default function SalonPublicParity({
                 <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
                   <iframe
                     title="Карта на салона"
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}&z=15&output=embed`}
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008},${lat - 0.005},${lng + 0.008},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`}
                     className="h-52 w-full border-0"
                     loading="lazy"
-                    referrerPolicy="no-referrer"
                   />
                   <a
                     href={mapsHref!}
