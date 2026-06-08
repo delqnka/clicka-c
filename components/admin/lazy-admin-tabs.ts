@@ -49,7 +49,3 @@ export const LazyStaffTabPanel = dynamic(
   () => import('@/components/admin/tabs/staff-tab-panel').then((m) => m.StaffTabPanel),
   { ssr: false }
 );
-export const LazyMarketingTabPanel = dynamic(
-  () => import('@/components/admin/tabs/marketing-tab-panel').then((m) => m.MarketingTabPanel),
-  { ssr: false }
-);

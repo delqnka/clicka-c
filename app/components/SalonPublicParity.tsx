@@ -67,7 +67,6 @@ import { GOOGLE_REVIEWS_INITIAL_VISIBLE } from '@/lib/google-reviews-limits';
 import { getBrandsByIds } from '@/lib/brands';
 import { SalonChatWidget } from '@/components/salon/salon-chat-widget';
 import { SalonAiBotWidget } from '@/components/salon/salon-ai-bot-widget';
-import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-events';
 
 const PublicVisitorFaq = dynamic(
   () => import('@/components/salon/public-visitor-faq').then((m) => m.PublicVisitorFaq),
@@ -985,7 +984,6 @@ export default function SalonPublicParity({
     setNotes('');
     setSmsReminderConsent(false);
     setBookingOpen(true);
-    trackBookingStarted();
   }
 
   function closeBookingModal() {
@@ -1258,10 +1256,7 @@ export default function SalonPublicParity({
       markDateSlotOccupied(selectedDate, selectedTime, combinedDuration);
       setBookingSuccessDetails({ serviceName: combinedServiceName, dateLabel, time: selectedTime });
       setBookingSuccess(`${combinedServiceName} — ${dateLabel} в ${selectedTime} ч.`);
-      trackBookingCompleted({
-        serviceName: combinedServiceName,
-        value: bookingTotalPrice && bookingTotalPrice > 0 ? bookingTotalPrice : undefined,
-      });
+      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Schedule');
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
     } finally {
@@ -1312,7 +1307,7 @@ export default function SalonPublicParity({
       setBookingSuccess(
         json.message || `${selectedOffer.title} — ${dateLabel} в ${selectedTime} ч.`,
       );
-      trackBookingCompleted({ serviceName: selectedOffer.title });
+      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Schedule');
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
     } finally {
