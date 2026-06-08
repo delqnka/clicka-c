@@ -264,11 +264,6 @@ export default function SuccessClient({
           </>
         )}
 
-        <div className="fade-4">
-          <Link href="/" style={{ color: '#9CA3AF', fontSize: 13, fontWeight: 600, textDecoration: 'none', fontFamily: FONT }}>
-            ← Към началната страница
-          </Link>
-        </div>
       </div>
     </div>
   );
