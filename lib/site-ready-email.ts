@@ -2,9 +2,10 @@ import { Resend } from 'resend';
 import { getPlatformAdminUrl, getPlatformPublicUrl } from '@/lib/domain-routing';
 import { generateAdminMagicLink } from '@/lib/admin-auth';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; email: string; name: string; ownerName?: string; planType: string }) {
+  if (!resend) return;
   const { salonId, slug, email, name, ownerName, planType } = opts;
   const greeting = ownerName && ownerName.trim() ? `Здравей, ${ownerName.trim()}!` : 'Здравей!';
   const publicUrl = getPlatformPublicUrl(slug);

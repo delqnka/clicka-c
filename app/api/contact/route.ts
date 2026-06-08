@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
     const tsData = await tsRes.json();
     if (!tsData.success) {
       return NextResponse.json({ error: 'Провалена верификация. Опитай пак.' }, { status: 403 });
+    }
+
+    if (!resend) {
+      return NextResponse.json({ error: 'Имейл услугата не е конфигурирана.' }, { status: 503 });
     }
 
     await resend.emails.send({

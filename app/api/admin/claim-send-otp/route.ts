@@ -11,7 +11,7 @@ import {
 } from '@/lib/admin-auth';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // 5 OTP sends per hour per IP
 const OTP_MAX = 5;
@@ -100,6 +100,10 @@ export async function POST(request: NextRequest) {
     // Never expose code to client — log server-side only in dev
     console.log(`[dev] OTP for ${emailNorm}: ${code}`);
     return NextResponse.json({ success: true });
+  }
+
+  if (!resend) {
+    return NextResponse.json({ error: 'Имейл услугата не е конфигурирана.' }, { status: 503 });
   }
 
   const sendResult = await resend.emails.send({

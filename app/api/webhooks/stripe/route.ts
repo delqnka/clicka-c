@@ -17,7 +17,7 @@ import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 import { creditSmsPack } from '@/lib/sms-reminders';
 import { SMS_PACK_CREDITS } from '@/lib/sms-shared';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 function domainPurchaseNotificationRecipient() {
   return (
@@ -58,7 +58,7 @@ async function sendDomainPurchaseNotification(requestId: string) {
     LIMIT 1
   `;
 
-  if (rows.length === 0) return;
+  if (rows.length === 0 || !resend) return;
 
   const row = rows[0] as Record<string, unknown>;
   const total = Number(row.total_fee_cents ?? 0) / 100;
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
           : 'Не е попълнен';
 
         const notifEmail = process.env.RESEND_NOTIFICATION_EMAIL ?? 'support@clicka.bg';
-        await resend.emails.send({
+        await resend?.emails.send({
           from: 'Clicka.bg <noreply@clicka.bg>',
           to: notifEmail,
           subject: `Нова заявка за фактура — ${invoiceCompanyName} (${invoiceEik})`,
@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
         ? await generateAdminMagicLink({ salonId, slug: String(salonSlug), email, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl)
         : adminUrl;
 
-      await resend.emails.send({
+      await resend?.emails.send({
         from: `${name} <noreply@clicka.bg>`,
         to: email,
         subject: `Твоят сайт е готов! ✅`,

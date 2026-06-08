@@ -8,7 +8,7 @@ import { generateAdminMagicLink } from '@/lib/admin-auth';
 import { sendTelegramMessage } from '@/lib/telegram';
 import SuccessClient from './SuccessClient';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 /** Best-effort alert to platform owner — paid customer with a broken provisioning needs a human, fast. */
 async function alertProvisioningFailure(detail: { sessionId: string; email: string; reason: string }) {
@@ -22,7 +22,7 @@ async function alertProvisioningFailure(detail: { sessionId: string; email: stri
     process.env.CLICKA_OWNER_CHAT_ID
       ? sendTelegramMessage(process.env.CLICKA_OWNER_CHAT_ID, text)
       : Promise.resolve(),
-    process.env.PLATFORM_ADMIN_EMAIL
+    process.env.PLATFORM_ADMIN_EMAIL && resend
       ? resend.emails.send({
           from: 'Clicka Alerts <onboarding@resend.dev>',
           to: process.env.PLATFORM_ADMIN_EMAIL,
@@ -207,7 +207,7 @@ export default async function SuccessPage({
                   expiresMs: 24 * 60 * 60 * 1000,
                 }).catch(() => adminUrl);
 
-                await resend.emails.send({
+                await resend?.emails.send({
                   from: `${salonName || 'Clicka.bg'} <noreply@clicka.bg>`,
                   to: email,
                   subject: `Твоят сайт е готов! ✅`,

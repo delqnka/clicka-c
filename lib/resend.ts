@@ -3,12 +3,13 @@ import { buildBookingCalendarLinks, type CalendarBookingRow } from '@/lib/calend
 import { formatSalonPrice } from '@/lib/salon-currency';
 import { sleep } from '@/lib/http-retry';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 async function sendResendWithRetry(
   payload: Parameters<Resend['emails']['send']>[0],
   attempts = 4,
 ) {
+  if (!resend) return;
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt++) {
     const { error } = await resend.emails.send(payload);
