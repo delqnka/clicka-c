@@ -4155,11 +4155,11 @@ function DomainTab({
   /* ── No domain yet ── */
   if (!hasDomain) {
     return (
-      <Section title="Собствен домейн" desc="Свържи своя домейн — например moisalon.com или www.friziorvanesa.bg.">
+      <Section title="Собствен домейн" desc="Свържи своя домейн: например moisalon.com или www.friziorvanesa.bg.">
         <div style={{ ...maxW, display: 'grid', gap: 14 }}>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg, padding: 24 }}>
             <p style={{ margin: '0 0 18px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
-              Имаш ли собствен домейн? Въведи го по-долу и ние ще те преведем стъпка по стъпка как да го свържеш.
+              Въведи го тук и ние ще те преведем стъпка по стъпка как да го свържеш самостоятелно!
             </p>
             <Field label="Твоят домейн">
               <div style={{ display: 'flex', gap: 8 }}>
@@ -4184,7 +4184,7 @@ function DomainTab({
 
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg, padding: 24 }}>
             <p style={{ margin: '0 0 14px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
-              Нямаш домейн? Можем да го купим вместо теб — ти избираш желаното име и разширение (.bg или .com), а ние се грижим за регистрацията срещу такса.
+              Нямаш домейн? Ще го купим и регистрираме вместо теб
             </p>
             {showPurchase ? (
               <DomainPurchaseSection
@@ -4196,9 +4196,15 @@ function DomainTab({
                 siteCity={site.city || ''}
               />
             ) : (
-              <button type="button" style={btn('primary')} onClick={() => setShowPurchase(true)}>
-                Купи домейн чрез Clicka
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  style={{ ...btn('primary'), background: '#10B981', borderColor: '#10B981' }}
+                  onClick={() => setShowPurchase(true)}
+                >
+                  Купи домейн чрез нас
+                </button>
+              </div>
             )}
           </div>
         </div>

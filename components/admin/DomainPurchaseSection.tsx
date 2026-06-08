@@ -140,12 +140,6 @@ const choiceGridStyle: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(min(130px, 100%), 1fr))',
 };
 
-const twoColumnGridStyle: CSSProperties = {
-  display: 'grid',
-  gap: 14,
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
-};
-
 const ACTIVE_GRADIENT = 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)';
 
 function choiceButtonStyle(active: boolean): CSSProperties {
@@ -183,6 +177,33 @@ const badgeStyle: CSSProperties = {
 function FieldShell({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label style={fieldShellStyle}>
+      <span style={fieldLabelStyle}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const flatFieldStyle: CSSProperties = {
+  display: 'grid',
+  gap: 8,
+};
+
+const flatInputStyle: CSSProperties = {
+  width: '100%',
+  border: '1px solid rgba(0,0,0,0.14)',
+  borderRadius: 12,
+  background: '#fff',
+  color: '#000',
+  padding: '12px 14px',
+  fontSize: 16,
+  fontWeight: 500,
+  outline: 'none',
+  boxShadow: 'none',
+};
+
+function FlatField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label style={flatFieldStyle}>
       <span style={fieldLabelStyle}>{label}</span>
       {children}
     </label>
@@ -517,112 +538,106 @@ export default function DomainPurchaseSection({
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-            <div style={{ ...insetCardStyle, display: 'grid', gap: 14 }}>
+            <div style={{ ...sectionCardStyle, boxShadow: '0 12px 30px rgba(0,0,0,0.1)', display: 'grid', gap: 18 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Данни за регистрация {form.registrantType === 'company' ? '(Фирма)' : '(Физическо лице)'}
               </p>
 
-              <div style={twoColumnGridStyle}>
-                <FieldShell label="Име / получател (на кирилица)">
-                  <input
-                    value={form.registrantName}
-                    onChange={e => setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }))}
-                    style={inputStyle}
-                  />
-                </FieldShell>
+              <FlatField label="Име / получател (на кирилица)">
+                <input
+                  value={form.registrantName}
+                  onChange={e => setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }))}
+                  style={flatInputStyle}
+                />
+              </FlatField>
 
-                <FieldShell label="Имейл">
-                  <input
-                    type="email"
-                    value={form.registrantEmail}
-                    onChange={e => setForm(prev => ({ ...prev, registrantEmail: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </FieldShell>
-              </div>
+              <FlatField label="Имейл">
+                <input
+                  type="email"
+                  value={form.registrantEmail}
+                  onChange={e => setForm(prev => ({ ...prev, registrantEmail: e.target.value }))}
+                  style={flatInputStyle}
+                />
+              </FlatField>
 
-              <div style={twoColumnGridStyle}>
-                <FieldShell label="Телефон (и Viber)">
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    value={form.registrantPhone}
-                    onChange={e =>
-                      setForm(prev => ({
-                        ...prev,
-                        registrantPhone: onlyDigitsPhone(e.target.value),
-                        registrantViber: onlyDigitsPhone(e.target.value),
-                      }))
-                    }
-                    placeholder="0888 123 456"
-                    style={inputStyle}
-                  />
-                </FieldShell>
+              <FlatField label="Телефон (и Viber)">
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={form.registrantPhone}
+                  onChange={e =>
+                    setForm(prev => ({
+                      ...prev,
+                      registrantPhone: onlyDigitsPhone(e.target.value),
+                      registrantViber: onlyDigitsPhone(e.target.value),
+                    }))
+                  }
+                  placeholder="0888 123 456"
+                  style={flatInputStyle}
+                />
+              </FlatField>
 
-                <FieldShell label="Пощенски код">
-                  <input
-                    inputMode="numeric"
-                    value={form.postalCode}
-                    onChange={e => setForm(prev => ({ ...prev, postalCode: onlyDigitsPhone(e.target.value) }))}
-                    style={inputStyle}
-                  />
-                </FieldShell>
-              </div>
+              <FlatField label="Пощенски код">
+                <input
+                  inputMode="numeric"
+                  value={form.postalCode}
+                  onChange={e => setForm(prev => ({ ...prev, postalCode: onlyDigitsPhone(e.target.value) }))}
+                  style={flatInputStyle}
+                />
+              </FlatField>
 
               {form.registrantType === 'company' ? (
-                <div style={twoColumnGridStyle}>
-                  <FieldShell label="Фирма (на кирилица)">
+                <>
+                  <FlatField label="Фирма (на кирилица)">
                     <input
                       value={form.companyName}
                       onChange={e => setForm(prev => ({ ...prev, companyName: onlyCyrillic(e.target.value) }))}
-                      style={inputStyle}
+                      style={flatInputStyle}
                     />
-                  </FieldShell>
+                  </FlatField>
 
-                  <FieldShell label="ЕИК / VAT">
+                  <FlatField label="ЕИК / VAT">
                     <input
                       value={form.companyId}
                       onChange={e => setForm(prev => ({ ...prev, companyId: e.target.value }))}
-                      style={inputStyle}
+                      style={flatInputStyle}
                     />
-                  </FieldShell>
-                </div>
+                  </FlatField>
+                </>
               ) : null}
 
-              <div style={twoColumnGridStyle}>
-                <FieldShell label="Адрес (на кирилица)">
-                  <input
-                    value={form.addressLine1}
-                    onChange={e => setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }))}
-                    style={inputStyle}
-                  />
-                </FieldShell>
+              <FlatField label="Адрес (на кирилица)">
+                <input
+                  value={form.addressLine1}
+                  onChange={e => setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }))}
+                  style={flatInputStyle}
+                />
+              </FlatField>
 
-                <FieldShell label="Град (на кирилица)">
-                  <input
-                    value={form.city}
-                    onChange={e => setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }))}
-                    style={inputStyle}
-                  />
-                </FieldShell>
-              </div>
+              <FlatField label="Град (на кирилица)">
+                <input
+                  value={form.city}
+                  onChange={e => setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }))}
+                  style={flatInputStyle}
+                />
+              </FlatField>
 
-              <FieldShell label="Държава">
+              <FlatField label="Държава">
                 <input
                   value={form.countryCode}
                   onChange={e => setForm(prev => ({ ...prev, countryCode: e.target.value.toUpperCase() }))}
-                  style={inputStyle}
+                  style={flatInputStyle}
                 />
-              </FieldShell>
+              </FlatField>
 
-              <FieldShell label="Бележки (на кирилица)">
+              <FlatField label="Бележки (на кирилица)">
                 <textarea
                   value={form.notes}
                   onChange={e => setForm(prev => ({ ...prev, notes: onlyCyrillic(e.target.value) }))}
                   rows={4}
-                  style={{ ...inputStyle, resize: 'vertical', minHeight: 120 }}
+                  style={{ ...flatInputStyle, resize: 'vertical', minHeight: 120 }}
                 />
-              </FieldShell>
+              </FlatField>
             </div>
 
             <div
