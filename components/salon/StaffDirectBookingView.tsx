@@ -8,6 +8,7 @@ import { buildSalonJsonLd } from '@/lib/seo';
 import { parseSalonServices, type ParsedSalonService } from '@/lib/salon-services';
 import { enrichServiceCategories, buildServiceCategoryTabs } from '@/lib/salon-service-categories';
 import { mergeOpeningHours, getEffectiveHours, type OpeningDayRecord } from '@/lib/salon-opening-hours';
+import { trackBookingCompleted } from '@/lib/tracking-events';
 import { normalizeBookingBlocks, isDateBlockedAllDay, isBlockedForStartTime } from '@/lib/booking-blocks';
 import { parseTimeToMinutes } from '@/lib/booking-time';
 import type { BookingCatalogService } from '@/lib/booking-modal-catalog';
@@ -197,7 +198,10 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
         weekday: 'long', day: 'numeric', month: 'long',
       });
       setSuccessDetails({ serviceName, dateLabel, time: selectedTime });
-      if (typeof window !== 'undefined' && (window as any).fbq) (window as any).fbq('track', 'Schedule');
+      trackBookingCompleted({
+        serviceName,
+        value: totalPrice > 0 ? totalPrice : undefined,
+      });
       setBookingSuccess(`${serviceName} — ${dateLabel} в ${selectedTime} ч.`);
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');

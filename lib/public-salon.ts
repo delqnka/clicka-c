@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
+import { ensureMarketingSchema } from '@/lib/ensure-marketing-schema';
 import {
   buildStaticMapUrl,
   resolveGooglePlaceId,
@@ -112,6 +113,10 @@ async function fetchPublicSalonPageData({
   let offers: unknown[] = [];
   let reviews: unknown[] = [];
   let hasPublishedBlogPosts = false;
+
+  try {
+    await ensureMarketingSchema();
+  } catch { /* non-fatal */ }
 
   try {
     await ensureOffersSchema();

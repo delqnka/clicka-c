@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import { trackViewContent } from '@/lib/tracking-events';
 
 export function MetaPixelViewContent() {
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'ViewContent');
-    }
+    trackViewContent();
   }, []);
 
   return null;

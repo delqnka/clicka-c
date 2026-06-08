@@ -22,6 +22,7 @@ import {
   Users,
   ExternalLink,
   LogOut,
+  BarChart3,
   CheckCircle2,
   XCircle,
   RefreshCw,
@@ -51,6 +52,7 @@ import {
   LazySmsTabPanel,
   LazySpecialistTabPanel,
   LazyStaffTabPanel,
+  LazyMarketingTabPanel,
 } from '@/components/admin/lazy-admin-tabs';
 import { AccountTabPanel } from '@/components/admin/tabs/account-tab-panel';
 import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
@@ -140,6 +142,7 @@ const TABS = [
   { id: 'payments',     label: 'Плащания',       Icon: CreditCard },
   { id: 'integrations', label: 'Интеграции',     Icon: Plug },
   { id: 'sms',          label: 'SMS',            Icon: MessageSquare },
+  { id: 'marketing',    label: 'Маркетинг',      Icon: BarChart3 },
   { id: 'legal',         label: 'Правни',         Icon: FileText },
   { id: 'account',       label: 'Профил',         Icon: KeyRound },
 ] as const;
@@ -150,7 +153,7 @@ const TAB_BAR_TABS = TABS.filter(t => TAB_BAR_IDS.has(t.id));
 const SHEET_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Съдържание', ids: ['images', 'offers', 'brands', 'blog'] },
   { label: 'Екип',       ids: ['specialist', 'staff'] },
-  { label: 'Настройки',  ids: ['hours', 'domain', 'payments', 'sms', 'integrations', 'legal', 'account'] },
+  { label: 'Настройки',  ids: ['hours', 'domain', 'payments', 'sms', 'integrations', 'marketing', 'legal', 'account'] },
 ];
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 
@@ -3473,6 +3476,10 @@ export default function AdminDashboardClient({
               loadCalendarStatus={loadCalendarIntegrationStatus}
               onSaveExternalIcsUrl={saveExternalIcsUrl}
             />
+          ) : null}
+
+          {activeTab === 'marketing' ? (
+            <LazyMarketingTabPanel site={site} setSite={setSite} slug={slug} inp={inp} sitePublicUrl={sitePublicUrl} />
           ) : null}
 
           {activeTab === 'sms' ? (
