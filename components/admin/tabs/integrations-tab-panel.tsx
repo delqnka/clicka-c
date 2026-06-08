@@ -108,56 +108,61 @@ export function IntegrationsTabPanel({
               </details>
             </div>
           ) : (
-            <>
-              <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-                Свържи Telegram бота, за да получаваш известия за резервации и да блокираш часове директно от телефона си.
-              </p>
-              <p style={{ margin: '8px 0 0', fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-                Отвори{' '}
-                <a
-                  href="https://t.me/clicka_booking_bot"
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: ADMIN_T.text, fontWeight: 600 }}
-                >
-                  @clicka_booking_bot
-                </a>{' '}
-                в Telegram и изпрати:
-              </p>
-              {site.onboardingCode ? (
-                <button
-                  type="button"
-                  onClick={() => {
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              marginTop: 4,
+              padding: '14px 18px',
+              borderRadius: 16,
+              background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+              boxShadow: '0 8px 32px rgba(219,39,119,.35)',
+              color: '#fff',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, opacity: 0.9 }}>
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.038 9.593c-.152.678-.549.843-1.112.524l-3.078-2.268-1.484 1.428c-.164.164-.302.302-.619.302l.221-3.131 5.703-5.152c.248-.221-.054-.344-.383-.123L7.12 14.073l-3.031-.947c-.658-.206-.671-.658.138-.975l11.84-4.564c.548-.197 1.028.134.495.661z"/>
+              </svg>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>Свържи Telegram</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                  Получавай известия за резервации директно в Telegram
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (site.onboardingCode) {
                     navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
                     setBusyKey('copied-tg');
                     setTimeout(() => setBusyKey((k) => (k === 'copied-tg' ? '' : k)), 2000);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    marginTop: 10,
-                    padding: '10px 14px',
-                    borderRadius: ADMIN_T.radiusSm,
-                    background: '#F4F4F5',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <code style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
-                    /start {site.onboardingCode}
-                  </code>
-                  {busyKey === 'copied-tg' ? (
-                    <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  ) : (
-                    <Copy size={15} style={{ color: ADMIN_T.muted, flexShrink: 0 }} />
-                  )}
-                </button>
-              ) : (
-                <p style={{ margin: '8px 0 0', fontSize: 12, color: ADMIN_T.subtle }}>Кодът се генерира при активиране на акаунта.</p>
-              )}
-            </>
+                  }
+                  window.open('https://t.me/clicka_booking_bot', '_blank');
+                }}
+                style={{
+                  flexShrink: 0,
+                  border: '2px solid rgba(255,255,255,0.6)',
+                  background: 'rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  borderRadius: 999,
+                  padding: '7px 14px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {busyKey === 'copied-tg' ? 'Копирано ✓' : 'Свържи →'}
+              </button>
+            </div>
+          )}
+          {!site.telegramChatId && (
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.5 }}>
+              {site.onboardingCode
+                ? <>Бутонът копира кода <code style={{ fontFamily: 'monospace', fontWeight: 700 }}>/start {site.onboardingCode}</code> и отваря {' '}
+                    <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.text, fontWeight: 600 }}>@clicka_booking_bot</a>
+                    {' '}— просто го постави в чата.</>
+                : 'Кодът се генерира при активиране на акаунта.'}
+            </p>
           )}
         </AdminInfoCard>
 

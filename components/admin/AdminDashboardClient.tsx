@@ -4124,7 +4124,7 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
 
 function DomainTab({
   site, isMobile, domainInput, setDomainInput, domainMeta,
-  busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn,
+  busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn, slug,
 }: {
   site: AdminSitePayload;
   isMobile: boolean;
@@ -4140,6 +4140,7 @@ function DomainTab({
   slug: string;
 }) {
   const [copied, setCopied] = useState('');
+  const [showPurchase, setShowPurchase] = useState(false);
 
   function copyVal(value: string, key: string) {
     navigator.clipboard.writeText(value).catch(() => null);
@@ -4155,7 +4156,7 @@ function DomainTab({
   if (!hasDomain) {
     return (
       <Section title="Собствен домейн" desc="Свържи своя домейн — например moisalon.com или www.friziorvanesa.bg.">
-        <div style={maxW}>
+        <div style={{ ...maxW, display: 'grid', gap: 14 }}>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg, padding: 24 }}>
             <p style={{ margin: '0 0 18px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
               Имаш ли собствен домейн? Въведи го по-долу и ние ще те преведем стъпка по стъпка как да го свържеш.
@@ -4179,6 +4180,26 @@ function DomainTab({
                 </button>
               </div>
             </Field>
+          </div>
+
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg, padding: 24 }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, color: T.muted, lineHeight: 1.7 }}>
+              Нямаш домейн? Можем да го купим вместо теб — ти избираш желаното име и разширение (.bg или .com), а ние се грижим за регистрацията срещу такса.
+            </p>
+            {showPurchase ? (
+              <DomainPurchaseSection
+                slug={slug}
+                siteName={site.name || ''}
+                siteEmail={site.email || ''}
+                sitePhone={site.phone || ''}
+                siteAddress={site.address || ''}
+                siteCity={site.city || ''}
+              />
+            ) : (
+              <button type="button" style={btn('primary')} onClick={() => setShowPurchase(true)}>
+                Купи домейн чрез Clicka
+              </button>
+            )}
           </div>
         </div>
       </Section>
