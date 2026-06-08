@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 function blockCyrillic(e: React.KeyboardEvent<HTMLInputElement>) {
   if (/[Ѐ-ӿ]/.test(e.key)) e.preventDefault();
@@ -11,6 +12,7 @@ function stripCyrillic(value: string) {
 }
 
 export default function AdminSignInPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,6 +20,11 @@ export default function AdminSignInPage() {
   const [forgotSent, setForgotSent] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    const prefill = searchParams.get('email');
+    if (prefill) setEmail(stripCyrillic(prefill));
+  }, [searchParams]);
 
   async function submitLogin(e: React.FormEvent) {
     e.preventDefault();

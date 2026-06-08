@@ -33,9 +33,9 @@ function useOnboardingSteps(site: AdminSitePayload) {
     {
       id: 'domain',
       label: 'Избери име на сайта',
-      done: !!site.customDomain && site.customDomain.trim().length > 0,
+      done: true,
       tab: 'site',
-      subtab: 'address',
+      subtab: 'basics',
     },
     {
       id: 'services',
@@ -73,7 +73,7 @@ function useOnboardingSteps(site: AdminSitePayload) {
       label: 'Добави локация',
       done: !!site.address && site.address.trim().length > 3,
       tab: 'site',
-      subtab: 'basics',
+      subtab: 'address',
     },
     {
       id: 'hours',

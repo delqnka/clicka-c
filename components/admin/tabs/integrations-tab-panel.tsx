@@ -158,9 +158,53 @@ export function IntegrationsTabPanel({
           {!site.telegramChatId && (
             <p style={{ margin: '8px 0 0', fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.5 }}>
               {site.onboardingCode
-                ? <>Бутонът копира кода <code style={{ fontFamily: 'monospace', fontWeight: 700 }}>/start {site.onboardingCode}</code> и отваря {' '}
+                ? <>
+                    Бутонът копира кода и отваря {' '}
                     <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.text, fontWeight: 600 }}>@clicka_booking_bot</a>
-                    {' '}— просто го постави в чата.</>
+                    {' '}— просто го постави в чата.
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      marginTop: 8,
+                      marginLeft: 0,
+                    }}>
+                      <code style={{
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        fontSize: 15,
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        background: 'rgba(0,0,0,0.06)',
+                        color: ADMIN_T.text,
+                      }}>/start {site.onboardingCode}</code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (site.onboardingCode) {
+                            navigator.clipboard.writeText(`/start ${site.onboardingCode}`).catch(() => null);
+                            setBusyKey('copied-tg-code');
+                            setTimeout(() => setBusyKey((k) => (k === 'copied-tg-code' ? '' : k)), 2000);
+                          }
+                        }}
+                        title="Копирай кода"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 28,
+                          height: 28,
+                          borderRadius: 8,
+                          border: `1px solid ${ADMIN_T.border}`,
+                          background: '#fff',
+                          color: ADMIN_T.text,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {busyKey === 'copied-tg-code' ? <Check size={15} /> : <Copy size={15} />}
+                      </button>
+                    </span>
+                  </>
                 : 'Кодът се генерира при активиране на акаунта.'}
             </p>
           )}

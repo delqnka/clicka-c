@@ -97,15 +97,15 @@ const inputStyle: CSSProperties = {
 };
 
 const primaryButtonStyle: CSSProperties = {
-  border: '1px solid #000',
+  border: 'none',
   borderRadius: 999,
-  background: '#000',
+  background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
   color: '#fff',
   fontWeight: 600,
   fontSize: 15,
   padding: '14px 20px',
   cursor: 'pointer',
-  boxShadow: '0 14px 30px rgba(0,0,0,0.28)',
+  boxShadow: '0 14px 30px rgba(219,39,119,0.35)',
 };
 
 const fieldShellStyle: CSSProperties = {

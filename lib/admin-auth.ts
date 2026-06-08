@@ -504,6 +504,22 @@ export async function generateAdminMagicLink({
   expiresMs?: number;
 }): Promise<string> {
   await ensureAdminAuthSchema();
+
+  const base = getPlatformSiteOrigin(slug);
+
+  // If the owner already has a password, send them to sign-in instead of
+  // making them set a new one — a login token would be wasted on them anyway.
+  const owner = await getPrimaryOwnerForSalon(salonId);
+  if (owner) {
+    const ownerRows = await sql`
+      SELECT password_hash FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1
+    `;
+    const passwordHash = String((ownerRows[0] as Record<string, unknown>)?.password_hash ?? '');
+    if (passwordHash) {
+      return `${base}/admin/sign-in?email=${encodeURIComponent(normalizeEmail(email))}`;
+    }
+  }
+
   const token = crypto.randomBytes(32).toString('hex');
   const tokenHash = sha256(token);
   const expiresAt = new Date(Date.now() + expiresMs);
@@ -514,8 +530,7 @@ export async function generateAdminMagicLink({
     VALUES (${salonId}, ${tokenHash}, ${normalizeEmail(email)}, ${expiresAt.toISOString()}, now())
   `;
 
-  // Points to set-password page on the salon's own subdomain.
-  const base = getPlatformSiteOrigin(slug);
+  // Points to set-password page on the salon's own subdomain (first-time activation).
   return `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(slug)}`;
 }
 

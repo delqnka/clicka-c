@@ -19,6 +19,7 @@ import {
   setAdminSessionCookie,
   sha256,
 } from '@/lib/admin-auth';
+import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   await ensureAdminAuthSchema();
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Validate token
   const salons = await sql`
-    SELECT CAST(id AS text) AS salon_id, slug, email
+    SELECT CAST(id AS text) AS salon_id, slug, email, name, owner_name, plan_type
     FROM salons
     WHERE slug = ${slug} AND is_active = true
     LIMIT 1
@@ -89,12 +90,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     (await getPrimaryOwnerForSalon(salonId)) ??
     (await ensureOwnerForSalon({ salonId, email: tokenEmail || salonEmail }));
 
+  const existingHashRows = await sql`
+    SELECT password_hash FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1
+  `;
+  const isFirstTimeSetup = !String((existingHashRows[0] as Record<string, unknown>)?.password_hash ?? '');
+
   // Save hashed password
   const hashed = await hashPassword(password);
   await sql`
     UPDATE site_owners SET password_hash = ${hashed}, updated_at = now()
     WHERE id = ${owner.ownerId}
   `;
+
+  // First time the owner sets a password — that's when their site is truly
+  // ready to use, so send the "site is ready" email with the panel link now.
+  if (isFirstTimeSetup) {
+    await sendSiteReadyEmail({
+      salonId,
+      slug,
+      email: tokenEmail || salonEmail,
+      name: String(salon.name ?? ''),
+      ownerName: String(salon.owner_name ?? ''),
+      planType: String(salon.plan_type ?? ''),
+    }).catch(() => {});
+  }
 
   // Create session
   const { sessionId, sessionExpires } = await createOwnerSession({
