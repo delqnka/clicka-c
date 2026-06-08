@@ -4190,6 +4190,7 @@ function DomainTab({
               <DomainPurchaseSection
                 slug={slug}
                 siteName={site.name || ''}
+                ownerName={site.ownerName || ''}
                 siteEmail={site.email || ''}
                 sitePhone={site.phone || ''}
                 siteAddress={site.address || ''}

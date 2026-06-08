@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useId } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
+import { formatDualEur, formatDualEurText } from '@/lib/salon-currency';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 
 const SLUG_TRANSLIT: Record<string, string> = {
@@ -411,7 +412,7 @@ function CreatePageContent() {
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  {PRICES.solo[period]} €
+                  {formatDualEur(PRICES.solo[period])}
                 </p>
                 <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>
                   {period === '12m' ? '/ година' : '/ 6 месеца'}
@@ -422,7 +423,7 @@ function CreatePageContent() {
             {plan === 'solo' && (
               <>
                 <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  Само {(PRICES.solo[period] / DAYS[period]).toFixed(2)} € на ден
+                  Само {formatDualEurText((PRICES.solo[period] / DAYS[period]).toFixed(2))} на ден
                 </p>
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
                   {/* Key highlights — always visible */}
@@ -485,7 +486,7 @@ function CreatePageContent() {
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  {PRICES.team[period]} €
+                  {formatDualEur(PRICES.team[period])}
                 </p>
                 <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>
                   {period === '12m' ? '/ година' : '/ 6 месеца'}
@@ -496,7 +497,7 @@ function CreatePageContent() {
             {plan === 'team' && (
               <>
                 <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  Само {(PRICES.team[period] / DAYS[period]).toFixed(2)} € на ден
+                  Само {formatDualEurText((PRICES.team[period] / DAYS[period]).toFixed(2))} на ден
                 </p>
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
                   {/* Key highlights — always visible */}
@@ -716,7 +717,7 @@ function CreatePageContent() {
         <div className="cp-sticky-bar mt-6">
           {!grantToken && (
             <p className="mb-2 text-center text-[13px] font-semibold text-[#0a0a0a]">
-              Плащаш еднократно {price} € за {period === '12m' ? '12 месеца' : '6 месеца'}.
+              Плащаш еднократно {formatDualEur(price)} за {period === '12m' ? '12 месеца' : '6 месеца'}.
             </p>
           )}
           <ButtonColorful
@@ -724,7 +725,7 @@ function CreatePageContent() {
               ? (grantToken ? 'Активира…' : 'Пренасочване към Stripe…')
               : grantToken
                 ? 'Активирай безплатния абонамент'
-                : `Плати ${price} € — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
+                : `Плати ${formatDualEur(price)} — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
             onClick={handlePay}
             disabled={isSubmitting || !ownerName.trim() || !salonName.trim() || !slug.trim() || slugStatus === 'taken' || slugStatus === 'checking' || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"

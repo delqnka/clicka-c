@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, ChevronDown, Loader2, Plus, User, X } from 'lucide-react';
+import { formatDualEurText } from '@/lib/salon-currency';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CLICKA_MARKETING_GRADIENT_BORDER_STYLE,
@@ -426,7 +427,7 @@ export function SalonBookingModal({
                                 <p className="truncate text-[16px] font-semibold text-black">{svc.name}</p>
                                 <ServiceDescription text={svc.description} />
                                 <p className="mt-1 text-[13px] tabular-nums text-black/70">
-                                  {svc.duration} мин · {Number(svc.price ?? 0).toFixed(2)} EUR
+                                  {svc.duration} мин · {formatDualEurText(Number(svc.price ?? 0).toFixed(2))}
                                 </p>
                               </div>
                               <button
@@ -538,7 +539,7 @@ export function SalonBookingModal({
                                           variantLabel === variant.label ? 'font-semibold text-black' : 'text-black/70'
                                         }`}
                                       >
-                                        {variant.label} · {variant.price} €
+                                        {variant.label} · {formatDualEurText(String(variant.price))}
                                       </button>
                                     ))}
                                   </div>
@@ -546,7 +547,7 @@ export function SalonBookingModal({
                               </div>
                             ) : null}
                             <p className="mt-1.5 text-[13px] tabular-nums text-black/45">
-                              {duration} мин · {price} EUR
+                              {duration} мин · {formatDualEurText(String(price))}
                             </p>
                           </div>
                           <button
@@ -860,7 +861,7 @@ export function SalonBookingModal({
                   Общо: {Math.max(0, totalDuration)} мин
                 </p>
                 <p className="text-[22px] font-bold tabular-nums text-black leading-tight">
-                  {totalPrice.toFixed(2)} EUR
+                  {formatDualEurText(totalPrice.toFixed(2))}
                 </p>
                 {selectedTime ? (
                   <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-black">
@@ -882,8 +883,8 @@ export function SalonBookingModal({
                     <path d="M27.5 22.5c0-1.7 1.4-2.4 3.6-2.4 3.2 0 7.3 1 10.4 2.7v-9.8c-3.5-1.4-7-2-10.4-2C23.1 11 18 15.2 18 22.9c0 12.1 16.6 10.2 16.6 15.4 0 2-1.7 2.7-4.1 2.7-3.5 0-8-1.5-11.5-3.5v9.9c3.9 1.7 7.9 2.4 11.5 2.4 8.8 0 14.8-4.3 14.8-12.2C45.3 25.4 27.5 27.6 27.5 22.5z" fill="white"/>
                   </svg>
                   {paymentType === 'deposit' && depositAmount && depositAmount > 0
-                    ? <>Изисква се депозит от <strong className="mx-0.5">€{depositAmount}</strong></>
-                    : <>Плащане от <strong className="mx-0.5">€{totalPrice.toFixed(2)}</strong></>
+                    ? <>Изисква се депозит от <strong className="mx-0.5">{formatDualEurText(String(depositAmount))}</strong></>
+                    : <>Плащане от <strong className="mx-0.5">{formatDualEurText(totalPrice.toFixed(2))}</strong></>
                   }
                 </p>
                 <p className="text-[11px] text-black/35">

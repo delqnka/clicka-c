@@ -17,6 +17,16 @@ import { stripe } from '@/lib/stripe';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+const TERMS_VERSION = '2026-01-01';
+const PRIVACY_VERSION = '2026-01-01';
+const COOKIES_VERSION = '2026-01-01';
+
+function getRequestIp(req: NextRequest) {
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  if (forwardedFor) return forwardedFor.split(',')[0]!.trim();
+  return req.headers.get('x-real-ip') || '';
+}
+
 function notificationRecipient() {
   return (
     process.env.DOMAIN_PURCHASE_NOTIFICATION_EMAIL ||
@@ -125,6 +135,7 @@ export async function POST(request: NextRequest) {
   const countryCode = String(body.countryCode ?? 'BG').trim().toUpperCase();
   const notes = String(body.notes ?? '').trim();
   const agreedToActOnBehalf = body.agreedToActOnBehalf === true;
+  const agreedToPolicies = body.agreedToPolicies === true;
 
   if (!requestedLabel || !fullDomain) {
     return NextResponse.json({ error: 'Въведи желан домейн.' }, { status: 400 });
@@ -159,6 +170,15 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  if (!agreedToPolicies) {
+    return NextResponse.json(
+      { error: 'Трябва да приемеш Общите условия, Политиката за поверителност и Политиката за бисквитки.' },
+      { status: 400 }
+    );
+  }
+
+  const consentIp = getRequestIp(request);
 
   const existingDomain = await sql`
     SELECT id
@@ -197,6 +217,11 @@ export async function POST(request: NextRequest) {
       total_fee_cents,
       currency,
       status,
+      consent_at,
+      consent_ip,
+      terms_version,
+      privacy_version,
+      cookies_version,
       updated_at
     )
     VALUES (
@@ -222,6 +247,11 @@ export async function POST(request: NextRequest) {
       ${pricing.totalFeeCents},
       ${pricing.currency},
       'requested',
+      now(),
+      ${consentIp},
+      ${TERMS_VERSION},
+      ${PRIVACY_VERSION},
+      ${COOKIES_VERSION},
       now()
     )
     RETURNING id

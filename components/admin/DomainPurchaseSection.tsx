@@ -3,7 +3,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  DOMAIN_SETUP_FEE_BGN_CENTS,
   DOMAIN_SETUP_FEE_CENTS,
   DOMAIN_TLD_OPTIONS,
   formatDomainPurchaseStatus,
@@ -14,6 +13,7 @@ import {
 type Props = {
   slug: string;
   siteName: string;
+  ownerName: string;
   siteEmail: string;
   sitePhone: string;
   siteAddress: string;
@@ -62,10 +62,6 @@ function formatMoney(cents: number, currency = 'EUR') {
     currency,
     minimumFractionDigits: 2,
   }).format(cents / 100);
-}
-
-function formatDualPrice(eurCents: number, bgnCents: number) {
-  return `${formatMoney(eurCents, 'EUR')} / ${formatMoney(bgnCents, 'BGN')}`;
 }
 
 async function readJson(res: Response) {
@@ -185,17 +181,19 @@ function FieldShell({ label, children }: { label: string; children: ReactNode })
 
 const flatFieldStyle: CSSProperties = {
   display: 'grid',
-  gap: 8,
+  gap: 4,
 };
 
 const flatInputStyle: CSSProperties = {
   width: '100%',
+  height: 48,
+  boxSizing: 'border-box',
   border: '1px solid rgba(0,0,0,0.14)',
-  borderRadius: 12,
+  borderRadius: 10,
   background: '#fff',
   color: '#000',
-  padding: '12px 14px',
-  fontSize: 16,
+  padding: '0 14px',
+  fontSize: 15,
   fontWeight: 500,
   outline: 'none',
   boxShadow: 'none',
@@ -228,7 +226,7 @@ function TldOptionCard({
 
       <div style={{ display: 'grid', gap: 6 }}>
         <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
-          {formatDualPrice(option.feeCents, option.feeBgnCents)}
+          {formatMoney(option.feeCents, 'EUR')}
         </span>
         {option.originalFeeCents && option.originalFeeBgnCents ? (
           <span
@@ -240,7 +238,7 @@ function TldOptionCard({
               textDecoration: 'line-through',
             }}
           >
-            {formatDualPrice(option.originalFeeCents, option.originalFeeBgnCents)}
+            {formatMoney(option.originalFeeCents, 'EUR')}
           </span>
         ) : null}
       </div>
@@ -251,6 +249,7 @@ function TldOptionCard({
 export default function DomainPurchaseSection({
   slug,
   siteName,
+  ownerName,
   siteEmail,
   sitePhone,
   siteAddress,
@@ -265,7 +264,7 @@ export default function DomainPurchaseSection({
     requestedLabel: normalizeSuggestedLabel(slug),
     tld: 'bg',
     registrantType: 'individual',
-    registrantName: siteName,
+    registrantName: ownerName || siteName,
     companyName: '',
     companyId: '',
     registrantEmail: siteEmail,
@@ -279,7 +278,8 @@ export default function DomainPurchaseSection({
     agreedToActOnBehalf: false,
     agreedToPolicies: false,
   });
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [stepError, setStepError] = useState('');
 
   const selectedTld = useMemo(
     () => DOMAIN_TLD_OPTIONS.find(item => item.value === form.tld) ?? DOMAIN_TLD_OPTIONS[0],
@@ -287,7 +287,6 @@ export default function DomainPurchaseSection({
   );
   const fullDomainPreview = `${form.requestedLabel || 'example'}.${selectedTld.value}`;
   const totalCents = selectedTld.feeCents + DOMAIN_SETUP_FEE_CENTS;
-  const totalBgnCents = selectedTld.feeBgnCents + DOMAIN_SETUP_FEE_BGN_CENTS;
 
   useEffect(() => {
     let cancelled = false;
@@ -398,7 +397,7 @@ export default function DomainPurchaseSection({
             Регистрираме домейна на твоето име и го свързваме вместо теб
           </h3>
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'rgba(0,0,0,0.78)' }}>
-            Плащаш отделно домейна за 1 година според разширението и фиксирана такса за техническа администрация и конфигуриране.
+            Избери име за своя домейн. Ние ще го регистрираме и свържем към сайта ти вместо теб.
           </p>
         </div>
 
@@ -440,15 +439,27 @@ export default function DomainPurchaseSection({
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
-          <span style={{ ...badgeStyle, ...(step === 1 ? { backgroundImage: `linear-gradient(#fff,#fff), ${ACTIVE_GRADIENT}`, backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box', border: '1px solid transparent' } : {}) }}>
-            1. Тип регистрант
-          </span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.1)' }} />
-          <span style={{ ...badgeStyle, ...(step === 2 ? { backgroundImage: `linear-gradient(#fff,#fff), ${ACTIVE_GRADIENT}`, backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box', border: '1px solid transparent' } : {}) }}>
-            2. Данни и плащане
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+          {(['1. Домейн', '2. Регистрант', '3. Данни', '4. Преглед и плащане'] as const).map((label, idx) => (
+            <span
+              key={label}
+              style={{
+                ...badgeStyle,
+                ...(step === idx + 1
+                  ? { backgroundImage: `linear-gradient(#fff,#fff), ${ACTIVE_GRADIENT}`, backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box', border: '1px solid transparent' }
+                  : {}),
+              }}
+            >
+              {label}
+            </span>
+          ))}
         </div>
+
+        {stepError ? (
+          <div style={{ ...insetCardStyle, marginTop: 18, borderColor: '#000' }}>
+            <p style={{ margin: 0, fontSize: 14 }}>{stepError}</p>
+          </div>
+        ) : null}
 
         {step === 1 ? (
           <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
@@ -492,25 +503,50 @@ export default function DomainPurchaseSection({
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 15, fontWeight: 500 }}>Домейн</span>
                   <span style={{ fontSize: 15, fontWeight: 500 }}>
-                    {formatDualPrice(selectedTld.feeCents, selectedTld.feeBgnCents)}
+                    {formatMoney(selectedTld.feeCents, 'EUR')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 15, fontWeight: 500 }}>Техническа администрация и конфигуриране</span>
+                  <span style={{ fontSize: 15, fontWeight: 500 }}>Регистрация и настройка</span>
                   <span style={{ fontSize: 15, fontWeight: 500 }}>
-                    {formatDualPrice(DOMAIN_SETUP_FEE_CENTS, DOMAIN_SETUP_FEE_BGN_CENTS)}
+                    {formatMoney(DOMAIN_SETUP_FEE_CENTS, 'EUR')}
                   </span>
                 </div>
                 <div style={{ height: 1, background: 'rgba(0,0,0,0.08)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 16, fontWeight: 600 }}>Общо</span>
-                  <span style={{ fontSize: 16, fontWeight: 600 }}>{formatDualPrice(totalCents, totalBgnCents)}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600 }}>{formatMoney(totalCents, 'EUR')}</span>
                 </div>
               </div>
             </div>
 
+            <div style={{ display: 'grid' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!form.requestedLabel.trim()) {
+                    setStepError('Моля, въведи желано име на домейна.');
+                    return;
+                  }
+                  if (!form.tld) {
+                    setStepError('Моля, избери разширение на домейна.');
+                    return;
+                  }
+                  setStepError('');
+                  setStep(2);
+                }}
+                style={primaryButtonStyle}
+              >
+                Напред
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === 2 ? (
+          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
             <div style={{ display: 'grid', gap: 12 }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Регистрация като</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>На кого да регистрираме домейна?</p>
               <div style={{ ...choiceGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))' }}>
                 <button
                   type="button"
@@ -530,20 +566,29 @@ export default function DomainPurchaseSection({
               </div>
             </div>
 
-            <div style={{ display: 'grid' }}>
-              <button type="button" onClick={() => setStep(2)} style={primaryButtonStyle}>
-                Продължи към данните
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => { setStepError(''); setStep(1); }}
+                style={{ ...primaryButtonStyle, background: '#fff', color: '#000', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 12px 28px rgba(0,0,0,0.1)', flex: '0 0 auto' }}
+              >
+                Назад
+              </button>
+              <button type="button" onClick={() => { setStepError(''); setStep(3); }} style={{ ...primaryButtonStyle, flex: 1 }}>
+                Напред
               </button>
             </div>
           </div>
-        ) : (
+        ) : null}
+
+        {step === 3 ? (
           <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-            <div style={{ ...sectionCardStyle, boxShadow: '0 12px 30px rgba(0,0,0,0.1)', display: 'grid', gap: 18 }}>
+            <div style={{ display: 'grid', gap: 12 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Данни за регистрация {form.registrantType === 'company' ? '(Фирма)' : '(Физическо лице)'}
               </p>
 
-              <FlatField label="Име / получател (на кирилица)">
+              <FlatField label={form.registrantType === 'company' ? 'МОЛ' : 'Име и фамилия'}>
                 <input
                   value={form.registrantName}
                   onChange={e => setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }))}
@@ -560,7 +605,7 @@ export default function DomainPurchaseSection({
                 />
               </FlatField>
 
-              <FlatField label="Телефон (и Viber)">
+              <FlatField label="Телефон">
                 <input
                   type="tel"
                   inputMode="tel"
@@ -577,18 +622,9 @@ export default function DomainPurchaseSection({
                 />
               </FlatField>
 
-              <FlatField label="Пощенски код">
-                <input
-                  inputMode="numeric"
-                  value={form.postalCode}
-                  onChange={e => setForm(prev => ({ ...prev, postalCode: onlyDigitsPhone(e.target.value) }))}
-                  style={flatInputStyle}
-                />
-              </FlatField>
-
               {form.registrantType === 'company' ? (
                 <>
-                  <FlatField label="Фирма (на кирилица)">
+                  <FlatField label="Фирма">
                     <input
                       value={form.companyName}
                       onChange={e => setForm(prev => ({ ...prev, companyName: onlyCyrillic(e.target.value) }))}
@@ -596,7 +632,7 @@ export default function DomainPurchaseSection({
                     />
                   </FlatField>
 
-                  <FlatField label="ЕИК / VAT">
+                  <FlatField label="ЕИК">
                     <input
                       value={form.companyId}
                       onChange={e => setForm(prev => ({ ...prev, companyId: e.target.value }))}
@@ -606,7 +642,7 @@ export default function DomainPurchaseSection({
                 </>
               ) : null}
 
-              <FlatField label="Адрес (на кирилица)">
+              <FlatField label="Адрес">
                 <input
                   value={form.addressLine1}
                   onChange={e => setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }))}
@@ -614,7 +650,7 @@ export default function DomainPurchaseSection({
                 />
               </FlatField>
 
-              <FlatField label="Град (на кирилица)">
+              <FlatField label="Град">
                 <input
                   value={form.city}
                   onChange={e => setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }))}
@@ -622,22 +658,111 @@ export default function DomainPurchaseSection({
                 />
               </FlatField>
 
-              <FlatField label="Държава">
+              <FlatField label="Пощенски код">
                 <input
-                  value={form.countryCode}
-                  onChange={e => setForm(prev => ({ ...prev, countryCode: e.target.value.toUpperCase() }))}
+                  inputMode="numeric"
+                  value={form.postalCode}
+                  onChange={e => setForm(prev => ({ ...prev, postalCode: onlyDigitsPhone(e.target.value) }))}
                   style={flatInputStyle}
                 />
               </FlatField>
+            </div>
 
-              <FlatField label="Бележки (на кирилица)">
-                <textarea
-                  value={form.notes}
-                  onChange={e => setForm(prev => ({ ...prev, notes: onlyCyrillic(e.target.value) }))}
-                  rows={4}
-                  style={{ ...flatInputStyle, resize: 'vertical', minHeight: 120 }}
-                />
-              </FlatField>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                style={{ ...primaryButtonStyle, background: '#fff', color: '#000', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 12px 28px rgba(0,0,0,0.1)', flex: '0 0 auto' }}
+              >
+                Назад
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    !form.registrantName.trim() ||
+                    !form.registrantEmail.trim() ||
+                    !form.registrantPhone.trim() ||
+                    !form.addressLine1.trim() ||
+                    !form.city.trim()
+                  ) {
+                    setStepError('Моля, попълни име, имейл, телефон, адрес и град.');
+                    return;
+                  }
+                  if (form.registrantType === 'company' && (!form.companyName.trim() || !form.companyId.trim())) {
+                    setStepError('Моля, попълни фирма и ЕИК.');
+                    return;
+                  }
+                  setStepError('');
+                  setStep(4);
+                }}
+                style={{ ...primaryButtonStyle, flex: 1 }}
+              >
+                Напред
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === 4 ? (
+          <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
+            <div
+              style={{
+                ...insetCardStyle,
+                display: 'grid',
+                gap: 14,
+                padding: 'clamp(20px, 5vw, 30px)',
+                border: '1px solid transparent',
+                backgroundImage: `linear-gradient(#fff, #fff), ${ACTIVE_GRADIENT}`,
+                backgroundOrigin: 'border-box',
+                backgroundClip: 'padding-box, border-box',
+                boxShadow: '0 20px 50px rgba(168,85,247,0.25)',
+              }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.55)' }}>
+                  Домейн
+                </p>
+                <p style={{ margin: 0, fontSize: 'clamp(26px, 7vw, 34px)', fontWeight: 700, lineHeight: 1.15 }}>
+                  {fullDomainPreview}
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 16, fontWeight: 500 }}>Домейн</span>
+                  <span style={{ fontSize: 16, fontWeight: 500 }}>
+                    {formatMoney(selectedTld.feeCents, 'EUR')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 16, fontWeight: 500 }}>Настройка</span>
+                  <span style={{ fontSize: 16, fontWeight: 500 }}>
+                    {formatMoney(DOMAIN_SETUP_FEE_CENTS, 'EUR')}
+                  </span>
+                </div>
+                <div style={{ height: 1, background: 'rgba(0,0,0,0.1)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 22, fontWeight: 700 }}>Общо</span>
+                  <span style={{ fontSize: 22, fontWeight: 700 }}>{formatMoney(totalCents, 'EUR')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              {[
+                'Домейнът ще бъде регистриран на твое име',
+                'Ще го свържем към сайта ти',
+                'Не са нужни технически настройки от твоя страна',
+                'Обикновено това става в рамките на същия ден',
+                'Максимален срок: до 2 работни дни след плащането',
+                'През това време сайтът ти работи нормално на безплатния адрес в Clicka и можеш да приемаш резервации още веднага',
+              ].map(benefit => (
+                <div key={benefit} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.5, color: '#16a34a' }}>✓</span>
+                  <span style={{ fontSize: 15, lineHeight: 1.6, color: 'rgba(0,0,0,0.8)' }}>{benefit}</span>
+                </div>
+              ))}
             </div>
 
             <div
@@ -672,10 +797,14 @@ export default function DomainPurchaseSection({
                   Съгласен/на съм с{' '}
                   <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
                     Общите условия
-                  </a>{' '}
-                  и{' '}
+                  </a>
+                  ,{' '}
                   <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
                     Политиката за поверителност
+                  </a>{' '}
+                  и{' '}
+                  <a href="/cookies" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>
+                    Политиката за бисквитки
                   </a>{' '}
                   на Clicka.bg.
                 </span>
@@ -685,7 +814,7 @@ export default function DomainPurchaseSection({
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(3)}
                 style={{ ...primaryButtonStyle, background: '#fff', color: '#000', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 12px 28px rgba(0,0,0,0.1)', flex: '0 0 auto' }}
               >
                 Назад
@@ -696,11 +825,11 @@ export default function DomainPurchaseSection({
                 style={{ ...primaryButtonStyle, flex: 1 }}
                 disabled={busy || !form.agreedToActOnBehalf || !form.agreedToPolicies}
               >
-                {busy ? 'Подготвяме…' : `Заяви и плати ${formatDualPrice(totalCents, totalBgnCents)}`}
+                {busy ? 'Подготвяме…' : `Плати ${formatMoney(totalCents, 'EUR')}`}
               </button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -35,7 +35,82 @@ type PaymentRow = {
   salonSlug: string | null;
 };
 
-type Tab = 'salons' | 'bookings' | 'payments' | 'grants';
+type Tab = 'salons' | 'bookings' | 'payments' | 'grants' | 'domain-requests';
+
+type DomainRequestRow = {
+  id: string;
+  full_domain: string;
+  requested_label: string;
+  tld: string;
+  registrant_type: 'individual' | 'company';
+  registrant_name: string;
+  company_name: string;
+  company_id: string;
+  registrant_email: string;
+  registrant_phone: string;
+  address_line1: string;
+  city: string;
+  postal_code: string;
+  country_code: string;
+  notes: string;
+  setup_fee_cents: number;
+  domain_fee_cents: number;
+  total_fee_cents: number;
+  currency: string;
+  status: string;
+  consent_at: string | null;
+  consent_ip: string;
+  terms_version: string;
+  privacy_version: string;
+  cookies_version: string;
+  paid_at: string | null;
+  created_at: string;
+  salon_slug: string;
+  salon_name: string;
+  is_delayed: boolean;
+};
+
+type DomainRequestSummary = {
+  new: number;
+  processing: number;
+  delayed: number;
+  completed: number;
+};
+
+function domainRequestStatusLabel(status: string) {
+  switch (status) {
+    case 'requested': return 'Нова';
+    case 'paid': return 'Платена';
+    case 'processing': return 'Обработва се';
+    case 'purchased': return 'Домейн регистриран';
+    case 'connected': return 'Свързан';
+    case 'rejected': return 'Отказана';
+    default: return status;
+  }
+}
+
+function domainRequestStatusClass(status: string) {
+  switch (status) {
+    case 'purchased':
+    case 'connected':
+      return 'bg-emerald-100 text-emerald-700';
+    case 'processing':
+      return 'bg-amber-100 text-amber-700';
+    case 'rejected':
+      return 'bg-red-100 text-red-600';
+    default:
+      return 'bg-gray-100 text-gray-600';
+  }
+}
+
+/** 🟢 нова · 🟡 обработва се · 🔴 забавена · ✅ завършена */
+function domainRequestStatusIcon(r: { status: string; is_delayed: boolean }) {
+  if (r.is_delayed) return '🔴';
+  if (r.status === 'purchased' || r.status === 'connected') return '✅';
+  if (r.status === 'processing') return '🟡';
+  if (r.status === 'requested' || r.status === 'paid') return '🟢';
+  return '';
+}
 
 type GrantRow = {
   id: string;
@@ -168,6 +243,12 @@ export default function PlatformAdminDashboard({
   const [grantPlan, setGrantPlan] = useState('solo_bonus_12m');
   const [grantSaving, setGrantSaving] = useState(false);
   const [grantLink, setGrantLink] = useState<string | null>(null);
+  const [domainRequests, setDomainRequests] = useState<DomainRequestRow[] | null>(null);
+  const [domainRequestsLoading, setDomainRequestsLoading] = useState(false);
+  const [expandedDomainRequest, setExpandedDomainRequest] = useState<string | null>(null);
+  const [updatingDomainRequest, setUpdatingDomainRequest] = useState<string | null>(null);
+  const [copiedDomainRequest, setCopiedDomainRequest] = useState<string | null>(null);
+  const [domainRequestSummary, setDomainRequestSummary] = useState<DomainRequestSummary | null>(null);
 
   const filteredSalons = useMemo(() => {
     return salonList.filter((s) => {
@@ -293,6 +374,57 @@ export default function PlatformAdminDashboard({
     setGrants((prev) => prev ? prev.filter((g) => g.id !== id) : null);
   }
 
+  async function handleLoadDomainRequests() {
+    if (domainRequests !== null) return;
+    setDomainRequestsLoading(true);
+    try {
+      const res = await fetch('/api/pa/domain-requests');
+      const data = await res.json();
+      setDomainRequests(data.requests ?? []);
+      setDomainRequestSummary(data.summary ?? null);
+    } finally {
+      setDomainRequestsLoading(false);
+    }
+  }
+
+  async function handleSetDomainRequestStatus(id: string, status: string) {
+    setUpdatingDomainRequest(id);
+    try {
+      const res = await fetch('/api/pa/domain-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+      if (res.ok) {
+        setDomainRequests((prev) =>
+          prev ? prev.map((r) => (r.id === id ? { ...r, status } : r)) : prev
+        );
+      }
+    } finally {
+      setUpdatingDomainRequest(null);
+    }
+  }
+
+  function handleCopyDomainRequest(r: DomainRequestRow) {
+    const lines = [
+      `Домейн: ${r.full_domain}`,
+      `Салон: ${r.salon_name} (${r.salon_slug})`,
+      `Тип: ${r.registrant_type === 'company' ? 'Фирма' : 'Физическо лице'}`,
+      r.company_name ? `Фирма: ${r.company_name}` : null,
+      r.company_id ? `ЕИК: ${r.company_id}` : null,
+      `Име: ${r.registrant_name}`,
+      `Имейл: ${r.registrant_email}`,
+      `Телефон: ${r.registrant_phone}`,
+      `Адрес: ${r.address_line1}, ${r.city}, ${r.postal_code}, ${r.country_code}`,
+      `Сума: ${formatAmount(r.total_fee_cents, r.currency)}`,
+      `Статус: ${domainRequestStatusLabel(r.status)}`,
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(lines);
+    setCopiedDomainRequest(r.id);
+    setTimeout(() => setCopiedDomainRequest((cur) => (cur === r.id ? null : cur)), 2000);
+  }
+
   async function handleLogout() {
     setLoggingOut(true);
     await fetch('/api/pa/auth', {
@@ -308,6 +440,7 @@ export default function PlatformAdminDashboard({
     { id: 'bookings', label: 'Резервации',  icon: <IconCalendar className="w-4 h-4" /> },
     { id: 'payments', label: 'Плащания',    icon: <IconCreditCard className="w-4 h-4" /> },
     { id: 'grants',   label: 'Подаръци',    icon: <IconGift className="w-4 h-4" /> },
+    { id: 'domain-requests', label: 'Домейн заявки', icon: <IconGlobe className="w-4 h-4" /> },
   ];
 
   return (
@@ -386,6 +519,7 @@ export default function PlatformAdminDashboard({
                     setTab(t.id);
                     if (t.id === 'payments') handleLoadPayments();
                     if (t.id === 'grants') handleLoadGrants();
+                    if (t.id === 'domain-requests') handleLoadDomainRequests();
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-base font-medium
                                transition-colors duration-150 cursor-pointer min-h-[48px]
@@ -790,6 +924,185 @@ export default function PlatformAdminDashboard({
                   }
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── TAB: Домейн заявки ─────────────────────────── */}
+          {tab === 'domain-requests' && (
+            <div className="p-4 space-y-2">
+              {domainRequestsLoading && (
+                <div className="flex items-center justify-center py-12 gap-2 text-gray-400 text-sm">
+                  <span className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-indigo-500 animate-spin" />
+                  Зарежда…
+                </div>
+              )}
+
+              {!domainRequestsLoading && domainRequests && domainRequests.length === 0 && (
+                <div className="text-center py-12 text-sm text-gray-400">Няма заявки за домейни</div>
+              )}
+
+              {!domainRequestsLoading && domainRequests && domainRequests.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between px-1 flex-wrap gap-2">
+                    <p className="text-xs text-gray-400">{domainRequests.length} заявки</p>
+                    {domainRequestSummary && (
+                      <p className="text-xs text-gray-500 flex items-center gap-3 flex-wrap">
+                        <span>🟢 {domainRequestSummary.new} нови</span>
+                        <span>🟡 {domainRequestSummary.processing} обработват се</span>
+                        <span>🔴 {domainRequestSummary.delayed} забавени</span>
+                        <span>✅ {domainRequestSummary.completed} завършени</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {domainRequests.map((r) => {
+                      const isExpanded = expandedDomainRequest === r.id;
+                      const paid = r.status !== 'requested';
+                      return (
+                        <div key={r.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                          <button
+                            onClick={() => setExpandedDomainRequest(isExpanded ? null : r.id)}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 text-left
+                                       hover:bg-white transition-colors duration-150 cursor-pointer"
+                            aria-expanded={isExpanded}
+                          >
+                            <div
+                              className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                              style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
+                              aria-hidden="true"
+                            >
+                              <IconGlobe className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span aria-hidden="true">{domainRequestStatusIcon(r)}</span>
+                                <span className="font-semibold text-sm text-gray-900 truncate">{r.full_domain}</span>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${domainRequestStatusClass(r.status)}`}>
+                                  {domainRequestStatusLabel(r.status)}
+                                </span>
+                                {r.is_delayed && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-red-100 text-red-600">
+                                    Забавена
+                                  </span>
+                                )}
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${paid ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                  {paid ? 'Платено: Да' : 'Платено: Не'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-400 truncate mt-0.5">
+                                {r.registrant_name} · {r.registrant_email} · {formatDate(r.created_at)}
+                              </div>
+                            </div>
+                            <IconChevronRight
+                              className={`w-4 h-4 text-gray-300 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                            />
+                          </button>
+
+                          {isExpanded && (
+                            <div className="border-t border-gray-100 px-4 py-4 space-y-4">
+                              {/* Данни за домейна */}
+                              <div>
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Данни за домейна</p>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Домейн</p><p className="text-gray-800 break-all">{r.full_domain}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Разширение</p><p className="text-gray-800">.{r.tld}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Цена на домейна</p><p className="text-gray-800">{formatAmount(r.domain_fee_cents, r.currency)}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Такса за настройка</p><p className="text-gray-800">{formatAmount(r.setup_fee_cents, r.currency)}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Обща сума</p><p className="text-gray-900 font-semibold">{formatAmount(r.total_fee_cents, r.currency)}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Салон</p><p className="text-gray-800 truncate">{r.salon_name} ({r.salon_slug})</p></div>
+                                </div>
+                              </div>
+
+                              {/* Данни за регистрация */}
+                              <div>
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Данни за регистрация</p>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Тип</p><p className="text-gray-800">{r.registrant_type === 'company' ? 'Фирма' : 'Физическо лице'}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Име</p><p className="text-gray-800">{r.registrant_name}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Имейл</p><p className="text-gray-800 break-all">{r.registrant_email}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Телефон</p><p className="text-gray-800">{r.registrant_phone}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Адрес</p><p className="text-gray-800">{r.address_line1}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Град</p><p className="text-gray-800">{r.city}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Пощенски код</p><p className="text-gray-800">{r.postal_code}</p></div>
+                                  {r.registrant_type === 'company' && (
+                                    <>
+                                      <div><p className="text-xs text-gray-400 mb-0.5">Име на фирма</p><p className="text-gray-800">{r.company_name}</p></div>
+                                      <div><p className="text-xs text-gray-400 mb-0.5">ЕИК / VAT</p><p className="text-gray-800">{r.company_id}</p></div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Правни данни (GDPR) */}
+                              <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Правни данни</p>
+                                <div className="space-y-1 text-sm">
+                                  <p className="text-emerald-700 text-xs font-medium">✓ Приел Общите условия</p>
+                                  <p className="text-emerald-700 text-xs font-medium">✓ Приел Политиката за поверителност</p>
+                                  <p className="text-emerald-700 text-xs font-medium">✓ Приел Политиката за бисквитки</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Дата</p><p className="text-gray-800">{r.consent_at ? formatDate(r.consent_at) : '—'}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">IP</p><p className="text-gray-800 font-mono text-xs">{r.consent_ip || '—'}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Terms version</p><p className="text-gray-800">{r.terms_version || '—'}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Privacy version</p><p className="text-gray-800">{r.privacy_version || '—'}</p></div>
+                                  <div><p className="text-xs text-gray-400 mb-0.5">Cookies version</p><p className="text-gray-800">{r.cookies_version || '—'}</p></div>
+                                </div>
+                              </div>
+
+                              {/* Бързи действия */}
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => handleSetDomainRequestStatus(r.id, 'processing')}
+                                  disabled={updatingDomainRequest === r.id}
+                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
+                                             text-gray-600 hover:border-indigo-300 hover:text-indigo-600
+                                             transition-colors cursor-pointer disabled:opacity-40 min-h-[36px]"
+                                >
+                                  Маркирай като „Обработва се"
+                                </button>
+                                <button
+                                  onClick={() => handleSetDomainRequestStatus(r.id, 'purchased')}
+                                  disabled={updatingDomainRequest === r.id}
+                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
+                                             text-gray-600 hover:border-emerald-300 hover:text-emerald-600
+                                             transition-colors cursor-pointer disabled:opacity-40 min-h-[36px]"
+                                >
+                                  Маркирай като „Домейн регистриран"
+                                </button>
+                                <button
+                                  onClick={() => handleSetDomainRequestStatus(r.id, 'connected')}
+                                  disabled={updatingDomainRequest === r.id}
+                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-emerald-200
+                                             bg-emerald-50 text-emerald-700 hover:bg-emerald-100
+                                             transition-colors cursor-pointer disabled:opacity-40 min-h-[36px]"
+                                  title="Изпраща имейл до клиента, че домейнът е активен"
+                                >
+                                  ✅ Маркирай като „Завършена" (изпраща имейл)
+                                </button>
+                                <button
+                                  onClick={() => handleCopyDomainRequest(r)}
+                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
+                                             text-gray-600 hover:border-gray-300 transition-colors cursor-pointer min-h-[36px]"
+                                >
+                                  {copiedDomainRequest === r.id ? 'Копирано ✓' : 'Копирай всички данни'}
+                                </button>
+                                <a
+                                  href={`mailto:${r.registrant_email}?subject=${encodeURIComponent(`Относно домейн ${r.full_domain}`)}`}
+                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
+                                             text-gray-600 hover:border-gray-300 transition-colors cursor-pointer min-h-[36px] inline-flex items-center"
+                                >
+                                  Отвори имейл към клиента
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

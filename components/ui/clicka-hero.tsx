@@ -1,4 +1,5 @@
 import { ButtonColorful } from '@/components/ui/button-colorful';
+import { formatDualEurText } from '@/lib/salon-currency';
 
 import { LiveSalonCount } from '@/components/ui/live-salon-count';
 import {
@@ -100,7 +101,7 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
 
         {/* Price line */}
         <p className="mb-8 text-center text-[clamp(0.875rem,2vw,1rem)] font-semibold text-[var(--foreground)]">
-          От <span style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>0,82 €</span> на ден
+          От <span style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{formatDualEurText('0.82')}</span> на ден
         </p>
 
         {/* Buttons */}

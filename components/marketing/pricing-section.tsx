@@ -2,6 +2,7 @@
 
 import { Check, X } from 'lucide-react';
 import { Reveal } from '@/components/marketing/reveal';
+import { formatDualEurText } from '@/lib/salon-currency';
 
 const alternatives = [
   { label: 'WordPress хостинг', price: '~100 EUR/год.' },
@@ -84,10 +85,10 @@ export function PricingSection() {
                 С Clicka
               </p>
               <div className="mt-4 flex items-end gap-2">
-                <p className="text-5xl font-bold tracking-[-0.04em] text-white">250</p>
-                <p className="mb-2 text-lg text-white/50">EUR / год.</p>
+                <p className="text-5xl font-bold tracking-[-0.04em] text-white">{formatDualEurText('250')}</p>
+                <p className="mb-2 text-lg text-white/50">/ год.</p>
               </div>
-              <p className="mt-1 text-xs text-white/40">≈ 0,68 EUR на ден · без скрити такси</p>
+              <p className="mt-1 text-xs text-white/40">≈ {formatDualEurText('0.68')} на ден · без скрити такси</p>
 
               <ul className="mt-8 space-y-3">
                 {included.map((item) => (

@@ -21,6 +21,7 @@ type PurchaseRow = {
   id: string;
   full_domain: string;
   tld: string;
+  registrant_type: string;
   registrant_name: string;
   registrant_email: string;
   registrant_phone: string;
@@ -42,7 +43,7 @@ async function loadRow(requestId: string): Promise<PurchaseRow | null> {
   const rows = await sql`
     SELECT
       r.id, r.full_domain, r.tld,
-      r.registrant_name, r.registrant_email, r.registrant_phone,
+      r.registrant_type, r.registrant_name, r.registrant_email, r.registrant_phone,
       r.address_line1, r.city, r.postal_code, r.country_code,
       r.company_name, r.company_id, r.notes,
       r.total_fee_cents, r.currency, r.status,
@@ -94,7 +95,7 @@ async function sendAdminNotification(row: PurchaseRow) {
   await resend.emails.send({
     from: 'Clicka.bg <noreply@clicka.bg>',
     to: notificationRecipient(),
-    subject: `⚠ Нова платена заявка за домейн: ${row.full_domain}`,
+    subject: `✅ Нова платена заявка за домейн: ${row.full_domain}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
         <h2>Платена заявка за домейн — необходима е ръчна покупка</h2>
@@ -123,7 +124,7 @@ async function sendCustomerConfirmation(row: PurchaseRow) {
   await resend.emails.send({
     from: 'Clicka.bg <noreply@clicka.bg>',
     to: row.registrant_email,
-    subject: `Плащането за домейн ${row.full_domain} е успешно`,
+    subject: `✅ Плащането за домейн ${row.full_domain} е успешно`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
         <h2>Благодарим Ви за заявката!</h2>
@@ -132,7 +133,7 @@ async function sendCustomerConfirmation(row: PurchaseRow) {
         <p><strong>Сума (вкл. такса за регистрация на домейна и нашата такса за техническа администрация и конфигуриране):</strong> ${total} ${currency}</p>
         <p>Нашият екип вече обработва заявката Ви и ще регистрира домейна и ще го свърже към Вашия сайт. Ще се свържем с Вас по Viber или имейл с допълнителна информация и потвърждение, когато домейнът е готов за използване.</p>
         <hr style="margin: 24px 0;" />
-        <p>Поздрави,<br />Екипът на Clicka.bg</p>
+        <p>Поздрави,<br />Екипът на Clicka.bg<br />За въпроси: <a href="mailto:support@clicka.bg">support@clicka.bg</a></p>
       </div>
     `,
   }).catch(() => {});
@@ -145,22 +146,31 @@ async function sendTelegramNotification(row: PurchaseRow) {
   const total = (Number(row.total_fee_cents) / 100).toFixed(2);
   const currency = String(row.currency).toUpperCase();
 
+  const registrantTypeLabel = row.registrant_type === 'company' ? 'Фирма' : 'Физическо лице';
+
   const text = [
-    `🌐 <b>Нова заявка за домейн</b>`,
+    `🟢 <b>Нова заявка за домейн</b>`,
     ``,
-    `<b>Домейн:</b> ${row.full_domain}`,
     `<b>Салон:</b> ${row.salon_name} (${row.slug})`,
-    `<b>Сума:</b> ${total} ${currency}`,
     ``,
-    `<b>Регистрант:</b> ${row.registrant_name}`,
-    `<b>Имейл:</b> ${row.registrant_email}`,
-    `<b>Телефон:</b> ${row.registrant_phone}`,
-    `<b>Адрес:</b> ${row.address_line1}, ${row.city}, ${row.postal_code}`,
+    `<b>Домейн:</b>`,
+    row.full_domain,
+    ``,
+    `<b>Регистрант:</b> ${registrantTypeLabel}`,
     row.company_name ? `<b>Фирма:</b> ${row.company_name}` : null,
     row.company_id ? `<b>ЕИК:</b> ${row.company_id}` : null,
+    `<b>Име:</b> ${row.registrant_name}`,
+    `<b>Телефон:</b> ${row.registrant_phone}`,
+    `<b>Имейл:</b> ${row.registrant_email}`,
+    `<b>Адрес:</b> ${row.address_line1}, ${row.city}, ${row.postal_code}`,
     row.notes ? `<b>Бележки:</b> ${row.notes}` : null,
     ``,
-    `⚠️ Необходима е ръчна покупка`,
+    `<b>Сума:</b> ${total} ${currency}`,
+    `<b>Платено:</b> Да`,
+    ``,
+    `⚠️ Необходима е ръчна покупка от регистратора`,
+    ``,
+    `Отвори от /pa за обработка.`,
   ].filter(Boolean).join('\n');
 
   await sendTelegramMessage(ownerChatId, text).catch(() => {});

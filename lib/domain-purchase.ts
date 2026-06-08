@@ -24,6 +24,34 @@ export {
 };
 export type { DomainPurchaseRequest, DomainPurchaseStatus };
 
+const DELAY_CALENDAR_HOURS_CAP = 72;
+const DELAY_BUSINESS_DAYS_PROMISE = 2;
+
+function addBusinessDays(start: Date, days: number): Date {
+  const result = new Date(start);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return result;
+}
+
+/**
+ * A request is "delayed" once EITHER "2 business days" or "72 calendar hours"
+ * since payment have passed — whichever comes first. Keeps a Friday-afternoon
+ * payment from being flagged as delayed over the weekend.
+ */
+export function isDomainPurchaseDelayed(status: string, paidAt: string | null): boolean {
+  if (!paidAt || (status !== 'paid' && status !== 'processing')) return false;
+  const paid = new Date(paidAt);
+  const businessDeadline = addBusinessDays(paid, DELAY_BUSINESS_DAYS_PROMISE);
+  const calendarDeadline = new Date(paid.getTime() + DELAY_CALENDAR_HOURS_CAP * 60 * 60 * 1000);
+  const deadline = businessDeadline < calendarDeadline ? businessDeadline : calendarDeadline;
+  return new Date() >= deadline;
+}
+
 let ensureDomainPurchaseSchemaPromise: Promise<void> | null = null;
 
 function mapDomainPurchaseRow(row: Record<string, unknown>): DomainPurchaseRequest {
@@ -99,6 +127,18 @@ export async function ensureDomainPurchaseSchema() {
       await sql`
         ALTER TABLE domain_purchase_requests
         ADD COLUMN IF NOT EXISTS registrant_viber text NOT NULL DEFAULT ''
+      `;
+      await sql`
+        ALTER TABLE domain_purchase_requests
+        ADD COLUMN IF NOT EXISTS consent_at timestamptz NULL,
+        ADD COLUMN IF NOT EXISTS consent_ip text NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS terms_version text NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS privacy_version text NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS cookies_version text NOT NULL DEFAULT ''
+      `;
+      await sql`
+        ALTER TABLE domain_purchase_requests
+        ADD COLUMN IF NOT EXISTS delay_notice_sent_at timestamptz NULL
       `;
       await sql`
         CREATE INDEX IF NOT EXISTS domain_purchase_requests_salon_id_idx

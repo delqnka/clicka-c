@@ -20,6 +20,7 @@ import {
 import { ClickaHero } from '@/components/ui/clicka-hero';
 import { IPhoneMockup } from '@/components/ui/iphone-mockup';
 import { MARKETING_PRICING } from '@/lib/marketing-home-copy';
+import { formatDualEur, formatDualEurText } from '@/lib/salon-currency';
 import type { MarketingActivity } from '@/lib/marketing-activity-shared';
 
 type MarketingHomePageProps = {
@@ -545,12 +546,12 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
                 </div>
 
                 <div style={{ marginBottom: 10 }}>
-                  <span className="hp-heading tabular-nums" style={{ fontSize: 22, letterSpacing: '-0.04em', lineHeight: 1 }}>{plan.price[pricingPeriod]} €</span>
+                  <span className="hp-heading tabular-nums" style={{ fontSize: 22, letterSpacing: '-0.04em', lineHeight: 1 }}>{formatDualEur(plan.price[pricingPeriod])}</span>
                   <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: 3 }}>
                     {pricingPeriod === '12m' ? '/ год.' : '/ 6 мес.'}
                   </span>
                   <p style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted-foreground)', margin: '2px 0 0' }}>
-                    от {plan.daily[pricingPeriod]} € на ден
+                    от {formatDualEurText(plan.daily[pricingPeriod])} на ден
                   </p>
                 </div>
 
@@ -627,7 +628,7 @@ export default function HomePage({ activity }: MarketingHomePageProps = {}) {
             className="h-14 rounded-full px-12 text-[17px] font-bold"
           />
           <p style={{ marginTop: 20, fontSize: 13, fontWeight: 600, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            от 0.82 € на ден. 0% комисионна върху резервациите ти. Твоя бранд.
+            от {formatDualEurText('0.82')} на ден. 0% комисионна върху резервациите ти. Твоя бранд.
           </p>
         </div>
         {/* iPhone mockup — стои вляпен в долния борд на секцията */}

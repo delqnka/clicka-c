@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { formatDualEurText } from "@/lib/salon-currency"
 import Link from "next/link"
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation"
 
@@ -386,7 +387,7 @@ export function ParticleHero() {
             color: "rgba(186,214,247,.35)",
           }}
         >
-          от 0.82 € / ден · без скрити такси · 0% комисионна · собствен бранд
+          от {formatDualEurText('0.82')} / ден · без скрити такси · 0% комисионна · собствен бранд
         </p>
       </div>
 

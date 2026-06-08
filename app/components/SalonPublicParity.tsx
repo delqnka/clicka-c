@@ -29,6 +29,7 @@ import {
   type ReactNode,
 } from 'react';
 import dynamic from 'next/dynamic';
+import { formatDualEurText } from '@/lib/salon-currency';
 import { DeferredSection } from '@/components/salon/deferred-section';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
@@ -1659,7 +1660,7 @@ export default function SalonPublicParity({
                                       >
                                         <span className="block truncate">{v.label}</span>
                                         <span className="text-xs salon-text-muted">
-                                          {v.duration ?? service.duration} мин · {v.price} €
+                                          {v.duration ?? service.duration} мин · {formatDualEurText(String(v.price))}
                                         </span>
                                       </button>
                                     </li>
@@ -1676,7 +1677,7 @@ export default function SalonPublicParity({
                             {effective.price != null ? (
                               <>
                                 <span className="mx-1.5 text-black/35">·</span>
-                                <span className="font-medium text-[#1a1a1a]">{effective.price} €</span>
+                                <span className="font-medium text-[#1a1a1a]">{formatDualEurText(String(effective.price))}</span>
                               </>
                             ) : null}
                           </p>
