@@ -207,8 +207,9 @@ export default async function SuccessPage({
                   expiresMs: 24 * 60 * 60 * 1000,
                 }).catch(() => adminUrl);
 
-                await resend?.emails.send({
-                  from: `${salonName || 'Clicka.bg'} <noreply@clicka.bg>`,
+                console.log(`[success] 📧 Sending welcome email to=${email} slug=${insertedSlug}`);
+                const emailResult = await resend?.emails.send({
+                  from: 'Clicka.bg <noreply@clicka.bg>',
                   to: email,
                   subject: `Твоят сайт е готов! ✅`,
                   html: `
@@ -238,7 +239,14 @@ export default async function SuccessPage({
                     </div>
                   `,
                 });
-              } catch { /* best-effort — don't block provisioning on email delivery */ }
+                if (emailResult?.error) {
+                  console.error(`[success] ❌ Welcome email failed to=${email}:`, JSON.stringify(emailResult.error));
+                } else {
+                  console.log(`[success] ✅ Welcome email sent id=${emailResult?.data?.id}`);
+                }
+              } catch (emailErr) {
+                console.error(`[success] ❌ Welcome email exception to=${email}:`, emailErr instanceof Error ? emailErr.message : String(emailErr));
+              }
             }
           } else {
             provisionError = true;

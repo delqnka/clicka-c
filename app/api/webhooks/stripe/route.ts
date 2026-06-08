@@ -269,8 +269,8 @@ export async function POST(request: NextRequest) {
         ? await generateAdminMagicLink({ salonId, slug: String(salonSlug), email, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl)
         : adminUrl;
 
-      await resend?.emails.send({
-        from: `${name} <noreply@clicka.bg>`,
+      const welcomeResult = await resend?.emails.send({
+        from: 'Clicka.bg <noreply@clicka.bg>',
         to: email,
         subject: `Твоят сайт е готов! ✅`,
         html: `
@@ -301,7 +301,11 @@ export async function POST(request: NextRequest) {
           </div>
         `,
       });
-      console.log(`[stripe-webhook] ✅ Welcome email sent to=${email}`);
+      if (welcomeResult?.error) {
+        console.error(`[stripe-webhook] ❌ Welcome email failed to=${email}:`, JSON.stringify(welcomeResult.error));
+      } else {
+        console.log(`[stripe-webhook] ✅ Welcome email sent id=${welcomeResult?.data?.id} to=${email}`);
+      }
     }
 
     console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
