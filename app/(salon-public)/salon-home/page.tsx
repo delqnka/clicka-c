@@ -40,7 +40,11 @@ export default async function SalonCustomDomainHomePage() {
         metaPixelId={salon.meta_pixel_id ? String(salon.meta_pixel_id) : null}
         clarityId={salon.clarity_id ? String(salon.clarity_id) : null}
       />
-      <CookieConsentBanner />
+      <CookieConsentBanner
+        cookiesPath="/cookies"
+        variant="salon"
+        primaryColor={typeof salon.primary_color === 'string' ? salon.primary_color : undefined}
+      />
       <SalonPublicPageView pageData={pageData} />
     </>
   );

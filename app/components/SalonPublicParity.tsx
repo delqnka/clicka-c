@@ -725,11 +725,6 @@ export default function SalonPublicParity({
   }, [userLocation]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('clicka-cookie-consent');
-    setCookieConsent(saved === null ? null : saved === '1');
-  }, []);
-
-  useEffect(() => {
     const d = new Date();
     const idx = (d.getDay() + 6) % 7;
     setTodayDayName(DAY_NAMES_EN[idx]);
@@ -1321,7 +1316,6 @@ export default function SalonPublicParity({
   }
 
   const [showAllGoogleReviews, setShowAllGoogleReviews] = useState(false);
-  const [cookieConsent, setCookieConsent] = useState<boolean | null>(true);
   const [todayDayName, setTodayDayName] = useState<string | null>(null);
 
   const googleRatingAvg = headerGoogleRating?.rating ?? null;
@@ -2269,40 +2263,6 @@ export default function SalonPublicParity({
         onSmsReminderConsentChange={setSmsReminderConsent}
         onSubmit={submitOfferBooking}
       />
-
-      {cookieConsent === null ? (
-        <div className="fixed bottom-4 left-4 right-4 z-30 pb-[env(safe-area-inset-bottom,0px)] lg:bottom-6 lg:left-auto lg:right-6 lg:max-w-sm lg:pb-0">
-          <div className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_8px_32px_rgba(0,0,0,0.14)]">
-            <p className="salon-text-muted text-sm leading-relaxed">
-              Използваме бисквитки, за да управляваме резервациите ви.{' '}
-              <a
-                href={`${basePath}/cookies`}
-                className="underline underline-offset-2"
-                style={{ color: SALON_LINK_COLOR }}
-              >
-                Научи повече
-              </a>
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => { localStorage.setItem('clicka-cookie-consent', '1'); setCookieConsent(true); }}
-                className="flex-1 rounded-full py-2 text-sm font-medium text-white"
-                style={{ background: primary }}
-              >
-                Приемам
-              </button>
-              <button
-                type="button"
-                onClick={() => { localStorage.setItem('clicka-cookie-consent', '0'); setCookieConsent(false); }}
-                className="salon-text-muted flex-1 rounded-full border border-black/20 py-2 text-sm font-medium hover:bg-black/5"
-              >
-                Отказвам
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {/* AI assistant with optional live chat escalation to Telegram — hidden while the booking modal is open so it doesn't compete for attention */}
       {!bookingOpen ? (
