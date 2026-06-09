@@ -15,7 +15,7 @@
 }
 
 .client-site {
-  font-family: var(--font-client-manrope, 'Manrope', 'Inter', system-ui, -apple-system, sans-serif);
+  font-family: var(--font-client-manrope, 'Manrope', system-ui, -apple-system, sans-serif);
   font-weight: 400;
 }
 

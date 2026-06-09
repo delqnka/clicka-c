@@ -1,7 +1,5 @@
 import { ButtonColorful } from '@/components/ui/button-colorful';
 import { formatDualEurText } from '@/lib/salon-currency';
-
-import { LiveSalonCount } from '@/components/ui/live-salon-count';
 import {
   MARKETING_ACTIVITY_MOCK,
   type MarketingActivity,

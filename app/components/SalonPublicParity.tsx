@@ -65,9 +65,12 @@ import {
 } from '@/lib/salon-service-categories';
 import { GOOGLE_REVIEWS_INITIAL_VISIBLE } from '@/lib/google-reviews-limits';
 import { getBrandsByIds } from '@/lib/brands';
-import { SalonChatWidget } from '@/components/salon/salon-chat-widget';
-import { SalonAiBotWidget } from '@/components/salon/salon-ai-bot-widget';
 import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-events';
+
+const SalonAiBotWidget = dynamic(
+  () => import('@/components/salon/salon-ai-bot-widget').then((m) => ({ default: m.SalonAiBotWidget })),
+  { ssr: false },
+);
 
 const PublicVisitorFaq = dynamic(
   () => import('@/components/salon/public-visitor-faq').then((m) => m.PublicVisitorFaq),

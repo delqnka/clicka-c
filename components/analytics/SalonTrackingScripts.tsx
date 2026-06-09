@@ -56,9 +56,9 @@ export function SalonTrackingScripts({ ga4Id, metaPixelId, clarityId }: Props) {
           <Script
             async
             src={`https://www.googletagmanager.com/gtag/js?id=${ga4Id}`}
-            strategy="afterInteractive"
+            strategy="lazyOnload"
           />
-          <Script id={`ga4-${ga4Id}`} strategy="afterInteractive">{`
+          <Script id={`ga4-${ga4Id}`} strategy="lazyOnload">{`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
@@ -68,7 +68,7 @@ export function SalonTrackingScripts({ ga4Id, metaPixelId, clarityId }: Props) {
       )}
 
       {analyticsOk && clarityId && (
-        <Script id={`clarity-${clarityId}`} strategy="afterInteractive">{`
+        <Script id={`clarity-${clarityId}`} strategy="lazyOnload">{`
           (function(c,l,a,r,i,t,y){
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
@@ -79,7 +79,7 @@ export function SalonTrackingScripts({ ga4Id, metaPixelId, clarityId }: Props) {
 
       {marketingOk && metaPixelId && (
         <>
-          <Script id={`fbpixel-${metaPixelId}`} strategy="afterInteractive">{`
+          <Script id={`fbpixel-${metaPixelId}`} strategy="lazyOnload">{`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
             n.callMethod.apply(n,arguments):n.queue.push(arguments)};

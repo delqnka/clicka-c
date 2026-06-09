@@ -3,36 +3,81 @@
 import { useEffect, useRef } from 'react';
 
 type IPhoneMockupProps = {
-  src: string;
+  /** @deprecated Use mp4Src/webmSrc + poster instead */
+  src?: string;
+  poster?: string;
+  webmSrc?: string;
+  mp4Src?: string;
   objectFit?: 'cover' | 'contain';
   playbackRate?: number;
   blurQuickType?: boolean;
   blurTimeRange?: [number, number];
 };
 
-export function IPhoneMockup({ src, objectFit = 'cover', playbackRate = 1, blurQuickType = false, blurTimeRange }: IPhoneMockupProps) {
+export function IPhoneMockup({
+  src,
+  poster,
+  webmSrc,
+  mp4Src,
+  objectFit = 'cover',
+  playbackRate = 1,
+  blurQuickType = false,
+  blurTimeRange,
+}: IPhoneMockupProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const root = rootRef.current;
     const video = videoRef.current;
-    const overlay = overlayRef.current;
-    if (!video) return;
+    if (!root || !video) return;
+
     video.playbackRate = playbackRate;
+    video.preload = 'none';
 
-    if (!blurQuickType || !blurTimeRange || !overlay) return;
-
-    const onTimeUpdate = () => {
-      const t = video.currentTime;
-      const visible = t >= blurTimeRange[0] && t <= blurTimeRange[1];
-      overlay.style.display = visible ? 'block' : 'none';
+    let playing = false;
+    const playWhenVisible = () => {
+      if (playing) return;
+      playing = true;
+      void video.play().catch(() => {
+        playing = false;
+      });
     };
-    video.addEventListener('timeupdate', onTimeUpdate);
-    return () => video.removeEventListener('timeupdate', onTimeUpdate);
+
+    const visibilityObs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          playWhenVisible();
+          visibilityObs.disconnect();
+        }
+      },
+      { rootMargin: '200px 0px' },
+    );
+    visibilityObs.observe(root);
+
+    let onTimeUpdate: (() => void) | undefined;
+    const overlay = overlayRef.current;
+    if (blurQuickType && blurTimeRange && overlay) {
+      onTimeUpdate = () => {
+        const t = video.currentTime;
+        const visible = t >= blurTimeRange[0] && t <= blurTimeRange[1];
+        overlay.style.display = visible ? 'block' : 'none';
+      };
+      video.addEventListener('timeupdate', onTimeUpdate);
+    }
+
+    return () => {
+      visibilityObs.disconnect();
+      if (onTimeUpdate) video.removeEventListener('timeupdate', onTimeUpdate);
+    };
   }, [playbackRate, blurQuickType, blurTimeRange]);
+
+  const legacySrc = src && !mp4Src && !webmSrc ? src : undefined;
 
   return (
     <div
+      ref={rootRef}
       style={{
         position: 'relative',
         width: '100%',
@@ -43,13 +88,11 @@ export function IPhoneMockup({ src, objectFit = 'cover', playbackRate = 1, blurQ
           '0 0 0 1.5px #3a3a40, 0 0 0 2.5px #1a1a1e, 0 32px 80px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.30)',
       }}
     >
-      {/* side buttons */}
       <div style={{ position: 'absolute', left: -2, top: '22%', width: 2, height: '7%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
       <div style={{ position: 'absolute', left: -2, top: '32%', width: 2, height: '9%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
       <div style={{ position: 'absolute', left: -2, top: '43%', width: 2, height: '9%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
       <div style={{ position: 'absolute', right: -2, top: '30%', width: 2, height: '14%', background: '#3a3a40', borderRadius: '0 1px 1px 0' }} />
 
-      {/* screen bezel */}
       <div
         style={{
           position: 'absolute',
@@ -59,7 +102,6 @@ export function IPhoneMockup({ src, objectFit = 'cover', playbackRate = 1, blurQ
           overflow: 'hidden',
         }}
       >
-        {/* dynamic island */}
         <div
           style={{
             position: 'absolute',
@@ -76,11 +118,11 @@ export function IPhoneMockup({ src, objectFit = 'cover', playbackRate = 1, blurQ
 
         <video
           ref={videoRef}
-          src={src}
-          autoPlay
+          poster={poster}
           loop
           muted
           playsInline
+          preload="none"
           style={{
             position: 'absolute',
             inset: 0,
@@ -88,9 +130,12 @@ export function IPhoneMockup({ src, objectFit = 'cover', playbackRate = 1, blurQ
             height: '100%',
             objectFit,
           }}
-        />
+        >
+          {webmSrc ? <source src={webmSrc} type="video/webm" /> : null}
+          {mp4Src ? <source src={mp4Src} type="video/mp4" /> : null}
+          {legacySrc ? <source src={legacySrc} /> : null}
+        </video>
 
-        {/* Blur overlay for QuickType bar — shown/hidden via DOM ref */}
         {blurQuickType && (
           <div
             ref={overlayRef}

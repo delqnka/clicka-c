@@ -3,8 +3,7 @@ import { notFound } from 'next/navigation';
 import { SalonPublicPageView } from '@/components/salon/salon-public-page-view';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { buildSalonPageMetadata } from '@/lib/seo';
-import { SalonTrackingScripts } from '@/components/analytics/SalonTrackingScripts';
-import { CookieConsentBanner } from '@/components/analytics/CookieConsentBanner';
+import { SalonPublicChrome } from '@/components/salon/salon-public-chrome';
 
 export const revalidate = 60;
 
@@ -49,15 +48,12 @@ export default async function SalonSlugPage({ params, searchParams }: Props) {
 
   return (
     <>
-      <SalonTrackingScripts
+      <SalonPublicChrome
+        cookiesPath={`/${params.slug}/cookies`}
+        primaryColor={typeof salon.primary_color === 'string' ? salon.primary_color : undefined}
         ga4Id={salon.ga4_id ? String(salon.ga4_id) : null}
         metaPixelId={salon.meta_pixel_id ? String(salon.meta_pixel_id) : null}
         clarityId={salon.clarity_id ? String(salon.clarity_id) : null}
-      />
-      <CookieConsentBanner
-        cookiesPath={`/${params.slug}/cookies`}
-        variant="salon"
-        primaryColor={typeof salon.primary_color === 'string' ? salon.primary_color : undefined}
       />
       <SalonPublicPageView
         pageData={pageData}
