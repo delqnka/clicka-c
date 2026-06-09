@@ -23,9 +23,24 @@ function pickLcpImage(salon: Record<string, unknown>): { src: string; alt: strin
   return { src: lcpImage, alt: salonName };
 }
 
+function computeGoogleRating(
+  googleReviews: { rating: number }[],
+  googlePlaceId: string | null | undefined,
+): { reviewCount: number; averageRating: number } | null {
+  if (!googlePlaceId || googleReviews.length === 0) return null;
+  const ratings = googleReviews
+    .map((r) => Number(r.rating))
+    .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
+  if (ratings.length === 0) return null;
+  const avg = ratings.reduce((sum, n) => sum + n, 0) / ratings.length;
+  return { reviewCount: ratings.length, averageRating: avg };
+}
+
 export function SalonPublicPageView({ pageData, highlightReviewId, tabParam }: Props) {
   const salonRecord = pageData.salon as Record<string, unknown>;
-  const jsonLd = buildSalonJsonLd(salonRecord, pageData.salonSlug);
+  const googlePlaceId = (salonRecord.google_place_id as string | null | undefined) ?? null;
+  const ratingOptions = computeGoogleRating(pageData.googleReviews, googlePlaceId) ?? undefined;
+  const jsonLd = buildSalonJsonLd(salonRecord, pageData.salonSlug, ratingOptions);
   const lcp = pickLcpImage(salonRecord);
 
   return (

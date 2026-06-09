@@ -144,7 +144,11 @@ export function buildSalonPageMetadata(
   };
 }
 
-export function buildSalonJsonLd(salon: Record<string, unknown>, slug: string) {
+export function buildSalonJsonLd(
+  salon: Record<string, unknown>,
+  slug: string,
+  options?: { reviewCount?: number; averageRating?: number },
+) {
   const name = String(salon.name ?? '');
   const category = String(salon.category ?? '');
   const city = String(salon.city ?? '');
@@ -184,6 +188,7 @@ export function buildSalonJsonLd(salon: Record<string, unknown>, slug: string) {
   const jsonLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': schemaType,
+    '@id': url,
     name,
     url,
     ...(about ? { description: about } : {}),
@@ -192,7 +197,6 @@ export function buildSalonJsonLd(salon: Record<string, unknown>, slug: string) {
     ...(coverImage ? { image: coverImage } : {}),
     ...(logoImage ? { logo: logoImage } : {}),
     ...(openingHours.length > 0 ? { openingHours } : {}),
-    ...(category ? { additionalType: category } : {}),
   };
 
   if (Number.isFinite(lat) && Number.isFinite(lng)) {
@@ -225,6 +229,28 @@ export function buildSalonJsonLd(salon: Record<string, unknown>, slug: string) {
         };
         return offer;
       });
+
+    const svcs = services as { price?: unknown; variants?: { price?: unknown }[] }[];
+    const allPrices = [
+      ...svcs.map((s) => Number(s.price)),
+      ...svcs.flatMap((s) => s.variants?.map((v) => Number(v.price)) ?? []),
+    ].filter((n) => Number.isFinite(n) && n > 0);
+    if (allPrices.length > 0) {
+      const min = Math.min(...allPrices);
+      const max = Math.max(...allPrices);
+      jsonLd.priceRange = min === max ? `€${min}` : `€${min}-€${max}`;
+    }
+  }
+
+  const { reviewCount, averageRating } = options ?? {};
+  if (reviewCount != null && reviewCount > 0 && averageRating != null && averageRating >= 1) {
+    jsonLd.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: Number(averageRating.toFixed(1)),
+      reviewCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
   }
 
   return jsonLd;
