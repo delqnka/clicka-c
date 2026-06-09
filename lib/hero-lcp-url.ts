@@ -56,6 +56,18 @@ export function heroLcpVariantKey(key: string): string {
   return key.replace(/\.(webp|jpe?g|png|gif)$/i, '-lcp-640.webp');
 }
 
+/**
+ * Returns the /_next/image URL that <Image priority width={640} quality={56}> will actually fetch.
+ * Using this for <link rel="preload"> ensures the preload hits the browser cache.
+ */
+export function heroLcpNextImagePreloadUrl(src: string): string | null {
+  const trimmed = src.trim();
+  if (!trimmed || trimmed.startsWith('data:')) return null;
+  const originalUrl = heroImageSourceUrl(trimmed);
+  if (!originalUrl) return null;
+  return `/_next/image?url=${encodeURIComponent(originalUrl)}&w=${HERO_LCP_WIDTH}&q=${HERO_LCP_QUALITY}`;
+}
+
 export function heroLcpVariantUrl(src: string): string | null {
   const trimmed = src.trim();
   if (!trimmed || trimmed.startsWith('data:')) return null;

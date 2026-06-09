@@ -48,7 +48,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="bg" className={manrope.variable} suppressHydrationWarning>
-      <head />
+      <head>
+        <link rel="preconnect" href="https://o4511518502289408.ingest.de.sentry.io" />
+      </head>
       <body suppressHydrationWarning>
         {children}
         <TrackingScripts />
