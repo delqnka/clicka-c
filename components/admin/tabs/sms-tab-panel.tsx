@@ -4,7 +4,14 @@ import type { CSSProperties } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
-import { SMS_PACK_CREDITS, SMS_PACK_PRICE_EUR, smsCreditsPerBooking, type SmsReminderMode } from '@/lib/sms-shared';
+import {
+  SMS_PACK_CREDITS,
+  SMS_PACK_PRICE_EUR,
+  SMS_PACK_PURCHASE_DISABLED_MESSAGE,
+  SMS_PACK_PURCHASE_ENABLED,
+  smsCreditsPerBooking,
+  type SmsReminderMode,
+} from '@/lib/sms-shared';
 
 export function SmsTabPanel({
   site,
@@ -99,9 +106,28 @@ export function SmsTabPanel({
               >
                 {busyKey === 'sms-settings' ? 'Запазваме…' : 'Запази SMS настройки'}
               </button>
-              <button type="button" onClick={() => void buySmsPack()} style={btn('ghost')} disabled={busyKey === 'sms-checkout'}>
-                {busyKey === 'sms-checkout' ? 'Пренасочваме…' : `Купи ${SMS_PACK_CREDITS} SMS (${SMS_PACK_PRICE_EUR} €)`}
-              </button>
+              {SMS_PACK_PURCHASE_ENABLED ? (
+                <button type="button" onClick={() => void buySmsPack()} style={btn('ghost')} disabled={busyKey === 'sms-checkout'}>
+                  {busyKey === 'sms-checkout' ? 'Пренасочваме…' : `Купи ${SMS_PACK_CREDITS} SMS (${SMS_PACK_PRICE_EUR} €)`}
+                </button>
+              ) : (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '8px 14px',
+                    borderRadius: 999,
+                    border: `1px dashed ${ADMIN_T.border}`,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: ADMIN_T.muted,
+                    lineHeight: 1.45,
+                    maxWidth: 320,
+                  }}
+                >
+                  {SMS_PACK_PURCHASE_DISABLED_MESSAGE}
+                </span>
+              )}
             </div>
 
             {smsTransactions.length > 0 ? (

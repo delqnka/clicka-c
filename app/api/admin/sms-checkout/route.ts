@@ -3,7 +3,12 @@ import Stripe from 'stripe';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { getPlatformAdminUrl } from '@/lib/domain-routing';
 import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
-import { SMS_PACK_CREDITS, SMS_PACK_PRICE_CENTS } from '@/lib/sms-shared';
+import {
+  SMS_PACK_CREDITS,
+  SMS_PACK_PRICE_CENTS,
+  SMS_PACK_PURCHASE_DISABLED_MESSAGE,
+  SMS_PACK_PURCHASE_ENABLED,
+} from '@/lib/sms-shared';
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -15,6 +20,10 @@ export async function POST(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
+
+  if (!SMS_PACK_PURCHASE_ENABLED) {
+    return NextResponse.json({ error: SMS_PACK_PURCHASE_DISABLED_MESSAGE }, { status: 503 });
+  }
 
   await ensureSmsSchema();
 

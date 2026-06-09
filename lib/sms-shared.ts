@@ -2,6 +2,12 @@ export const SMS_PACK_CREDITS = 100;
 export const SMS_PACK_PRICE_CENTS = 900;
 export const SMS_PACK_PRICE_EUR = 9;
 
+/** Temporary kill-switch for Stripe SMS pack checkout. */
+export const SMS_PACK_PURCHASE_ENABLED = false;
+
+export const SMS_PACK_PURCHASE_DISABLED_MESSAGE =
+  'Скоро — онлайн покупката на SMS пакети е временно недостъпна.';
+
 export type SmsReminderMode = 'off' | '1h' | '24h_and_1h';
 
 export function normalizeSmsReminderMode(raw: unknown): SmsReminderMode {
