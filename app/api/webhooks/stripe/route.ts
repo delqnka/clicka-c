@@ -8,11 +8,6 @@ import {
   ensureDomainPurchaseSchema,
   formatDomainPurchaseStatus,
 } from '@/lib/domain-purchase';
-import {
-  getPlatformAdminUrl,
-  getPlatformPublicUrl,
-} from '@/lib/domain-routing';
-import { generateAdminMagicLink } from '@/lib/admin-auth';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 import { creditSmsPack } from '@/lib/sms-reminders';
 import { SMS_PACK_CREDITS } from '@/lib/sms-shared';
@@ -250,64 +245,6 @@ export async function POST(request: NextRequest) {
     `;
 
     console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
-
-    const salons = await sql`
-      SELECT email, name, owner_name FROM salons WHERE slug = ${salonSlug}
-    `;
-
-    if (salons.length > 0 && salons[0].email) {
-      console.log(`[stripe-webhook] 📧 Sending welcome email to=${salons[0].email} salon=${salons[0].name}`);
-      const { email, name, owner_name } = salons[0] as { email: string; name: string; owner_name?: string };
-      const greeting = owner_name && String(owner_name).trim() ? `Здравей, ${String(owner_name).trim()}!` : 'Здравей!';
-      const salonIdRows = await sql`SELECT CAST(id AS text) AS salon_id FROM salons WHERE slug = ${salonSlug} LIMIT 1`;
-      const salonId = String((salonIdRows[0] as Record<string, unknown>)?.salon_id ?? '');
-
-      const publicUrl = getPlatformPublicUrl(String(salonSlug));
-      const adminUrl = getPlatformAdminUrl(String(salonSlug));
-
-      const magicLink = salonId
-        ? await generateAdminMagicLink({ salonId, slug: String(salonSlug), email, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl)
-        : adminUrl;
-
-      const welcomeResult = await resend?.emails.send({
-        from: 'Clicka.bg <noreply@clicka.bg>',
-        to: email,
-        subject: `Твоят сайт е готов! ✅`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #000; margin: 0 0 16px;">Твоят сайт е готов!</h2>
-            <p style="line-height: 1.7;">${greeting}</p>
-            <p style="line-height: 1.7;">
-              Сайтът на <strong>${name}</strong> вече е активен на адрес:<br>
-              <a href="${publicUrl}" style="color: #000; font-weight: 700;">${publicUrl}</a>
-            </p>
-            <p style="margin: 24px 0 8px; line-height: 1.7;">
-              Натисни бутона, за да влезеш в контролния си панел и да персонализираш сайта:
-            </p>
-            <p style="margin: 0 0 24px;">
-              <a href="${magicLink}"
-                 style="display:inline-block;background:#000;color:#fff;text-decoration:none;
-                        padding:14px 24px;border-radius:999px;font-weight:700;font-size:15px;">
-                Отвори панела →
-              </a>
-            </p>
-            <p style="line-height: 1.7; color: #6b7280; font-size: 13px;">
-              Запомни адреса на твоя контролен панел: <strong>${publicUrl}/admin</strong>
-            </p>
-            ${planType === 'custom_domain' ? '<p style="line-height: 1.7;">Собственият домейн може да се свърже от таба „Домейн" в панела.</p>' : ''}
-            <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">
-              Линкът е валиден 24 часа. Ако не сте поръчали сайт, игнорирайте имейла.
-            </p>
-          </div>
-        `,
-      });
-      if (welcomeResult?.error) {
-        console.error(`[stripe-webhook] ❌ Welcome email failed to=${email}:`, JSON.stringify(welcomeResult.error));
-      } else {
-        console.log(`[stripe-webhook] ✅ Welcome email sent id=${welcomeResult?.data?.id} to=${email}`);
-      }
-    }
-
     console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
   }
 

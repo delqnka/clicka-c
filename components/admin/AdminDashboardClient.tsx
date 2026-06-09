@@ -160,6 +160,8 @@ const SHEET_GROUPS: { label: string; ids: TabId[] }[] = [
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 
 const ICON_GRADIENT = 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)';
+/** Space for fixed mobile bottom tab bar (bar + safe area + tap margin). */
+const MOBILE_BOTTOM_INSET = 'calc(96px + env(safe-area-inset-bottom, 0px))';
 const PWA_HOME_STORAGE_KEY = (slug: string) => `admin-pwa-homescreen:${slug}`;
 
 function getPwaInstallGuide(ua: string): { title: string; note: string; steps: string[] } {
@@ -2765,8 +2767,9 @@ export default function AdminDashboardClient({
             flex: 1,
             minWidth: 0,
             padding: isMobile
-              ? '16px 12px calc(72px + env(safe-area-inset-bottom)) 12px'
+              ? `16px 12px ${MOBILE_BOTTOM_INSET} 12px`
               : '28px 32px 48px',
+            scrollPaddingBottom: isMobile ? MOBILE_BOTTOM_INSET : undefined,
           }}
         >
 
@@ -3996,7 +3999,7 @@ function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDis
     return (
       <div style={{
         position: 'fixed', left: 16, right: 16,
-        bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
+        bottom: MOBILE_BOTTOM_INSET,
         zIndex: 60,
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '14px 16px',
@@ -4110,42 +4113,90 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
 }
 
 const DOMAIN_PURCHASE_BLUE = '#007AFF';
-const domainPurchaseNoticeText: CSSProperties = {
-  margin: 0,
+const DOMAIN_PURCHASE_STATUS_GREEN = '#16A34A';
+const domainPurchaseFont: CSSProperties = {
   fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
-  fontWeight: 400,
-  color: DOMAIN_PURCHASE_BLUE,
   lineHeight: 1.6,
 };
 
+function formatDomainPurchaseTimestamp(raw: string): string | null {
+  if (!raw) return null;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString('bg-BG', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function domainPurchaseStatusColor(status: DomainPurchaseRequest['status']) {
+  if (status === 'connected') return DOMAIN_PURCHASE_STATUS_GREEN;
+  if (status === 'rejected') return '#DC2626';
+  return DOMAIN_PURCHASE_BLUE;
+}
+
 function DomainPurchaseProcessingNotice({
   purchaseRequest,
+  freeSiteUrl,
   compact = false,
 }: {
   purchaseRequest: DomainPurchaseRequest;
+  freeSiteUrl: string;
   compact?: boolean;
 }) {
   const status = formatDomainPurchaseStatus(purchaseRequest.status);
-
-  if (compact) {
-    return (
-      <div style={{ display: 'grid', gap: 6 }}>
-        <p style={{ ...domainPurchaseNoticeText, fontSize: 14 }}>
-          Заявката ти за {purchaseRequest.fullDomain} е приета. Обработваме покупката.
-        </p>
-        <p style={{ ...domainPurchaseNoticeText, fontSize: 13 }}>
-          Статус: {status}. Ще те уведомим, щом домейнът е готов и свързан. Не е нужно да правиш нищо.
-        </p>
-      </div>
-    );
-  }
+  const statusColor = domainPurchaseStatusColor(purchaseRequest.status);
+  const paidAtRaw = purchaseRequest.paidAt || purchaseRequest.createdAt;
+  const paidAtLabel = formatDomainPurchaseTimestamp(paidAtRaw);
+  const paidAtPrefix = purchaseRequest.paidAt ? 'Платена на' : 'Заявка от';
+  const metaSize = compact ? 13 : 14;
+  const bodySize = compact ? 13 : 14;
+  const domainSize = compact ? 14 : 15;
 
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
-      <p style={{ ...domainPurchaseNoticeText, fontSize: 15 }}>{purchaseRequest.fullDomain}</p>
-      <p style={{ ...domainPurchaseNoticeText, fontSize: 14 }}>
-        Статус: {status}. Обработваме регистрацията и свързването. Ще получиш известие, щом домейнът е активен.
-        Не е нужно да правиш нищо междувременно.
+    <div style={{ display: 'grid', gap: compact ? 8 : 10 }}>
+      <p style={{ ...domainPurchaseFont, margin: 0, fontSize: domainSize, fontWeight: 600, color: DOMAIN_PURCHASE_BLUE }}>
+        {purchaseRequest.fullDomain}
+      </p>
+
+      {paidAtLabel ? (
+        <p style={{ ...domainPurchaseFont, margin: 0, fontSize: metaSize, color: '#6B7280' }}>
+          {paidAtPrefix} {paidAtLabel}
+        </p>
+      ) : null}
+
+      <p
+        style={{
+          ...domainPurchaseFont,
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: metaSize,
+          fontWeight: 600,
+          color: statusColor,
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: statusColor,
+            flexShrink: 0,
+          }}
+        />
+        <span>Статус: {status}</span>
+      </p>
+
+      <p style={{ ...domainPurchaseFont, margin: 0, fontSize: bodySize, fontWeight: 400, color: '#18181B' }}>
+        Обработваме регистрацията и свързването. Ще получиш известие, щом домейнът е активен.
+        Не е нужно да правиш нищо междувременно. Сайтът ти работи на безплатния адрес{' '}
+        <strong style={{ fontWeight: 700 }}>{freeSiteUrl.replace(/^https?:\/\//, '')}</strong>.
       </p>
     </div>
   );
@@ -4278,7 +4329,11 @@ function DomainTab({
       <Section title="" desc={undefined}>
         <div style={{ ...maxW }}>
           {hasActivePurchaseRequest && purchaseRequest ? (
-            <DomainPurchaseProcessingNotice purchaseRequest={purchaseRequest} compact />
+            <DomainPurchaseProcessingNotice
+              purchaseRequest={purchaseRequest}
+              freeSiteUrl={getPlatformPublicUrl(slug)}
+              compact
+            />
           ) : (
             <DomainPurchaseSection
               slug={slug}
@@ -4341,7 +4396,7 @@ function DomainTab({
     return (
       <Section title="Собствен домейн" desc="Зареждаме статуса на заявката…">
         <div style={{ ...maxW }}>
-          <p style={{ ...domainPurchaseNoticeText, fontSize: 14 }}>Моля, изчакай секунда.</p>
+          <p style={{ ...domainPurchaseFont, margin: 0, fontSize: 14, color: DOMAIN_PURCHASE_BLUE }}>Моля, изчакай секунда.</p>
         </div>
       </Section>
     );
@@ -4351,7 +4406,10 @@ function DomainTab({
     return (
       <Section title="Купуваме домейна вместо теб" desc={`Заявката ти за ${purchaseRequest.fullDomain} се обработва.`}>
         <div style={{ ...maxW }}>
-          <DomainPurchaseProcessingNotice purchaseRequest={purchaseRequest} />
+          <DomainPurchaseProcessingNotice
+            purchaseRequest={purchaseRequest}
+            freeSiteUrl={getPlatformPublicUrl(slug)}
+          />
         </div>
       </Section>
     );
