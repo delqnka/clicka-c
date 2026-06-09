@@ -1,3 +1,5 @@
+// Handles subscriptions, domain purchases and SMS packs.
+// For booking deposit payments see /api/stripe/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { sql } from '@/lib/db';

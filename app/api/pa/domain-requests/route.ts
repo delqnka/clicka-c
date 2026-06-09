@@ -115,7 +115,9 @@ async function sendDomainConnectedEmail(row: {
         </div>
       `,
     });
-  } catch {}
+  } catch (err) {
+    console.error('[pa/domain-requests] Failed to send domain-active email:', err);
+  }
 }
 
 export async function PATCH(request: NextRequest) {

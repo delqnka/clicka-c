@@ -138,7 +138,7 @@ export async function PATCH(request: NextRequest) {
   let body: { slug?: string; domain?: string } = {};
   try {
     body = await request.json();
-  } catch {}
+  } catch { /* no body or invalid JSON — proceed with empty object */ }
 
   const auth = await requireAdminRequestAccess(
     request,
@@ -176,7 +176,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   let body: { slug?: string } = {};
-  try { body = await request.json(); } catch {}
+  try { body = await request.json(); } catch { /* no body or invalid JSON — proceed with empty object */ }
 
   const auth = await requireAdminRequestAccess(
     request,

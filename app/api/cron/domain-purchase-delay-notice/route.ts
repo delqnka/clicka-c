@@ -106,7 +106,9 @@ export async function GET(request: NextRequest) {
         ].join('\n');
         await sendTelegramMessage(ownerChatId, text).catch(() => {});
       }
-    } catch {}
+    } catch (err) {
+      console.error(`[domain-purchase-delay-notice] Failed for domain_purchase_request id=${row.id}:`, err);
+    }
   }
 
   // ── Google Review invitations ─────────────────────────────────────────────

@@ -1,3 +1,5 @@
+// Handles booking deposit payments only.
+// For subscriptions, domains and SMS packs see /api/webhooks/stripe/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sql } from '@/lib/db';
@@ -5,6 +7,31 @@ import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 import { getStaffMemberById } from '@/lib/staff-members';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+let eventsSchemaReady = false;
+
+async function markBookingEventProcessed(eventId: string): Promise<boolean> {
+  if (!eventsSchemaReady) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS stripe_processed_events (
+        event_id   text        PRIMARY KEY,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    eventsSchemaReady = true;
+  }
+  const rows = await sql`
+    INSERT INTO stripe_processed_events (event_id)
+    VALUES (${eventId})
+    ON CONFLICT (event_id) DO NOTHING
+    RETURNING event_id
+  `;
+  return rows.length > 0;
+}
+
+async function unmarkBookingEvent(eventId: string): Promise<void> {
+  await sql`DELETE FROM stripe_processed_events WHERE event_id = ${eventId}`.catch(() => {});
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -27,6 +54,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  const isNew = await markBookingEventProcessed(event.id);
+  if (!isNew) {
+    console.log(`[stripe/webhook] ⏭ Duplicate event skipped — id=${event.id}`);
+    return NextResponse.json({ received: true });
+  }
+
   const session = event.data.object as Stripe.Checkout.Session;
   const { bookingId, salonSlug } = session.metadata ?? {};
 
@@ -35,12 +68,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  // Update booking payment_status
-  await sql`
-    UPDATE bookings
-    SET payment_status = 'paid'
-    WHERE id = ${bookingId}
-  `.catch((err) => console.error('[stripe/webhook] update payment_status', err));
+  // Update booking payment_status — unmark on failure so Stripe can retry
+  try {
+    const updated = await sql`
+      UPDATE bookings
+      SET payment_status = 'paid'
+      WHERE id = ${bookingId}
+      RETURNING id
+    `;
+    if (updated.length === 0) {
+      console.error(`[stripe/webhook] booking not found for update — id=${bookingId}`);
+      await unmarkBookingEvent(event.id);
+      return NextResponse.json({ error: 'Booking not found' }, { status: 500 });
+    }
+  } catch (err) {
+    console.error('[stripe/webhook] update payment_status failed:', err);
+    await unmarkBookingEvent(event.id);
+    return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
+  }
 
   // Load booking + salon data for notifications
   const rows = await sql`

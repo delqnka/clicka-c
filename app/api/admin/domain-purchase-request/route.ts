@@ -90,7 +90,9 @@ async function sendDomainPurchaseNotification(requestId: string) {
         </div>
       `,
     });
-  } catch {}
+  } catch (err) {
+    console.error('[domain-purchase-request] Failed to send admin notification email:', err);
+  }
 }
 
 export async function GET(request: NextRequest) {
