@@ -360,7 +360,7 @@ const MARKETING_SCREENSHOT_SRC: Record<string, string> = {
   '/images/IMG_1826 2.jpg': '/marketing/IMG_1826-2.webp',
 };
 
-function IPhoneFrame({ src, alt, size = 'md', fullRadius = false }: { src: string; alt: string; size?: 'lg' | 'md'; fullRadius?: boolean }) {
+export function IPhoneFrame({ src, alt, size = 'md', fullRadius = false, imgPosition = 'top' }: { src: string; alt: string; size?: 'lg' | 'md'; fullRadius?: boolean; imgPosition?: string }) {
   const borderW = size === 'lg' ? 10 : 8;
   const outerR = fullRadius ? '36px' : '36px 36px 0 0';
   const innerR = fullRadius ? '30px' : '30px 30px 0 0';
@@ -377,7 +377,7 @@ function IPhoneFrame({ src, alt, size = 'md', fullRadius = false }: { src: strin
       <div style={{ position: 'absolute', left: -borderW / 2, top: '22%', width: borderW / 2, height: '7%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
       <div style={{ position: 'absolute', left: -borderW / 2, top: '32%', width: borderW / 2, height: '9%', background: '#3a3a40', borderRadius: '1px 0 0 1px' }} />
       <div style={{ position: 'absolute', right: -borderW / 2, top: '30%', width: borderW / 2, height: '14%', background: '#3a3a40', borderRadius: '0 1px 1px 0' }} />
-      <div style={{ margin: '2.5% 2.5% 0', borderRadius: innerR, background: '#000', overflow: 'hidden' }}>
+      <div style={{ margin: fullRadius ? '2.5%' : '2.5% 2.5% 0', borderRadius: innerR, background: '#000', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: size === 'lg' ? 28 : 20, background: '#000' }}>
           <div style={{ width: size === 'lg' ? '28%' : '22%', height: size === 'lg' ? 14 : 10, background: '#1a1a1e', borderRadius: 999 }} />
         </div>
@@ -389,7 +389,7 @@ function IPhoneFrame({ src, alt, size = 'md', fullRadius = false }: { src: strin
           sizes="(max-width: 640px) 220px, 280px"
           quality={78}
           loading="lazy"
-          style={{ width: '100%', height: 'auto', display: 'block' }}
+          style={{ width: '100%', ...(fullRadius ? { aspectRatio: '390/844', objectFit: 'cover' as const, objectPosition: imgPosition } : { height: 'auto' }), display: 'block' }}
         />
       </div>
     </div>
