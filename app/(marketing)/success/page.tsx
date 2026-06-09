@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { sql } from '@/lib/db';
 import Stripe from 'stripe';
 import crypto from 'crypto';
@@ -5,10 +6,10 @@ import { Resend } from 'resend';
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 import { sendTelegramMessage } from '@/lib/telegram';
 import SuccessClient from './SuccessClient';
+import { SuccessLoadingShell } from './SuccessLoadingShell';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-/** Best-effort alert to platform owner — paid customer with a broken provisioning needs a human, fast. */
 async function alertProvisioningFailure(detail: { sessionId: string; email: string; reason: string }) {
   const text =
     `⚠️ <b>Провизиране на салон гръмна след плащане</b>\n` +
@@ -75,41 +76,25 @@ const DEFAULT_HOURS = {
   sunday:    { open: '',      close: '',      closed: true  },
 };
 
-export default async function SuccessPage({
-  searchParams,
+async function ProvisionedSuccess({
+  sessionId,
+  legacySlug,
 }: {
-  searchParams?: { session_id?: string | string[]; salon?: string | string[] };
+  sessionId: string;
+  legacySlug: string;
 }) {
-  const sessionId =
-    typeof searchParams?.session_id === 'string'
-      ? searchParams.session_id
-      : Array.isArray(searchParams?.session_id)
-        ? searchParams.session_id[0]
-        : '';
-
-  // Legacy support: if salon slug is passed directly (old flow)
-  const legacySlug =
-    typeof searchParams?.salon === 'string'
-      ? searchParams.salon
-      : Array.isArray(searchParams?.salon)
-        ? searchParams.salon[0]
-        : '';
-
   let salonEmail = '';
   let salonSlug = legacySlug;
   let purchaseValue = 0;
   let provisionError = false;
 
   if (legacySlug) {
-    // Old flow: salon already exists
     try {
       const rows = await sql`SELECT email FROM salons WHERE slug = ${legacySlug} LIMIT 1`;
       if (rows.length > 0) salonEmail = String(rows[0].email ?? '');
     } catch { /* ignore */ }
   } else if (sessionId) {
-    // New flow: create salon from Stripe session data
     try {
-      // Check if salon already created for this session
       const existing = await sql`
         SELECT slug, email FROM salons WHERE stripe_session_id = ${sessionId} LIMIT 1
       `;
@@ -118,7 +103,6 @@ export default async function SuccessPage({
         salonSlug = String(existing[0].slug);
         salonEmail = String(existing[0].email ?? '');
       } else {
-        // Fetch Stripe session to get customer email + plan
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId);
 
@@ -138,13 +122,9 @@ export default async function SuccessPage({
             const base = desiredSlug || salonName || emailPrefix;
             const salonId = crypto.randomUUID();
 
-            // Best-effort: salons.slug has no DB-level uniqueness guarantee yet. Without it, two
-            // concurrent checkouts could both insert the same slug. Fails silently if dupes already exist.
             await sql`CREATE UNIQUE INDEX IF NOT EXISTS salons_slug_uniq ON salons (slug)`.catch(() => {});
             let insertedSlug = '';
 
-            // Two checkouts can race on the same slug (the live-availability check is not a reservation),
-            // so retry on a unique-constraint violation with a freshly regenerated candidate.
             for (let attempt = 0; attempt < 5 && !insertedSlug; attempt++) {
               const slug = attempt === 0
                 ? await generateUniqueSalonSlug(base)
@@ -182,13 +162,12 @@ export default async function SuccessPage({
               } catch (insertErr) {
                 const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);
                 if (!/duplicate key|unique constraint/i.test(msg)) throw insertErr;
-                // Slug got taken between our availability check and the insert — retry with a new candidate.
               }
             }
 
             if (!insertedSlug) throw new Error('Не успяхме да резервираме уникален адрес след няколко опита');
 
-            await ensurePlatformSubdomain(insertedSlug).catch(() => {});
+            ensurePlatformSubdomain(insertedSlug).catch(() => {});
 
             salonSlug = insertedSlug;
             salonEmail = email;
@@ -214,5 +193,31 @@ export default async function SuccessPage({
       provisionError={!salonSlug && provisionError}
       sessionRef={sessionId || ''}
     />
+  );
+}
+
+export default async function SuccessPage({
+  searchParams,
+}: {
+  searchParams?: { session_id?: string | string[]; salon?: string | string[] };
+}) {
+  const sessionId =
+    typeof searchParams?.session_id === 'string'
+      ? searchParams.session_id
+      : Array.isArray(searchParams?.session_id)
+        ? searchParams.session_id[0]
+        : '';
+
+  const legacySlug =
+    typeof searchParams?.salon === 'string'
+      ? searchParams.salon
+      : Array.isArray(searchParams?.salon)
+        ? searchParams.salon[0]
+        : '';
+
+  return (
+    <Suspense fallback={<SuccessLoadingShell />}>
+      <ProvisionedSuccess sessionId={sessionId} legacySlug={legacySlug} />
+    </Suspense>
   );
 }

@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ChatWidget } from '@/components/marketing/chat-widget';
+const ChatWidget = dynamic(
+  () => import('@/components/marketing/chat-widget').then((m) => m.ChatWidget),
+  { ssr: false }
+);
 import {
   BriefcaseBusiness,
   MessageSquare,
@@ -55,9 +58,18 @@ import {
   LazyStaffTabPanel,
   LazyMarketingTabPanel,
 } from '@/components/admin/lazy-admin-tabs';
-import { AccountTabPanel } from '@/components/admin/tabs/account-tab-panel';
-import { PriceListServicesImport } from '@/components/admin/price-list-services-import';
-import { OnboardingChecklist } from '@/components/admin/OnboardingChecklist';
+const AccountTabPanel = dynamic(
+  () => import('@/components/admin/tabs/account-tab-panel').then((m) => m.AccountTabPanel),
+  { ssr: false }
+);
+const PriceListServicesImport = dynamic(
+  () => import('@/components/admin/price-list-services-import').then((m) => m.PriceListServicesImport),
+  { ssr: false }
+);
+const OnboardingChecklist = dynamic(
+  () => import('@/components/admin/OnboardingChecklist').then((m) => m.OnboardingChecklist),
+  { ssr: false }
+);
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer } from '@/lib/salon-offers';
 import {

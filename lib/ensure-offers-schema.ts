@@ -24,17 +24,11 @@ export async function ensureOffersSchema() {
           created_at timestamptz NOT NULL DEFAULT now()
         )
       `;
-      await sql`
-        ALTER TABLE salon_offers
-        ADD COLUMN IF NOT EXISTS duration_min integer NOT NULL DEFAULT 60
-      `;
-      await sql`
-        CREATE INDEX IF NOT EXISTS salon_offers_salon_id_idx ON salon_offers(salon_id)
-      `;
-      await sql`
-        ALTER TABLE bookings
-        ADD COLUMN IF NOT EXISTS offer_id uuid
-      `;
+      await Promise.all([
+        sql`ALTER TABLE salon_offers ADD COLUMN IF NOT EXISTS duration_min integer NOT NULL DEFAULT 60`,
+        sql`CREATE INDEX IF NOT EXISTS salon_offers_salon_id_idx ON salon_offers(salon_id)`,
+        sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS offer_id uuid`,
+      ]);
     })().catch((err) => {
       ensurePromise = null;
       throw err;
