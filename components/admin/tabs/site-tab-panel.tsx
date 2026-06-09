@@ -9,12 +9,58 @@ import { SlugEditor } from '@/components/admin/SlugEditor';
 import type { AdminSitePayload } from '@/lib/admin-site';
 
 const SITE_SECTIONS = [
-  { id: 'basics', label: 'Контакти' },
-  { id: 'address', label: 'WWW.' },
-  { id: 'about', label: 'За салона' },
-  { id: 'faq', label: 'FAQ' },
-  { id: 'amenities', label: 'Допълнителна' },
+  { id: 'basics', label: 'Контакти', mobileLabel: 'Контакти' },
+  { id: 'address', label: 'WWW.', mobileLabel: 'Адрес / WWW' },
+  { id: 'about', label: 'За салона', mobileLabel: 'За салона' },
+  { id: 'faq', label: 'FAQ', mobileLabel: 'FAQ' },
+  { id: 'amenities', label: 'Допълнителна', mobileLabel: 'Доп. информация' },
 ] as const;
+
+const ACTIVE_GRADIENT = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
+
+function siteSectionTabStyle(active: boolean, mobile: boolean): CSSProperties {
+  if (mobile) {
+    return {
+      width: '100%',
+      minHeight: 44,
+      border: active ? '1px solid transparent' : `1px solid ${ADMIN_T.border}`,
+      borderRadius: 12,
+      padding: '10px 12px',
+      fontSize: 14,
+      fontWeight: active ? 600 : 500,
+      lineHeight: 1.25,
+      textAlign: 'center',
+      background: active ? ACTIVE_GRADIENT : '#fff',
+      color: active ? '#fff' : ADMIN_T.text,
+      boxShadow: active ? '0 6px 18px rgba(219,39,119,0.22)' : '0 1px 3px rgba(0,0,0,0.06)',
+      cursor: 'pointer',
+      WebkitTapHighlightColor: 'transparent',
+    };
+  }
+
+  return {
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    backgroundImage: active
+      ? `${ACTIVE_GRADIENT}, ${ACTIVE_GRADIENT}`
+      : 'none',
+    backgroundSize: active ? '100% 2px, 100%' : 'auto',
+    backgroundPosition: active ? '0 100%, 0 0' : 'auto',
+    backgroundRepeat: 'no-repeat',
+    backgroundColor: 'transparent',
+    WebkitBackgroundClip: active ? 'border-box, text' : undefined,
+    backgroundClip: active ? 'border-box, text' : undefined,
+    WebkitTextFillColor: active ? 'transparent' : undefined,
+    color: active ? '#e11d48' : ADMIN_T.muted,
+    padding: '8px 12px',
+    fontSize: 14,
+    fontWeight: active ? 600 : 400,
+    cursor: 'pointer',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    borderRadius: 0,
+  };
+}
 
 type SiteSectionId = (typeof SITE_SECTIONS)[number]['id'];
 
@@ -73,55 +119,62 @@ export function SiteTabPanel({
         />
       }
     >
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          overflowX: 'auto',
-          flexWrap: 'nowrap',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          marginBottom: 12,
-          paddingBottom: 2,
-        }}
-      >
-        {SITE_SECTIONS.map(({ id, label }) => {
-          const active = section === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setSection(id)}
-              style={{
-                border: 'none',
-                borderBottom: active ? '2px solid transparent' : '2px solid transparent',
-                backgroundImage: active
-                  ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7), linear-gradient(135deg,#e11d48,#db2777,#a855f7)'
-                  : 'none',
-                backgroundSize: active ? '100% 2px, 100%' : 'auto',
-                backgroundPosition: active ? '0 100%, 0 0' : 'auto',
-                backgroundRepeat: 'no-repeat',
-                backgroundColor: 'transparent',
-                WebkitBackgroundClip: active ? 'border-box, text' : undefined,
-                backgroundClip: active ? 'border-box, text' : undefined,
-                WebkitTextFillColor: active ? 'transparent' : undefined,
-                color: active ? '#e11d48' : ADMIN_T.muted,
-                padding: '4px 2px',
-                marginRight: 14,
-                fontSize: 13,
-                fontWeight: active ? 600 : 400,
-                cursor: 'pointer',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-                borderRadius: 0,
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {isMobile ? (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 8,
+            marginBottom: 14,
+          }}
+        >
+          {SITE_SECTIONS.map(({ id, label, mobileLabel }, index) => {
+            const active = section === id;
+            const spanFull = index === SITE_SECTIONS.length - 1 && SITE_SECTIONS.length % 2 === 1;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSection(id)}
+                style={{
+                  ...siteSectionTabStyle(active, true),
+                  gridColumn: spanFull ? '1 / -1' : undefined,
+                }}
+              >
+                {mobileLabel || label}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            gap: 4,
+            overflowX: 'auto',
+            flexWrap: 'nowrap',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            marginBottom: 14,
+            paddingBottom: 2,
+          }}
+        >
+          {SITE_SECTIONS.map(({ id, label }) => {
+            const active = section === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSection(id)}
+                style={siteSectionTabStyle(active, false)}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {section === 'basics' ? (
         <div style={compactGrid}>

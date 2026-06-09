@@ -3477,7 +3477,7 @@ export default function AdminDashboardClient({
         </main>
       </div>
 
-      {/* ── Mobile bottom tab bar (glass pill) ───────── */}
+      {/* ── Mobile bottom tab bar (full-width glass bar) ─ */}
       {isMobile && (
         <nav
           aria-label="Навигация"
@@ -3486,12 +3486,11 @@ export default function AdminDashboardClient({
             left: 0,
             right: 0,
             bottom: 0,
-            paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
+            padding: '0 8px max(8px, env(safe-area-inset-bottom, 8px))',
             zIndex: 50,
             pointerEvents: 'none',
-            width: 'calc(100% - 32px)',
-            maxWidth: 320,
-            margin: '0 auto',
+            width: '100%',
+            boxSizing: 'border-box',
             transform: 'translateZ(0)',
             willChange: 'transform',
           }}
@@ -3500,11 +3499,11 @@ export default function AdminDashboardClient({
             style={{
               pointerEvents: 'auto',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-around',
+              alignItems: 'stretch',
+              justifyContent: 'space-between',
               gap: 2,
-              padding: '4px 6px',
-              borderRadius: 9999,
+              padding: '10px 6px',
+              borderRadius: 22,
               background: 'rgba(255,255,255,0.68)',
               backdropFilter: 'blur(20px) saturate(180%)',
               WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -3523,17 +3522,18 @@ export default function AdminDashboardClient({
                   title={label}
                   onClick={() => switchTab(id)}
                   style={{
-                    flex: 1,
+                    flex: '1 1 0',
+                    minWidth: 0,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 1,
-                    padding: '2px 4px',
+                    gap: 4,
+                    padding: '6px 4px',
                     border: 'none',
                     background: 'transparent',
                     cursor: 'pointer',
-                    minHeight: 32,
+                    minHeight: 52,
                     WebkitTapHighlightColor: 'transparent',
                   }}
                 >
@@ -3542,8 +3542,8 @@ export default function AdminDashboardClient({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: active ? 24 : 20,
-                      height: active ? 24 : 20,
+                      width: active ? 32 : 28,
+                      height: active ? 32 : 28,
                       borderRadius: 999,
                       background: active ? ICON_GRADIENT : 'transparent',
                       color: active ? '#fff' : '#18181B',
@@ -3551,18 +3551,20 @@ export default function AdminDashboardClient({
                       transition: 'all 180ms ease',
                     }}
                   >
-                    <Icon size={active ? 14 : 13} strokeWidth={active ? 2.2 : 1.8} />
+                    <Icon size={active ? 17 : 16} strokeWidth={active ? 2.2 : 1.8} />
                   </div>
                   <span
                     style={{
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: active ? 700 : 500,
                       letterSpacing: '-0.01em',
                       color: active ? '#db2777' : '#18181B',
-                      lineHeight: 1,
+                      lineHeight: 1.15,
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {label.split(' ')[0]}
+                    {label}
                   </span>
                 </button>
               );
@@ -4107,6 +4109,48 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
   );
 }
 
+const DOMAIN_PURCHASE_BLUE = '#007AFF';
+const domainPurchaseNoticeText: CSSProperties = {
+  margin: 0,
+  fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+  fontWeight: 400,
+  color: DOMAIN_PURCHASE_BLUE,
+  lineHeight: 1.6,
+};
+
+function DomainPurchaseProcessingNotice({
+  purchaseRequest,
+  compact = false,
+}: {
+  purchaseRequest: DomainPurchaseRequest;
+  compact?: boolean;
+}) {
+  const status = formatDomainPurchaseStatus(purchaseRequest.status);
+
+  if (compact) {
+    return (
+      <div style={{ display: 'grid', gap: 6 }}>
+        <p style={{ ...domainPurchaseNoticeText, fontSize: 14 }}>
+          Заявката ти за {purchaseRequest.fullDomain} е приета. Обработваме покупката.
+        </p>
+        <p style={{ ...domainPurchaseNoticeText, fontSize: 13 }}>
+          Статус: {status}. Ще те уведомим, щом домейнът е готов и свързан. Не е нужно да правиш нищо.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <p style={{ ...domainPurchaseNoticeText, fontSize: 15 }}>{purchaseRequest.fullDomain}</p>
+      <p style={{ ...domainPurchaseNoticeText, fontSize: 14 }}>
+        Статус: {status}. Обработваме регистрацията и свързването. Ще получиш известие, щом домейнът е активен.
+        Не е нужно да правиш нищо междувременно.
+      </p>
+    </div>
+  );
+}
+
 function DomainTab({
   site, isMobile, domainInput, setDomainInput, domainMeta,
   busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn, slug,
@@ -4127,6 +4171,7 @@ function DomainTab({
   const [copied, setCopied] = useState('');
   const [domainIntent, setDomainIntent] = useState<null | 'connect' | 'buy'>(null);
   const [purchaseRequest, setPurchaseRequest] = useState<DomainPurchaseRequest | null>(null);
+  const [purchaseLoaded, setPurchaseLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -4138,6 +4183,8 @@ function DomainTab({
         if (!cancelled) setPurchaseRequest((data.request as DomainPurchaseRequest | null) ?? null);
       } catch {
         /* ignore */
+      } finally {
+        if (!cancelled) setPurchaseLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -4231,17 +4278,7 @@ function DomainTab({
       <Section title="" desc={undefined}>
         <div style={{ ...maxW }}>
           {hasActivePurchaseRequest && purchaseRequest ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: T.radiusLg }}>
-              <Globe size={18} style={{ color: '#92400E', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#92400E' }}>
-                  Заявката ти за <strong>{purchaseRequest.fullDomain}</strong> е приета — обработваме покупката.
-                </p>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#92400E' }}>
-                  Статус: {formatDomainPurchaseStatus(purchaseRequest.status)} · Ще те уведомим, щом домейнът е готов и свързан. Не е нужно да правиш нищо.
-                </p>
-              </div>
-            </div>
+            <DomainPurchaseProcessingNotice purchaseRequest={purchaseRequest} compact />
           ) : (
             <DomainPurchaseSection
               slug={slug}
@@ -4300,20 +4337,21 @@ function DomainTab({
   const verifications = domainMeta.verificationInstructions;
   const isPending = isPendingDomainStatus(site.domainStatus ?? '');
 
+  if (!purchaseLoaded) {
+    return (
+      <Section title="Собствен домейн" desc="Зареждаме статуса на заявката…">
+        <div style={{ ...maxW }}>
+          <p style={{ ...domainPurchaseNoticeText, fontSize: 14 }}>Моля, изчакай секунда.</p>
+        </div>
+      </Section>
+    );
+  }
+
   if (hasActivePurchaseRequest && purchaseRequest) {
     return (
       <Section title="Купуваме домейна вместо теб" desc={`Заявката ти за ${purchaseRequest.fullDomain} се обработва.`}>
-        <div style={{ ...maxW, display: 'grid', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: T.radiusLg }}>
-            <Globe size={22} style={{ color: '#92400E', flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#92400E' }}>{purchaseRequest.fullDomain}</p>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
-                Статус: <strong>{formatDomainPurchaseStatus(purchaseRequest.status)}</strong> — обработваме регистрацията и свързването.
-                Ще получиш известие, щом домейнът е активен. Не е нужно да правиш нищо междувременно.
-              </p>
-            </div>
-          </div>
+        <div style={{ ...maxW }}>
+          <DomainPurchaseProcessingNotice purchaseRequest={purchaseRequest} />
         </div>
       </Section>
     );
