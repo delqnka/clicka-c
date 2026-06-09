@@ -146,3 +146,28 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(request: NextRequest) {
+  if (!(await isPlatformAdminRequest(request))) {
+    return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => ({} as Record<string, unknown>));
+  const id = String(body.id ?? '').trim();
+
+  if (!id) {
+    return NextResponse.json({ error: 'Липсва id.' }, { status: 400 });
+  }
+
+  const rows = await sql`
+    DELETE FROM domain_purchase_requests
+    WHERE id = ${id}
+    RETURNING full_domain
+  ` as { full_domain: string }[];
+
+  if (rows.length === 0) {
+    return NextResponse.json({ error: 'Не е намерено.' }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true, deleted: rows[0].full_domain });
+}

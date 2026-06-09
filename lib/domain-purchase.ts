@@ -149,6 +149,33 @@ export async function ensureDomainPurchaseSchema() {
         ON domain_purchase_requests(stripe_session_id)
         WHERE stripe_session_id <> ''
       `;
+
+      // CHECK constraints — idempotent via pg_constraint lookup
+      const hasStatusCheck = await sql`
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'domain_purchase_requests_status_check'
+          AND conrelid = 'domain_purchase_requests'::regclass
+      `;
+      if (!hasStatusCheck.length) {
+        await sql`
+          ALTER TABLE domain_purchase_requests ADD CONSTRAINT domain_purchase_requests_status_check
+          CHECK (status IN ('requested', 'paid', 'processing', 'purchased', 'connected', 'rejected'))
+          NOT VALID
+        `;
+      }
+
+      const hasFeesCheck = await sql`
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'domain_purchase_requests_fees_check'
+          AND conrelid = 'domain_purchase_requests'::regclass
+      `;
+      if (!hasFeesCheck.length) {
+        await sql`
+          ALTER TABLE domain_purchase_requests ADD CONSTRAINT domain_purchase_requests_fees_check
+          CHECK (setup_fee_cents >= 0 AND domain_fee_cents >= 0 AND total_fee_cents >= 0)
+          NOT VALID
+        `;
+      }
     })();
   }
 

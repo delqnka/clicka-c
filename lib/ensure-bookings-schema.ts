@@ -65,6 +65,34 @@ export async function ensureBookingsSchema() {
         ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS amount_paid numeric
       `;
+
+      // CHECK constraints — idempotent via pg_constraint lookup
+      const hasStatusCheck = await sql`
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'bookings_status_check'
+          AND conrelid = 'bookings'::regclass
+      `;
+      if (!hasStatusCheck.length) {
+        await sql`
+          ALTER TABLE bookings ADD CONSTRAINT bookings_status_check
+          CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed'))
+          NOT VALID
+        `;
+      }
+
+      const hasPaymentStatusCheck = await sql`
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'bookings_payment_status_check'
+          AND conrelid = 'bookings'::regclass
+      `;
+      if (!hasPaymentStatusCheck.length) {
+        await sql`
+          ALTER TABLE bookings ADD CONSTRAINT bookings_payment_status_check
+          CHECK (payment_status IN ('free', 'pending', 'paid', 'failed', 'refunded'))
+          NOT VALID
+        `;
+      }
+
       await sql`
         CREATE INDEX IF NOT EXISTS bookings_salon_id_idx ON bookings(salon_id)
       `;

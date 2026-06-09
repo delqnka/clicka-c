@@ -61,6 +61,28 @@ export async function ensureSmsSchema() {
           WHERE status = 'pending'
         `,
       ]);
+
+      // CHECK constraints — idempotent via pg_constraint lookup
+      const [hasReminderStatusCheck, hasReminderKindCheck, hasTransKindCheck] = await Promise.all([
+        sql`SELECT 1 FROM pg_constraint WHERE conname='booking_sms_reminders_status_check' AND conrelid='booking_sms_reminders'::regclass`,
+        sql`SELECT 1 FROM pg_constraint WHERE conname='booking_sms_reminders_kind_check' AND conrelid='booking_sms_reminders'::regclass`,
+        sql`SELECT 1 FROM pg_constraint WHERE conname='sms_transactions_kind_check' AND conrelid='sms_transactions'::regclass`,
+      ]);
+
+      await Promise.all([
+        !hasReminderStatusCheck.length && sql`
+          ALTER TABLE booking_sms_reminders ADD CONSTRAINT booking_sms_reminders_status_check
+          CHECK (status IN ('pending', 'sent', 'failed', 'cancelled')) NOT VALID
+        `,
+        !hasReminderKindCheck.length && sql`
+          ALTER TABLE booking_sms_reminders ADD CONSTRAINT booking_sms_reminders_kind_check
+          CHECK (kind IN ('24h', '1h')) NOT VALID
+        `,
+        !hasTransKindCheck.length && sql`
+          ALTER TABLE sms_transactions ADD CONSTRAINT sms_transactions_kind_check
+          CHECK (kind IN ('purchase', 'send', 'skip')) NOT VALID
+        `,
+      ].filter(Boolean));
     })().catch((err) => {
       ensurePromise = null;
       throw err;

@@ -77,6 +77,22 @@ type DomainRequestSummary = {
   completed: number;
 };
 
+type ReconcileIssue = {
+  sessionId: string;
+  flow: string;
+  amountTotal: number;
+  currency: string;
+  createdAt: number;
+  reason: string;
+};
+
+type ReconcileResult = {
+  ok: boolean;
+  checked: number;
+  total: number;
+  issues: ReconcileIssue[];
+};
+
 function domainRequestStatusLabel(status: string) {
   switch (status) {
     case 'requested': return 'Нова';
@@ -256,6 +272,8 @@ export default function PlatformAdminDashboard({
   const [updatedDomainRequest, setUpdatedDomainRequest] = useState<string | null>(null);
   const [copiedDomainRequest, setCopiedDomainRequest] = useState<string | null>(null);
   const [domainRequestSummary, setDomainRequestSummary] = useState<DomainRequestSummary | null>(null);
+  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null);
+  const [reconcileLoading, setReconcileLoading] = useState(false);
 
   const filteredSalons = useMemo(() => {
     return salonList.filter((s) => {
@@ -335,6 +353,18 @@ export default function PlatformAdminDashboard({
       setTotalRevenue(data.totalRevenue ?? 0);
     } finally {
       setPaymentsLoading(false);
+    }
+  }
+
+  async function handleReconcile() {
+    setReconcileLoading(true);
+    setReconcileResult(null);
+    try {
+      const res = await fetch('/api/pa/stripe-reconcile');
+      const data = await res.json();
+      setReconcileResult(data);
+    } finally {
+      setReconcileLoading(false);
     }
   }
 
@@ -832,6 +862,48 @@ export default function PlatformAdminDashboard({
                   </div>
                 </>
               )}
+
+              {/* ── Stripe Reconciliation ──────────────────── */}
+              <div className="mt-6 rounded-2xl border border-gray-100 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900">Съответствие Stripe ↔ БД</p>
+                  <span className="text-xs text-gray-400">последните 30 дни</span>
+                </div>
+
+                <button
+                  onClick={handleReconcile}
+                  disabled={reconcileLoading}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white
+                             transition-opacity cursor-pointer disabled:opacity-40 min-h-[44px]
+                             flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
+                >
+                  {reconcileLoading && (
+                    <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  )}
+                  {reconcileLoading ? 'Проверява…' : 'Провери съответствие'}
+                </button>
+
+                {reconcileResult && (
+                  <div className={`rounded-xl p-3 space-y-2 ${reconcileResult.ok ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+                    <p className={`text-xs font-semibold ${reconcileResult.ok ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {reconcileResult.ok
+                        ? `✓ Всичко съвпада — ${reconcileResult.checked} платени сесии проверени`
+                        : `⚠ ${reconcileResult.issues.length} несъответствия от ${reconcileResult.checked} платени сесии`}
+                    </p>
+
+                    {reconcileResult.issues.map((issue) => (
+                      <div key={issue.sessionId} className="rounded-lg bg-white/70 p-2.5 space-y-0.5">
+                        <p className="text-xs font-semibold text-gray-800">{issue.reason}</p>
+                        <p className="text-[11px] text-gray-500">
+                          {issue.flow} · {formatAmount(issue.amountTotal, issue.currency)} · {formatDate(new Date(issue.createdAt * 1000).toISOString())}
+                        </p>
+                        <p className="text-[11px] font-mono text-gray-400 break-all">{issue.sessionId}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {/* ── TAB: Подаръци ──────────────────────────────── */}
