@@ -9,6 +9,20 @@ import {
 
 type View = 'simple' | 'details';
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  return isMobile;
+}
+
 type Props = {
   cookiesPath?: string;
   /** Light card styled for public salon sites; default is dark marketing style. */
@@ -26,6 +40,7 @@ export function CookieConsentBanner({
   const [analytics, setAnalytics] = useState(true);
   const [marketing, setMarketing] = useState(true);
   const isSalon = variant === 'salon';
+  const compact = useIsMobile();
 
   useEffect(() => {
     if (!hasAnsweredConsent()) setVisible(true);
@@ -48,57 +63,131 @@ export function CookieConsentBanner({
 
   if (!visible) return null;
 
-  const actionsStyle: React.CSSProperties = isSalon
-    ? { display: 'flex', flexDirection: 'column', gap: 8 }
-    : { display: 'flex', gap: 8, flexWrap: 'wrap' };
+  const isBar = !compact;
 
-  const shellStyle: React.CSSProperties = isSalon
+  const actionsStyle: React.CSSProperties = isBar
     ? {
-        position: 'fixed',
-        bottom: 16,
-        left: 16,
-        right: 16,
-        zIndex: 10001,
-        maxWidth: 420,
-        margin: '0 auto',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'nowrap',
+        alignItems: 'center',
+        gap: 8,
+        flexShrink: 0,
       }
-    : {
-        position: 'fixed',
-        bottom: 16,
-        left: 16,
-        right: 16,
-        zIndex: 10001,
-        maxWidth: 500,
-        margin: '0 auto',
-        background: '#18181b',
-        color: '#fff',
-        borderRadius: 16,
-        padding: '20px 20px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
-      };
+    : isSalon
+      ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }
+      : { display: 'flex', flexDirection: 'column', gap: 6 };
 
-  const cardStyle: React.CSSProperties = isSalon
+  const shellStyle: React.CSSProperties = {
+    position: 'fixed',
+    zIndex: 10001,
+    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+    ...(isBar
+      ? { bottom: 0, left: 0, right: 0 }
+      : { bottom: 10, left: 12, right: 12 }),
+  };
+
+  const innerStyle: React.CSSProperties = isSalon
+    ? isBar
+      ? {
+          width: '100%',
+          maxWidth: 1280,
+          margin: '0 auto',
+          padding: '14px 24px',
+          background: '#fff',
+          borderTop: '1px solid rgba(0,0,0,0.1)',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.08)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          ...(view === 'details' ? { maxHeight: 'min(50vh, 420px)', overflowY: 'auto' } : {}),
+        }
+      : {
+          borderRadius: 14,
+          border: '1px solid rgba(0,0,0,0.1)',
+          background: '#fff',
+          padding: '12px 14px 10px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          maxHeight: '28dvh',
+          overflowY: 'auto',
+        }
+    : isBar
+      ? {
+          width: '100%',
+          maxWidth: 1280,
+          margin: '0 auto',
+          padding: '14px 24px',
+          background: '#18181b',
+          color: '#fff',
+          borderTop: '1px solid #27272a',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.35)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          ...(view === 'details' ? { maxHeight: 'min(50vh, 420px)', overflowY: 'auto' } : {}),
+        }
+      : {
+          background: '#18181b',
+          color: '#fff',
+          borderRadius: 14,
+          padding: '12px 14px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          maxHeight: '28dvh',
+          overflowY: 'auto',
+        };
+
+  const barRowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 24,
+    width: '100%',
+  };
+
+  const btnBar: React.CSSProperties = isBar
     ? {
-        borderRadius: 16,
-        border: '1px solid rgba(0,0,0,0.1)',
-        background: '#fff',
-        padding: '18px 18px 16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
+        width: 'auto',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+        minHeight: 40,
+        padding: '10px 18px',
       }
     : {};
 
   const textStyle: React.CSSProperties = isSalon
-    ? { margin: 0, fontSize: 14, lineHeight: 1.6, color: '#52525b' }
-    : { margin: 0, fontSize: 14, lineHeight: 1.6, color: '#d4d4d8' };
+    ? {
+        margin: 0,
+        fontSize: compact ? 13 : 14,
+        lineHeight: compact ? 1.45 : 1.6,
+        color: '#52525b',
+      }
+    : {
+        margin: 0,
+        fontSize: compact ? 13 : 14,
+        lineHeight: compact ? 1.45 : 1.6,
+        color: '#d4d4d8',
+      };
+
+  const btnBase: React.CSSProperties = compact
+    ? {
+        minHeight: 44,
+        maxHeight: 48,
+        padding: '10px 12px',
+        fontSize: 13,
+        lineHeight: 1.2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }
+    : {
+        lineHeight: 1.2,
+      };
 
   const linkStyle: React.CSSProperties = isSalon
     ? { color: primaryColor, textDecoration: 'underline' }
@@ -106,46 +195,98 @@ export function CookieConsentBanner({
 
   const btnPrimary: React.CSSProperties = isSalon
     ? {
-        width: '100%', padding: '12px 20px', borderRadius: 999, border: 'none',
-        background: primaryColor, color: '#fff', fontWeight: 600, fontSize: 14,
-        cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.2,
+        ...btnBase,
+        ...btnBar,
+        width: isBar ? 'auto' : '100%',
+        padding: compact ? btnBase.padding : isBar ? btnBar.padding : '12px 20px',
+        borderRadius: 999,
+        border: 'none',
+        background: primaryColor,
+        color: '#fff',
+        fontWeight: 600,
+        fontSize: compact ? 13 : 14,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
       }
     : {
-        flex: 1, minWidth: 120, padding: '10px 16px', borderRadius: 10, border: 'none',
+        ...btnBase,
+        ...btnBar,
+        width: isBar ? 'auto' : '100%',
+        padding: compact ? btnBase.padding : isBar ? btnBar.padding : '10px 16px',
+        borderRadius: 10,
+        border: 'none',
         background: 'linear-gradient(135deg,#e11d48,#a855f7)',
-        color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-        fontFamily: 'inherit', lineHeight: 1.2,
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: compact ? 13 : 14,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
       };
 
   const btnSecondary: React.CSSProperties = isSalon
     ? {
-        width: '100%', padding: '12px 20px', borderRadius: 999,
-        border: '1px solid rgba(0,0,0,0.2)', background: 'transparent',
-        color: '#52525b', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-        fontFamily: 'inherit', lineHeight: 1.2,
+        ...btnBase,
+        ...btnBar,
+        width: isBar ? 'auto' : '100%',
+        padding: compact ? btnBase.padding : isBar ? btnBar.padding : '12px 20px',
+        borderRadius: 999,
+        border: '1px solid rgba(0,0,0,0.2)',
+        background: 'transparent',
+        color: '#52525b',
+        fontWeight: 600,
+        fontSize: compact ? 13 : 14,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
       }
     : {
-        flex: 1, minWidth: 100, padding: '10px 16px', borderRadius: 10,
-        border: '1px solid #3f3f46', background: 'transparent',
-        color: '#a1a1aa', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-        fontFamily: 'inherit', lineHeight: 1.2,
+        ...btnBase,
+        ...btnBar,
+        width: isBar ? 'auto' : '100%',
+        padding: compact ? btnBase.padding : isBar ? btnBar.padding : '10px 16px',
+        borderRadius: 10,
+        border: '1px solid #3f3f46',
+        background: 'transparent',
+        color: '#a1a1aa',
+        fontWeight: 600,
+        fontSize: compact ? 13 : 14,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
       };
 
   const btnText: React.CSSProperties = isSalon
     ? {
-        width: '100%', padding: '8px 12px', borderRadius: 10, border: 'none', background: 'transparent',
-        color: '#71717a', fontWeight: 600, fontSize: 13, cursor: 'pointer',
-        fontFamily: 'inherit', textAlign: 'center',
+        width: isBar ? 'auto' : '100%',
+        minHeight: compact ? 32 : undefined,
+        padding: isBar ? '10px 12px' : compact ? '4px 8px' : '8px 12px',
+        borderRadius: 10,
+        border: 'none',
+        background: 'transparent',
+        color: '#71717a',
+        fontWeight: 600,
+        fontSize: compact ? 12 : 13,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        textAlign: isBar ? 'left' : 'center',
+        ...(compact ? { gridColumn: '1 / -1' } : {}),
       }
     : {
-        padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent',
-        color: '#71717a', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+        width: isBar ? 'auto' : '100%',
+        minHeight: compact ? 32 : undefined,
+        padding: isBar ? '10px 12px' : compact ? '4px 8px' : '10px 12px',
+        borderRadius: 10,
+        border: 'none',
+        background: 'transparent',
+        color: '#71717a',
+        fontWeight: 600,
+        fontSize: compact ? 12 : 13,
+        cursor: 'pointer',
         fontFamily: 'inherit',
+        textAlign: isBar ? 'left' : compact ? 'center' : undefined,
       };
 
-  const content = view === 'simple' ? (
+  const simpleBody = (
     <>
-      <p style={textStyle}>
+      <p style={{ ...textStyle, ...(isBar ? { flex: 1, minWidth: 0 } : {}) }}>
         Използваме задължителни бисквитки за резервации. С ваше съгласие използваме и бисквитки за
         анализ и маркетинг.{' '}
         <Link href={cookiesPath} style={linkStyle}>
@@ -158,18 +299,22 @@ export function CookieConsentBanner({
         <button type="button" onClick={() => setView('details')} style={btnText}>Настройки</button>
       </div>
     </>
+  );
+
+  const content = view === 'simple' ? (
+    isBar ? <div style={barRowStyle}>{simpleBody}</div> : simpleBody
   ) : (
     <>
       <p style={{
         margin: 0,
-        fontSize: 15,
+        fontSize: compact ? 14 : 15,
         fontWeight: 700,
         color: isSalon ? '#18181b' : '#fff',
       }}>
         Настройки за поверителност
       </p>
 
-      <div style={isSalon ? salonRowStyle : rowStyle}>
+      <div style={isSalon ? { ...salonRowStyle, ...(compact ? compactRowStyle : {}) } : { ...rowStyle, ...(compact ? compactRowStyle : {}) }}>
         <div>
           <p style={isSalon ? salonLabelStyle : labelStyle}>Задължителни</p>
           <p style={isSalon ? salonDescStyle : descStyle}>
@@ -179,7 +324,7 @@ export function CookieConsentBanner({
         <span style={{ color: '#71717a', fontSize: 13, flexShrink: 0 }}>Винаги активни</span>
       </div>
 
-      <div style={isSalon ? salonRowStyle : rowStyle}>
+      <div style={isSalon ? { ...salonRowStyle, ...(compact ? compactRowStyle : {}) } : { ...rowStyle, ...(compact ? compactRowStyle : {}) }}>
         <div>
           <p style={isSalon ? salonLabelStyle : labelStyle}>Аналитични</p>
           <p style={isSalon ? salonDescStyle : descStyle}>
@@ -189,7 +334,7 @@ export function CookieConsentBanner({
         <Toggle checked={analytics} onChange={setAnalytics} primaryColor={primaryColor} />
       </div>
 
-      <div style={isSalon ? { ...salonRowStyle, borderBottom: 'none' } : rowStyle}>
+      <div style={isSalon ? { ...salonRowStyle, ...(compact ? compactRowStyle : {}), borderBottom: 'none' } : { ...rowStyle, ...(compact ? compactRowStyle : {}), borderBottom: 'none' }}>
         <div>
           <p style={isSalon ? salonLabelStyle : labelStyle}>Маркетингови</p>
           <p style={isSalon ? salonDescStyle : descStyle}>
@@ -206,15 +351,11 @@ export function CookieConsentBanner({
     </>
   );
 
-  if (isSalon) {
-    return (
-      <div style={shellStyle}>
-        <div style={cardStyle}>{content}</div>
-      </div>
-    );
-  }
-
-  return <div style={shellStyle}>{content}</div>;
+  return (
+    <div style={shellStyle}>
+      <div style={innerStyle}>{content}</div>
+    </div>
+  );
 }
 
 function Toggle({
@@ -256,6 +397,11 @@ const rowStyle: React.CSSProperties = {
 const salonRowStyle: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12,
   paddingBottom: 12, borderBottom: '1px solid rgba(0,0,0,0.08)',
+};
+
+const compactRowStyle: React.CSSProperties = {
+  gap: 8,
+  paddingBottom: 8,
 };
 
 const labelStyle: React.CSSProperties = {

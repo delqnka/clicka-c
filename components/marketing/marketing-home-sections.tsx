@@ -206,6 +206,8 @@ export function PriceListImportSection() {
                 alt="Ценоразпис — Diana Stoyanova"
                 width={560}
                 height={900}
+                sizes="(max-width: 640px) 30vw, 280px"
+                quality={78}
                 style={{ width: '100%', height: 'auto', display: 'block' }}
                 loading="lazy"
               />
@@ -227,6 +229,8 @@ export function PriceListImportSection() {
                 alt="Telegram бот @clickabot — добавени услуги от ценоразпис"
                 width={560}
                 height={900}
+                sizes="(max-width: 640px) 30vw, 280px"
+                quality={78}
                 style={{ width: '100%', height: 'auto', display: 'block' }}
                 loading="lazy"
               />
@@ -248,6 +252,8 @@ export function PriceListImportSection() {
                 alt="Услугите вече в сайта — salonurban.online"
                 width={560}
                 height={900}
+                sizes="(max-width: 640px) 30vw, 280px"
+                quality={78}
                 style={{ width: '100%', height: 'auto', display: 'block' }}
                 loading="lazy"
               />
@@ -360,10 +366,21 @@ export function OwnPlatformSection() {
 
 /* ── Telegram Live Chat section ──────────────────────── */
 
+const MARKETING_SCREENSHOT_SRC: Record<string, string> = {
+  '/chat.png': '/marketing/chat.webp',
+  '/IMG_1851.jpg': '/marketing/IMG_1851.webp',
+  '/IMG_1852.jpg': '/marketing/IMG_1852.webp',
+  '/images/IMG_1821.jpg': '/marketing/IMG_1821.webp',
+  '/images/IMG_1822.jpg': '/marketing/IMG_1822.webp',
+  '/images/IMG_1823.jpg': '/marketing/IMG_1823.webp',
+  '/images/IMG_1826 2.jpg': '/marketing/IMG_1826-2.webp',
+};
+
 function IPhoneFrame({ src, alt, size = 'md', fullRadius = false }: { src: string; alt: string; size?: 'lg' | 'md'; fullRadius?: boolean }) {
   const borderW = size === 'lg' ? 10 : 8;
   const outerR = fullRadius ? '36px' : '36px 36px 0 0';
   const innerR = fullRadius ? '30px' : '30px 30px 0 0';
+  const imageSrc = MARKETING_SCREENSHOT_SRC[src] ?? src;
   return (
     <div style={{
       position: 'relative',
@@ -380,8 +397,16 @@ function IPhoneFrame({ src, alt, size = 'md', fullRadius = false }: { src: strin
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: size === 'lg' ? 28 : 20, background: '#000' }}>
           <div style={{ width: size === 'lg' ? '28%' : '22%', height: size === 'lg' ? 14 : 10, background: '#1a1a1e', borderRadius: 999 }} />
         </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} style={{ width: '100%', display: 'block' }} />
+        <Image
+          src={imageSrc}
+          alt={alt}
+          width={390}
+          height={844}
+          sizes="(max-width: 640px) 220px, 280px"
+          quality={78}
+          loading="lazy"
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
       </div>
     </div>
   );

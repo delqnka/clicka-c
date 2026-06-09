@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import Image from 'next/image';
+import { DeferredMount } from '@/components/marketing/deferred-mount';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 import { formatDualEurText } from '@/lib/salon-currency';
 
@@ -84,9 +85,15 @@ export function MarketingHomeBelowFold() {
       <OwnPlatformSection />
 
       <div data-home-section="how-it-works" id="how-it-works">
-        <PriceListImportSection />
-        <TelegramManagementSection />
-        <TelegramChatSection />
+        <DeferredMount minHeight={240}>
+          <PriceListImportSection />
+        </DeferredMount>
+        <DeferredMount minHeight={320}>
+          <TelegramManagementSection />
+        </DeferredMount>
+        <DeferredMount minHeight={360}>
+          <TelegramChatSection />
+        </DeferredMount>
       </div>
 
       <MarketingFeaturesSection />
@@ -115,7 +122,7 @@ export function MarketingHomeBelowFold() {
 
           <div style={{ width: '100%', maxWidth: 'min(52vw, 200px)' }}>
             <IPhoneMockup
-              poster="/vid1-poster.jpg"
+              poster="/vid1-poster.webp"
               webmSrc="/vid1.webm"
               mp4Src="/vid1.mp4"
               playbackRate={2}
@@ -319,8 +326,16 @@ export function MarketingHomeBelowFold() {
             <div style={{ background: '#000', height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: 90, height: 22, background: '#1a1a1a', borderRadius: 20 }} />
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/IMG_1832.jpg" alt="Clicka в действие" style={{ width: '100%', display: 'block' }} loading="lazy" />
+            <Image
+              src="/marketing/IMG_1832.webp"
+              alt="Clicka в действие"
+              width={520}
+              height={1120}
+              sizes="(max-width: 640px) 75vw, 260px"
+              quality={78}
+              loading="lazy"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
           </div>
         </div>
       </section>
