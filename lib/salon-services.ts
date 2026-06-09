@@ -1,4 +1,14 @@
-import { randomBytes } from 'crypto';
+function randomHex(bytes: number): string {
+  const buf = new Uint8Array(bytes);
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(buf);
+  } else {
+    // Node.js fallback (should not reach in modern runtimes)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('crypto').randomFillSync(buf);
+  }
+  return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export type PaymentType = 'none' | 'deposit' | 'full';
 export type CancelPolicyAction = 'full_refund' | 'keep_deposit' | 'keep_full';
@@ -58,8 +68,8 @@ function assignUniqueServiceId(candidate: string, usedIds: Set<string>): string 
     return trimmed;
   }
   // Generate a stable random ID (8 hex chars, same pattern as onboarding_code).
-  let id = randomBytes(4).toString('hex');
-  while (usedIds.has(id)) id = randomBytes(4).toString('hex');
+  let id = randomHex(4);
+  while (usedIds.has(id)) id = randomHex(4);
   usedIds.add(id);
   return id;
 }

@@ -35,6 +35,9 @@ export async function ensureAdminSiteSchema() {
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan_paid_currency text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS stripe_account_id text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS stripe_charges_enabled boolean NOT NULL DEFAULT false;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS ga4_id text;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS meta_pixel_id text;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS clarity_id text;
         END $$
       `;
     })().catch((err) => {
