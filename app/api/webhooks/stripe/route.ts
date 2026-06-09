@@ -69,6 +69,7 @@ async function sendDomainPurchaseNotification(requestId: string) {
       from: 'Clicka.bg <noreply@clicka.bg>',
       to: domainPurchaseNotificationRecipient(),
       subject: `Нова платена заявка за домейн: ${String(row.full_domain ?? '')}`,
+
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
           <h2>Нова платена заявка за домейн</h2>
@@ -87,7 +88,9 @@ async function sendDomainPurchaseNotification(requestId: string) {
         </div>
       `,
     });
-  } catch {}
+  } catch (err) {
+    console.error('[stripe-webhook] Failed to send admin domain notification email:', err);
+  }
 
   if (!registrantEmail) return;
 
@@ -113,7 +116,25 @@ async function sendDomainPurchaseNotification(requestId: string) {
         </div>
       `,
     });
-  } catch {}
+  } catch (err) {
+    console.error('[stripe-webhook] Failed to send client domain confirmation email:', err);
+  }
+}
+
+async function markEventProcessed(eventId: string): Promise<boolean> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS stripe_processed_events (
+      event_id   text        PRIMARY KEY,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  const rows = await sql`
+    INSERT INTO stripe_processed_events (event_id)
+    VALUES (${eventId})
+    ON CONFLICT (event_id) DO NOTHING
+    RETURNING event_id
+  `;
+  return rows.length > 0;
 }
 
 export async function POST(request: NextRequest) {
@@ -136,6 +157,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === 'checkout.session.completed') {
+    const alreadyProcessed = !(await markEventProcessed(event.id));
+    if (alreadyProcessed) {
+      console.log(`[stripe-webhook] ⏭ Duplicate event skipped — id=${event.id}`);
+      return NextResponse.json({ received: true });
+    }
     const session = event.data.object;
     const { flow, domainPurchaseRequestId, salonSlug, templateId, planType } = session.metadata ?? {};
 
