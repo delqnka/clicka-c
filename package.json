@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
     "type-check": "tsc --noEmit",
     "perf": "node scripts/perf-report.mjs",
     "optimize-marketing-images": "node scripts/optimize-marketing-images.mjs"
@@ -54,6 +55,7 @@
     "critters": "^0.0.23",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vitest": "^4.1.8"
   }
 }
