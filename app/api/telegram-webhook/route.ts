@@ -361,8 +361,11 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   }
 
   // ── Handle Clicka owner reply to support chat (clicka.bg marketing chat) ──
-  if (OWNER_CHAT_ID && String(chatId) === OWNER_CHAT_ID && text && !text.startsWith('/')) {
-    // Find the most recent active support session
+  const isOwnerMessage = OWNER_CHAT_ID && String(chatId) === OWNER_CHAT_ID;
+  const ownerHasText = isOwnerMessage && text && !text.startsWith('/');
+  const ownerHasPhoto = isOwnerMessage && message.photo && message.photo.length > 0;
+
+  if (ownerHasText || ownerHasPhoto) {
     const sessRows = await sql`
       SELECT id, client_name FROM salon_chat_sessions
       WHERE salon_id = ${SUPPORT_SALON_ID}
@@ -372,10 +375,27 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
 
     if (sessRows[0]) {
       const sess = sessRows[0];
-      await sql`
-        INSERT INTO salon_chat_messages (session_id, role, content)
-        VALUES (${sess.id}, 'salon', ${text})
-      `;
+
+      if (ownerHasPhoto) {
+        const largest = message.photo![message.photo!.length - 1]!;
+        const filePath = await getTelegramFilePath(largest.file_id);
+        if (!filePath) {
+          await sendTelegramMessage(chatId, '❌ Не успях да изтегля снимката. Пробвай отново.');
+          return NextResponse.json({ ok: true });
+        }
+        const imageUrl = getTelegramFileUrl(filePath);
+        const caption = (message.caption ?? '').trim() || '[Снимка]';
+        await sql`
+          INSERT INTO salon_chat_messages (session_id, role, content, image_url)
+          VALUES (${sess.id}, 'salon', ${caption}, ${imageUrl})
+        `;
+      } else {
+        await sql`
+          INSERT INTO salon_chat_messages (session_id, role, content)
+          VALUES (${sess.id}, 'salon', ${text})
+        `;
+      }
+
       await sql`
         UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${sess.id}
       `;

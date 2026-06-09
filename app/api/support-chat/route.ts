@@ -12,9 +12,9 @@ export async function POST(req: NextRequest) {
   if (rl.limited) return NextResponse.json({ error: 'Твърде много заявки.' }, { status: 429 });
 
   try {
-    const { sessionId, clientName, message } = await req.json();
+    const { sessionId, clientName, message, imageUrl } = await req.json();
 
-    if (!message?.trim()) {
+    if (!message?.trim() && !imageUrl) {
       return NextResponse.json({ error: 'Invalid' }, { status: 400 });
     }
 
@@ -36,9 +36,11 @@ export async function POST(req: NextRequest) {
       `;
     }
 
+    const content = message?.trim() || '[Снимка]';
+
     await sql`
-      INSERT INTO salon_chat_messages (session_id, role, content)
-      VALUES (${activeSessionId}, 'client', ${message.trim()})
+      INSERT INTO salon_chat_messages (session_id, role, content, image_url)
+      VALUES (${activeSessionId}, 'client', ${content}, ${imageUrl ?? null})
     `;
 
     if (OWNER_CHAT_ID) {
@@ -46,16 +48,29 @@ export async function POST(req: NextRequest) {
         ? `💬 Нов чат от <b>${clientName ?? 'Посетител'}</b> на clicka.bg\n\n`
         : `💬 <b>${clientName ?? 'Посетител'}:</b>\n`;
 
-      const result = await telegramPost('sendMessage', {
-        chat_id: OWNER_CHAT_ID,
-        text: `${header}${message.trim()}`,
-        parse_mode: 'HTML',
-      }) as { ok: boolean; result?: { message_id: number } };
+      type TgResult = { ok: boolean; result?: { message_id: number } } | null;
+      let tgResult: TgResult;
 
-      if (result?.ok && result.result?.message_id) {
+      if (imageUrl) {
+        const caption = `${header}${message?.trim() || ''}`.trim();
+        tgResult = await telegramPost('sendPhoto', {
+          chat_id: OWNER_CHAT_ID,
+          photo: imageUrl,
+          caption: caption || undefined,
+          parse_mode: 'HTML',
+        }) as TgResult;
+      } else {
+        tgResult = await telegramPost('sendMessage', {
+          chat_id: OWNER_CHAT_ID,
+          text: `${header}${content}`,
+          parse_mode: 'HTML',
+        }) as TgResult;
+      }
+
+      if (tgResult?.ok && tgResult.result?.message_id) {
         await sql`
           UPDATE salon_chat_messages
-          SET telegram_message_id = ${result.result.message_id}
+          SET telegram_message_id = ${tgResult.result.message_id}
           WHERE id = (
             SELECT id FROM salon_chat_messages
             WHERE session_id = ${activeSessionId} AND role = 'client'

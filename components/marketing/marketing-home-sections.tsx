@@ -1,6 +1,3 @@
-'use client';
-
-import { useState } from 'react';
 import Image from 'next/image';
 import { ClickaLogo } from '@/components/brand/clicka-logo';
 import { ButtonColorful } from '@/components/ui/button-colorful';
@@ -62,38 +59,26 @@ export function MarketingAudienceSection() {
       style={{ background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #fdf2f8 100%)', padding: 'clamp(56px,10vw,96px) clamp(20px,5vw,60px)', position: 'relative', marginTop: -8 }}
       aria-label="За кого е"
     >
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-rose-700 md:text-sm">
-          За кого е Clicka?
-        </p>
+      <div className="mx-auto max-w-2xl text-center">
         <h2
-          className={`mt-5 text-balance text-[clamp(1.75rem,5vw,3.25rem)] font-bold leading-[1.08] tracking-[-0.03em] ${GRADIENT_HEADING}`}
+          className={`text-balance text-[clamp(1.75rem,5vw,3rem)] font-bold leading-[1.1] tracking-[-0.03em] ${GRADIENT_HEADING}`}
           style={GRADIENT_BG}
         >
-          Работиш с часове?
+          Работиш с клиенти по часове?
         </h2>
-        <p
-          className="mx-auto mt-3 max-w-xl text-[clamp(1.1rem,2.5vw,1.4rem)] font-bold leading-relaxed"
-          style={{ color: '#0f0f0f' }}
-        >
-          Значи{' '}
-          <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>Clicka</span>
-          {' '}е за теб.
-        </p>
-        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.9rem,1.8vw,1.05rem)] leading-relaxed text-[var(--muted-foreground)]">
-          Clicka е създадена за{' '}
-          {['фризьори', 'маникюристи', 'козметици', 'масажисти', 'барбъри', 'гримьори', 'терапевти', 'треньори', 'консултанти', 'груумъри', 'татуисти'].map((p, i, arr) => (
-            <span key={p}>
-              <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 600 }}>{p}</span>
-              {i < arr.length - 1 ? ', ' : ' '}
-            </span>
-          ))}
-          и всички салони, които искат собствен сайт, онлайн резервации и пълен контрол над бизнеса си.
-        </p>
-        <p className="mx-auto mt-4 max-w-xl text-[clamp(0.95rem,2vw,1.1rem)] font-semibold leading-relaxed" style={{ color: '#0f0f0f' }}>
-          И най-важното е{' '}
-          <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>ЛЕСЕН</span>
-          {' '}контрол
+        <div className="mx-auto mt-3 max-w-lg space-y-4 leading-relaxed">
+          <p className="text-[clamp(1.1rem,2.5vw,1.3rem)] font-semibold" style={{ color: '#1a1a1a' }}>
+            Когато някой те потърси онлайн - трябва да те намери.
+          </p>
+          <p className="text-[clamp(0.95rem,1.8vw,1.05rem)]" style={{ color: '#9ca3af' }}>
+            <span className="font-bold" style={{ color: '#1a1a1a' }}>Не</span> каталог.<br />
+            <span className="font-bold" style={{ color: '#1a1a1a' }}>Не</span> платформа.<br />
+            <span className="font-bold" style={{ color: '#1a1a1a' }}>Не</span> конкурентите ти.
+          </p>
+          <p className={`text-[clamp(1.6rem,4vw,2.2rem)] font-bold ${GRADIENT_HEADING}`} style={GRADIENT_BG}>Теб.</p>
+        </div>
+        <p className={`mt-8 text-[0.7rem] leading-relaxed ${GRADIENT_HEADING}`} style={{ backgroundImage: 'linear-gradient(135deg, #db2777, #a855f7)' }}>
+          {['Фризьори', 'Маникюристи', 'Козметици', 'Барбъри', 'Масажисти', 'Груумъри', 'Терапевти', 'Треньори', 'Консултанти', 'Гримьори', 'Татуисти'].join(' • ')}
         </p>
       </div>
       <div style={{ position: 'absolute', top: -1, left: 0, right: 0, height: 80, background: 'linear-gradient(to bottom, #ffffff 40%, transparent)', pointerEvents: 'none' }} />
@@ -166,16 +151,49 @@ export function PriceListImportSection() {
       aria-label="Качи ценоразпис"
       style={{
         background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)',
-        padding: 'clamp(48px,9vw,96px) clamp(20px,5vw,60px)',
+        padding: 'clamp(20px,4vw,40px) clamp(20px,5vw,60px) clamp(72px,11vw,110px)',
         overflow: 'hidden',
       }}
     >
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,5vw,56px)' }}>
-          <h2 style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(20px,4vw,40px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h2 style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(16px,3vw,28px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Как работи?
           </h2>
+          {/* Steps */}
+          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0, marginBottom: 'clamp(80px,12vw,120px)', textAlign: 'left' }}>
+            {[
+              { n: '1', text: 'Избираш план', green: false },
+              { n: '✓', text: 'Сайтът ти е готов веднага', green: true },
+              { n: '3', text: 'Качваш снимка на услугите си', green: false },
+              { n: '4', text: 'Вече приемаш резервации', green: false },
+            ].map((s, i, arr) => (
+              <div key={s.n} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0' }}>
+                  <span style={{
+                    width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    background: s.green ? '#16a34a' : '#ffffff',
+                    border: s.green ? 'none' : 'none',
+                    fontWeight: 700, fontSize: s.green ? 16 : 14,
+                    color: s.green ? '#fff' : '#6b7280',
+                    boxShadow: s.green ? '0 4px 16px rgba(22,163,74,0.35)' : '0 6px 18px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,1)',
+                  }}>{s.n}</span>
+                  <span style={{
+                    fontSize: 'clamp(14px,1.8vw,16px)',
+                    fontWeight: s.green ? 700 : 500,
+                    color: s.green ? '#15803d' : '#1a1a1a',
+                    fontFamily: 'var(--font-client-manrope), sans-serif',
+                  }}>{s.text}</span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div style={{ paddingLeft: 16, lineHeight: 1 }}>
+                    <span style={{ color: '#d1d5db', fontSize: 13 }}>│</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
             Без ръчно въвеждане
           </p>
@@ -290,74 +308,40 @@ export function OwnPlatformSection() {
       }}
     >
       <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
+        {/* Punch line */}
         <p style={{
-          fontSize: 'clamp(18px,3.5vw,28px)',
+          fontSize: 'clamp(26px,5vw,44px)',
           fontWeight: 800,
-          lineHeight: 1.3,
-          color: '#0f0f0f',
-          marginBottom: 'clamp(20px,4vw,36px)',
-        }}>
-          Това не е платформа за резервации.
-        </p>
-
-        <p style={{
-          fontSize: 'clamp(22px,4.5vw,38px)',
-          fontWeight: 800,
-          lineHeight: 1.15,
-          marginBottom: 'clamp(24px,4vw,40px)',
+          lineHeight: 1.1,
           backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
+          marginBottom: 'clamp(16px,3vw,24px)',
         }}>
-          Clicka ти осигурява собствен сайт за твоя бизнес ВЕДНАГА.
+          Всеки нов клиент става твой.
         </p>
 
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          marginBottom: 'clamp(24px,4vw,40px)',
-          textAlign: 'left',
-          maxWidth: 440,
-          margin: '0 auto clamp(24px,4vw,40px)',
-        }}>
-          {[
-            'Не си част от каталог.',
-            'Не стоиш до конкурентите си.',
-            'Не градиш чужд бранд.',
-          ].map((line) => (
-            <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{
-                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                background: 'linear-gradient(135deg,#e11d48,#a855f7)',
-                display: 'inline-block',
-              }} />
-              <span style={{ fontSize: 'clamp(15px,2vw,18px)', fontWeight: 600, color: '#0f0f0f' }}>{line}</span>
-            </div>
-          ))}
-        </div>
-
+        {/* Concrete benefits */}
         <p style={{
-          fontSize: 'clamp(14px,1.8vw,17px)',
-          color: '#444',
-          lineHeight: 1.75,
-          marginBottom: 'clamp(24px,4vw,40px)',
-          maxWidth: 520,
-          margin: '0 auto clamp(24px,4vw,40px)',
+          fontSize: 'clamp(15px,2vw,17px)',
+          fontWeight: 600,
+          color: '#1a1a1a',
+          lineHeight: 1.7,
+          marginBottom: 'clamp(16px,3vw,24px)',
         }}>
-          Получаваш собствен сайт, собствен домейн, собствена клиентска база и AI рецепционист, който работи за теб 24/7.
+          В собствения ти сайт. В собствената ти клиентска база. Със собствения ти домейн.
         </p>
 
+        {/* AI feature */}
         <p style={{
-          fontSize: 'clamp(16px,2.5vw,22px)',
-          fontWeight: 800,
-          lineHeight: 1.3,
-          backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          fontSize: 'clamp(14px,1.8vw,16px)',
+          color: '#6b7280',
+          lineHeight: 1.65,
+          maxWidth: 400,
+          margin: '0 auto',
         }}>
-          Всеки нов клиент става твой клиент.<br />
-          Не клиент на платформа.
+          <span style={{ display: 'block', fontSize: 'clamp(32px,6vw,42px)', fontWeight: 800, marginBottom: 4, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>+</span>
+          AI рецепционист, който приема резервации вместо теб <span style={{ fontWeight: 700, color: '#1a1a1a' }}>24/7</span>
         </p>
       </div>
     </section>
@@ -622,6 +606,11 @@ const AI_FEATURES = [
     title: 'Автоматичен клиентски профил',
     body: 'След всяка резервация клиентът автоматично се добавя в клиентската ти база с имена, телефон и имейл.',
   },
+  {
+    icon: '📊',
+    title: 'Готов за реклами',
+    body: 'Свържи Google Analytics, Facebook Pixel и Microsoft Clarity. Виж кои реклами носят реални резервации — данните са твои.',
+  },
 ];
 
 const EXTRA_CHECKS = [
@@ -833,118 +822,6 @@ export function MarketingComparisonSection() {
 
 /* ── Founder section ──────────────────────────────────── */
 
-const FAQ_ITEMS = [
-  { q: 'Мога ли да използвам Clicka без технически умения?', a: 'Да. Clicka е създадена за хора, които не искат да учат сложни системи. Ако можеш да изпратиш съобщение в Telegram, можеш да управляваш сайта си.' },
-  { q: 'Колко време отнема създаването на сайта?', a: 'Повечето сайтове са готови за по-малко от 15 минути. Добавяш информацията си и сайтът е онлайн.' },
-  { q: 'Трябва ли да въвеждам услугите си ръчно?', a: 'Не. Просто качи снимка на ценоразписа си в Telegram и AI ще създаде услугите автоматично.' },
-  { q: 'Как получавам известия за нови резервации?', a: 'Получаваш известия директно в Telegram и по имейл веднага след всяка нова резервация.' },
-  { q: 'Мога ли да приемам депозити и онлайн плащания?', a: 'Да. Clicka работи със Stripe и ти позволява да приемаш депозити и плащания с карта директно от клиентите си.' },
-  { q: 'На какъв адрес ще е сайтът ми?', a: 'Веднага получаваш сайта си на безплатен адрес tvoiatsalon.clicka.bg и можеш да приемаш резервации ВЕДНАГА!' },
-  { q: 'Мога ли да свържа собствен домейн?', a: 'Да! Ако вече имаш домейн (например moiatsalon.com или salondidi.bg), можеш да го свържеш самостоятелно БЕЗ допълнителна такса. Инструкциите ще откриеш в дашборда си в меню Интеграции.' },
-  { q: 'Можете ли вие да регистрирате и настроите домейн вместо мен?', a: 'Да. Ако не искаш да се занимаваш с настройките, можем да регистрираме и настроим домейна вместо теб. Услугата се заплаща допълнително и обикновено отнема до 48 часа. Домейнът се регистрира на името на твоята фирма и остава твоя собственост.' },
-  { q: 'Мога ли да променям услугите и цените си по всяко време?', a: 'Да. Можеш да добавяш, редактираш или премахваш услуги директно от Telegram.' },
-  { q: 'Как да редактирам цени и имена на услугите си?', a: 'Много лесно — просто кажи на Telegram бота "Редактирай ми услуга Х" и той ще се погрижи веднага!' },
-  { q: 'Какво става, ако клиент отмени час?', a: 'Резервацията се обновява автоматично и ще получиш известие. При използване на депозити можеш да приложиш собствена политика за анулиране.' },
-  { q: 'Мога ли да качвам снимки на работата си?', a: 'Да. Изпращаш снимките на Telegram бота и те автоматично се появяват в галерията на сайта ти.' },
-  { q: 'Има ли ограничение за броя резервации?', a: 'Не. Няма ограничение за броя резервации или посещения на сайта.' },
-  { q: 'Има ли комисионна върху резервациите?', a: 'Не. Clicka не взима комисионна. Запазваш 100% от приходите си.' },
-  { q: 'Къде отиват плащанията от клиентите?', a: 'Директно в твоя Stripe акаунт. Clicka не задържа парите ти и не взима комисионна от плащанията.' },
-  { q: 'Какво става ако загубя достъп до Telegram?', a: 'Можеш да свържеш нов Telegram акаунт и да продължиш да управляваш сайта си.' },
-  { q: 'Трябва ли ми Google Calendar?', a: 'Не. Clicka има собствена система за управление на резервации и не изисква Google Calendar или Apple Calendar.' },
-  { q: 'Колко специалисти мога да добавя?', a: 'SOLO поддържа 1 специалист. TEAM поддържа до 3 специалисти с отделни графици, резервационни линкове, Telegram акаунти и Google календари.' },
-  { q: 'Обвързан ли съм с дългосрочен договор?', a: 'Не. Избираш план за 6 или 12 месеца. В края на периода сам решаваш дали да подновиш.' },
-  { q: 'Плаща ли се всеки месец?', a: 'Не. Clicka не е месечен абонамент. Избираш план за 6 или 12 месеца и плащаш еднократно за целия период. Няма месечни такси и няма автоматично подновяване. Преди изтичането на периода ще получиш напомняне и сам ще решиш дали да продължиш.' },
-  { q: 'Как се извършва плащането?', a: 'Плащането се извършва сигурно чрез Stripe – една от най-използваните платформи за онлайн плащания в света. Данните на картата ти не се съхраняват от Clicka.' },
-  { q: 'Какво става след изтичане на периода?', a: 'Ще получиш напомняне преди изтичането. Сам решаваш дали да подновиш за нов период.' },
-  { q: 'Мога ли да използвам Clicka, ако вече приемам резервации по телефон?', a: 'Да. Просто добавяй телефонните резервации през Telegram и часовете автоматично ще се блокират за онлайн записване.' },
-  { q: 'Какво става, ако клиент ми пише в Instagram или Facebook?', a: 'Изпрати скрийншот или напиши резервацията на Telegram бота. Той ще я добави в системата и ще направи часа недостъпен за нови резервации.' },
-  { q: 'Мога ли да затворя определени дни или часове?', a: 'Да. Кажи на Telegram бота кога не работиш и графикът ще се актуализира автоматично.' },
-  { q: 'Мога ли да качвам нови снимки по всяко време?', a: 'Да. Изпращаш снимките на Telegram бота и те автоматично се появяват в галерията на сайта ти.' },
-  { q: 'Какво става, ако променя цените си?', a: 'Просто изпрати новите цени на Telegram бота. Сайтът се обновява автоматично.' },
-  { q: 'Мога ли да използвам собствено лого и цветове?', a: 'Да. Сайтът се персонализира с твоето лого, снимки и стил.' },
-  { q: 'Ще виждат ли клиентите ми други салони?', a: 'Не. Сайтът е само за твоя бизнес. Няма конкуренти до теб.' },
-  { q: 'Мога ли да използвам Clicka без Stripe?', a: 'Да. Онлайн плащанията и депозитите са по желание.' },
-  { q: 'Има ли ограничение за броя клиенти?', a: 'Не. Няма ограничение за броя клиенти, резервации или посещения на сайта.' },
-  { q: 'Какво става ако забравя да подновя?', a: 'Ще получиш напомняне преди изтичането на периода, за да решиш дали искаш да продължиш.' },
-  { q: 'Мога ли да премина от SOLO към TEAM по-късно?', a: 'Да. Можеш да започнеш самостоятелно и когато екипът ти се разрасне, да преминеш към TEAM план.' },
-];
-
-const FAQ_INITIAL_COUNT = 5;
-
-export function MarketingFaqSection() {
-  const [open, setOpen] = useState<number | null>(null);
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? FAQ_ITEMS : FAQ_ITEMS.slice(0, FAQ_INITIAL_COUNT);
-
-  return (
-    <section
-      id="faq"
-      style={{ background: 'linear-gradient(180deg, #fdf2f8 0%, #fff 100%)', padding: 'clamp(56px,9vw,96px) clamp(20px,5vw,60px)', position: 'relative' }}
-      aria-label="Честo задавани въпроси"
-    >
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
-        <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
-          FAQ
-        </p>
-        <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.12, marginBottom: 36, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          Често задавани въпроси
-        </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {visible.map((item, i) => (
-            <div
-              key={i}
-              style={{ borderBottom: '1px solid #f0e6f6' }}
-            >
-              <button
-                onClick={() => setOpen(open === i ? null : i)}
-                style={{
-                  width: '100%', background: 'none', border: 'none', padding: '16px 0',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  cursor: 'pointer', textAlign: 'left', gap: 12,
-                }}
-              >
-                <span style={{ fontSize: 'clamp(14px,1.8vw,16px)', fontWeight: 600, color: '#0f0f0f', lineHeight: 1.4 }}>{item.q}</span>
-                <svg
-                  width="18" height="18" viewBox="0 0 24 24" fill="none"
-                  style={{ flexShrink: 0, transform: open === i ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
-                >
-                  <path d="M6 9l6 6 6-6" stroke="#db2777" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {open === i && (
-                <p style={{ fontSize: 'clamp(13px,1.6vw,15px)', color: '#666', lineHeight: 1.7, paddingBottom: 16, margin: 0 }}>
-                  {item.a}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={() => { setShowAll(v => !v); setOpen(null); }}
-          style={{
-            marginTop: 20, width: '100%', padding: '14px',
-            background: 'none', border: '1.5px solid',
-            borderImageSource: 'linear-gradient(135deg,#e11d48,#a855f7)',
-            borderImageSlice: 1,
-            borderRadius: 12,
-            cursor: 'pointer',
-            fontSize: 14, fontWeight: 700,
-            backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          {showAll
-            ? 'Скрий въпросите ↑'
-            : `Виж всички въпроси (${FAQ_ITEMS.length - FAQ_INITIAL_COUNT} още) ↓`}
-        </button>
-      </div>
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom, #ffffff, transparent)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top, #ffffff, transparent)', pointerEvents: 'none' }} />
-    </section>
-  );
-}
 
 export function MarketingFounderSection() {
   return (

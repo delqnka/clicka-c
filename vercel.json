@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/domain-purchase-delay-notice",
-      "schedule": "0 9 * * *"
+      "schedule": "0 16 * * *"
     }
   ],
   "headers": [

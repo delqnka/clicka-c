@@ -10,13 +10,13 @@ export async function GET(
     const after = _req.nextUrl.searchParams.get('after') ?? '1970-01-01';
 
     const rows = await sql`
-      SELECT id, role, content, created_at
+      SELECT id, role, content, image_url, created_at
       FROM salon_chat_messages
       WHERE session_id = ${sessionId}
         AND created_at > ${after}::timestamptz
       ORDER BY created_at ASC
-      LIMIT 50
-    ` as { id: string; role: string; content: string; created_at: string }[];
+      LIMIT 200
+    ` as { id: string; role: string; content: string; image_url: string | null; created_at: string }[];
 
     return NextResponse.json({ messages: rows });
   } catch {

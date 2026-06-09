@@ -36,7 +36,7 @@ function splitInitialIds(ids: string[]): { predefined: string[]; customNames: st
 }
 
 export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
-  const init = splitInitialIds(initialBrandIds);
+  const init = splitInitialIds(initialBrandIds ?? []);
   const [selected, setSelected] = useState<Set<string>>(new Set(init.predefined));
   const [customNames, setCustomNames] = useState<string[]>(init.customNames);
   const [busy, setBusy] = useState(false);

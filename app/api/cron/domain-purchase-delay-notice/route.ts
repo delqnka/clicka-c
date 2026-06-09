@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { sql } from '@/lib/db';
 import { ensureDomainPurchaseSchema, isDomainPurchaseDelayed } from '@/lib/domain-purchase';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { sendGoogleReviewInvitation } from '@/lib/resend';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -108,5 +109,58 @@ export async function GET(request: NextRequest) {
     } catch {}
   }
 
-  return NextResponse.json({ ok: true, sent, checked: rows.length });
+  // ── Google Review invitations ─────────────────────────────────────────────
+  // Find today's confirmed bookings whose appointment time has passed (≥1h ago)
+  // Mark them completed and send a review invitation email.
+  let reviewsSent = 0;
+
+  const reviewRows = await sql`
+    SELECT
+      b.id AS booking_id,
+      b.client_email,
+      b.client_name,
+      s.google_place_id,
+      s.name  AS salon_name,
+      s.slug  AS salon_slug
+    FROM bookings b
+    JOIN salons s ON s.id::text = b.salon_id::text
+    WHERE b.date = CURRENT_DATE
+      AND b.time::time <= (NOW() AT TIME ZONE 'Europe/Sofia' - INTERVAL '1 hour')::time
+      AND b.status = 'confirmed'
+      AND b.google_review_invite_sent_at IS NULL
+      AND s.google_place_id IS NOT NULL
+      AND s.google_place_id <> ''
+      AND b.client_email IS NOT NULL
+      AND b.client_email <> ''
+    LIMIT 200
+  ` as { booking_id: string; client_email: string; client_name: string; google_place_id: string; salon_name: string; salon_slug: string }[];
+
+  for (const r of reviewRows) {
+    const locked = await sql`
+      UPDATE bookings
+      SET status = 'completed',
+          completed_at = now(),
+          google_review_invite_sent_at = now()
+      WHERE id = ${r.booking_id}
+        AND status = 'confirmed'
+        AND google_review_invite_sent_at IS NULL
+      RETURNING id
+    `;
+    if (locked.length === 0) continue;
+
+    try {
+      await sendGoogleReviewInvitation(
+        r.client_email,
+        r.client_name,
+        r.salon_name,
+        r.google_place_id,
+        r.salon_slug,
+      );
+      reviewsSent++;
+    } catch (err) {
+      console.error('[review-cron] send failed', r.booking_id, err);
+    }
+  }
+
+  return NextResponse.json({ ok: true, sent, checked: rows.length, reviewsSent });
 }

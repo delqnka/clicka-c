@@ -399,6 +399,7 @@ export default function AdminDashboardClient({
     [allExternalEvents, selectedCalendarDate],
   );
   const [domainInput, setDomainInput] = useState(initialSite.customDomain ?? '');
+  const [domainIntent, setDomainIntent] = useState<null | 'connect' | 'buy'>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
   const [pwaOnHomeScreen, setPwaOnHomeScreen] = useState(false);
@@ -2430,7 +2431,7 @@ export default function AdminDashboardClient({
               })}
 
               {/* ── Чат поддръжка — 4-та секция ── */}
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -2455,6 +2456,33 @@ export default function AdminDashboardClient({
                     </svg>
                   </span>
                   Имаш въпрос?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNavOpen(false);
+                    window.dispatchEvent(new Event('clicka:open-chat-history'));
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    width: '100%', padding: '10px 12px', borderRadius: 12,
+                    border: 'none', background: '#fff',
+                    cursor: 'pointer', fontSize: 14, fontWeight: 500,
+                    color: '#18181B', WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <span style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 28, height: 28, borderRadius: 999,
+                    background: '#F3F4F6', color: '#6B7280', flexShrink: 0,
+                  }}>
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      <line x1="9" y1="9" x2="15" y2="9" />
+                      <line x1="9" y1="13" x2="13" y2="13" />
+                    </svg>
+                  </span>
+                  История на чата
                 </button>
               </div>
             </div>
@@ -2923,7 +2951,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => setActiveTab('domain')} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={(intent) => { setDomainIntent(intent); setActiveTab('domain'); }} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} />
             </>
           )}
 
@@ -3066,12 +3094,8 @@ export default function AdminDashboardClient({
                     onClick={() => { setOffersSaved(false); void saveOffers(); }}
                     disabled={busyKey === 'offers'}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '4px 2px',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: offersSaved ? '#16a34a' : busyKey === 'offers' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.6)',
+                      ...btn('ghost'),
+                      color: offersSaved ? '#16a34a' : busyKey === 'offers' ? 'rgba(0,0,0,0.4)' : undefined,
                       cursor: busyKey === 'offers' ? 'wait' : 'pointer',
                     }}
                   >
@@ -3404,6 +3428,13 @@ export default function AdminDashboardClient({
               removeDomain={removeDomain}
               inp={inp}
               btn={btn}
+              domainIntent={domainIntent}
+              setDomainIntent={setDomainIntent}
+              onBack={() => {
+                setDomainIntent(null);
+                setSiteNav(prev => ({ section: 'address', v: (prev?.v ?? 0) + 1 }));
+                setActiveTab('site');
+              }}
             />
           )}
 
@@ -4205,6 +4236,7 @@ function DomainPurchaseProcessingNotice({
 function DomainTab({
   site, isMobile, domainInput, setDomainInput, domainMeta,
   busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn, slug,
+  domainIntent, setDomainIntent, onBack,
 }: {
   site: AdminSitePayload;
   isMobile: boolean;
@@ -4218,9 +4250,11 @@ function DomainTab({
   inp: CSSProperties;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   slug: string;
+  domainIntent: null | 'connect' | 'buy';
+  setDomainIntent: (v: null | 'connect' | 'buy') => void;
+  onBack: () => void;
 }) {
   const [copied, setCopied] = useState('');
-  const [domainIntent, setDomainIntent] = useState<null | 'connect' | 'buy'>(null);
   const [purchaseRequest, setPurchaseRequest] = useState<DomainPurchaseRequest | null>(null);
   const [purchaseLoaded, setPurchaseLoaded] = useState(false);
 
@@ -4262,31 +4296,56 @@ function DomainTab({
   if (!hasDomain) {
     /* Choice screen */
     if (!domainIntent) {
+      const cards: { intent: 'connect' | 'buy'; icon: string; label: string; desc: string }[] = [
+        { intent: 'connect', icon: '🔗', label: 'Имам домейн',  desc: 'Свържи съществуващ домейн към сайта си.' },
+        { intent: 'buy',     icon: '🛒', label: 'Нямам домейн', desc: 'Ние ще го регистрираме и свържем вместо теб.' },
+      ];
       return (
         <Section title="Собствен домейн" desc="Как искаш да продължим?">
-          <div style={{ ...maxW, display: 'grid', gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => setDomainIntent('connect')}
-              style={{ textAlign: 'left', width: '100%', padding: '18px 20px', border: 'none', borderRadius: 18, background: 'linear-gradient(135deg,#0071E3,#007AFF,#34AADC)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 8px 28px rgba(0,113,227,0.32), 0 2px 8px rgba(0,122,255,0.2)' }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#fff' }}>Имам домейн</p>
-                <p style={{ margin: '3px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5 }}>Свържи съществуващ домейн към сайта си.</p>
-              </div>
-              <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDomainIntent('buy')}
-              style={{ textAlign: 'left', width: '100%', padding: '18px 20px', border: 'none', borderRadius: 18, background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 8px 28px rgba(219,39,119,0.32), 0 2px 8px rgba(168,85,247,0.2)' }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#fff' }}>Нямам домейн</p>
-                <p style={{ margin: '3px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5 }}>Ние ще го регистрираме и свържем вместо теб.</p>
-              </div>
-              <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
-            </button>
+          <div style={{ ...maxW, display: 'grid', gap: 8 }}>
+            {cards.map(({ intent, icon, label, desc }) => (
+              <button
+                key={intent}
+                type="button"
+                onClick={() => setDomainIntent(intent)}
+                onMouseEnter={e => {
+                  const el = e.currentTarget;
+                  el.style.background = 'linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#e11d48,#db2777,#a855f7) border-box';
+                  el.style.borderColor = 'transparent';
+                  el.style.boxShadow = '0 2px 10px rgba(219,39,119,0.12)';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget;
+                  el.style.background = '#fff';
+                  el.style.borderColor = T.border;
+                  el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+                style={{
+                  textAlign: 'left', width: '100%', padding: '13px 15px',
+                  border: `1px solid ${T.border}`, borderRadius: 12, cursor: 'pointer',
+                  background: '#fff', display: 'flex', alignItems: 'center', gap: 12,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'box-shadow 150ms',
+                }}
+              >
+                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: T.text }}>{label}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: T.muted, lineHeight: 1.45 }}>{desc}</p>
+                </div>
+                <span style={{ color: T.subtle, fontSize: 16, flexShrink: 0 }}>›</span>
+              </button>
+            ))}
+            <div style={{ paddingLeft: 2 }}>
+              <a
+                href="https://namecheap.pxf.io/c/7383967/1632743/5618"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+              >
+                Купи сам от Namecheap ↗
+              </a>
+              <p style={{ margin: '3px 0 0', fontSize: 11, color: T.subtle, lineHeight: 1.4 }}>Важи за .com, .net и др. — не поддържа .bg домейни.</p>
+            </div>
           </div>
         </Section>
       );
@@ -4307,7 +4366,7 @@ function DomainTab({
               />
             </Field>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button type="button" onClick={() => setDomainIntent(null)} style={{ ...btn('ghost'), flex: '0 0 auto' }}>
+              <button type="button" onClick={onBack} style={{ ...btn('ghost'), flex: '0 0 auto' }}>
                 ← Назад
               </button>
               <button
@@ -4343,7 +4402,7 @@ function DomainTab({
               sitePhone={site.phone || ''}
               siteAddress={site.address || ''}
               siteCity={site.city || ''}
-              onBack={() => setDomainIntent(null)}
+              onBack={onBack}
             />
           )}
         </div>

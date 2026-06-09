@@ -31,13 +31,13 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      // inline styles/scripts needed by Next.js hydration, Sentry, and Stripe
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com",
+      // inline styles/scripts needed by Next.js hydration, Sentry, Stripe, and salon tracking
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://www.clarity.ms https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' blob: data: https:",
       "font-src 'self' https://fonts.gstatic.com",
-      "frame-src https://challenges.cloudflare.com https://js.stripe.com",
-      "connect-src 'self' https://openrouter.ai https://api.stripe.com https://o*.ingest.sentry.io https://sentry.io",
+      "frame-src https://challenges.cloudflare.com https://js.stripe.com https://www.facebook.com",
+      "connect-src 'self' https://openrouter.ai https://api.stripe.com https://o*.ingest.sentry.io https://o*.ingest.de.sentry.io https://sentry.io https://*.clarity.ms https://www.google-analytics.com https://analytics.google.com https://www.facebook.com https://connect.facebook.net",
       "worker-src 'self' blob:",
     ].join('; '),
   },

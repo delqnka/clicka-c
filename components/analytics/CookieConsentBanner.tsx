@@ -28,12 +28,14 @@ type Props = {
   /** Light card styled for public salon sites; default is dark marketing style. */
   variant?: 'default' | 'salon';
   primaryColor?: string;
+  description?: string;
 };
 
 export function CookieConsentBanner({
   cookiesPath = '/cookies',
   variant = 'default',
   primaryColor = '#db2777',
+  description,
 }: Props) {
   const [visible, setVisible] = useState(false);
   const [view, setView] = useState<View>('simple');
@@ -74,9 +76,7 @@ export function CookieConsentBanner({
         gap: 8,
         flexShrink: 0,
       }
-    : isSalon
-      ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }
-      : { display: 'flex', flexDirection: 'column', gap: 6 };
+    : { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 };
 
   const shellStyle: React.CSSProperties = {
     position: 'fixed',
@@ -133,14 +133,12 @@ export function CookieConsentBanner({
       : {
           background: '#18181b',
           color: '#fff',
-          borderRadius: 14,
-          padding: '12px 14px',
+          borderRadius: 12,
+          padding: '8px 10px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 10,
-          maxHeight: '28dvh',
-          overflowY: 'auto',
+          gap: 6,
         };
 
   const barRowStyle: React.CSSProperties = {
@@ -169,18 +167,17 @@ export function CookieConsentBanner({
       }
     : {
         margin: 0,
-        fontSize: compact ? 13 : 14,
-        lineHeight: compact ? 1.45 : 1.6,
+        fontSize: compact ? 11 : 14,
+        lineHeight: compact ? 1.4 : 1.6,
         color: '#d4d4d8',
       };
 
   const btnBase: React.CSSProperties = compact
     ? {
-        minHeight: 44,
-        maxHeight: 48,
-        padding: '10px 12px',
-        fontSize: 13,
-        lineHeight: 1.2,
+        minHeight: 28,
+        padding: '5px 6px',
+        fontSize: 11,
+        lineHeight: 1.1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -244,11 +241,11 @@ export function CookieConsentBanner({
         width: isBar ? 'auto' : '100%',
         padding: compact ? btnBase.padding : isBar ? btnBar.padding : '10px 16px',
         borderRadius: 10,
-        border: '1px solid #3f3f46',
+        border: '1px solid #52525b',
         background: 'transparent',
-        color: '#a1a1aa',
+        color: '#e4e4e7',
         fontWeight: 600,
-        fontSize: compact ? 13 : 14,
+        fontSize: compact ? 12 : 14,
         cursor: 'pointer',
         fontFamily: 'inherit',
       };
@@ -276,26 +273,26 @@ export function CookieConsentBanner({
         borderRadius: 10,
         border: 'none',
         background: 'transparent',
-        color: '#71717a',
-        fontWeight: 600,
-        fontSize: compact ? 12 : 13,
+        color: compact ? '#fff' : '#71717a',
+        fontWeight: 500,
+        fontSize: compact ? 11 : 13,
         cursor: 'pointer',
         fontFamily: 'inherit',
         textAlign: isBar ? 'left' : compact ? 'center' : undefined,
+        ...(compact && !isBar ? { gridColumn: '1 / -1', minHeight: 'unset', padding: '2px 8px' } : {}),
       };
 
   const simpleBody = (
     <>
       <p style={{ ...textStyle, ...(isBar ? { flex: 1, minWidth: 0 } : {}) }}>
-        Използваме задължителни бисквитки за резервации. С ваше съгласие използваме и бисквитки за
-        анализ и маркетинг.{' '}
+        {description ?? 'Използваме задължителни бисквитки за резервации. С ваше съгласие използваме и бисквитки за анализ и маркетинг.'}{' '}
         <Link href={cookiesPath} style={linkStyle}>
           Научи повече
         </Link>
       </p>
       <div style={actionsStyle}>
-        <button type="button" onClick={acceptAll} style={btnPrimary}>Приемам всички</button>
         <button type="button" onClick={rejectOptional} style={btnSecondary}>Само задължителни</button>
+        <button type="button" onClick={acceptAll} style={btnPrimary}>Приемам всички</button>
         <button type="button" onClick={() => setView('details')} style={btnText}>Настройки</button>
       </div>
     </>
@@ -321,7 +318,7 @@ export function CookieConsentBanner({
             Необходими за резервации и запомняне на вашия избор.
           </p>
         </div>
-        <span style={{ color: '#71717a', fontSize: 13, flexShrink: 0 }}>Винаги активни</span>
+        <span style={{ color: '#a1a1aa', fontSize: 13, flexShrink: 0 }}>Винаги активни</span>
       </div>
 
       <div style={isSalon ? { ...salonRowStyle, ...(compact ? compactRowStyle : {}) } : { ...rowStyle, ...(compact ? compactRowStyle : {}) }}>
@@ -413,7 +410,7 @@ const salonLabelStyle: React.CSSProperties = {
 };
 
 const descStyle: React.CSSProperties = {
-  margin: '2px 0 0', fontSize: 12, color: '#71717a', lineHeight: 1.4,
+  margin: '2px 0 0', fontSize: 12, color: '#a1a1aa', lineHeight: 1.4,
 };
 
 const salonDescStyle: React.CSSProperties = {

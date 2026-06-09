@@ -17,7 +17,7 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
     <section
       aria-label="Hero"
       className="clicka-hero relative flex min-h-[85svh] w-full flex-col overflow-hidden"
-      style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 40%, #fdf2f8 75%)' }}
+      style={{ background: '#ffffff' }}
     >
       {/* Fade from white at top */}
       <div
@@ -26,15 +26,6 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
         aria-hidden
       />
 
-      {/* Pink gradient — starts only behind/below the buttons */}
-      <div
-        className="absolute bottom-0 left-0 right-0 z-0"
-        style={{
-          height: '55%',
-          background: 'radial-gradient(120% 120% at 50% 100%, #fce7ef 0%, #fff0f5 60%, transparent 100%)',
-        }}
-        aria-hidden
-      />
       {/* Fade into next section colour */}
       <div
         className="absolute bottom-0 left-0 right-0 z-0"
@@ -98,8 +89,11 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
         </div>
 
         {/* Price line */}
-        <p className="mb-8 text-center text-[clamp(0.875rem,2vw,1rem)] font-semibold text-[var(--foreground)]">
+        <p className="mb-2 text-center text-[clamp(0.875rem,2vw,1rem)] font-semibold text-[var(--foreground)]">
           От <span style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{formatDualEurText('0.82')}</span> на ден
+        </p>
+        <p className="mb-8 text-center text-[clamp(0.8rem,1.6vw,0.9rem)] font-medium" style={{ color: '#9ca3af' }}>
+          ⚡ Плащаш. Получаваш сайта си веднага.
         </p>
 
         {/* Buttons */}
@@ -116,6 +110,11 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
             className=""
           />
         </div>
+
+        {/* Not-a-platform tagline */}
+        <p className="mt-6 text-center text-[13px]" style={{ color: '#9ca3af' }}>
+          Това не е платформа за резервации.
+        </p>
 
       </div>
     </section>

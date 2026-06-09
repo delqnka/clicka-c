@@ -32,7 +32,7 @@ const MarketingFounderSection = dynamic(
   () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.MarketingFounderSection })),
 );
 const MarketingFaqSection = dynamic(
-  () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.MarketingFaqSection })),
+  () => import('@/components/marketing/marketing-faq-section').then((m) => ({ default: m.MarketingFaqSection })),
 );
 const MarketingHomePricingSection = dynamic(
   () => import('@/components/marketing/marketing-home-pricing').then((m) => ({ default: m.MarketingHomePricingSection })),
@@ -254,6 +254,53 @@ export function MarketingHomeBelowFold() {
                 <span style={{ flexShrink: 0, marginTop: 7, width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #e11d48, #a855f7)', display: 'inline-block' }} />
                 <p style={{ fontSize: 'clamp(13px,1.6vw,15px)', color: '#555', lineHeight: 1.65, margin: 0 }}>{text}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        aria-label="Готов за реклами"
+        style={{ background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 50%, #fff 100%)', padding: 'clamp(56px,9vw,96px) clamp(20px,5vw,60px)' }}
+      >
+        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
+            Маркетинг интеграции
+          </p>
+          <h2 className="hp-heading" style={{ fontSize: 'clamp(24px,4.5vw,40px)', marginBottom: 14, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>
+            Готов за Facebook и Google реклами
+          </h2>
+          <p style={{ fontSize: 'clamp(15px,1.8vw,17px)', color: '#555', lineHeight: 1.65, marginBottom: 28, maxWidth: 520 }}>
+            Интегрирай Meta Pixel, Google Analytics и Microsoft Clarity само с няколко клика и виж как рекламите ти се превръщат в реални резервации.
+          </p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[
+              'Виж колко хора посещават сайта ти',
+              'Виж откъде идват клиентите ти',
+              'Виж кои реклами носят резервации',
+              'Виж стойността на всяка резервация',
+              'Данните са твои, не на платформа',
+            ].map((f, i) => (
+              <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                  <defs><linearGradient id={`ads${i}`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e11d48" /><stop offset="1" stopColor="#a855f7" /></linearGradient></defs>
+                  <path d="M20 6L9 17l-5-5" stroke={`url(#ads${i})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span style={{ fontSize: 'clamp(14px,1.8vw,16px)', fontWeight: 600, color: '#0f0f0f' }}>{f}</span>
+              </li>
+            ))}
+          </ul>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#0f0f0f', marginBottom: 12 }}>Включени интеграции</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { name: 'Meta Pixel', color: '#1877F2' },
+              { name: 'Google Analytics 4', color: '#e37400' },
+              { name: 'Microsoft Clarity', color: '#0078D4' },
+            ].map(({ name, color }) => (
+              <span key={name} style={{ fontSize: 14, fontWeight: 400, color: '#0f0f0f', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+                {name}
+              </span>
             ))}
           </div>
         </div>

@@ -40,15 +40,12 @@ const SOLO_FEATURES = [
 ];
 
 const EKIP_FEATURES = [
-  'AI рецепционист за целия екип',
-  'Онлайн записване при избран специалист директно от чат',
-  'Автоматичен клиентски профил при всяка резервация',
   'До 3 специалисти в един сайт',
   'Отделни графици и известия за всеки специалист',
+  'Онлайн записване при избран специалист директно от чат',
+  'AI рецепционист за целия екип',
   'Директно резервиране при избран специалист',
   'Жив чат — поемаш разговора от Telegram',
-  'Неограничени известия',
-  '0% комисионна върху резервациите ви',
 ];
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -68,6 +65,46 @@ export function MarketingHomePricingSection() {
       aria-labelledby="pricing-h"
     >
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+
+        {/* Value comparison */}
+        <div style={{ marginBottom: 'clamp(48px,7vw,72px)', maxWidth: 760, display: 'flex', gap: 'clamp(24px,4vw,48px)', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+
+          {/* Left: Without Clicka */}
+          <div style={{ flex: '1 1 260px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 16 }}>Без clicka.bg</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              {['Уеб сайт', 'Онлайн резервации', 'Хостинг и SSL', 'Домейн', 'Поддръжка', 'AI чат асистент', 'Имейл известия', 'Meta Pixel, Google Analytics', 'Google ревюта'].map((item) => (
+                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, color: '#d1d5db', flexShrink: 0 }}>✓</span>
+                  <span style={{ fontSize: 'clamp(13px,1.6vw,14px)', color: '#9ca3af' }}>{item}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              {['Различни доставчици.', 'Различни настройки.', 'Различни абонаменти.'].map((line) => (
+                <p key={line} style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 700, color: '#6b7280', margin: '0 0 3px' }}>{line}</p>
+              ))}
+              <p style={{ fontSize: 'clamp(12px,1.5vw,13px)', color: '#9ca3af', margin: '8px 0 0', lineHeight: 1.6 }}>
+                и задължително да плащаш на специалист, който да се грижи за тези неща.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: With Clicka */}
+          <div style={{ flex: '1 1 260px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>С clicka.bg</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {['Собствен сайт', 'Онлайн резервации', 'AI асистент', 'Хостинг и SSL', 'Имейл известия', 'Google ревюта', 'Meta Pixel и Google Analytics', '0% комисионна', 'Лесен контрол на сайта'].map((item) => (
+                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, color: '#16a34a', flexShrink: 0, fontWeight: 700 }}>✓</span>
+                  <span style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 500, color: '#1a1a1a' }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
         <h2 id="pricing-h" data-reveal className="hp-heading" style={{ fontSize: 'clamp(28px,4.2vw,50px)', lineHeight: 1.15, marginBottom: 12, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
           Получаваш веднага сайта си на безплатен адрес{' '}
           <span style={{ fontSize: 'clamp(18px,2.8vw,32px)' }}>tvoiatsalon.clicka.bg.</span>

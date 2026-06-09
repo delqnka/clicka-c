@@ -93,6 +93,9 @@ export function SalonOffersSection({
               padding: isMobile ? 16 : 14,
               background: '#fff',
               position: 'relative',
+              boxSizing: 'border-box',
+              width: '100%',
+              overflow: 'hidden',
             }}
           >
             <button
@@ -117,7 +120,7 @@ export function SalonOffersSection({
               <X size={14} />
             </button>
 
-            <div style={{ display: 'grid', gap: 10, paddingRight: 32 }}>
+            <div style={{ display: 'grid', gap: 10, paddingRight: 32, minWidth: 0 }}>
               <label style={{ display: 'grid', gap: 5 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Заглавие</span>
                 <input
@@ -140,12 +143,12 @@ export function SalonOffersSection({
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr auto',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr auto',
                   gap: 10,
                   alignItems: 'end',
                 }}
               >
-                <label style={{ display: 'grid', gap: 5 }}>
+                <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Валидна от</span>
                   <input
                     type="date"
@@ -156,7 +159,7 @@ export function SalonOffersSection({
                     }
                   />
                 </label>
-                <label style={{ display: 'grid', gap: 5 }}>
+                <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Валидна до</span>
                   <input
                     type="date"

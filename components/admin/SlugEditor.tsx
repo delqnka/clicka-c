@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
+import { Check, Save } from 'lucide-react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField } from '@/components/admin/admin-ui';
 
@@ -28,13 +29,14 @@ export function SlugEditor({
   const [value, setValue] = useState(currentSlug);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [saved, setSaved] = useState(true);
 
   const validationErr = validate(value);
   const changed = value !== currentSlug;
+  const canSave = changed && !validationErr && !busy;
 
   async function handleSave() {
-    setError(''); setNotice('');
+    setError('');
     const err = validate(value);
     if (err) { setError(err); return; }
     setBusy(true);
@@ -46,6 +48,7 @@ export function SlugEditor({
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Грешка'); return; }
+      setSaved(true);
       onSaved(data.newSlug);
     } catch {
       setError('Мрежова грешка.');
@@ -63,7 +66,7 @@ export function SlugEditor({
           display: 'flex',
           alignItems: 'center',
           background: '#fff',
-          border: `1.5px solid ${ADMIN_T.border}`,
+          border: `1.5px solid ${changed && !validationErr ? '#d1d5db' : ADMIN_T.border}`,
           borderRadius: 14,
           overflow: 'hidden',
           boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
@@ -72,10 +75,12 @@ export function SlugEditor({
             value={value}
             onChange={(e) => {
               setValue(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
-              setError(''); setNotice('');
+              setError('');
+              setSaved(false); // reset tick when user starts editing
             }}
             placeholder="urban"
             maxLength={20}
+            onKeyDown={(e) => { if (e.key === 'Enter' && canSave) void handleSave(); }}
             style={{
               ...fieldInp,
               border: 'none',
@@ -87,7 +92,8 @@ export function SlugEditor({
             }}
           />
           <span style={{
-            paddingRight: 14,
+            paddingLeft: 2,
+            paddingRight: 10,
             fontSize: 14,
             color: '#a1a1aa',
             whiteSpace: 'nowrap',
@@ -96,72 +102,64 @@ export function SlugEditor({
           }}>
             .{rootDomain}
           </span>
+
+          {/* Save / saved icon */}
+          <div style={{ paddingRight: 10, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            {saved ? (
+              <span style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 28, height: 28, borderRadius: '50%',
+                background: '#dcfce7',
+              }}>
+                <Check size={14} strokeWidth={2.5} color="#16a34a" />
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={!canSave}
+                onClick={handleSave}
+                title="Запази адреса"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 28, height: 28, borderRadius: '50%',
+                  border: 'none',
+                  background: canSave ? '#18181b' : 'transparent',
+                  cursor: canSave ? 'pointer' : 'default',
+                  flexShrink: 0,
+                  transition: 'background 150ms',
+                }}
+              >
+                {busy
+                  ? <span style={{ fontSize: 10, color: ADMIN_T.muted }}>…</span>
+                  : <Save size={13} strokeWidth={2} color={canSave ? '#fff' : '#d4d4d8'} />
+                }
+              </button>
+            )}
+          </div>
         </div>
       </AdminField>
 
-      {/* Live preview */}
-      <div style={{
-        fontSize: 13,
-        color: validationErr && value ? '#ef4444' : '#6b7280',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-      }}>
+      {/* Live preview / validation */}
+      <div style={{ fontSize: 13, color: validationErr && value ? '#ef4444' : '#6b7280', display: 'flex', alignItems: 'center', gap: 6 }}>
         {validationErr && value ? (
           <>⚠ {validationErr}</>
         ) : (
           <>
             <span style={{ color: '#a1a1aa' }}>Адрес на сайта:</span>
-            <span style={{ fontWeight: 600, color: ADMIN_T.text }}>
-              {value || currentSlug}.{rootDomain}
-            </span>
+            <span style={{ fontWeight: 600, color: ADMIN_T.text }}>{value || currentSlug}.{rootDomain}</span>
           </>
         )}
       </div>
 
-      {error && (
-        <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>
-      )}
-      {notice && (
-        <p style={{ fontSize: 13, color: '#16a34a', margin: 0 }}>{notice}</p>
-      )}
+      {error && <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>}
 
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-      <button
-        type="button"
-        disabled={busy || !changed || !!validationErr}
-        onClick={handleSave}
-        style={{
-          padding: '8px 24px',
-          borderRadius: 999,
-          border: 'none',
-          background: busy || !changed || !!validationErr
-            ? '#e4e4e7'
-            : 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-          color: busy || !changed || !!validationErr ? '#a1a1aa' : '#fff',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: busy || !changed || !!validationErr ? 'default' : 'pointer',
-          boxShadow: busy || !changed || !!validationErr ? 'none' : '0 4px 14px rgba(219,39,119,0.28)',
-        }}
-      >
-        {busy ? 'Запазване…' : 'Запази адреса'}
-      </button>
-      </div>
-
-      <details style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.7, textAlign: 'center' }}>
-        <summary style={{
-          cursor: 'pointer',
-          listStyle: 'none',
-          fontWeight: 600,
-          color: '#6b7280',
-          textAlign: 'center',
-        }}>
+      <details style={{ fontSize: 11, color: '#a1a1aa', lineHeight: 1.6 }}>
+        <summary style={{ cursor: 'pointer', listStyle: 'none', color: '#c4c4c8', fontSize: 11 }}>
           Какво става ако сменя адреса?
         </summary>
-        <div style={{ marginTop: 6, textAlign: 'left', display: 'inline-block' }}>
-          <p style={{ margin: '0 0 2px' }}>· Линкът, който сте споделяли, спира да работи</p>
-          <p style={{ margin: '0 0 2px' }}>· QR кодовете трябва да се генерират наново</p>
+        <div style={{ marginTop: 4, display: 'grid', gap: 1, paddingLeft: 4 }}>
+          <p style={{ margin: 0 }}>· Споделените линкове спират да работят</p>
+          <p style={{ margin: 0 }}>· QR кодовете трябва да се генерират наново</p>
           <p style={{ margin: 0 }}>· Google ще трябва да намери отново сайта ти</p>
         </div>
       </details>

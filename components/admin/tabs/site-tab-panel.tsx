@@ -21,18 +21,16 @@ const ACTIVE_GRADIENT = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
 function siteSectionTabStyle(active: boolean, mobile: boolean): CSSProperties {
   if (mobile) {
     return {
-      width: '100%',
-      minHeight: 44,
-      border: active ? '1px solid transparent' : `1px solid ${ADMIN_T.border}`,
-      borderRadius: 12,
-      padding: '10px 12px',
-      fontSize: 14,
-      fontWeight: active ? 600 : 500,
-      lineHeight: 1.25,
-      textAlign: 'center',
-      background: active ? ACTIVE_GRADIENT : '#fff',
-      color: active ? '#fff' : ADMIN_T.text,
-      boxShadow: active ? '0 6px 18px rgba(219,39,119,0.22)' : '0 1px 3px rgba(0,0,0,0.06)',
+      flexShrink: 0,
+      whiteSpace: 'nowrap',
+      border: active ? '1px solid #18181B' : `1px solid ${ADMIN_T.border}`,
+      borderRadius: 999,
+      padding: '5px 14px',
+      fontSize: 13,
+      fontWeight: active ? 600 : 400,
+      lineHeight: 1.4,
+      background: active ? '#18181B' : 'transparent',
+      color: active ? '#fff' : ADMIN_T.muted,
       cursor: 'pointer',
       WebkitTapHighlightColor: 'transparent',
     };
@@ -94,7 +92,7 @@ export function SiteTabPanel({
   currentSlug: string;
   rootDomain: string;
   onSlugSaved: (newSlug: string) => void;
-  onNavigateToDomain?: () => void;
+  onNavigateToDomain?: (intent: 'connect' | 'buy') => void;
   initialSection?: SiteSectionId;
   siteNavVersion?: number;
 }) {
@@ -122,24 +120,24 @@ export function SiteTabPanel({
       {isMobile ? (
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 8,
+            display: 'flex',
+            gap: 6,
+            overflowX: 'auto',
+            flexWrap: 'nowrap',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
             marginBottom: 14,
           }}
         >
-          {SITE_SECTIONS.map(({ id, label, mobileLabel }, index) => {
+          {SITE_SECTIONS.map(({ id, label, mobileLabel }) => {
             const active = section === id;
-            const spanFull = index === SITE_SECTIONS.length - 1 && SITE_SECTIONS.length % 2 === 1;
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => setSection(id)}
-                style={{
-                  ...siteSectionTabStyle(active, true),
-                  gridColumn: spanFull ? '1 / -1' : undefined,
-                }}
+                style={siteSectionTabStyle(active, true)}
               >
                 {mobileLabel || label}
               </button>
@@ -243,22 +241,60 @@ export function SiteTabPanel({
             onSaved={onSlugSaved}
           />
           {onNavigateToDomain && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}`, textAlign: 'center' }}>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: ADMIN_T.muted }}>
-                Имаш собствен домейн (например <em>moisalon.com</em>)?
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}` }}>
+              <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
+                Собствен домейн
               </p>
-              <button
-                type="button"
-                onClick={onNavigateToDomain}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-                  color: '#fff', border: 'none', borderRadius: 999,
-                  padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                }}
-              >
-                Свържи своя домейн
-              </button>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {([
+                  { intent: 'connect' as const, label: 'Имам домейн', desc: 'Свържи съществуващ домейн към сайта си.', icon: '🔗' },
+                  { intent: 'buy' as const,     label: 'Нямам домейн', desc: 'Ние ще го регистрираме и свържем вместо теб.', icon: '🛒' },
+                ] as const).map(({ intent, label, desc, icon }) => (
+                  <button
+                    key={intent}
+                    type="button"
+                    onClick={() => onNavigateToDomain(intent)}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.background = 'linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#e11d48,#db2777,#a855f7) border-box';
+                      el.style.borderColor = 'transparent';
+                      el.style.boxShadow = '0 2px 10px rgba(219,39,119,0.12)';
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.background = '#fff';
+                      el.style.borderColor = ADMIN_T.border;
+                      el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                    }}
+                    style={{
+                      textAlign: 'left', width: '100%', padding: '13px 15px',
+                      border: `1px solid ${ADMIN_T.border}`, borderRadius: 12, cursor: 'pointer',
+                      background: '#fff',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                      transition: 'box-shadow 150ms',
+                    }}
+                  >
+                    <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>{label}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.45 }}>{desc}</p>
+                    </div>
+                    <span style={{ color: ADMIN_T.subtle, fontSize: 16, flexShrink: 0 }}>›</span>
+                  </button>
+                ))}
+                <div style={{ paddingLeft: 2 }}>
+                  <a
+                    href="https://namecheap.pxf.io/c/7383967/1632743/5618"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+                  >
+                    Купи сам от Namecheap ↗
+                  </a>
+                  <p style={{ margin: '3px 0 0', fontSize: 11, color: ADMIN_T.subtle, lineHeight: 1.4 }}>Важи за .com, .net и др. — не поддържа .bg домейни.</p>
+                </div>
+              </div>
             </div>
           )}
         </>
