@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isPlatformApexHost, ROOT_DOMAIN } from '@/lib/domain-routing';
+import { getSalonHomeLegalRewritePath, isPlatformApexHost, ROOT_DOMAIN } from '@/lib/domain-routing';
 import { isSalonPublicPath } from '@/lib/salon-public-request';
 
 // ─── Bot/scanner path guard (само за salon subdomains) ────────────────────────
@@ -88,6 +88,13 @@ export function middleware(request: NextRequest) {
       return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
 
+    const legalRewrite = getSalonHomeLegalRewritePath(pathname);
+    if (legalRewrite) {
+      const url = request.nextUrl.clone();
+      url.pathname = legalRewrite;
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    }
+
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -96,6 +103,13 @@ export function middleware(request: NextRequest) {
   if (pathname === '/') {
     const url = request.nextUrl.clone();
     url.pathname = isPlatformApexHost(hostname) ? '/marketing-home' : '/salon-home';
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  }
+
+  const legalRewrite = getSalonHomeLegalRewritePath(pathname);
+  if (legalRewrite) {
+    const url = request.nextUrl.clone();
+    url.pathname = legalRewrite;
     return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   }
 

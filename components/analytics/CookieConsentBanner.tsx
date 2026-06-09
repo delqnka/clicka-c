@@ -48,14 +48,18 @@ export function CookieConsentBanner({
 
   if (!visible) return null;
 
+  const actionsStyle: React.CSSProperties = isSalon
+    ? { display: 'flex', flexDirection: 'column', gap: 8 }
+    : { display: 'flex', gap: 8, flexWrap: 'wrap' };
+
   const shellStyle: React.CSSProperties = isSalon
     ? {
         position: 'fixed',
         bottom: 16,
         left: 16,
         right: 16,
-        zIndex: 9998,
-        maxWidth: 384,
+        zIndex: 10001,
+        maxWidth: 420,
         margin: '0 auto',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
@@ -65,7 +69,7 @@ export function CookieConsentBanner({
         bottom: 16,
         left: 16,
         right: 16,
-        zIndex: 9998,
+        zIndex: 10001,
         maxWidth: 500,
         margin: '0 auto',
         background: '#18181b',
@@ -81,15 +85,14 @@ export function CookieConsentBanner({
 
   const cardStyle: React.CSSProperties = isSalon
     ? {
-        overflow: 'hidden',
         borderRadius: 16,
         border: '1px solid rgba(0,0,0,0.1)',
         background: '#fff',
-        padding: 16,
+        padding: '18px 18px 16px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
+        gap: 14,
       }
     : {};
 
@@ -103,36 +106,36 @@ export function CookieConsentBanner({
 
   const btnPrimary: React.CSSProperties = isSalon
     ? {
-        flex: 1, minWidth: 100, padding: '10px 0', borderRadius: 999, border: 'none',
+        width: '100%', padding: '12px 20px', borderRadius: 999, border: 'none',
         background: primaryColor, color: '#fff', fontWeight: 600, fontSize: 14,
-        cursor: 'pointer', fontFamily: 'inherit',
+        cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.2,
       }
     : {
-        flex: 1, minWidth: 120, padding: '10px 0', borderRadius: 10, border: 'none',
+        flex: 1, minWidth: 120, padding: '10px 16px', borderRadius: 10, border: 'none',
         background: 'linear-gradient(135deg,#e11d48,#a855f7)',
         color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-        fontFamily: 'inherit',
+        fontFamily: 'inherit', lineHeight: 1.2,
       };
 
   const btnSecondary: React.CSSProperties = isSalon
     ? {
-        flex: 1, minWidth: 100, padding: '10px 0', borderRadius: 999,
+        width: '100%', padding: '12px 20px', borderRadius: 999,
         border: '1px solid rgba(0,0,0,0.2)', background: 'transparent',
         color: '#52525b', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-        fontFamily: 'inherit',
+        fontFamily: 'inherit', lineHeight: 1.2,
       }
     : {
-        flex: 1, minWidth: 100, padding: '10px 0', borderRadius: 10,
+        flex: 1, minWidth: 100, padding: '10px 16px', borderRadius: 10,
         border: '1px solid #3f3f46', background: 'transparent',
         color: '#a1a1aa', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-        fontFamily: 'inherit',
+        fontFamily: 'inherit', lineHeight: 1.2,
       };
 
   const btnText: React.CSSProperties = isSalon
     ? {
-        padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent',
+        width: '100%', padding: '8px 12px', borderRadius: 10, border: 'none', background: 'transparent',
         color: '#71717a', fontWeight: 600, fontSize: 13, cursor: 'pointer',
-        fontFamily: 'inherit',
+        fontFamily: 'inherit', textAlign: 'center',
       }
     : {
         padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent',
@@ -149,7 +152,7 @@ export function CookieConsentBanner({
           Научи повече
         </Link>
       </p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={actionsStyle}>
         <button type="button" onClick={acceptAll} style={btnPrimary}>Приемам всички</button>
         <button type="button" onClick={rejectOptional} style={btnSecondary}>Само задължителни</button>
         <button type="button" onClick={() => setView('details')} style={btnText}>Настройки</button>
@@ -196,7 +199,7 @@ export function CookieConsentBanner({
         <Toggle checked={marketing} onChange={setMarketing} primaryColor={primaryColor} />
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={actionsStyle}>
         <button type="button" onClick={saveCustom} style={btnPrimary}>Запази избора</button>
         <button type="button" onClick={acceptAll} style={btnSecondary}>Приемам всички</button>
       </div>

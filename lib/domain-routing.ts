@@ -119,6 +119,14 @@ export function getPrimaryPublicUrl({
 
 export type LegalDocumentPath = 'terms' | 'privacy' | 'cookies';
 
+export const SALON_LEGAL_PATHS = new Set<string>(['/cookies', '/terms', '/privacy']);
+
+/** Rewrite /cookies (etc.) on salon hosts to internal salon-home legal routes. */
+export function getSalonHomeLegalRewritePath(pathname: string): string | null {
+  if (!SALON_LEGAL_PATHS.has(pathname)) return null;
+  return `/salon-home${pathname}`;
+}
+
 /** Публичен URL на правен документ (собствен домейн или slug.clicka.bg). */
 export function getLegalDocumentUrl({
   slug,
