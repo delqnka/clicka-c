@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/domain-purchase-delay-notice",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/stripe-events-cleanup",
+      "schedule": "0 3 1 * *"
     }
   ],
   "headers": [

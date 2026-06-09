@@ -123,16 +123,19 @@ async function sendDomainPurchaseNotification(requestId: string) {
 
 let eventsSchemaReady = false;
 
+async function ensureEventsSchema() {
+  if (eventsSchemaReady) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS stripe_processed_events (
+      event_id   text        PRIMARY KEY,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  eventsSchemaReady = true;
+}
+
 async function markEventProcessed(eventId: string): Promise<boolean> {
-  if (!eventsSchemaReady) {
-    await sql`
-      CREATE TABLE IF NOT EXISTS stripe_processed_events (
-        event_id   text        PRIMARY KEY,
-        created_at timestamptz NOT NULL DEFAULT now()
-      )
-    `;
-    eventsSchemaReady = true;
-  }
+  await ensureEventsSchema();
   const rows = await sql`
     INSERT INTO stripe_processed_events (event_id)
     VALUES (${eventId})
@@ -140,6 +143,10 @@ async function markEventProcessed(eventId: string): Promise<boolean> {
     RETURNING event_id
   `;
   return rows.length > 0;
+}
+
+async function unmarkEvent(eventId: string): Promise<void> {
+  await sql`DELETE FROM stripe_processed_events WHERE event_id = ${eventId}`.catch(() => {});
 }
 
 export async function POST(request: NextRequest) {
@@ -162,49 +169,60 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    const alreadyProcessed = !(await markEventProcessed(event.id));
-    if (alreadyProcessed) {
+    const isNew = await markEventProcessed(event.id);
+    if (!isNew) {
       console.log(`[stripe-webhook] ⏭ Duplicate event skipped — id=${event.id}`);
       return NextResponse.json({ received: true });
     }
+
     const session = event.data.object;
     const { flow, domainPurchaseRequestId, salonSlug, templateId, planType } = session.metadata ?? {};
 
     console.log(`[stripe-webhook] ▶ Webhook received — event=${event.type} session=${session.id} amount=${session.amount_total} payment_status=${session.payment_status}`);
     console.log(`[stripe-webhook] 📦 Metadata — flow=${flow ?? 'none'} planType=${planType ?? 'none'} billingPeriod=${session.metadata?.billingPeriod ?? 'none'} salonSlug=${salonSlug ?? 'none'} smsAddon=${session.metadata?.smsAddon ?? '0'}`);
 
+    // ── SMS pack ─────────────────────────────────────────────────────────────
     if (flow === 'sms_pack') {
       const salonId = String(session.metadata?.salonId ?? '').trim();
       const credits = Math.max(1, Number(session.metadata?.credits ?? SMS_PACK_CREDITS) || SMS_PACK_CREDITS);
       if (salonId && session.payment_status === 'paid') {
-        await creditSmsPack({
-          salonId,
-          credits,
-          stripeSessionId: session.id,
-        });
+        try {
+          await creditSmsPack({ salonId, credits, stripeSessionId: session.id });
+        } catch (err) {
+          console.error('[stripe-webhook] SMS pack credit failed:', err);
+          await unmarkEvent(event.id);
+          return NextResponse.json({ error: 'SMS credit failed' }, { status: 500 });
+        }
       }
       return NextResponse.json({ received: true });
     }
 
+    // ── Domain purchase ───────────────────────────────────────────────────────
     if (flow === 'domain_purchase_request' && domainPurchaseRequestId) {
-      await ensureDomainPurchaseSchema();
-      await sql`
-        UPDATE domain_purchase_requests
-        SET
-          status = 'paid',
-          paid_at = now(),
-          stripe_session_id = ${session.id},
-          stripe_customer_id = ${(session.customer as string) ?? ''},
-          updated_at = now()
-        WHERE id = ${domainPurchaseRequestId}
-      `;
-
+      try {
+        await ensureDomainPurchaseSchema();
+        await sql`
+          UPDATE domain_purchase_requests
+          SET
+            status = 'paid',
+            paid_at = now(),
+            stripe_session_id = ${session.id},
+            stripe_customer_id = ${(session.customer as string) ?? ''},
+            updated_at = now()
+          WHERE id = ${domainPurchaseRequestId}
+        `;
+      } catch (err) {
+        console.error('[stripe-webhook] Domain purchase DB update failed:', err);
+        await unmarkEvent(event.id);
+        return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
+      }
+      // emails are non-critical — don't unmark if they fail
       await sendDomainPurchaseNotification(String(domainPurchaseRequestId));
       return NextResponse.json({ received: true });
     }
 
+    // ── Invoice notification (no salon slug) ─────────────────────────────────
     if (!salonSlug) {
-      // Send invoice notification if billing info was provided
       const invoiceEik = String(session.metadata?.invoiceEik ?? '').trim();
       if (invoiceEik && process.env.RESEND_API_KEY) {
         const invoiceCompanyName = String(session.metadata?.invoiceCompanyName ?? '').trim();
@@ -241,42 +259,47 @@ export async function POST(request: NextRequest) {
               <p><strong>Имейл:</strong> ${customerEmail || '—'}</p>
             </div>
           `,
-        }).catch(() => {});
+        }).catch((err) => console.error('[stripe-webhook] Invoice notification email failed:', err));
       }
       return NextResponse.json({ received: true });
     }
 
-    console.log(`[stripe-webhook] 🌐 Ensuring platform subdomain for slug=${salonSlug}`);
-    await ensurePlatformSubdomain(String(salonSlug));
+    // ── Salon plan activation ─────────────────────────────────────────────────
+    try {
+      console.log(`[stripe-webhook] 🌐 Ensuring platform subdomain for slug=${salonSlug}`);
+      await ensurePlatformSubdomain(String(salonSlug));
 
-    // Normalize planType to the canonical `plan` column value.
-    const canonicalPlan = planType === 'ekip' ? 'team' : (planType ?? null);
+      const canonicalPlan = planType === 'ekip' ? 'team' : (planType ?? null);
+      const billingPeriod = String(session.metadata?.billingPeriod ?? '12m');
+      const billingMonths = billingPeriod === '6m' ? 6 : 12;
 
-    const billingPeriod = String(session.metadata?.billingPeriod ?? '12m');
-    const billingMonths = billingPeriod === '6m' ? 6 : 12;
+      console.log(`[stripe-webhook] 💾 Updating salon — slug=${salonSlug} plan=${canonicalPlan} billingPeriod=${billingPeriod} billingMonths=${billingMonths}`);
 
-    console.log(`[stripe-webhook] 💾 Updating salon — slug=${salonSlug} plan=${canonicalPlan} billingPeriod=${billingPeriod} billingMonths=${billingMonths}`);
+      await sql`
+        UPDATE salons
+        SET
+          is_active = true,
+          site_status = 'active',
+          template_id = ${templateId ?? null},
+          plan_type = ${planType ?? null},
+          plan = ${canonicalPlan},
+          billing_period = ${billingPeriod},
+          plan_started_at = now(),
+          plan_expires_at = now() + (${String(billingMonths)} || ' months')::interval,
+          plan_paid_amount = ${session.amount_total ?? null},
+          plan_paid_currency = ${session.currency ? session.currency.toUpperCase() : null},
+          stripe_session_id = ${session.id},
+          stripe_customer_id = ${(session.customer as string) ?? null}
+        WHERE slug = ${salonSlug}
+      `;
 
-    await sql`
-      UPDATE salons
-      SET
-        is_active = true,
-        site_status = 'active',
-        template_id = ${templateId ?? null},
-        plan_type = ${planType ?? null},
-        plan = ${canonicalPlan},
-        billing_period = ${billingPeriod},
-        plan_started_at = now(),
-        plan_expires_at = now() + (${String(billingMonths)} || ' months')::interval,
-        plan_paid_amount = ${session.amount_total ?? null},
-        plan_paid_currency = ${session.currency ? session.currency.toUpperCase() : null},
-        stripe_session_id = ${session.id},
-        stripe_customer_id = ${(session.customer as string) ?? null}
-      WHERE slug = ${salonSlug}
-    `;
-
-    console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
-    console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
+      console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
+      console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
+    } catch (err) {
+      console.error('[stripe-webhook] Salon activation failed:', err);
+      await unmarkEvent(event.id);
+      return NextResponse.json({ error: 'Salon activation failed' }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ received: true });
