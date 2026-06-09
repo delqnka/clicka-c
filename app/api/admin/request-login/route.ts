@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   const base = salon.customDomain
     ? `https://${salon.customDomain}`
     : getPlatformSiteOrigin(salon.slug);
-  const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}`;
+  const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}&mode=reset`;
 
   if (!resend) {
     return NextResponse.json({ error: 'Имейл услугата не е конфигурирана.' }, { status: 503 });

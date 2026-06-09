@@ -76,6 +76,7 @@ function SetPasswordForm() {
   const params = useSearchParams();
   const token = params.get('token') ?? '';
   const slug = params.get('slug') ?? '';
+  const isReset = params.get('mode') === 'reset';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -157,7 +158,7 @@ function SetPasswordForm() {
     return (
       <div style={{ textAlign: 'center', padding: '32px 0', position: 'relative' }}>
         <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
-          <ConfettiBurst />
+          {!isReset && <ConfettiBurst />}
           <div
             style={{
               width: 64,
@@ -177,7 +178,7 @@ function SetPasswordForm() {
           </div>
         </div>
         <p style={{ fontWeight: 800, fontSize: 20, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
-          Акаунтът е създаден!
+          {isReset ? 'Паролата е сменена!' : 'Акаунтът е създаден!'}
         </p>
         <p style={{ color: 'rgba(0,0,0,0.45)', fontSize: 14 }}>
           Влизаш в панела…
@@ -204,28 +205,30 @@ function SetPasswordForm() {
       </div>
 
       <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-        Задай парола
+        {isReset ? 'Нова парола' : 'Задай парола'}
       </h1>
       <p style={{ margin: '0 0 28px', color: 'rgba(0,0,0,0.45)', fontSize: 14, lineHeight: 1.6 }}>
-        Избери парола за достъп до твоя панел.
+        {isReset ? 'Въведи нова парола за твоя панел.' : 'Избери парола за достъп до твоя панел.'}
       </p>
 
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#111' }}>
-            Имейл
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(stripCyrillic(e.target.value))}
-            onKeyDown={blockCyrillic}
-            required
-            autoComplete="email"
-            placeholder="ime@example.com"
-            style={inputStyle}
-          />
-        </div>
+        {!isReset && (
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#111' }}>
+              Имейл
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(stripCyrillic(e.target.value))}
+              onKeyDown={blockCyrillic}
+              required
+              autoComplete="email"
+              placeholder="ime@example.com"
+              style={inputStyle}
+            />
+          </div>
+        )}
 
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#111' }}>
@@ -285,7 +288,7 @@ function SetPasswordForm() {
         )}
 
         <button type="submit" disabled={loading} style={gradientBtn}>
-          {loading ? 'Създаване…' : 'Създай акаунт →'}
+          {loading ? (isReset ? 'Запазване…' : 'Създаване…') : (isReset ? 'Смени паролата →' : 'Създай акаунт →')}
         </button>
       </form>
 

@@ -258,6 +258,114 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
+    // ── Plan renew (existing client, same or different period) ───────────────
+    if (flow === 'plan_renew' && salonSlug && session.payment_status === 'paid') {
+      try {
+        const billingPeriod = String(session.metadata?.billingPeriod ?? '12m');
+        const billingMonths = billingPeriod === '6m' ? 6 : 12;
+        const renewPlan = String(session.metadata?.planType ?? 'solo');
+        const currency = session.currency ? session.currency.toUpperCase() : 'EUR';
+
+        console.log(`[stripe-webhook] 🔄 Plan renew — slug=${salonSlug} plan=${renewPlan} period=${billingPeriod}`);
+
+        const salons = await sql`SELECT id FROM salons WHERE slug = ${salonSlug} LIMIT 1`;
+        if (salons.length === 0) {
+          console.warn(`[stripe-webhook] ⚠ Plan renew — salon not found slug=${salonSlug}`);
+          await unmarkEvent(event.id);
+          return NextResponse.json({ error: 'Salon not found' }, { status: 503 });
+        }
+        const salonId = String((salons[0] as Record<string, unknown>).id ?? '');
+
+        await sql`
+          UPDATE salons
+          SET
+            plan = ${renewPlan},
+            plan_type = ${renewPlan},
+            billing_period = ${billingPeriod},
+            plan_started_at = now(),
+            plan_expires_at = GREATEST(COALESCE(plan_expires_at, now()), now()) + (${String(billingMonths)} || ' months')::interval,
+            plan_paid_amount = ${session.amount_total ?? null},
+            plan_paid_currency = ${currency},
+            stripe_session_id = ${session.id},
+            stripe_customer_id = ${(session.customer as string) ?? null},
+            is_active = true,
+            pending_plan = null,
+            pending_plan_type = null,
+            pending_billing_period = null,
+            updated_at = now()
+          WHERE slug = ${salonSlug}
+        `;
+
+        await sql`
+          INSERT INTO salon_plan_payments (salon_id, stripe_session_id, flow, plan, billing_period, amount_cents, currency)
+          VALUES (${salonId}, ${session.id}, 'plan_renew', ${renewPlan}, ${billingPeriod}, ${session.amount_total ?? 0}, ${currency})
+          ON CONFLICT (stripe_session_id) DO NOTHING
+        `.catch(() => {});
+
+        console.log(`[stripe-webhook] ✅ Plan renewed — slug=${salonSlug} plan=${renewPlan} stacked by ${billingMonths}m`);
+      } catch (err) {
+        console.error('[stripe-webhook] Plan renew failed:', err);
+        Sentry.captureException(err, { extra: { eventId: event.id, salonSlug } });
+        alertOwnerWebhookFailure({ label: 'Plan renew failed', eventId: event.id, detail: `slug=${salonSlug}`, amountCents: session.amount_total ?? 0 });
+        await unmarkEvent(event.id);
+        return NextResponse.json({ error: 'Plan renew failed' }, { status: 500 });
+      }
+      return NextResponse.json({ received: true });
+    }
+
+    // ── Plan upgrade (Solo → Team) ────────────────────────────────────────────
+    if (flow === 'plan_upgrade' && salonSlug && session.payment_status === 'paid') {
+      try {
+        const billingPeriod = String(session.metadata?.billingPeriod ?? '12m');
+        const billingMonths = billingPeriod === '6m' ? 6 : 12;
+        const currency = session.currency ? session.currency.toUpperCase() : 'EUR';
+
+        console.log(`[stripe-webhook] ⬆ Plan upgrade — slug=${salonSlug} billingPeriod=${billingPeriod}`);
+
+        const salons = await sql`SELECT id FROM salons WHERE slug = ${salonSlug} LIMIT 1`;
+        if (salons.length === 0) {
+          console.warn(`[stripe-webhook] ⚠ Plan upgrade — salon not found slug=${salonSlug}`);
+          await unmarkEvent(event.id);
+          return NextResponse.json({ error: 'Salon not found' }, { status: 503 });
+        }
+        const salonId = String((salons[0] as Record<string, unknown>).id ?? '');
+
+        await sql`
+          UPDATE salons
+          SET
+            plan = 'team',
+            plan_type = 'team',
+            billing_period = ${billingPeriod},
+            plan_started_at = now(),
+            plan_expires_at = now() + (${String(billingMonths)} || ' months')::interval,
+            plan_paid_amount = ${session.amount_total ?? null},
+            plan_paid_currency = ${currency},
+            stripe_session_id = ${session.id},
+            stripe_customer_id = ${(session.customer as string) ?? null},
+            pending_plan = null,
+            pending_plan_type = null,
+            pending_billing_period = null,
+            updated_at = now()
+          WHERE slug = ${salonSlug}
+        `;
+
+        await sql`
+          INSERT INTO salon_plan_payments (salon_id, stripe_session_id, flow, plan, billing_period, amount_cents, currency)
+          VALUES (${salonId}, ${session.id}, 'plan_upgrade', 'team', ${billingPeriod}, ${session.amount_total ?? 0}, ${currency})
+          ON CONFLICT (stripe_session_id) DO NOTHING
+        `.catch(() => {});
+
+        console.log(`[stripe-webhook] ✅ Plan upgraded to team — slug=${salonSlug}`);
+      } catch (err) {
+        console.error('[stripe-webhook] Plan upgrade failed:', err);
+        Sentry.captureException(err, { extra: { eventId: event.id, salonSlug } });
+        alertOwnerWebhookFailure({ label: 'Plan upgrade failed', eventId: event.id, detail: `slug=${salonSlug}`, amountCents: session.amount_total ?? 0 });
+        await unmarkEvent(event.id);
+        return NextResponse.json({ error: 'Plan upgrade failed' }, { status: 500 });
+      }
+      return NextResponse.json({ received: true });
+    }
+
     // ── Salon plan activation ─────────────────────────────────────────────────
     try {
       console.log(`[stripe-webhook] 🌐 Ensuring platform subdomain for slug=${salonSlug}`);
@@ -295,6 +403,19 @@ export async function POST(request: NextRequest) {
         await unmarkEvent(event.id);
         return NextResponse.json({ error: 'Salon not yet created' }, { status: 503 });
       }
+
+      // Record new purchase in payment history (non-critical)
+      await sql`
+        SELECT id FROM salons WHERE slug = ${salonSlug} LIMIT 1
+      `.then(async (rows) => {
+        if (rows.length === 0) return;
+        const sid = String((rows[0] as Record<string, unknown>).id ?? '');
+        await sql`
+          INSERT INTO salon_plan_payments (salon_id, stripe_session_id, flow, plan, billing_period, amount_cents, currency)
+          VALUES (${sid}, ${session.id}, 'new_purchase', ${canonicalPlan ?? 'solo'}, ${billingPeriod}, ${session.amount_total ?? 0}, ${session.currency ? session.currency.toUpperCase() : 'EUR'})
+          ON CONFLICT (stripe_session_id) DO NOTHING
+        `;
+      }).catch(() => {});
 
       console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
       console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);

@@ -234,13 +234,33 @@ export function SiteTabPanel({
 
       {section === 'address' ? (
         <>
-          <SlugEditor
-            currentSlug={currentSlug}
-            rootDomain={rootDomain}
-            inp={inp}
-            onSaved={onSlugSaved}
-          />
-          {onNavigateToDomain && (
+          {!site.customDomain && (
+            <SlugEditor
+              currentSlug={currentSlug}
+              rootDomain={rootDomain}
+              inp={inp}
+              onSaved={onSlugSaved}
+            />
+          )}
+          {site.customDomain && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)' }}>
+              <span style={{ fontSize: 18, flexShrink: 0 }}>✓</span>
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#047857' }}>Свързан домейн</p>
+                <p style={{ margin: '2px 0 0', fontSize: 13, color: '#065f46' }}>{site.customDomain}</p>
+              </div>
+              {onNavigateToDomain && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToDomain('connect')}
+                  style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: 12, color: '#047857', fontWeight: 600, cursor: 'pointer', flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                >
+                  Управлявай
+                </button>
+              )}
+            </div>
+          )}
+          {onNavigateToDomain && !site.customDomain && (
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}` }}>
               <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
                 Собствен домейн
@@ -299,6 +319,7 @@ export function SiteTabPanel({
           )}
         </>
       ) : null}
+
 
       {section === 'about' ? (
         <div style={{ display: 'grid', gap: 10 }}>

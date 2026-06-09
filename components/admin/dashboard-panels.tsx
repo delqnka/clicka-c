@@ -127,11 +127,11 @@ function BookingCard({
   return (
     <div
       style={{
-        border: isMobile ? 'none' : `1px solid ${T.border}`,
-        borderRadius: isMobile ? 18 : T.radiusSm,
+        border: 'none',
+        borderRadius: isMobile ? 18 : 14,
         padding: isMobile ? '14px 16px' : '12px 14px',
-        background: T.surface,
-        boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+        background: '#fff',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.07)',
       }}
     >
       <div style={{ minWidth: 0 }}>
@@ -346,9 +346,9 @@ export function BookingsPanel({
             <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
               {externalCalendarEvents.map((ev) => (
                 <div key={ev.id} style={{
-                  border: isMobile ? 'none' : `1px solid #FDE68A`, borderRadius: isMobile ? 18 : T.radiusSm,
+                  border: 'none', borderRadius: isMobile ? 18 : 14,
                   padding: isMobile ? '16px 18px' : '14px 16px', background: '#FFFBEB',
-                  boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.07)',
                 }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -372,7 +372,7 @@ export function BookingsPanel({
             if (rows.length === 0) return null;
             return (
               <div key={groupKey} style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
-                <p style={{ margin: '2px 2px 0', fontSize: 12, fontWeight: 700, color: T.subtle, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <p style={{ margin: '2px 2px 0', fontSize: 13, fontWeight: 700, color: '#111' }}>
                   {groupLabel}
                 </p>
                 {rows.map((b) => (
@@ -416,11 +416,11 @@ export function ClientsPanel({
         <div
           key={client.key}
           style={{
-            border: isMobile ? 'none' : `1px solid ${T.border}`,
-            borderRadius: isMobile ? 18 : T.radiusSm,
+            border: 'none',
+            borderRadius: isMobile ? 18 : 14,
             padding: isMobile ? '16px 18px' : '14px 16px',
-            background: T.surface,
-            boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
+            background: '#fff',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.07)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>

@@ -2876,9 +2876,6 @@ export default function AdminDashboardClient({
 
             const planLabel = site.plan === 'team' ? 'TEAM' : 'SOLO';
             const periodLabel = site.billingPeriod === '6m' ? '6 месеца' : '12 месеца';
-            const renewKey: string = `${site.plan}_${site.billingPeriod ?? '12m'}`;
-            const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
-            const renewUrl = `${appUrl}/create?plan=${encodeURIComponent(renewKey)}`;
 
             return (
               <div
@@ -2910,27 +2907,29 @@ export default function AdminDashboardClient({
                     </p>
                   </div>
                 </div>
-                <a
-                  href={renewUrl}
+                <button
+                  type="button"
+                  onClick={() => switchTab('payments')}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                     padding: '8px 16px',
                     borderRadius: 999,
+                    border: 'none',
                     background: expired
                       ? 'linear-gradient(135deg, #ef4444, #dc2626)'
                       : 'linear-gradient(135deg, #f59e0b, #d97706)',
                     color: '#fff',
                     fontSize: 13,
                     fontWeight: 700,
-                    textDecoration: 'none',
+                    cursor: 'pointer',
                     whiteSpace: 'nowrap',
                   }}
                 >
                   <RefreshCw size={14} />
                   Поднови абонамента
-                </a>
+                </button>
               </div>
             );
           })()}
@@ -3516,7 +3515,7 @@ export default function AdminDashboardClient({
           ) : null}
 
           {activeTab === 'payments' ? (
-            <LazyPaymentsTabPanel slug={slug} btn={btn} site={site} />
+            <LazyPaymentsTabPanel slug={slug} btn={btn} site={site} onPlanChanged={() => window.location.reload()} />
           ) : null}
 
           {activeTab === 'integrations' ? (
