@@ -16,10 +16,12 @@ const CookieConsentBanner = dynamic(
 );
 
 const NO_FOOTER_PATHS = ['/create', '/success'];
+const NO_CHAT_PATHS = ['/privacy', '/terms', '/cookies'];
 
 export function MarketingLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const showFooter = !NO_FOOTER_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const showChat = !NO_CHAT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const [secondaryReady, setSecondaryReady] = useState(false);
   const [pastHero, setPastHero] = useState(false);
 
@@ -46,7 +48,7 @@ export function MarketingLayoutClient({ children }: { children: React.ReactNode 
     <>
       {children}
       {showFooter && <SiteFooter />}
-      {secondaryReady && pastHero && <ChatWidget mobileBottomOffset={showFooter ? 110 : 0} />}
+      {secondaryReady && pastHero && showChat && <ChatWidget mobileBottomOffset={showFooter ? 110 : 0} />}
       {secondaryReady && <CookieConsentBanner description="Използваме бисквитки за анализ и маркетинг, за да подобрим сайта." />}
     </>
   );
