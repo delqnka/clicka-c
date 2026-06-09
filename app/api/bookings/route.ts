@@ -132,34 +132,59 @@ export async function GET(request: NextRequest) {
   const status = requestSearchParams.get('status') as BookingStatus | null;
   const limitRaw = requestSearchParams.get('limit');
   const limit = Math.min(Math.max(Number(limitRaw ?? '50') || 50, 1), 200);
+  const before = requestSearchParams.get('before'); // cursor: YYYY-MM-DD
 
   if (status && !['pending', 'confirmed', 'cancelled'].includes(status)) {
     return NextResponse.json({ error: 'Невалиден статус' }, { status: 400 });
   }
 
-  const rows = status
-    ? await sql`
-        SELECT
-          id, client_name, client_phone, client_email,
-          service_name, service_price, service_duration,
-          date, time, status, notes, created_at
-        FROM bookings
-        WHERE salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')} AND status = ${status}
-        ORDER BY date DESC, time DESC
-        LIMIT ${limit}
-      `
-    : await sql`
-        SELECT
-          id, client_name, client_phone, client_email,
-          service_name, service_price, service_duration,
-          date, time, status, notes, created_at
-        FROM bookings
-        WHERE salon_id = ${String((resolved.salon as Record<string, unknown>).salon_id ?? '')}
-        ORDER BY date DESC, time DESC
-        LIMIT ${limit}
-      `;
+  const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
 
-  return NextResponse.json({ bookings: rows });
+  const rows = status
+    ? before
+      ? await sql`
+          SELECT id, client_name, client_phone, client_email,
+            service_name, service_price, service_duration,
+            date, time, status, notes, created_at
+          FROM bookings
+          WHERE salon_id = ${salonId} AND status = ${status} AND date < ${before}
+          ORDER BY date DESC, time DESC
+          LIMIT ${limit}
+        `
+      : await sql`
+          SELECT id, client_name, client_phone, client_email,
+            service_name, service_price, service_duration,
+            date, time, status, notes, created_at
+          FROM bookings
+          WHERE salon_id = ${salonId} AND status = ${status}
+          ORDER BY date DESC, time DESC
+          LIMIT ${limit}
+        `
+    : before
+      ? await sql`
+          SELECT id, client_name, client_phone, client_email,
+            service_name, service_price, service_duration,
+            date, time, status, notes, created_at
+          FROM bookings
+          WHERE salon_id = ${salonId} AND date < ${before}
+          ORDER BY date DESC, time DESC
+          LIMIT ${limit}
+        `
+      : await sql`
+          SELECT id, client_name, client_phone, client_email,
+            service_name, service_price, service_duration,
+            date, time, status, notes, created_at
+          FROM bookings
+          WHERE salon_id = ${salonId}
+          ORDER BY date DESC, time DESC
+          LIMIT ${limit}
+        `;
+
+  const nextCursor = rows.length === limit
+    ? String((rows[rows.length - 1] as Record<string, unknown>).date ?? '')
+    : null;
+
+  return NextResponse.json({ bookings: rows, nextCursor });
 }
 
 export async function POST(request: NextRequest) {
@@ -402,6 +427,7 @@ export async function POST(request: NextRequest) {
     date,
     time,
     notes: normalizedNotes || undefined,
+    bookingStatus: bookingStatus as 'pending' | 'confirmed',
     salonName: resolved.salon.name,
     salonOwnerName: resolved.salon.owner_name ? String(resolved.salon.owner_name) : undefined,
     salonEmail: resolved.salon.email || undefined,

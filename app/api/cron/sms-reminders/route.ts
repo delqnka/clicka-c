@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { processDueSmsReminders } from '@/lib/sms-reminders';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     console.error('[cron/sms-reminders]', error);
+    Sentry.captureException(error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Cron failed' },
       { status: 500 },

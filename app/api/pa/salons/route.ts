@@ -23,21 +23,11 @@ export async function GET(request: NextRequest) {
       s.created_at,
       s.updated_at,
       o.email AS owner_email,
-      COALESCE(b.booking_count, 0) AS booking_count,
-      COALESCE(sms.sms_credits, 0) AS sms_credits
+      (SELECT COUNT(*) FROM bookings WHERE salon_id = CAST(s.id AS text)) AS booking_count,
+      COALESCE(s.sms_balance, 0) AS sms_credits
     FROM salons s
     LEFT JOIN salon_owner_memberships m ON m.salon_id = CAST(s.id AS text)
     LEFT JOIN site_owners o ON o.id = m.owner_id
-    LEFT JOIN (
-      SELECT salon_id, COUNT(*) AS booking_count
-      FROM bookings
-      GROUP BY salon_id
-    ) b ON CAST(b.salon_id AS text) = CAST(s.id AS text)
-    LEFT JOIN (
-      SELECT salon_id, SUM(credits) AS sms_credits
-      FROM sms_credits
-      GROUP BY salon_id
-    ) sms ON CAST(sms.salon_id AS text) = CAST(s.id AS text)
     ORDER BY s.created_at DESC
   `;
 

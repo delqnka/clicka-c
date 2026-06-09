@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
+import * as Sentry from '@sentry/nextjs';
 import { sql } from '@/lib/db';
 import { ensureDomainPurchaseSchema, formatDomainPurchaseStatus, type DomainPurchaseStatus } from '@/lib/domain-purchase';
 import { syncDomainWithVercel } from '@/lib/vercel-domains';
@@ -182,6 +183,7 @@ async function handleDomainPurchase(requestId: string, salonSlug: string) {
   const row = await loadRow(requestId);
   if (!row) {
     console.error('[domain-webhook] request not found', requestId);
+    Sentry.captureException(new Error(`Domain purchase request not found — id=${requestId}`), { extra: { requestId, salonSlug } });
     return;
   }
 
@@ -199,9 +201,10 @@ async function handleDomainPurchase(requestId: string, salonSlug: string) {
   `;
 
   // Add domain to Vercel so DNS instructions are immediately visible to admin
-  await connectDomainToSalon(salonSlug, row.full_domain).catch(err =>
-    console.error('[domain-webhook] vercel sync failed', err)
-  );
+  await connectDomainToSalon(salonSlug, row.full_domain).catch(err => {
+    console.error('[domain-webhook] vercel sync failed', err);
+    Sentry.captureException(err, { extra: { requestId, salonSlug, domain: row.full_domain } });
+  });
 
   // Notify admin via email and Telegram
   await sendAdminNotification({ ...row, status: 'processing' });

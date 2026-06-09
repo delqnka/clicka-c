@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { sql } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 import { getStaffMemberById } from '@/lib/staff-members';
+import { alertOwnerWebhookFailure } from '@/lib/webhook-alert';
 
 export const runtime = 'nodejs';
+
+async function markEventProcessed(eventId: string): Promise<boolean> {
+  const rows = await sql`
+    INSERT INTO stripe_processed_events (event_id)
+    VALUES (${eventId})
+    ON CONFLICT (event_id) DO NOTHING
+    RETURNING event_id
+  `;
+  return rows.length > 0;
+}
+
+async function unmarkEvent(eventId: string): Promise<void> {
+  await sql`DELETE FROM stripe_processed_events WHERE event_id = ${eventId}`.catch(() => {});
+}
 
 // Must use raw body for Stripe signature verification
 export async function POST(request: NextRequest) {
@@ -24,6 +40,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  // Idempotency — skip duplicate events (Stripe retries on non-2xx or timeout)
+  const isNew = await markEventProcessed(event.id);
+  if (!isNew) {
+    console.log(`[stripe-connect webhook] ⏭ Duplicate event skipped — id=${event.id}`);
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type === 'account.updated') {
     const account = event.data.object as {
       id: string;
@@ -31,14 +54,22 @@ export async function POST(request: NextRequest) {
       payouts_enabled: boolean;
       details_submitted: boolean;
     };
-    await sql`
-      UPDATE salons SET
-        stripe_charges_enabled   = ${account.charges_enabled},
-        stripe_payouts_enabled   = ${account.payouts_enabled},
-        stripe_details_submitted = ${account.details_submitted},
-        stripe_onboarding_complete = ${account.charges_enabled && account.details_submitted}
-      WHERE stripe_account_id = ${account.id}
-    `;
+    try {
+      await sql`
+        UPDATE salons SET
+          stripe_charges_enabled   = ${account.charges_enabled},
+          stripe_payouts_enabled   = ${account.payouts_enabled},
+          stripe_details_submitted = ${account.details_submitted},
+          stripe_onboarding_complete = ${account.charges_enabled && account.details_submitted}
+        WHERE stripe_account_id = ${account.id}
+      `;
+    } catch (err) {
+      console.error('[stripe-connect webhook] account.updated DB update failed:', err);
+      Sentry.captureException(err, { extra: { eventId: event.id, accountId: account.id } });
+      alertOwnerWebhookFailure({ label: 'Connect account.updated DB failed', eventId: event.id, detail: `accountId=${account.id}` });
+      await unmarkEvent(event.id);
+      return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
+    }
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -56,20 +87,37 @@ export async function POST(request: NextRequest) {
         session = { ...session, metadata: full.metadata ?? {}, amount_total: full.amount_total };
       } catch (err) {
         console.error('[stripe-connect webhook] failed to fetch full session', err);
+        Sentry.captureException(err, { extra: { sessionId: session.id } });
       }
     }
 
     if (session.payment_status === 'paid') {
       const bookingId = session.metadata?.bookingId;
       if (bookingId) {
-        await sql`
-          UPDATE bookings SET
-            status         = 'confirmed',
-            payment_status = 'paid',
-            amount_paid    = ${session.amount_total ?? 0}
-          WHERE id = ${bookingId}
-            AND payment_status != 'paid'
-        `;
+        let updated: { id: string }[] = [];
+        try {
+          updated = await sql`
+            UPDATE bookings SET
+              status         = 'confirmed',
+              payment_status = 'paid',
+              amount_paid    = ${session.amount_total ?? 0}
+            WHERE id = ${bookingId}
+              AND payment_status != 'paid'
+            RETURNING id
+          ` as unknown as { id: string }[];
+        } catch (err) {
+          console.error('[stripe-connect webhook] booking update failed:', err);
+          Sentry.captureException(err, { extra: { eventId: event.id, bookingId } });
+          alertOwnerWebhookFailure({ label: 'Connect booking payment update failed', eventId: event.id, detail: `bookingId=${bookingId}`, amountCents: session.amount_total ?? 0 });
+          await unmarkEvent(event.id);
+          return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
+        }
+
+        // Only send notifications if the row was actually updated (avoid double-notify on retry)
+        if (updated.length === 0) {
+          console.log(`[stripe-connect webhook] booking already paid, skipping notifications — id=${bookingId}`);
+          return NextResponse.json({ received: true });
+        }
 
         // Load booking + salon for notifications
         const rows = await sql`
@@ -102,6 +150,7 @@ export async function POST(request: NextRequest) {
             date: String(row.date ?? ''),
             time: String(row.time ?? ''),
             notes: row.notes ? String(row.notes) : undefined,
+            bookingStatus: 'confirmed' as const,
             salonName: String(row.salon_name ?? ''),
             salonOwnerName: row.salon_owner_name ? String(row.salon_owner_name) : undefined,
             salonEmail: row.salon_email ? String(row.salon_email) : undefined,
@@ -146,7 +195,10 @@ export async function POST(request: NextRequest) {
           payment_status = 'failed'
         WHERE id = ${bookingId}
           AND payment_status = 'pending'
-      `;
+      `.catch((err) => {
+        console.error('[stripe-connect webhook] session.expired update failed:', err);
+        Sentry.captureException(err, { extra: { eventId: event.id, bookingId } });
+      });
     }
   }
 

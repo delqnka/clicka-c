@@ -101,6 +101,7 @@ export interface BookingDetails {
   salonAddress?: string;
   amountPaid?: number | null;
   paymentType?: string | null;
+  bookingStatus?: 'pending' | 'confirmed';
 }
 
 function escapeHtml(value: string) {
@@ -425,7 +426,7 @@ export async function sendBookingConfirmation(
     service_duration: booking.serviceDuration,
     date: booking.date,
     time: booking.time,
-    status: 'pending',
+    status: booking.bookingStatus ?? 'confirmed',
     notes: booking.notes,
   };
   const { googleUrl, icsContent } = buildBookingCalendarLinks(
@@ -455,7 +456,9 @@ export async function sendBookingConfirmation(
     from: senderFromSalonName(booking.salonName),
     to: clientEmail,
     reply_to: booking.salonEmail || undefined,
-    subject: `Резервация в ${booking.salonName} – ${formattedDate} ${booking.time}`,
+    subject: (booking.bookingStatus ?? 'confirmed') === 'confirmed'
+      ? `✅ Резервацията ви в ${booking.salonName} е потвърдена`
+      : `Заявка за резервация в ${booking.salonName} – ${formattedDate} ${booking.time}`,
     attachments: [
       {
         filename: 'reservacia-clicka.ics',
@@ -464,10 +467,13 @@ export async function sendBookingConfirmation(
     ],
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="margin: 0 0 16px; color: #000;">Получихме вашата резервация</h2>
+        <h2 style="margin: 0 0 16px; color: #000;">${(booking.bookingStatus ?? 'confirmed') === 'confirmed' ? `✅ Резервацията ви в ${escapeHtml(booking.salonName)} е потвърдена` : 'Получихме вашата заявка'}</h2>
         <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(booking.clientName)}</strong>!</p>
         <p style="line-height: 1.7;">
-          Получихме вашата заявка за <strong>${escapeHtml(booking.salonName)}</strong>.
+          ${(booking.bookingStatus ?? 'confirmed') === 'confirmed'
+            ? `Вашият час на <strong>${formattedDate} в ${escapeHtml(booking.time)}</strong> е записан и потвърден.`
+            : `Получихме вашата заявка за <strong>${escapeHtml(booking.salonName)}</strong>. Ще получите потвърждение от салона.`
+          }
         </p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
           ${clientRows}

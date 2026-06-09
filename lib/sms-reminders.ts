@@ -169,63 +169,63 @@ export async function processDueSmsReminders(limit = 40): Promise<{ processed: n
     LIMIT ${limit}
   `;
 
-  let sent = 0;
+  // Pre-classify reminders to batch skip UPDATEs
+  const skipDisabled: string[] = [];
+  const skipCancelled: string[] = [];
+  const skipNoBalance: { id: string; salonId: string; bookingId: string; phone: string; kind: string }[] = [];
+  const skipNoPhone: string[] = [];
+  const toSend: typeof due = [];
 
   for (const row of due as Record<string, unknown>[]) {
     const reminderId = String(row.reminder_id);
-    const salonId = String(row.salon_id);
-    const bookingId = String(row.booking_id);
-    const bookingStatus = String(row.booking_status ?? '');
     const enabled = row.sms_enabled === true;
     const mode = normalizeSmsReminderMode(row.sms_reminder_mode);
     const balance = Number(row.sms_balance ?? 0);
-
-    if (!enabled || mode === 'off') {
-      await sql`
-        UPDATE booking_sms_reminders
-        SET status = 'skipped_disabled', error_message = 'SMS известията са изключени'
-        WHERE id = ${reminderId}::uuid
-      `;
-      continue;
-    }
-
-    if (!['pending', 'confirmed'].includes(bookingStatus)) {
-      await sql`
-        UPDATE booking_sms_reminders
-        SET status = 'cancelled', error_message = 'Резервацията не е активна'
-        WHERE id = ${reminderId}::uuid
-      `;
-      continue;
-    }
-
-    if (balance <= 0) {
-      await sql`
-        UPDATE booking_sms_reminders
-        SET status = 'skipped_no_balance', error_message = 'Няма налични SMS кредити'
-        WHERE id = ${reminderId}::uuid
-      `;
-      await logSmsTransaction({
-        salonId,
-        kind: 'skip',
-        delta: 0,
-        balanceAfter: 0,
-        bookingId,
-        reminderId,
-        clientPhone: String(row.client_phone ?? ''),
-        note: `Пропуснато (${row.kind}) — 0 баланс`,
-      });
-      continue;
-    }
-
+    const bookingStatus = String(row.booking_status ?? '');
     const phone = String(row.client_phone ?? '').trim();
-    if (!phone) {
-      await sql`
-        UPDATE booking_sms_reminders
-        SET status = 'failed', error_message = 'Липсва телефон'
-        WHERE id = ${reminderId}::uuid
-      `;
-      continue;
-    }
+
+    if (!enabled || mode === 'off') { skipDisabled.push(reminderId); continue; }
+    if (!['pending', 'confirmed'].includes(bookingStatus)) { skipCancelled.push(reminderId); continue; }
+    if (balance <= 0) { skipNoBalance.push({ id: reminderId, salonId: String(row.salon_id), bookingId: String(row.booking_id), phone, kind: String(row.kind) }); continue; }
+    if (!phone) { skipNoPhone.push(reminderId); continue; }
+    toSend.push(row);
+  }
+
+  // Batch UPDATEs for all skip categories
+  await Promise.all([
+    skipDisabled.length > 0 && sql`
+      UPDATE booking_sms_reminders
+      SET status = 'skipped_disabled', error_message = 'SMS известията са изключени'
+      WHERE id = ANY(${skipDisabled}::uuid[])
+    `,
+    skipCancelled.length > 0 && sql`
+      UPDATE booking_sms_reminders
+      SET status = 'cancelled', error_message = 'Резервацията не е активна'
+      WHERE id = ANY(${skipCancelled}::uuid[])
+    `,
+    skipNoPhone.length > 0 && sql`
+      UPDATE booking_sms_reminders
+      SET status = 'failed', error_message = 'Липсва телефон'
+      WHERE id = ANY(${skipNoPhone}::uuid[])
+    `,
+  ].filter(Boolean));
+
+  for (const { id, salonId, bookingId, phone, kind } of skipNoBalance) {
+    await sql`
+      UPDATE booking_sms_reminders
+      SET status = 'skipped_no_balance', error_message = 'Няма налични SMS кредити'
+      WHERE id = ${id}::uuid
+    `;
+    await logSmsTransaction({ salonId, kind: 'skip', delta: 0, balanceAfter: 0, bookingId, reminderId: id, clientPhone: phone, note: `Пропуснато (${kind}) — 0 баланс` });
+  }
+
+  let sent = 0;
+
+  for (const row of toSend as Record<string, unknown>[]) {
+    const reminderId = String(row.reminder_id);
+    const salonId = String(row.salon_id);
+    const bookingId = String(row.booking_id);
+    const phone = String(row.client_phone ?? '').trim();
 
     const result = await sendSmsReminder(
       phone,

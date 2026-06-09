@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import * as Sentry from '@sentry/nextjs';
 import { sql } from '@/lib/db';
 import { ensureDomainPurchaseSchema, isDomainPurchaseDelayed } from '@/lib/domain-purchase';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -108,6 +109,7 @@ export async function GET(request: NextRequest) {
       }
     } catch (err) {
       console.error(`[domain-purchase-delay-notice] Failed for domain_purchase_request id=${row.id}:`, err);
+      Sentry.captureException(err, { extra: { requestId: row.id, domain: row.full_domain } });
     }
   }
 
@@ -161,6 +163,7 @@ export async function GET(request: NextRequest) {
       reviewsSent++;
     } catch (err) {
       console.error('[review-cron] send failed', r.booking_id, err);
+      Sentry.captureException(err, { extra: { bookingId: r.booking_id, email: r.client_email } });
     }
   }
 

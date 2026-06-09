@@ -46,13 +46,13 @@ function bookingWindow(booking: CalendarBookingRow): { start: Date; end: Date } 
   return { start, end };
 }
 
-export function bookingDescription(booking: CalendarBookingRow): string {
+export function bookingDescription(booking: CalendarBookingRow, salonName?: string): string {
   const lines = [
     `Клиент: ${booking.client_name}`,
     booking.client_phone ? `Телефон: ${booking.client_phone}` : '',
     booking.client_email ? `Имейл: ${booking.client_email}` : '',
     booking.notes ? `Бележка: ${booking.notes}` : '',
-    'Резервация от Clicka.bg',
+    salonName ? `Резервирано в ${salonName}` : '',
   ].filter(Boolean);
   return lines.join('\n');
 }
@@ -75,9 +75,9 @@ export function buildBookingIcsEvent(booking: CalendarBookingRow, salonName: str
     `DTSTART;TZID=${SOFIA_TZ}:${formatIcsLocal(start)}`,
     `DTEND;TZID=${SOFIA_TZ}:${formatIcsLocal(end)}`,
     `SUMMARY:${escapeIcsText(`${booking.client_name} – ${booking.service_name}`)}`,
-    `DESCRIPTION:${escapeIcsText(`${statusLabel}\n${bookingDescription(booking)}`)}`,
+    `DESCRIPTION:${escapeIcsText(`${statusLabel}\n${bookingDescription(booking, salonName)}`)}`,
     `LOCATION:${escapeIcsText(salonName)}`,
-    'STATUS:CONFIRMED',
+    booking.status === 'pending' ? 'STATUS:TENTATIVE' : 'STATUS:CONFIRMED',
     'END:VEVENT',
   ].join('\r\n');
 }
@@ -153,7 +153,7 @@ export function buildBookingCalendarLinks(
     title,
     start,
     end,
-    details: bookingDescription(booking),
+    details: bookingDescription(booking, salonName),
     location: salonAddress,
   });
   const icsContent = buildSalonCalendarFeed(salonName, [booking]);
