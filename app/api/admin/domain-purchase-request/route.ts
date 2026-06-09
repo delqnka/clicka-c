@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { sql } from '@/lib/db';
-import { getOriginForHost, ROOT_DOMAIN } from '@/lib/domain-routing';
 import {
   buildRequestedDomain,
   DOMAIN_PURCHASE_CURRENCY,
@@ -272,7 +271,8 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const successBase = getOriginForHost(`${auth.salon.slug}.${ROOT_DOMAIN}`);
+  // Return to the same host the user started from (subdomain/custom domain use /admin, not /{slug}/admin).
+  const adminUrl = `${request.nextUrl.origin}/admin`;
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     currency: pricing.currency,
@@ -296,8 +296,8 @@ export async function POST(request: NextRequest) {
       fullDomain,
     },
     customer_email: registrantEmail,
-    success_url: `${successBase}/${auth.salon.slug}/admin?tab=domain&domainPurchase=success`,
-    cancel_url: `${successBase}/${auth.salon.slug}/admin?tab=domain&domainPurchase=cancelled`,
+    success_url: `${adminUrl}?tab=domain&domainPurchase=success`,
+    cancel_url: `${adminUrl}?tab=domain&domainPurchase=cancelled`,
   });
 
   await sql`
