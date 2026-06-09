@@ -1,8 +1,25 @@
 'use client';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function BookingSuccessPage() {
+  return (
+    <Suspense fallback={<BookingSuccessFallback />}>
+      <BookingSuccessContent />
+    </Suspense>
+  );
+}
+
+function BookingSuccessFallback() {
+  return (
+    <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+      Зареждане...
+    </div>
+  );
+}
+
+function BookingSuccessContent() {
   const params = useSearchParams();
   const returnUrl = params.get('return') ?? '/';
 

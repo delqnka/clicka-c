@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 type CancelPolicy = {
@@ -51,6 +51,30 @@ function statusColor(status: string): string {
 }
 
 export default function ManageBookingPage() {
+  return (
+    <Suspense fallback={<ManageBookingFallback />}>
+      <ManageBookingContent />
+    </Suspense>
+  );
+}
+
+function ManageBookingFallback() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 20,
+      background: '#FAFAFA',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+    }}>
+      <p style={{ textAlign: 'center', color: '#666' }}>Зареждане...</p>
+    </div>
+  );
+}
+
+function ManageBookingContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id') ?? '';
   const token = searchParams.get('token') ?? '';

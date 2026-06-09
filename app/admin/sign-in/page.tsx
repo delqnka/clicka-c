@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 function blockCyrillic(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -12,6 +12,22 @@ function stripCyrillic(value: string) {
 }
 
 export default function AdminSignInPage() {
+  return (
+    <Suspense fallback={<AdminSignInFallback />}>
+      <AdminSignInContent />
+    </Suspense>
+  );
+}
+
+function AdminSignInFallback() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+      Зареждане...
+    </div>
+  );
+}
+
+function AdminSignInContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -1,9 +1,25 @@
 'use client';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { XCircle } from 'lucide-react';
 
 export default function BookingCancelPage() {
+  return (
+    <Suspense fallback={<BookingCancelFallback />}>
+      <BookingCancelContent />
+    </Suspense>
+  );
+}
+
+function BookingCancelFallback() {
+  return (
+    <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+      Зареждане...
+    </div>
+  );
+}
+
+function BookingCancelContent() {
   const params = useSearchParams();
   const returnUrl = params.get('return') ?? '/';
   useEffect(() => {

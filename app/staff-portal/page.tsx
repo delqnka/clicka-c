@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type CSSProperties, type ChangeEvent } from 'react';
+import { Suspense, useCallback, useEffect, useState, type CSSProperties, type ChangeEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 type ServiceOption = { id?: string; name: string; price: number; durationMin: number };
@@ -58,6 +58,22 @@ const inputStyle: CSSProperties = {
 };
 
 export default function StaffPortalPage() {
+  return (
+    <Suspense fallback={<StaffPortalFallback />}>
+      <StaffPortalContent />
+    </Suspense>
+  );
+}
+
+function StaffPortalFallback() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+      Зареждане...
+    </div>
+  );
+}
+
+function StaffPortalContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
