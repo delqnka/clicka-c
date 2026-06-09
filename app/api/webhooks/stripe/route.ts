@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`[stripe-webhook] 💾 Updating salon — slug=${salonSlug} plan=${canonicalPlan} billingPeriod=${billingPeriod} billingMonths=${billingMonths}`);
 
-      await sql`
+      const updated = await sql`
         UPDATE salons
         SET
           is_active = true,
@@ -285,7 +285,16 @@ export async function POST(request: NextRequest) {
           stripe_session_id = ${session.id},
           stripe_customer_id = ${(session.customer as string) ?? null}
         WHERE slug = ${salonSlug}
+        RETURNING slug
       `;
+
+      if (updated.length === 0) {
+        // Salon not yet created — /success page hasn't run yet (race condition).
+        // Unmark so Stripe retries in a few seconds by which time the salon will exist.
+        console.warn(`[stripe-webhook] ⚠ Salon not found for slug=${salonSlug} — signalling retry`);
+        await unmarkEvent(event.id);
+        return NextResponse.json({ error: 'Salon not yet created' }, { status: 503 });
+      }
 
       console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
       console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);

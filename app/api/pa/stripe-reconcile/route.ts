@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     if (!subFound.has(s.id)) {
       issues.push({
         sessionId: s.id,
-        flow: `subscription (${s.metadata?.salonSlug ?? '?'})`,
+        flow: `plan (${s.metadata?.salonSlug ?? '?'})`,
         amountTotal: s.amount_total ?? 0,
         currency: s.currency ?? 'eur',
         createdAt: s.created,
@@ -100,10 +100,49 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // ── DB-level plan consistency checks ────────────────────────────────────────
+
+  const [expiredButActive, paidButInactive, activeNoPlan] = await Promise.all([
+    // Active salons whose plan has expired
+    sql`
+      SELECT CAST(id AS text) AS salon_id, slug, plan_expires_at
+      FROM salons
+      WHERE is_active = true
+        AND plan_expires_at IS NOT NULL
+        AND plan_expires_at < now()
+    ` as unknown as Promise<{ salon_id: string; slug: string; plan_expires_at: string }[]>,
+
+    // Salons that paid (have stripe_session_id) but are still inactive
+    sql`
+      SELECT CAST(id AS text) AS salon_id, slug, stripe_session_id, plan_expires_at
+      FROM salons
+      WHERE is_active = false
+        AND stripe_session_id IS NOT NULL
+        AND stripe_session_id <> ''
+        AND (plan_expires_at IS NULL OR plan_expires_at > now())
+    ` as unknown as Promise<{ salon_id: string; slug: string; stripe_session_id: string; plan_expires_at: string | null }[]>,
+
+    // Active salons with no payment record at all
+    sql`
+      SELECT CAST(id AS text) AS salon_id, slug, created_at
+      FROM salons
+      WHERE is_active = true
+        AND (stripe_customer_id IS NULL OR stripe_customer_id = '')
+        AND (stripe_session_id IS NULL OR stripe_session_id = '')
+    ` as unknown as Promise<{ salon_id: string; slug: string; created_at: string }[]>,
+  ]);
+
   return NextResponse.json({
-    ok: issues.length === 0,
-    checked: paid.length,
-    total: page.data.length,
-    issues,
+    ok: issues.length === 0 && expiredButActive.length === 0 && paidButInactive.length === 0,
+    stripe: {
+      checked: paid.length,
+      total: page.data.length,
+      issues,
+    },
+    db: {
+      expired_but_active: expiredButActive,
+      paid_but_inactive: paidButInactive,
+      active_no_payment: activeNoPlan,
+    },
   });
 }
