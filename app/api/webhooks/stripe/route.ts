@@ -123,21 +123,7 @@ async function sendDomainPurchaseNotification(requestId: string) {
   }
 }
 
-let eventsSchemaReady = false;
-
-async function ensureEventsSchema() {
-  if (eventsSchemaReady) return;
-  await sql`
-    CREATE TABLE IF NOT EXISTS stripe_processed_events (
-      event_id   text        PRIMARY KEY,
-      created_at timestamptz NOT NULL DEFAULT now()
-    )
-  `;
-  eventsSchemaReady = true;
-}
-
 async function markEventProcessed(eventId: string): Promise<boolean> {
-  await ensureEventsSchema();
   const rows = await sql`
     INSERT INTO stripe_processed_events (event_id)
     VALUES (${eventId})

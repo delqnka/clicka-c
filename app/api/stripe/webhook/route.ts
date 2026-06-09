@@ -8,18 +8,7 @@ import { getStaffMemberById } from '@/lib/staff-members';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-let eventsSchemaReady = false;
-
 async function markBookingEventProcessed(eventId: string): Promise<boolean> {
-  if (!eventsSchemaReady) {
-    await sql`
-      CREATE TABLE IF NOT EXISTS stripe_processed_events (
-        event_id   text        PRIMARY KEY,
-        created_at timestamptz NOT NULL DEFAULT now()
-      )
-    `;
-    eventsSchemaReady = true;
-  }
   const rows = await sql`
     INSERT INTO stripe_processed_events (event_id)
     VALUES (${eventId})
