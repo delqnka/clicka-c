@@ -2,6 +2,7 @@
 // For booking deposit payments see /api/stripe/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+import * as Sentry from '@sentry/nextjs';
 import { sql } from '@/lib/db';
 import { Resend } from 'resend';
 import {
@@ -13,6 +14,7 @@ import {
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 import { creditSmsPack } from '@/lib/sms-reminders';
 import { SMS_PACK_CREDITS } from '@/lib/sms-shared';
+import { alertOwnerWebhookFailure } from '@/lib/webhook-alert';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -178,6 +180,8 @@ export async function POST(request: NextRequest) {
           await creditSmsPack({ salonId, credits, stripeSessionId: session.id });
         } catch (err) {
           console.error('[stripe-webhook] SMS pack credit failed:', err);
+          Sentry.captureException(err, { extra: { eventId: event.id, salonId, credits } });
+          alertOwnerWebhookFailure({ label: 'SMS pack credit failed', eventId: event.id, detail: `salonId=${salonId}`, amountCents: session.amount_total ?? 0 });
           await unmarkEvent(event.id);
           return NextResponse.json({ error: 'SMS credit failed' }, { status: 500 });
         }
@@ -201,6 +205,8 @@ export async function POST(request: NextRequest) {
         `;
       } catch (err) {
         console.error('[stripe-webhook] Domain purchase DB update failed:', err);
+        Sentry.captureException(err, { extra: { eventId: event.id, domainPurchaseRequestId } });
+        alertOwnerWebhookFailure({ label: 'Domain purchase DB update failed', eventId: event.id, detail: `requestId=${domainPurchaseRequestId}`, amountCents: session.amount_total ?? 0 });
         await unmarkEvent(event.id);
         return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
       }
@@ -285,6 +291,8 @@ export async function POST(request: NextRequest) {
       console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
     } catch (err) {
       console.error('[stripe-webhook] Salon activation failed:', err);
+      Sentry.captureException(err, { extra: { eventId: event.id, salonSlug, planType } });
+      alertOwnerWebhookFailure({ label: 'Salon activation failed', eventId: event.id, detail: `slug=${salonSlug} plan=${planType}`, amountCents: session.amount_total ?? 0 });
       await unmarkEvent(event.id);
       return NextResponse.json({ error: 'Salon activation failed' }, { status: 500 });
     }

@@ -2,9 +2,11 @@
 // For subscriptions, domains and SMS packs see /api/webhooks/stripe/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import * as Sentry from '@sentry/nextjs';
 import { sql } from '@/lib/db';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 import { getStaffMemberById } from '@/lib/staff-members';
+import { alertOwnerWebhookFailure } from '@/lib/webhook-alert';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -67,11 +69,15 @@ export async function POST(request: NextRequest) {
     `;
     if (updated.length === 0) {
       console.error(`[stripe/webhook] booking not found for update — id=${bookingId}`);
+      Sentry.captureException(new Error(`Booking not found for payment update — id=${bookingId}`), { extra: { eventId: event.id, bookingId } });
+      alertOwnerWebhookFailure({ label: 'Booking not found for payment update', eventId: event.id, detail: `bookingId=${bookingId}` });
       await unmarkBookingEvent(event.id);
       return NextResponse.json({ error: 'Booking not found' }, { status: 500 });
     }
   } catch (err) {
     console.error('[stripe/webhook] update payment_status failed:', err);
+    Sentry.captureException(err, { extra: { eventId: event.id, bookingId } });
+    alertOwnerWebhookFailure({ label: 'Booking payment_status update failed', eventId: event.id, detail: `bookingId=${bookingId}` });
     await unmarkBookingEvent(event.id);
     return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
   }
