@@ -1127,10 +1127,28 @@ export default function AdminDashboardClient({
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
+  const [slugTransition, setSlugTransition] = useState<{ newSlug: string; newHost: string } | null>(null);
+
   function handleSlugSaved(newSlug: string) {
-    // Redirect to the new subdomain admin page
     const newHost = `${newSlug}.${ROOT_DOMAIN}`;
-    window.location.href = `https://${newHost}/admin`;
+    const targetUrl = `https://${newHost}/admin`;
+    setSlugTransition({ newSlug, newHost });
+
+    let attempts = 0;
+    const maxAttempts = 30; // ~30 seconds
+    const poll = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch(targetUrl, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' });
+        clearInterval(poll);
+        window.location.href = targetUrl;
+      } catch {
+        if (attempts >= maxAttempts) {
+          clearInterval(poll);
+          window.location.href = targetUrl;
+        }
+      }
+    }, 1000);
   }
 
   async function saveSiteSettings() {
@@ -2097,6 +2115,34 @@ export default function AdminDashboardClient({
         touchAction: 'manipulation',
       }}
     >
+      {/* ── Slug transition overlay ──────────────────── */}
+      {slugTransition && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          background: '#fff',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 28,
+        }}>
+          <div style={{
+            width: 40, height: 40,
+            border: '3px solid #e5e7eb',
+            borderTopColor: '#18181b',
+            borderRadius: '50%',
+            animation: 'clicka-spin 0.8s linear infinite',
+          }} />
+          <div style={{ textAlign: 'center', maxWidth: 320, padding: '0 24px' }}>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#18181b', lineHeight: 1.4 }}>
+              Обновяваме адреса на сайта ти
+            </p>
+            <p style={{ margin: '8px 0 0', fontSize: 14, color: '#71717a', lineHeight: 1.5 }}>
+              {slugTransition.newSlug}.{ROOT_DOMAIN}
+            </p>
+          </div>
+          <style>{`@keyframes clicka-spin { to { transform: rotate(360deg) } }`}</style>
+        </div>
+      )}
+
       {/* Background grid + gradient */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', willChange: 'transform', contain: 'strict' }}>
         <div style={{ position: 'absolute', inset: 0, background: '#fff' }} />
