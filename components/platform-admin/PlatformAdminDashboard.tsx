@@ -201,6 +201,12 @@ function formatDate(iso: string) {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 }
+function formatDateTime(iso: string) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' });
+}
 function formatAmount(cents: number, currency: string) {
   return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
 }
@@ -247,6 +253,7 @@ export default function PlatformAdminDashboard({
   const [domainRequestsLoading, setDomainRequestsLoading] = useState(false);
   const [expandedDomainRequest, setExpandedDomainRequest] = useState<string | null>(null);
   const [updatingDomainRequest, setUpdatingDomainRequest] = useState<string | null>(null);
+  const [updatedDomainRequest, setUpdatedDomainRequest] = useState<string | null>(null);
   const [copiedDomainRequest, setCopiedDomainRequest] = useState<string | null>(null);
   const [domainRequestSummary, setDomainRequestSummary] = useState<DomainRequestSummary | null>(null);
 
@@ -399,6 +406,8 @@ export default function PlatformAdminDashboard({
         setDomainRequests((prev) =>
           prev ? prev.map((r) => (r.id === id ? { ...r, status } : r)) : prev
         );
+        setUpdatedDomainRequest(id);
+        setTimeout(() => setUpdatedDomainRequest((cur) => (cur === id ? null : cur)), 2500);
       }
     } finally {
       setUpdatingDomainRequest(null);
@@ -990,7 +999,7 @@ export default function PlatformAdminDashboard({
                                 </span>
                               </div>
                               <div className="text-xs text-gray-400 truncate mt-0.5">
-                                {r.registrant_name} · {r.registrant_email} · {formatDate(r.created_at)}
+                                {r.registrant_name} · {r.registrant_email} · {formatDateTime(r.created_at)}
                               </div>
                             </div>
                             <IconChevronRight
@@ -1051,14 +1060,18 @@ export default function PlatformAdminDashboard({
                               </div>
 
                               {/* Бързи действия */}
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-wrap gap-2 items-center">
                                 <button
                                   onClick={() => handleSetDomainRequestStatus(r.id, 'processing')}
                                   disabled={updatingDomainRequest === r.id}
                                   className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
                                              text-gray-600 hover:border-indigo-300 hover:text-indigo-600
-                                             transition-colors cursor-pointer disabled:opacity-40 min-h-[36px]"
+                                             active:scale-95 active:bg-indigo-50
+                                             transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px] inline-flex items-center gap-1.5"
                                 >
+                                  {updatingDomainRequest === r.id && (
+                                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+                                  )}
                                   Маркирай като „Обработва се"
                                 </button>
                                 <button
@@ -1066,8 +1079,12 @@ export default function PlatformAdminDashboard({
                                   disabled={updatingDomainRequest === r.id}
                                   className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
                                              text-gray-600 hover:border-emerald-300 hover:text-emerald-600
-                                             transition-colors cursor-pointer disabled:opacity-40 min-h-[36px]"
+                                             active:scale-95 active:bg-emerald-50
+                                             transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px] inline-flex items-center gap-1.5"
                                 >
+                                  {updatingDomainRequest === r.id && (
+                                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+                                  )}
                                   Маркирай като „Домейн регистриран"
                                 </button>
                                 <button
@@ -1075,25 +1092,36 @@ export default function PlatformAdminDashboard({
                                   disabled={updatingDomainRequest === r.id}
                                   className="px-3 py-2 rounded-xl text-xs font-semibold border border-emerald-200
                                              bg-emerald-50 text-emerald-700 hover:bg-emerald-100
-                                             transition-colors cursor-pointer disabled:opacity-40 min-h-[36px]"
+                                             active:scale-95 active:bg-emerald-200
+                                             transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px] inline-flex items-center gap-1.5"
                                   title="Изпраща имейл до клиента, че домейнът е активен"
                                 >
+                                  {updatingDomainRequest === r.id && (
+                                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+                                  )}
                                   ✅ Маркирай като „Завършена" (изпраща имейл)
                                 </button>
                                 <button
                                   onClick={() => handleCopyDomainRequest(r)}
                                   className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
-                                             text-gray-600 hover:border-gray-300 transition-colors cursor-pointer min-h-[36px]"
+                                             text-gray-600 hover:border-gray-300 active:scale-95 active:bg-gray-50
+                                             transition-all cursor-pointer min-h-[36px] inline-flex items-center gap-1.5"
                                 >
-                                  {copiedDomainRequest === r.id ? 'Копирано ✓' : 'Копирай всички данни'}
+                                  {copiedDomainRequest === r.id ? '✓ Копирано' : 'Копирай всички данни'}
                                 </button>
                                 <a
                                   href={`mailto:${r.registrant_email}?subject=${encodeURIComponent(`Относно домейн ${r.full_domain}`)}`}
                                   className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
-                                             text-gray-600 hover:border-gray-300 transition-colors cursor-pointer min-h-[36px] inline-flex items-center"
+                                             text-gray-600 hover:border-gray-300 active:scale-95 active:bg-gray-50
+                                             transition-all cursor-pointer min-h-[36px] inline-flex items-center"
                                 >
                                   Отвори имейл към клиента
                                 </a>
+                                {updatedDomainRequest === r.id && (
+                                  <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1 animate-pulse">
+                                    ✓ Статусът е обновен
+                                  </span>
+                                )}
                               </div>
                             </div>
                           )}

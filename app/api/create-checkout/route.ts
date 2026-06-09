@@ -17,9 +17,9 @@ type PlanOption = {
 };
 
 const PLAN_OPTIONS: Record<string, PlanOption> = {
-  solo_12m: { amount: 100,   plan: 'solo', billingPeriod: '12m', name: 'Solo сайт — 12 месеца' }, // TEST: временно 1 EUR (оригинал: 29900)
+  solo_12m: { amount: 29900, plan: 'solo', billingPeriod: '12m', name: 'Solo сайт — 12 месеца' },
   solo_6m:  { amount: 16900, plan: 'solo', billingPeriod: '6m',  name: 'Solo сайт — 6 месеца' },
-  team_12m: { amount: 100,   plan: 'team', billingPeriod: '12m', name: 'Team сайт — 12 месеца' }, // TEST: временно 1 EUR (оригинал: 49900)
+  team_12m: { amount: 49900, plan: 'team', billingPeriod: '12m', name: 'Team сайт — 12 месеца' },
   team_6m:  { amount: 27900, plan: 'team', billingPeriod: '6m',  name: 'Team сайт — 6 месеца' },
 };
 

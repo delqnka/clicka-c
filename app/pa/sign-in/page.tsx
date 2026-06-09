@@ -43,24 +43,17 @@ export default function PlatformAdminSignIn() {
   return (
     <div className="min-h-dvh flex items-center justify-center p-4"
          style={{ background: 'linear-gradient(135deg,#f5f3ff 0%,#fdf2f8 100%)' }}>
-      <div className="w-full max-w-sm">
+      <div style={{ width: '100%', maxWidth: '384px' }}>
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 512 512"
-            className="w-16 h-16 mb-4 drop-shadow-xl"
-            aria-label="Clicka"
-          >
-            <defs>
-              <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#7c3aed"/>
-                <stop offset="1" stopColor="#db2777"/>
-              </linearGradient>
-            </defs>
-            <rect x="48" y="48" width="416" height="416" rx="112" fill="url(#lg)"/>
-            <path d="M192 274c0-54 38-98 92-98 22 0 42 6 58 18v56c-14-14-32-22-52-22-30 0-52 22-52 52s22 52 52 52c20 0 38-8 52-22v56c-16 12-36 18-58 18-54 0-92-44-92-98Z" fill="#fff"/>
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/clicka-logo.svg"
+            alt="Clicka"
+            width={64}
+            height={64}
+            style={{ width: 64, height: 64, marginBottom: 16, filter: 'drop-shadow(0 4px 12px rgba(124,58,237,0.35))' }}
+          />
           <h1 className="text-xl font-bold text-gray-900">Platform Admin</h1>
           <p className="text-sm text-gray-500 mt-1">Влез с твоите данни</p>
         </div>
