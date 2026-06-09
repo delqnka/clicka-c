@@ -88,7 +88,7 @@ export async function ensureBookingsSchema() {
       if (!hasPaymentStatusCheck.length) {
         await sql`
           ALTER TABLE bookings ADD CONSTRAINT bookings_payment_status_check
-          CHECK (payment_status IN ('free', 'pending', 'paid', 'failed', 'refunded'))
+          CHECK (payment_status IN ('free', 'pending', 'unpaid', 'paid', 'failed', 'refunded'))
           NOT VALID
         `;
       }
