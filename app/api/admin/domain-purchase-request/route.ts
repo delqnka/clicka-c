@@ -13,6 +13,7 @@ import {
   loadLatestDomainPurchaseRequest,
   normalizeRequestedDomainLabel,
 } from '@/lib/domain-purchase';
+import { validateDomainPurchaseForm } from '@/lib/domain-purchase-shared';
 import { stripe } from '@/lib/stripe';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -134,48 +135,39 @@ export async function POST(request: NextRequest) {
   const postalCode = String(body.postalCode ?? '').trim();
   const countryCode = String(body.countryCode ?? 'BG').trim().toUpperCase();
   const notes = String(body.notes ?? '').trim();
-  const agreedToActOnBehalf = body.agreedToActOnBehalf === true;
-  const agreedToPolicies = body.agreedToPolicies === true;
+  const agreedToActOnBehalf =
+    body.agreedToActOnBehalf === true || body.agreedToActOnBehalf === 'true';
+  const agreedToPolicies =
+    body.agreedToPolicies === true || body.agreedToPolicies === 'true';
 
-  if (!requestedLabel || !fullDomain) {
+  const fieldErrors = validateDomainPurchaseForm({
+    requestedLabel,
+    tld,
+    registrantType,
+    registrantName,
+    companyName,
+    companyId,
+    registrantEmail,
+    registrantPhone,
+    addressLine1,
+    city,
+    postalCode,
+    agreedToActOnBehalf,
+    agreedToPolicies,
+  });
+
+  if (Object.keys(fieldErrors).length > 0) {
+    const firstMessage = Object.values(fieldErrors)[0] ?? 'Попълни задължителните полета.';
+    return NextResponse.json({ error: firstMessage, fields: fieldErrors }, { status: 400 });
+  }
+
+  if (!fullDomain) {
     return NextResponse.json({ error: 'Въведи желан домейн.' }, { status: 400 });
   }
 
   const pricing = getDomainPurchasePricing(tld);
   if (!pricing) {
     return NextResponse.json({ error: 'Избери поддържан домейн.' }, { status: 400 });
-  }
-
-  if (
-    !registrantName ||
-    !registrantEmail ||
-    !registrantPhone ||
-    !addressLine1 ||
-    !city ||
-    !postalCode
-  ) {
-    return NextResponse.json(
-      { error: 'Попълни всички задължителни данни за регистрация.' },
-      { status: 400 }
-    );
-  }
-
-  if (registrantType === 'company' && !companyName) {
-    return NextResponse.json({ error: 'Попълни име на фирма.' }, { status: 400 });
-  }
-
-  if (!agreedToActOnBehalf) {
-    return NextResponse.json(
-      { error: 'Трябва да потвърдиш, че заявката е за регистрация на твое име.' },
-      { status: 400 }
-    );
-  }
-
-  if (!agreedToPolicies) {
-    return NextResponse.json(
-      { error: 'Трябва да приемеш Общите условия, Политиката за поверителност и Политиката за бисквитки.' },
-      { status: 400 }
-    );
   }
 
   const consentIp = getRequestIp(request);

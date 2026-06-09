@@ -5,7 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   DOMAIN_SETUP_FEE_CENTS,
   DOMAIN_TLD_OPTIONS,
+  domainPurchaseStepForField,
+  firstDomainPurchaseFieldError,
   formatDomainPurchaseStatus,
+  validateDomainPurchaseForm,
+  type DomainPurchaseFieldKey,
   type DomainTldOption,
   type DomainPurchaseRequest,
 } from '@/lib/domain-purchase-shared';
@@ -116,6 +120,45 @@ const flatInputStyle: CSSProperties = {
   outline: 'none',
 };
 
+function inputStyle(hasError: boolean): CSSProperties {
+  return hasError
+    ? { ...flatInputStyle, borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef4444' }
+    : flatInputStyle;
+}
+
+function stepFieldKeys(step: 1 | 2 | 3 | 4): DomainPurchaseFieldKey[] {
+  if (step === 1) return ['requestedLabel', 'tld'];
+  if (step === 3) {
+    return [
+      'registrantName',
+      'registrantEmail',
+      'registrantPhone',
+      'companyName',
+      'companyId',
+      'addressLine1',
+      'city',
+      'postalCode',
+    ];
+  }
+  if (step === 4) return ['agreedToActOnBehalf', 'agreedToPolicies'];
+  return [];
+}
+
+function pickStepErrors(
+  form: FormState,
+  step: 1 | 2 | 3 | 4,
+): Partial<Record<DomainPurchaseFieldKey, string>> {
+  const all = validateDomainPurchaseForm(form);
+  const picked: Partial<Record<DomainPurchaseFieldKey, string>> = {};
+  for (const key of stepFieldKeys(step)) {
+    if (key === 'companyName' || key === 'companyId') {
+      if (form.registrantType !== 'company') continue;
+    }
+    if (all[key]) picked[key] = all[key];
+  }
+  return picked;
+}
+
 const fieldLabelStyle: CSSProperties = {
   display: 'block',
   fontSize: 13,
@@ -162,11 +205,32 @@ const badgeStyle: CSSProperties = {
   background: '#fff',
 };
 
-function FlatField({ label, children }: { label: string; children: ReactNode }) {
+function FlatField({
+  label,
+  children,
+  error,
+  htmlFor,
+}: {
+  label: string;
+  children: ReactNode;
+  error?: string;
+  htmlFor?: string;
+}) {
   return (
     <div>
-      <span style={fieldLabelStyle}>{label}</span>
+      <label
+        htmlFor={htmlFor}
+        style={{
+          ...fieldLabelStyle,
+          color: error ? '#b91c1c' : fieldLabelStyle.color,
+        }}
+      >
+        {label}
+      </label>
       {children}
+      {error ? (
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: '#b91c1c', lineHeight: 1.4 }}>{error}</p>
+      ) : null}
     </div>
   );
 }
@@ -272,6 +336,7 @@ export default function DomainPurchaseSection({
   });
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [stepError, setStepError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<DomainPurchaseFieldKey, string>>>({});
 
   const selectedTld = useMemo(
     () => DOMAIN_TLD_OPTIONS.find(item => item.value === form.tld) ?? DOMAIN_TLD_OPTIONS[0],
@@ -279,6 +344,26 @@ export default function DomainPurchaseSection({
   );
   const fullDomainPreview = `${form.requestedLabel || 'example'}.${selectedTld.value}`;
   const totalCents = selectedTld.feeCents + DOMAIN_SETUP_FEE_CENTS;
+
+  function clearFieldError(key: DomainPurchaseFieldKey) {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function applyValidationErrors(errors: Partial<Record<DomainPurchaseFieldKey, string>>) {
+    setFieldErrors(errors);
+    const first = firstDomainPurchaseFieldError(errors);
+    if (first) {
+      setStep(domainPurchaseStepForField(first));
+      setStepError('Попълни полетата, маркирани в червено.');
+    } else {
+      setStepError('');
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -339,8 +424,20 @@ export default function DomainPurchaseSection({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug, ...form }),
       });
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error || 'Не успяхме да създадем заявката.');
+      const data = await readJson(res) as {
+        error?: string;
+        fields?: Partial<Record<DomainPurchaseFieldKey, string>>;
+        checkoutUrl?: string;
+        request?: DomainPurchaseRequest;
+        skipCheckout?: boolean;
+      };
+      if (!res.ok) {
+        if (data.fields && typeof data.fields === 'object') {
+          applyValidationErrors(data.fields);
+          return;
+        }
+        throw new Error(data.error || 'Не успяхме да създадем заявката.');
+      }
       if (typeof data.checkoutUrl === 'string' && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
         return;
@@ -360,34 +457,35 @@ export default function DomainPurchaseSection({
 
   function handleNext() {
     setStepError('');
-    if (step === 1) {
-      if (!form.requestedLabel.trim()) { setStepError('Моля, въведи желано име на домейна.'); return; }
-      if (!form.tld) { setStepError('Моля, избери разширение на домейна.'); return; }
-      setStep(2);
-    } else if (step === 2) {
-      setStep(3);
-    } else if (step === 3) {
-      if (!form.registrantName.trim() || !form.registrantEmail.trim() || !form.registrantPhone.trim() || !form.addressLine1.trim() || !form.city.trim()) {
-        setStepError('Моля, попълни име, имейл, телефон, адрес и град.');
+    if (step === 4) {
+      const errors = validateDomainPurchaseForm(form);
+      if (Object.keys(errors).length > 0) {
+        applyValidationErrors(errors);
         return;
       }
-      if (form.registrantType === 'company' && (!form.companyName.trim() || !form.companyId.trim())) {
-        setStepError('Моля, попълни фирма и ЕИК.');
-        return;
-      }
-      setStep(4);
-    } else {
       void submitRequest();
+      return;
     }
+
+    const errors = pickStepErrors(form, step);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setStepError('Попълни полетата, маркирани в червено.');
+      return;
+    }
+
+    setFieldErrors({});
+    setStep((s) => (s < 4 ? ((s + 1) as 1 | 2 | 3 | 4) : s));
   }
 
   function handleBack() {
     setStepError('');
+    setFieldErrors({});
     if (step === 1) { onBack?.(); return; }
     setStep(s => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4) : s));
   }
 
-  const isPayDisabled = busy || !form.agreedToActOnBehalf || !form.agreedToPolicies;
+  const isPayDisabled = busy;
 
   return (
     <div style={{ display: 'grid', gap: 16, marginTop: 18 }}>
@@ -429,9 +527,7 @@ export default function DomainPurchaseSection({
 
       {/* Global messages */}
       {error ? (
-        <div style={{ borderRadius: 14, border: '1px solid rgba(0,0,0,0.12)', background: '#fff8f8', padding: '14px 16px' }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#b91c1c' }}>{error}</p>
-        </div>
+        <p style={{ margin: 0, fontSize: 14, color: '#b91c1c', lineHeight: 1.5 }}>{error}</p>
       ) : null}
 
       {notice ? (
@@ -483,27 +579,43 @@ export default function DomainPurchaseSection({
             {/* ── Step 1: Domain ── */}
             {step === 1 ? (
               <div style={{ display: 'grid', gap: 20 }}>
-                <FlatField label="Желано име на домейна">
+                <FlatField label="Желано име на домейна" error={fieldErrors.requestedLabel} htmlFor="domain-label">
                   <input
+                    id="domain-label"
                     value={form.requestedLabel}
-                    onChange={e => setForm(prev => ({ ...prev, requestedLabel: normalizeSuggestedLabel(e.target.value) }))}
+                    onChange={e => {
+                      clearFieldError('requestedLabel');
+                      setForm(prev => ({ ...prev, requestedLabel: normalizeSuggestedLabel(e.target.value) }));
+                    }}
                     placeholder="studioani"
-                    style={flatInputStyle}
+                    style={inputStyle(Boolean(fieldErrors.requestedLabel))}
                   />
                 </FlatField>
 
                 <div>
-                  <p style={{ ...fieldLabelStyle, marginBottom: 10 }}>Избери разширение</p>
+                  <p style={{
+                    ...fieldLabelStyle,
+                    marginBottom: 10,
+                    color: fieldErrors.tld ? '#b91c1c' : fieldLabelStyle.color,
+                  }}>
+                    Избери разширение
+                  </p>
                   <div style={choiceGridStyle}>
                     {DOMAIN_TLD_OPTIONS.map(option => (
                       <TldOptionCard
                         key={option.value}
                         option={option}
                         active={form.tld === option.value}
-                        onSelect={() => setForm(prev => ({ ...prev, tld: option.value }))}
+                        onSelect={() => {
+                          clearFieldError('tld');
+                          setForm(prev => ({ ...prev, tld: option.value }));
+                        }}
                       />
                     ))}
                   </div>
+                  {fieldErrors.tld ? (
+                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#b91c1c', lineHeight: 1.4 }}>{fieldErrors.tld}</p>
+                  ) : null}
                 </div>
 
                 {/* Domain preview */}
@@ -571,72 +683,120 @@ export default function DomainPurchaseSection({
             {/* ── Step 3: Personal/company details ── */}
             {step === 3 ? (
               <div style={{ display: 'grid', gap: 16 }}>
-                <FlatField label={form.registrantType === 'company' ? 'МОЛ (Материално отговорно лице)' : 'Ime и фамилия'}>
+                <FlatField
+                  label={form.registrantType === 'company' ? 'МОЛ (Материално отговорно лице)' : 'Име и фамилия'}
+                  error={fieldErrors.registrantName}
+                  htmlFor="registrant-name"
+                >
                   <input
+                    id="registrant-name"
                     value={form.registrantName}
-                    onChange={e => setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }))}
-                    style={flatInputStyle}
+                    onChange={e => {
+                      clearFieldError('registrantName');
+                      setForm(prev => ({ ...prev, registrantName: onlyCyrillic(e.target.value) }));
+                    }}
+                    style={inputStyle(Boolean(fieldErrors.registrantName))}
                   />
                 </FlatField>
 
-                <FlatField label="Имейл">
+                <FlatField label="Имейл" error={fieldErrors.registrantEmail} htmlFor="registrant-email">
                   <input
+                    id="registrant-email"
                     type="email"
                     value={form.registrantEmail}
-                    onChange={e => setForm(prev => ({ ...prev, registrantEmail: e.target.value }))}
-                    style={flatInputStyle}
+                    onChange={e => {
+                      clearFieldError('registrantEmail');
+                      setForm(prev => ({ ...prev, registrantEmail: e.target.value }));
+                    }}
+                    style={inputStyle(Boolean(fieldErrors.registrantEmail))}
                   />
                 </FlatField>
 
-                <FlatField label="Телефон">
+                <FlatField label="Телефон" error={fieldErrors.registrantPhone} htmlFor="registrant-phone">
                   <input
+                    id="registrant-phone"
                     type="tel"
                     inputMode="tel"
                     value={form.registrantPhone}
-                    onChange={e => setForm(prev => ({
-                      ...prev,
-                      registrantPhone: onlyDigitsPhone(e.target.value),
-                      registrantViber: onlyDigitsPhone(e.target.value),
-                    }))}
+                    onChange={e => {
+                      clearFieldError('registrantPhone');
+                      setForm(prev => ({
+                        ...prev,
+                        registrantPhone: onlyDigitsPhone(e.target.value),
+                        registrantViber: onlyDigitsPhone(e.target.value),
+                      }));
+                    }}
                     placeholder="0888 123 456"
-                    style={flatInputStyle}
+                    style={inputStyle(Boolean(fieldErrors.registrantPhone))}
                   />
                 </FlatField>
 
                 {form.registrantType === 'company' ? (
                   <>
-                    <FlatField label="Фирма">
+                    <FlatField label="Фирма" error={fieldErrors.companyName} htmlFor="company-name">
                       <input
+                        id="company-name"
                         value={form.companyName}
-                        onChange={e => setForm(prev => ({ ...prev, companyName: onlyCyrillic(e.target.value) }))}
-                        style={flatInputStyle}
+                        onChange={e => {
+                          clearFieldError('companyName');
+                          setForm(prev => ({ ...prev, companyName: onlyCyrillic(e.target.value) }));
+                        }}
+                        style={inputStyle(Boolean(fieldErrors.companyName))}
                       />
                     </FlatField>
-                    <FlatField label="ЕИК">
+                    <FlatField label="ЕИК" error={fieldErrors.companyId} htmlFor="company-id">
                       <input
+                        id="company-id"
                         value={form.companyId}
-                        onChange={e => setForm(prev => ({ ...prev, companyId: e.target.value }))}
-                        style={flatInputStyle}
+                        onChange={e => {
+                          clearFieldError('companyId');
+                          setForm(prev => ({ ...prev, companyId: e.target.value }));
+                        }}
+                        style={inputStyle(Boolean(fieldErrors.companyId))}
                       />
                     </FlatField>
                   </>
                 ) : null}
 
-                <FlatField label="Адрес">
+                <FlatField label="Адрес" error={fieldErrors.addressLine1} htmlFor="address-line">
                   <input
+                    id="address-line"
                     value={form.addressLine1}
-                    onChange={e => setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }))}
-                    style={flatInputStyle}
+                    onChange={e => {
+                      clearFieldError('addressLine1');
+                      setForm(prev => ({ ...prev, addressLine1: onlyCyrillic(e.target.value) }));
+                    }}
+                    style={inputStyle(Boolean(fieldErrors.addressLine1))}
                   />
                 </FlatField>
 
-                <FlatField label="Град">
-                  <input
-                    value={form.city}
-                    onChange={e => setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }))}
-                    style={flatInputStyle}
-                  />
-                </FlatField>
+                <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))' }}>
+                  <FlatField label="Град" error={fieldErrors.city} htmlFor="city">
+                    <input
+                      id="city"
+                      value={form.city}
+                      onChange={e => {
+                        clearFieldError('city');
+                        setForm(prev => ({ ...prev, city: onlyCyrillic(e.target.value) }));
+                      }}
+                      style={inputStyle(Boolean(fieldErrors.city))}
+                    />
+                  </FlatField>
+
+                  <FlatField label="Пощенски код" error={fieldErrors.postalCode} htmlFor="postal-code">
+                    <input
+                      id="postal-code"
+                      inputMode="numeric"
+                      value={form.postalCode}
+                      onChange={e => {
+                        clearFieldError('postalCode');
+                        setForm(prev => ({ ...prev, postalCode: e.target.value.replace(/[^0-9]/g, '').slice(0, 4) }));
+                      }}
+                      placeholder="1000"
+                      style={inputStyle(Boolean(fieldErrors.postalCode))}
+                    />
+                  </FlatField>
+                </div>
               </div>
             ) : null}
 
@@ -702,26 +862,48 @@ export default function DomainPurchaseSection({
 
                 {/* Consent checkboxes */}
                 <div style={{ display: 'grid', gap: 12 }}>
-                  <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <label style={{
+                    display: 'flex',
+                    gap: 12,
+                    alignItems: 'flex-start',
+                    cursor: 'pointer',
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    border: fieldErrors.agreedToActOnBehalf ? '1px solid #ef4444' : '1px solid transparent',
+                  }}>
                     <input
                       type="checkbox"
                       checked={form.agreedToActOnBehalf}
-                      onChange={e => setForm(prev => ({ ...prev, agreedToActOnBehalf: e.target.checked }))}
+                      onChange={e => {
+                        clearFieldError('agreedToActOnBehalf');
+                        setForm(prev => ({ ...prev, agreedToActOnBehalf: e.target.checked }));
+                      }}
                       style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.75)' }}>
+                    <span style={{ fontSize: 13, lineHeight: 1.7, color: fieldErrors.agreedToActOnBehalf ? '#b91c1c' : 'rgba(0,0,0,0.75)' }}>
                       Потвърждавам, че домейнът ще бъде регистриран на мое име или на посочената от мен фирма.
                     </span>
                   </label>
 
-                  <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <label style={{
+                    display: 'flex',
+                    gap: 12,
+                    alignItems: 'flex-start',
+                    cursor: 'pointer',
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    border: fieldErrors.agreedToPolicies ? '1px solid #ef4444' : '1px solid transparent',
+                  }}>
                     <input
                       type="checkbox"
                       checked={form.agreedToPolicies}
-                      onChange={e => setForm(prev => ({ ...prev, agreedToPolicies: e.target.checked }))}
+                      onChange={e => {
+                        clearFieldError('agreedToPolicies');
+                        setForm(prev => ({ ...prev, agreedToPolicies: e.target.checked }));
+                      }}
                       style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.75)' }}>
+                    <span style={{ fontSize: 13, lineHeight: 1.7, color: fieldErrors.agreedToPolicies ? '#b91c1c' : 'rgba(0,0,0,0.75)' }}>
                       Съгласен/на съм с{' '}
                       <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>Общите условия</a>,{' '}
                       <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, textDecoration: 'underline' }}>Политиката за поверителност</a>{' '}
@@ -759,11 +941,11 @@ export default function DomainPurchaseSection({
             <button
               type="button"
               onClick={handleNext}
-              disabled={step === 4 ? isPayDisabled : false}
+              disabled={isPayDisabled}
               style={{
                 ...primaryButtonStyle,
-                opacity: step === 4 && isPayDisabled ? 0.4 : 1,
-                cursor: step === 4 && isPayDisabled ? 'default' : 'pointer',
+                opacity: isPayDisabled ? 0.4 : 1,
+                cursor: isPayDisabled ? 'default' : 'pointer',
               }}
             >
               {step === 4
