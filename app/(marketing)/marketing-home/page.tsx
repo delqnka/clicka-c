@@ -30,6 +30,7 @@ const jsonLd = [
     logo: 'https://www.clicka.bg/clicka-logo.png',
     sameAs: [
       'https://www.facebook.com/clickabg',
+      'https://www.instagram.com/clickabg',
     ],
   },
   {
@@ -38,6 +39,11 @@ const jsonLd = [
     name: 'clicka.bg',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
+    publisher: {
+      '@type': 'Organization',
+      name: '„Буука" ЕООД',
+      url: 'https://www.clicka.bg/',
+    },
     description:
       'Платформа за салони за красота — собствен сайт с онлайн резервации, AI рецепционист, управление от Telegram и SEO оптимизация. 0% комисионна.',
     url: 'https://www.clicka.bg/',

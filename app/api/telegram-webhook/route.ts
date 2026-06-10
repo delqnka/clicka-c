@@ -366,6 +366,20 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   const ownerHasPhoto = isOwnerMessage && message.photo && message.photo.length > 0;
 
   if (ownerHasText || ownerHasPhoto) {
+    // Try admin commands first — only fall through to support-chat reply if not recognised.
+    if (ownerHasText) {
+      const salonForOwner = await findSalonByChatId(chatId);
+      if (salonForOwner) {
+        const handled = await handleAdminCommand(chatId, text, {
+          salonId: salonForOwner.salonId,
+          slug: salonForOwner.slug,
+          name: salonForOwner.name,
+          staffMemberId: salonForOwner.staffMemberId,
+        });
+        if (handled) return NextResponse.json({ ok: true });
+      }
+    }
+
     const sessRows = await sql`
       SELECT id, client_name FROM salon_chat_sessions
       WHERE salon_id = ${SUPPORT_SALON_ID}
@@ -418,7 +432,11 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         await sendTelegramMessage(chatId, '🔕 Чат режимът е изключен. Пишеш командите на бота.\n\nЗа да се върнеш към клиента напиши <b>/чат</b>');
         return NextResponse.json({ ok: true });
       }
-      if (!text.startsWith('/')) {
+      // Any other slash command → silently exit chat mode and fall through to execute it
+      if (text.startsWith('/')) {
+        if (conv) await clearConvState(conv.salonId);
+        // fall through — command will be handled below
+      } else {
         await sql`INSERT INTO salon_chat_messages (session_id, role, content) VALUES (${state.session_id}, 'salon', ${text})`;
         await sql`UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${state.session_id}`;
         await sendTelegramMessage(chatId, '✅ Изпратено на клиента. Напиши /стоп за да излезеш от чат режим.');
@@ -560,36 +578,91 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     await sendTelegramMessage(
       chatId,
       [
-        '<b>Какво мога да правя:</b>',
+        '📋 <b>Всички команди</b>',
         '',
-        '📌 <b>Блокирай час</b>',
-        '<code>зает 14:00-16:00 утре</code>',
-        '<code>зает 9:00-10:00 понеделник</code>',
+        '📅 <b>Резервации</b>',
+        '<code>/reserve Мария подстригване утре 13:00</code>',
+        '<code>/запиши Мария подстригване утре 13:00</code>',
+        '<code>/резервирай Мария подстригване утре 13:00</code>',
+        '<code>запиши Мария подстригване утре 13:00</code>  ← и без /',
+        '<code>резервации утре</code>  |  <code>резервации днес</code>',
+        '<code>резервации тази седмица</code>',
+        '<code>следващ клиент</code>',
+        '<code>незатвърдени резервации</code>',
         '',
-        '😴 <b>Почивен ден</b>',
-        '<code>утре почивам</code>',
-        '<code>събота почивам</code>',
-        '',
-        '⏰ <b>Работно време</b>',
-        '<code>работя до 19:00 тази седмица</code>',
+        '✅ <b>Управление на запис</b>',
+        '<code>потвърди Мария</code>',
+        '<code>откажи записа в 14:00 утре</code>',
+        '<code>готово с Мария</code>  ← отбелязва като приключено',
+        '<code>премести Мария от петък за вторник в 13:00</code>',
+        '<code>напомни на всички клиенти утре</code>  ← изпраща SMS',
         '',
         '✂️ <b>Услуги</b>',
         '<code>добави услуга: Ламиниране — 45 мин — 60 лв</code>',
         '<code>промени цената на Маникюр на 35 лв</code>',
+        '<code>изтрий услугата Маникюр</code>',
+        '<code>покажи всички услуги</code>',
+        '📸 Снимка с надпис <i>ценоразпис</i> → услугите влизат сами',
         '',
-        '👤 <b>Профил</b>',
-        '/bio — смени биото си в профила',
+        '🔒 <b>Блокиране на часове</b>',
+        '<code>зает 14:00-16:00 утре</code>',
+        '<code>утре почивам</code>  |  <code>събота почивам</code>',
+        '<code>/unblock 14:00 утре</code>  ← деблокирай час',
         '',
-        '📸 <b>Ценоразпис (снимка)</b> — изпрати снимка с надпис <i>ценоразпис</i> и услугите влизат сами.',
+        '⏰ <b>Работно време</b>',
+        '<code>понеделник от 9 до 18</code>',
+        '<code>събота затворени</code>',
+        '<code>работя до 19:00 тази седмица</code>',
         '',
-        '📊 <b>Справки</b>',
-        '<code>колко записа имам за утре</code>',
-        '<code>следващият ми клиент</code>',
-        '<code>приходът ми тази седмица</code>',
+        '📊 <b>Финансови справки</b>',
+        '<code>оборот тази седмица</code>',
+        '<code>оборот тази месец</code>',
+        '<code>оборот за 6 месеца</code>',
+        '<code>оборот от Мария</code>  ← приход от конкретен клиент',
+        '<code>средна стойност на запис</code>',
         '',
-        '📩 <b>Скрийншот от резервационна платформа</b> — forward-ни съобщение със снимка (или скрийншот на резервация) и часовете се блокират автоматично.',
+        '👥 <b>Клиенти</b>',
+        '<code>дай ми номера на Мария</code>',
+        '<code>кога е следващия запис на Мария</code>',
+        '<code>телефонът на Мария е 0888123456</code>  ← запази контакт',
+        '<code>бележка за Мария: предпочита без амоняк</code>',
+        '<code>каква е бележката за Мария</code>',
+        '<code>клиенти без запис от 3 месеца</code>',
+        '',
+        '👤 <b>Профил и настройки</b>',
+        '<code>/bio</code>  ← смени биото в профила',
+        '<code>промени телефона на 0888123456</code>',
+        '<code>добави instagram: @моят_профил</code>',
+        '',
+        '📸 <b>Снимки</b>',
+        'Изпрати снимка → пита ценоразпис или портфолио',
+        'Снимка с надпис <i>ценоразпис</i> → добавя услуги автоматично',
+        'Снимка с надпис <i>портфолио</i> → добавя в галерия',
+        '📩 Forward скрийншот от резервационна платформа → блокира часовете',
+        '',
+        '💬 <b>Чат с клиент</b>',
+        '<code>/чат</code>  ← влез в чат режим с последния клиент',
+        '<code>/стоп</code>  ← излез от чат режим',
+        'Или напиши всяка <b>/команда</b> — автоматично излиза от чат режим',
       ].join('\n'),
     );
+    return NextResponse.json({ ok: true });
+  }
+
+  // Handle /reserve — /reserve Мария подстригване утре 13:00
+  if (text.startsWith('/reserve') || text.startsWith('/резервирай') || text.startsWith('/запиши')) {
+    const salon = await findSalonByChatId(chatId);
+    if (!salon) {
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      return NextResponse.json({ ok: true });
+    }
+    const args = text.replace(/^\/(reserve|резервирай|запиши)\s*/i, '').trim();
+    if (!args) {
+      await sendTelegramMessage(chatId, '❌ Формат: <code>/reserve Мария подстригване утре 13:00</code>');
+      return NextResponse.json({ ok: true });
+    }
+    const { handleAdminCommand } = await import('@/lib/telegram-admin-commands');
+    await handleAdminCommand(chatId, `Запиши ${args}`, salon);
     return NextResponse.json({ ok: true });
   }
 

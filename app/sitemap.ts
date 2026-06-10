@@ -20,6 +20,7 @@ const PLATFORM_PAGES: MetadataRoute.Sitemap = [
   { url: `https://www.${ROOT_DOMAIN}/faq`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `https://www.${ROOT_DOMAIN}/za-frizyorski-salon`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `https://www.${ROOT_DOMAIN}/za-manikyurist`, changeFrequency: 'monthly', priority: 0.8 },
+  { url: `https://www.${ROOT_DOMAIN}/za-barber`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `https://www.${ROOT_DOMAIN}/demo`, changeFrequency: 'monthly', priority: 0.7 },
   { url: `https://www.${ROOT_DOMAIN}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
   { url: `https://www.${ROOT_DOMAIN}/terms`, changeFrequency: 'yearly', priority: 0.3 },
