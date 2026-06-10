@@ -6,6 +6,10 @@ import SalonPublicParity, {
   type SalonOfferRow,
   type SalonReviewRow,
 } from '@/app/components/SalonPublicParity';
+import { parseSalonServices } from '@/lib/salon-services';
+import { enrichServiceCategories, buildServiceCategoryTabs } from '@/lib/salon-service-categories';
+import { normalizeSalonVisitorInfo, normalizeVisitorAdditionalInfo } from '@/lib/salon-visitor-info';
+import { mergeOpeningHours } from '@/lib/salon-opening-hours';
 
 const CREATE_PREVIEW_KEY = 'clicka-create-preview-v1';
 
@@ -108,6 +112,18 @@ export default function CreatePreviewPage() {
   const reviews = useMemo<SalonReviewRow[]>(() => [], []);
   const googleReviews = useMemo<GoogleReviewLite[]>(() => [], []);
 
+  const servicesEnriched = useMemo(
+    () => enrichServiceCategories(parseSalonServices(salon?.services ?? [])),
+    [salon],
+  );
+  const serviceCategories = useMemo(() => buildServiceCategoryTabs(servicesEnriched), [servicesEnriched]);
+  const visitorInfo = useMemo(() => normalizeSalonVisitorInfo(undefined), []);
+  const openingHoursMerged = useMemo(
+    () => mergeOpeningHours(salon?.working_hours as Record<string, { open?: string; close?: string; closed?: boolean }> | undefined, salon?.opening_hours),
+    [salon],
+  );
+  const salonName = salon?.name || 'Вашият салон';
+
   if (!hasLoaded) {
     return (
       <main
@@ -177,6 +193,16 @@ export default function CreatePreviewPage() {
       reviews={reviews}
       googleReviews={googleReviews}
       staticMapUrl={null}
+      servicesEnriched={servicesEnriched}
+      serviceCategories={serviceCategories}
+      faqItems={[]}
+      visitorInfo={visitorInfo}
+      visitorAdditionalInfo={normalizeVisitorAdditionalInfo(undefined)}
+      blogSectionTitle="Блог"
+      brandNames={[]}
+      openingHoursMerged={openingHoursMerged}
+      bookingBlocks={[]}
+      publicTeamMembers={[{ id: 'owner', name: salonName, role: '', bio: '', photoUrl: '' }]}
     />
   );
 }

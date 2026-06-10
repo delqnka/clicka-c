@@ -41,30 +41,18 @@ import {
   offerSpotsLeft,
   type SalonOfferRow,
 } from '@/lib/salon-offers';
-import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
 import { formatDistanceFromUserToSalon, getDistanceKm } from '@/lib/geo';
 import {
   DAY_LABELS_BG,
   DAY_NAMES_EN,
   getCurrentStatusString,
   getEffectiveHours,
-  mergeOpeningHours,
   type OpeningDayRecord,
 } from '@/lib/salon-opening-hours';
-import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
-import {
-  normalizeSalonFaqItems,
-  normalizeSalonVisitorInfo,
-  normalizeVisitorAdditionalInfo,
-} from '@/lib/salon-visitor-info';
-import { parseSalonServices } from '@/lib/salon-services';
-import {
-  buildServiceCategoryTabs,
-  enrichServiceCategories,
-  serviceMatchesCategory,
-} from '@/lib/salon-service-categories';
+import { isDateBlockedAllDay, isBlockedForStartTime, type BookingBlock } from '@/lib/booking-blocks';
+import type { SalonFaqItem, SalonVisitorInfo } from '@/lib/salon-visitor-info';
+import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-service-categories';
 import { GOOGLE_REVIEWS_INITIAL_VISIBLE } from '@/lib/google-reviews-limits';
-import { getBrandsByIds } from '@/lib/brands';
 import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-events';
 
 const SalonAiBotWidget = dynamic(
@@ -135,6 +123,17 @@ export type SalonPublicParityProps = {
   /** @deprecated use hasPublishedBlogPosts — kept for caller compat */
   publishedBlogCount?: number;
   hasPublishedBlogPosts?: boolean;
+  // Pre-processed server-side — removed from client bundle
+  servicesEnriched: ServiceRow[];
+  serviceCategories: ServiceCategoryTab[];
+  faqItems: SalonFaqItem[];
+  visitorInfo: SalonVisitorInfo;
+  visitorAdditionalInfo: string;
+  blogSectionTitle: string;
+  brandNames: { id: string; name: string }[];
+  openingHoursMerged: OpeningDayRecord;
+  bookingBlocks: BookingBlock[];
+  publicTeamMembers: Array<{ id: string; name: string; role: string; bio: string; photoUrl: string }>;
 };
 
 function wireMediaUri(raw: string | null | undefined): string {
@@ -232,27 +231,8 @@ type ServiceRow = {
 
 type ServiceVariant = NonNullable<ServiceRow['variants']>[number];
 
-const CUSTOM_PREFIX = 'custom|';
-
-function resolveBrandNames(ids: string[]): { id: string; name: string }[] {
-  const predefined = getBrandsByIds(ids.filter((id) => !id.startsWith(CUSTOM_PREFIX)));
-  const custom = ids
-    .filter((id) => id.startsWith(CUSTOM_PREFIX))
-    .map((raw) => {
-      const rest = raw.slice(CUSTOM_PREFIX.length);
-      const idx = rest.indexOf('|');
-      if (idx === -1) return null;
-      return { id: raw, name: rest.slice(0, idx) };
-    })
-    .filter(Boolean) as { id: string; name: string }[];
-  return [
-    ...predefined.map((b) => ({ id: b.id, name: b.name })),
-    ...custom,
-  ];
-}
-
-function SalonBrandsSection({ brandIds }: { brandIds: string[] }) {
-  const brands = resolveBrandNames(brandIds);
+function SalonBrandsSection({ brandNames }: { brandNames: { id: string; name: string }[] }) {
+  const brands = brandNames;
   if (brands.length === 0) return null;
   return (
     <div className="pt-10">
@@ -397,6 +377,16 @@ export default function SalonPublicParity({
   disableStickySectionTabs = false,
   publishedBlogCount = 0,
   hasPublishedBlogPosts = publishedBlogCount > 0,
+  servicesEnriched,
+  serviceCategories,
+  faqItems,
+  visitorInfo,
+  visitorAdditionalInfo,
+  blogSectionTitle,
+  brandNames,
+  openingHoursMerged,
+  bookingBlocks,
+  publicTeamMembers,
   children,
 }: SalonPublicParityProps & { children?: ReactNode }) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
@@ -417,25 +407,8 @@ export default function SalonPublicParity({
 
   const salonId = String(rawSalon.id ?? '').trim();
   const name = String(rawSalon.name ?? 'Салон');
-  const blogSectionTitle = resolveBlogSectionTitle(rawSalon.blog_title);
   const category = String(rawSalon.category ?? '').trim();
   const description = String(rawSalon.about ?? '').trim();
-  const faqItems = useMemo(
-    () => normalizeSalonFaqItems(rawSalon.faq_items),
-    [rawSalon.faq_items],
-  );
-  const visitorInfo = useMemo(
-    () => normalizeSalonVisitorInfo(rawSalon.visitor_info),
-    [rawSalon.visitor_info],
-  );
-  const visitorAdditionalInfo = useMemo(
-    () => normalizeVisitorAdditionalInfo(rawSalon.visitor_additional_info),
-    [rawSalon.visitor_additional_info],
-  );
-  const brandIds: string[] = useMemo(
-    () => (Array.isArray(rawSalon.brand_domains) ? rawSalon.brand_domains.map(String) : []),
-    [rawSalon.brand_domains],
-  );
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
   const address = String(rawSalon.address ?? '').trim();
@@ -478,42 +451,12 @@ export default function SalonPublicParity({
   const lat = rawSalon.latitude != null ? Number(rawSalon.latitude) : null;
   const lng = rawSalon.longitude != null ? Number(rawSalon.longitude) : null;
   const verified = rawSalon.verified === true;
-  const ownerName = String(rawSalon.owner_name ?? '').trim();
-  const ownerRole = String(rawSalon.owner_public_role ?? '').trim();
-  const ownerPhoto = String(rawSalon.owner_public_photo_url ?? '').trim();
-  const ownerBio = String(rawSalon.owner_public_bio ?? '').trim();
-  const workingHours = rawSalon.working_hours as
-    | Record<string, { open?: string; close?: string; closed?: boolean }>
-    | undefined;
-  const openingHoursMerged: OpeningDayRecord = mergeOpeningHours(
-    workingHours,
-    rawSalon.opening_hours
-  );
-  const bookingBlocks = useMemo(
-    () =>
-      normalizeBookingBlocks(
-        rawSalon.opening_hours && typeof rawSalon.opening_hours === 'object'
-          ? (rawSalon.opening_hours as Record<string, unknown>).booking_blocks
-          : null
-      ),
-    [rawSalon.opening_hours]
-  );
   const [currentStatusLabel, setCurrentStatusLabel] = useState('');
   const currentStatusIsOpen = currentStatusLabel.startsWith('Отворено');
 
   useEffect(() => {
     setCurrentStatusLabel(getCurrentStatusString(openingHoursMerged));
   }, [openingHoursMerged]);
-
-  const servicesFromDb = useMemo(
-    (): ServiceRow[] => parseSalonServices(rawSalon.services),
-    [rawSalon.services],
-  );
-
-  const servicesEnriched = useMemo(
-    () => enrichServiceCategories(servicesFromDb),
-    [servicesFromDb],
-  );
 
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
   const scrollSpySuppressUntilRef = useRef(0);
@@ -640,11 +583,6 @@ export default function SalonPublicParity({
     [servicesEnriched]
   );
 
-  const serviceCategories = useMemo(
-    () => buildServiceCategoryTabs(servicesEnriched),
-    [servicesEnriched],
-  );
-
   const activeOffers = useMemo(() => {
     const now = Date.now();
     return offersProp.filter((o) => offerVisibleToClient(o, now));
@@ -685,33 +623,6 @@ export default function SalonPublicParity({
     () => SCROLL_SPY_TAB_ORDER.filter((id) => id !== 'portfolio' || hasPortfolio),
     [hasPortfolio]
   );
-
-  const teamJson = rawSalon.team as { name?: string; role?: string; photo_url?: string }[] | undefined;
-  const publicTeamMembers = useMemo(() => {
-    const fromJson = Array.isArray(teamJson)
-      ? teamJson
-          .filter((m) => (m.name ?? '').trim())
-          .map((m, i) => ({
-            id: `tm-${i}`,
-            name: (m.name ?? '').trim(),
-            role: (m.role ?? '').trim(),
-            bio: '',
-            photoUrl: wireMediaUri((m.photo_url ?? '').trim()),
-          }))
-      : [];
-    if (fromJson.length > 0) return fromJson;
-    const displayName = ownerName || name;
-    if (!displayName) return [];
-    return [
-      {
-        id: 'owner',
-        name: displayName,
-        role: ownerRole,
-        bio: ownerBio,
-        photoUrl: wireMediaUri(ownerPhoto),
-      },
-    ];
-  }, [teamJson, ownerName, ownerRole, ownerBio, ownerPhoto, name]);
 
   const requestGeolocation = useCallback(() => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return;
@@ -1907,8 +1818,8 @@ export default function SalonPublicParity({
               venueExtrasRaw={rawSalon.venue_extras ?? rawSalon.venueExtras}
             />
 
-            {brandIds.length > 0 && (
-              <SalonBrandsSection brandIds={brandIds} />
+            {brandNames.length > 0 && (
+              <SalonBrandsSection brandNames={brandNames} />
             )}
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
@@ -2029,18 +1940,18 @@ export default function SalonPublicParity({
       </main>
 
       <footer
-        className="mt-20 w-full border-t border-white/10 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="mt-8 w-full border-t border-white/10 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         style={{
           background: `linear-gradient(135deg, color-mix(in srgb, ${primary} 22%, #1a1a2e) 0%, #0f0f1a 50%, color-mix(in srgb, ${primary} 10%, #0a0a14) 100%)`,
         }}
       >
-        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col gap-1.5 px-4 py-2.5">
+        <div className="mx-auto flex w-full max-w-[min(100%,1180px)] flex-col gap-2.5 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="min-w-0 truncate text-[11px] font-medium text-white/55">
+            <p className="min-w-0 truncate text-xs font-medium text-white/75">
               {name}
             </p>
             {footerSocial.length > 0 ? (
-              <div className="flex shrink-0 items-center gap-1.5" aria-label="Социални мрежи">
+              <div className="flex shrink-0 items-center gap-2" aria-label="Социални мрежи">
                 {footerSocial.map((item) => (
                   <SalonFooterSocialLink key={item.label} href={item.href} label={item.label}>
                     {item.node}
@@ -2050,30 +1961,30 @@ export default function SalonPublicParity({
             ) : null}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <nav className="flex items-center gap-0.5" aria-label="Правни документи">
+            <nav className="flex items-center gap-1" aria-label="Правни документи">
               {hasPublishedBlogPosts ? (
                 <a
                   href={`${basePath}/blog`}
-                  className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+                  className="px-1.5 py-1 text-[11px] text-white/55 transition-colors hover:text-white/80"
                 >
                   {blogSectionTitle}
                 </a>
               ) : null}
               <a
                 href={`${basePath}/terms`}
-                className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+                className="px-1.5 py-1 text-[11px] text-white/55 transition-colors hover:text-white/80"
               >
                 Условия
               </a>
               <a
                 href={`${basePath}/privacy`}
-                className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+                className="px-1.5 py-1 text-[11px] text-white/55 transition-colors hover:text-white/80"
               >
                 Поверителност
               </a>
               <a
                 href={`${basePath}/cookies`}
-                className="px-1 py-0.5 text-[9px] text-white/35 transition-colors hover:text-white/60"
+                className="px-1.5 py-1 text-[11px] text-white/55 transition-colors hover:text-white/80"
               >
                 Бисквитки
               </a>
@@ -2082,7 +1993,7 @@ export default function SalonPublicParity({
               href="https://clicka.bg"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[9px] text-white/25 transition-colors hover:text-white/50"
+              className="text-[11px] text-white/40 transition-colors hover:text-white/65"
             >
               Clicka.bg
             </a>
@@ -2090,7 +2001,10 @@ export default function SalonPublicParity({
         </div>
       </footer>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-white px-3 pb-[max(6px,env(safe-area-inset-bottom))] pt-2 lg:hidden">
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-white px-3 pt-2 lg:hidden"
+        style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
+      >
         <div className="mx-auto w-full max-w-[min(100%,1180px)]">
           <button
             type="button"
