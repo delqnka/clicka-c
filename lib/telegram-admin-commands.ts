@@ -1592,12 +1592,23 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
     }
     _ms('openrouter_response');
 
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+    const data = (await response.json()) as { choices?: { message?: { content?: string }; finish_reason?: string }[] };
     // Strip thinking tokens (<think>...</think>) that Gemini 2.5 Flash may prepend
     const rawContent = (data.choices?.[0]?.message?.content ?? '').trim();
+    const finishReason = data.choices?.[0]?.finish_reason;
     const raw = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
-    const parsed = JSON.parse(jsonStr) as AIIntent;
+
+    let parsed: AIIntent;
+    try {
+      parsed = JSON.parse(jsonStr) as AIIntent;
+    } catch (parseErr) {
+      console.error('[AI] JSON.parse failed', { parseErr, finishReason, rawLen: raw.length, rawSnippet: raw.slice(0, 200) });
+      _ms('parse_error');
+      _logTiming(`AI parse_error chatId=${chatId}`, _t);
+      return false;
+    }
+
     // Guard: if parse gave us garbage (no valid action), reset history and bail
     if (!parsed.action || parsed.action === ('undefined' as string)) {
       await saveHistory(chatId, []);
@@ -1611,6 +1622,8 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
     }
   } catch (err) {
     console.error('[AI] handleWithAI error:', err);
+    _ms('catch_error');
+    _logTiming(`AI catch_error chatId=${chatId}`, _t);
     await sendTelegramMessage(chatId, '⚠️ Грешка при свързване с AI. Пробвай отново.');
     return true;
   }
