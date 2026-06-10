@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       notes: 'Записан през AI чат',
       smsReminderConsent: false,
       offerId: null,
-      status: 'pending',
+      status: 'confirmed',
     });
 
     if (!result) {

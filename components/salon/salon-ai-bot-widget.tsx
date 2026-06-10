@@ -172,7 +172,7 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
         const dateObj = new Date(payload.date + 'T12:00:00');
         const dateLabel = dateObj.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
         const byWhom = payload.staffName ? ` при ${payload.staffName}` : '';
-        const confirmMsg = `✅ Записан/а си${byWhom} за ${dateLabel} в ${payload.time} за ${payload.serviceName}. Ще получиш напомняне по имейл. Очакваме те!`;
+        const confirmMsg = `Записан/а си${byWhom} за ${dateLabel} в ${payload.time} за ${payload.serviceName}. Ще получиш напомняне по имейл. Очакваме те!`;
         setAiMessages([...history, { role: 'assistant', content: confirmMsg, isBookingConfirm: true }]);
       } else if (res.status === 409) {
         const takenBy = payload.staffName ? ` при ${payload.staffName}` : '';

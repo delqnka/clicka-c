@@ -91,11 +91,7 @@ async function fetchPublicSalonPageData({
   slug?: string | null;
   host?: string | null;
 }) {
-  const salonLookup = await resolvePublicSalonBySlugOrHost({
-    slug,
-    host,
-  });
-
+  const salonLookup = await resolvePublicSalonBySlugOrHost({ slug, host });
   if (!salonLookup) return null;
 
   const rows = await sql`
@@ -104,61 +100,67 @@ async function fetchPublicSalonPageData({
     WHERE slug = ${salonLookup.slug} AND is_active = true
     LIMIT 1
   `;
-
   if (rows.length === 0) return null;
 
   const salon = rows[0] as Record<string, unknown>;
   const salonId = String(salon.id ?? '');
 
-  let offers: unknown[] = [];
-  let reviews: unknown[] = [];
-  let hasPublishedBlogPosts = false;
+  // All secondary fetches run in parallel once we have salonId.
+  // Ensures that gate their own table are chained directly with their query
+  // so the ensure→query pipeline overlaps with other parallel branches.
+  const [offersResult, blogResult, reviewsResult, placeId] = await Promise.all([
+    // Offers: ensure table exists, then fetch
+    ensureOffersSchema()
+      .then(() =>
+        sql`
+          SELECT id, title, description, discount, images, is_active, valid_until,
+                 campaign_valid_from, campaign_valid_until, max_claims, total_claims, duration_min
+          FROM salon_offers
+          WHERE salon_id = ${salonId}
+          ORDER BY created_at DESC
+        `,
+      )
+      .catch(() => [] as unknown[]),
 
-  try {
-    await ensureMarketingSchema();
-  } catch { /* non-fatal */ }
+    // Blog: ensure table exists, then check for published posts
+    ensureBlogSchema()
+      .then(() =>
+        sql`
+          SELECT EXISTS (
+            SELECT 1 FROM salon_blog_posts
+            WHERE salon_id = ${salonId} AND status = 'published'
+            LIMIT 1
+          ) AS has_posts
+        `,
+      )
+      .catch(() => [{ has_posts: false }] as unknown[]),
 
-  try {
-    await ensureOffersSchema();
-    offers = await sql`
-      SELECT id, title, description, discount, images, is_active, valid_until,
-             campaign_valid_from, campaign_valid_until, max_claims, total_claims, duration_min
-      FROM salon_offers
-      WHERE salon_id = ${salonId}
-      ORDER BY created_at DESC
-    `;
-  } catch {
-    offers = [];
-  }
-
-  try {
-    await ensureBlogSchema();
-    const existsRows = await sql`
-      SELECT EXISTS (
-        SELECT 1
-        FROM salon_blog_posts
-        WHERE salon_id = ${salonId} AND status = 'published'
-        LIMIT 1
-      ) AS has_posts
-    `;
-    hasPublishedBlogPosts = (existsRows[0] as { has_posts?: boolean }).has_posts === true;
-  } catch {
-    hasPublishedBlogPosts = false;
-  }
-
-  try {
-    reviews = await sql`
+    // Reviews: table always exists — no ensure needed
+    sql`
       SELECT id, client_name, client_email, client_avatar, rating, comment,
              specialist_comment, team_member_name, owner_reply, created_at
       FROM salon_reviews
       WHERE salon_id = ${salonId}
       ORDER BY created_at DESC
-    `;
-  } catch {
-    reviews = [];
-  }
+    `.catch(() => [] as unknown[]),
 
-  await ensureGoogleReviewsSchema().catch(() => {});
+    // Place ID: sync string parsing — no network call
+    resolveGooglePlaceId({
+      explicitPlaceId: typeof salon.google_place_id === 'string' ? salon.google_place_id : '',
+      mapsUrl: typeof salon.google_maps_url === 'string' ? salon.google_maps_url : '',
+    }),
+  ]);
+
+  // Schema-only ensures with no data dependency — fire without blocking
+  void ensureMarketingSchema().catch(() => {});
+  void ensureGoogleReviewsSchema().catch(() => {});
+
+  const offers = Array.isArray(offersResult) ? offersResult : [];
+  const reviews = Array.isArray(reviewsResult) ? reviewsResult : [];
+  const hasPublishedBlogPosts =
+    Array.isArray(blogResult) &&
+    blogResult.length > 0 &&
+    (blogResult[0] as { has_posts?: boolean }).has_posts === true;
 
   let googleReviews: GoogleReviewLite[] = [];
   try {
@@ -166,22 +168,17 @@ async function fetchPublicSalonPageData({
     if (Array.isArray(cached) && cached.length > 0) {
       googleReviews = cached.filter(
         (r: unknown): r is GoogleReviewLite =>
-          !!r
-          && typeof r === 'object'
-          && 'rating' in r
-          && 'text' in r
-          && Number.isFinite(Number((r as { rating?: unknown }).rating))
-          && Number((r as { rating?: unknown }).rating) >= 4,
+          !!r &&
+          typeof r === 'object' &&
+          'rating' in r &&
+          'text' in r &&
+          Number.isFinite(Number((r as { rating?: unknown }).rating)) &&
+          Number((r as { rating?: unknown }).rating) >= 4,
       );
     }
   } catch {
     googleReviews = [];
   }
-
-  const placeId = await resolveGooglePlaceId({
-    explicitPlaceId: typeof salon.google_place_id === 'string' ? salon.google_place_id : '',
-    mapsUrl: typeof salon.google_maps_url === 'string' ? salon.google_maps_url : '',
-  });
 
   const lat = salon.latitude != null ? Number(salon.latitude) : NaN;
   const lng = salon.longitude != null ? Number(salon.longitude) : NaN;
