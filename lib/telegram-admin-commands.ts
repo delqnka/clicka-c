@@ -110,6 +110,10 @@ async function clearState(chatId: number): Promise<void> {
 
 // ─── Regex patterns ─────────────────────────────────────────────────────────
 
+// Matches "нов клиент ..." with booking info (date or time present)
+const NEW_CLIENT_BOOKING_RE =
+  /^(?:нов[а]?\s+клиент[аa]?|добав(?:[ии]|ете(?:\s+ми)?)\s+(?:ми\s+)?нов[а]?\s+клиент[аa]?)\s+(.+)/i;
+
 const ADD_CLIENT_RE =
   /^(?:добав(?:[ии]|ете(?:\s+ми)?)|запиш[ии]|регистрир[ии])\s+(?:ми\s+)?(?:нов[а]?\s+)?клиент[аa]?\s+(.+)/i;
 
@@ -324,6 +328,16 @@ export async function handleAdminCommand(
   text: string,
   salon: SalonRef,
 ): Promise<boolean> {
+
+  // ── New client + booking (combined) ──────────────────────────────────────
+  const newClientBookingMatch = text.match(NEW_CLIENT_BOOKING_RE);
+  if (newClientBookingMatch) {
+    const hasBookingInfo = /\d{1,2}[\/\.\-]\d{1,2}|\bутре\b|\bднес\b|понеделник|вторник|сряда|четвъртък|петък|събота|неделя|\d{1,2}\s*ч\b|\d{1,2}:\d{2}/i.test(text);
+    if (hasBookingInfo) {
+      await handleNewClientWithBooking(chatId, text, newClientBookingMatch[1]!.trim(), salon);
+      return true;
+    }
+  }
 
   // ── Add client ───────────────────────────────────────────────────────────
   const addClientMatch = text.match(ADD_CLIENT_RE);
@@ -3444,6 +3458,93 @@ function pluralBooking(n: number): string {
 
 // ─── Create booking from bot ─────────────────────────────────────────────────
 
+async function handleNewClientWithBooking(
+  chatId: number,
+  originalText: string,
+  rest: string,
+  salon: SalonRef,
+): Promise<void> {
+  // 1. Extract phone
+  const phoneMatch = rest.match(/(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/);
+  const phone = phoneMatch?.[1]?.replace(/[\s\-]/g, '');
+
+  // 2. Extract email
+  const emailMatch = rest.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+  const email = emailMatch?.[1];
+
+  // 3. Name = text before the phone (or email if no phone)
+  const separatorPos = phoneMatch
+    ? rest.indexOf(phoneMatch[0])
+    : emailMatch ? rest.indexOf(emailMatch[0]) : -1;
+
+  const clientName = separatorPos > 0
+    ? rest.slice(0, separatorPos).trim()
+    : null;
+
+  if (!clientName) {
+    return await handleWithAI(chatId, originalText, salon);
+  }
+
+  // 4. Text after the separator (phone/email)
+  const separatorLen = phoneMatch ? phoneMatch[0].length : emailMatch ? emailMatch[0].length : 0;
+  const afterSep = rest.slice(separatorPos + separatorLen);
+
+  // 5. Parse date — DD.MM / DD/MM or day name
+  let date: string | null = null;
+  const dmMatch = afterSep.match(/(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?/);
+  if (dmMatch) {
+    const day = dmMatch[1]!.padStart(2, '0');
+    const month = dmMatch[2]!.padStart(2, '0');
+    const year = dmMatch[3]
+      ? (dmMatch[3].length === 2 ? `20${dmMatch[3]}` : dmMatch[3])
+      : String(new Date().getFullYear());
+    date = `${year}-${month}-${day}`;
+  } else {
+    for (const dn of ['утре', 'днес', 'понеделник', 'вторник', 'сряда', 'четвъртък', 'петък', 'събота', 'неделя']) {
+      if (new RegExp(`\\b${dn}\\b`, 'i').test(afterSep)) {
+        date = resolveDayName(dn);
+        break;
+      }
+    }
+  }
+
+  // 6. Parse time — "13ч", "13:00", "в 13", "в 13:30"
+  let time: string | null = null;
+  const timeMatch = afterSep.match(/(?:в\s+)?(\d{1,2}):(\d{2})/)
+    ?? afterSep.match(/(?:в\s+)?(\d{1,2})\s*ч(?:аса?)?/i);
+  if (timeMatch) {
+    const hh = parseInt(timeMatch[1]!, 10);
+    const mm = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+    time = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  }
+
+  // 7. Service = strip phone, email, date, time, connectors — what remains
+  const servicePart = afterSep
+    .replace(/\d{1,2}[\/\.\-]\d{1,2}(?:[\/\.\-]\d{2,4})?/g, '')
+    .replace(/(утре|днес|понеделник|вторник|сряда|четвъртък|петък|събота|неделя)/gi, '')
+    .replace(/(?:в\s+)?(\d{1,2}):(\d{2})/g, '')
+    .replace(/(?:в\s+)?\d{1,2}\s*ч(?:аса?)?/gi, '')
+    .replace(/\b(?:час[а]?\s+за|за\s+час[а]?|запис[а]?|запиши|запази|на\s+час|в)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Save client contact
+  await upsertSalonClient(salon.salonId, clientName, { phone, email });
+
+  if (date && time && servicePart) {
+    // Full combo: client + phone + booking
+    await handleCreateBooking(chatId, salon, clientName, servicePart, date, time, phone ?? '', email ?? '');
+  } else if (date && time) {
+    await sendTelegramMessage(chatId, `✅ Клиент <b>${clientName}</b> запазен${phone ? ` (${phone})` : ''}.\n⚠️ Не разбрах услугата — запиши часа ръчно или уточни.`);
+  } else {
+    // Only client info, no booking
+    const parts: string[] = [];
+    if (phone) parts.push(`тел: <b>${phone}</b>`);
+    if (email) parts.push(`имейл: <b>${email}</b>`);
+    await sendTelegramMessage(chatId, `✅ Запазих за <b>${clientName}</b>${parts.length ? ` — ${parts.join(', ')}` : ''}.`);
+  }
+}
+
 async function handleCreateBooking(
   chatId: number,
   salon: SalonRef,
@@ -3451,6 +3552,8 @@ async function handleCreateBooking(
   serviceName: string,
   date: string,
   time: string,
+  clientPhone = '',
+  clientEmail = '',
 ): Promise<void> {
   const { insertBookingIfNoOverlap } = await import('@/lib/booking-insert');
 
@@ -3468,8 +3571,8 @@ async function handleCreateBooking(
     salonId: salon.salonId,
     staffMemberId: salon.staffMemberId ?? null,
     clientName,
-    clientPhone: '',
-    clientEmail: '',
+    clientPhone,
+    clientEmail,
     serviceName: resolvedServiceName,
     servicePrice,
     serviceDuration,
