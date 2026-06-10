@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { insertBookingIfNoOverlap } from '@/lib/booking-insert';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
-import { upsertSalonClient } from '@/lib/salon-clients';
+import { runAfterResponse } from '@/lib/run-after-response';
 
 export async function POST(req: NextRequest) {
   try {
@@ -96,13 +96,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Slot taken' }, { status: 409 });
     }
 
-    // Add/update client in salon's client list (fire-and-forget)
-    upsertSalonClient(salonId, clientName, { phone: clientPhone, email: clientEmail || undefined }).catch(() => {});
-
     const notesLine = staff ? `Майстор: ${staff.name} | Записан през AI чат` : 'Записан през AI чат';
 
-    // Fire-and-forget notifications
-    dispatchBookingNotifications({
+    runAfterResponse(dispatchBookingNotifications({
       salonEmail: String(salon.email ?? ''),
       clientEmail: clientEmail ?? '',
       telegramChatId: String(salon.telegram_chat_id ?? ''),
@@ -130,7 +126,7 @@ export async function POST(req: NextRequest) {
         time,
         notes: notesLine,
       },
-    }).catch(() => {});
+    }));
 
     return NextResponse.json({
       ok: true,

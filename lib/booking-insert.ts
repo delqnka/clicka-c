@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
+import { upsertSalonClient } from '@/lib/salon-clients';
 
 export type InsertBookingRow = {
   id: string;
@@ -116,6 +117,13 @@ export async function insertBookingIfNoOverlap(
 
   if (inserted.length === 0) return null;
   const result = inserted[0] as { id: string };
+
+  // Save/update client record for every booking source (fire-and-forget)
+  upsertSalonClient(row.salonId, row.clientName, {
+    phone: row.clientPhone || undefined,
+    email: row.clientEmail || undefined,
+  }).catch(() => {});
+
   // Return the raw token (not the hash) — only this response moment exposes it.
   return { id: String(result.id ?? row.id), manageToken };
 }

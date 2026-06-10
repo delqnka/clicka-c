@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Loader2, CheckCircle2, User } from 'lucide-react';
 import { CLICKA_MARKETING_GRADIENT } from '@/lib/clicka-marketing-site';
 
@@ -172,7 +172,7 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
         const dateObj = new Date(payload.date + 'T12:00:00');
         const dateLabel = dateObj.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
         const byWhom = payload.staffName ? ` при ${payload.staffName}` : '';
-        const confirmMsg = `✅ Записан си${byWhom} на ${dateLabel} в ${payload.time} за ${payload.serviceName}. Ще те очакваме!`;
+        const confirmMsg = `✅ Записан/а си${byWhom} за ${dateLabel} в ${payload.time} за ${payload.serviceName}. Ще получиш напомняне по имейл. Очакваме те!`;
         setAiMessages([...history, { role: 'assistant', content: confirmMsg, isBookingConfirm: true }]);
       } else if (res.status === 409) {
         const takenBy = payload.staffName ? ` при ${payload.staffName}` : '';
@@ -737,6 +737,34 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
   );
 }
 
+// ─── Message renderer — strips markdown, highlights time slots ────────────────
+
+function renderMessage(content: string): React.ReactNode {
+  const cleaned = content.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+  const parts = cleaned.split(/(\b\d{1,2}:\d{2}\b)/);
+  const nodes: React.ReactNode[] = [];
+  parts.forEach((part, i) => {
+    if (/^\d{1,2}:\d{2}$/.test(part)) {
+      nodes.push(
+        <span key={i} style={{
+          display: 'inline-block', padding: '2px 9px', borderRadius: 20,
+          background: 'rgba(225,29,72,0.07)', color: '#e11d48',
+          fontWeight: 700, fontSize: '0.92em', margin: '0 1px',
+          border: '1px solid rgba(225,29,72,0.15)',
+        }}>
+          {part}
+        </span>
+      );
+    } else {
+      part.split('\n').forEach((line, j, arr) => {
+        nodes.push(line);
+        if (j < arr.length - 1) nodes.push(<br key={`${i}-${j}`} />);
+      });
+    }
+  });
+  return <>{nodes}</>;
+}
+
 // ─── AI messages list ──────────────────────────────────────────────────────────
 
 function AiMessagesList({ messages, GRAD, aiLoading, onOpenBooking }: {
@@ -751,23 +779,26 @@ function AiMessagesList({ messages, GRAD, aiLoading, onOpenBooking }: {
         <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
           {m.isBookingConfirm ? (
             <div style={{
-              maxWidth: '92%', padding: '10px 14px', borderRadius: 16,
-              fontSize: 13, lineHeight: 1.55,
-              background: '#ecfdf5', color: '#065f46',
-              border: '1.5px solid #6ee7b7',
-              display: 'flex', alignItems: 'flex-start', gap: 8,
+              maxWidth: '92%', padding: '13px 15px', borderRadius: 18,
+              fontSize: 13, lineHeight: 1.6,
+              background: 'linear-gradient(135deg, #fdf4ff 0%, #fff1f5 100%)',
+              boxShadow: '0 0 0 1.5px rgba(168,85,247,0.2), 0 6px 20px rgba(225,29,72,0.09)',
+              animation: 'booking-pop 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards',
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+              color: '#1a1a2e',
             }}>
-              <CheckCircle2 size={16} style={{ color: '#10b981', flexShrink: 0, marginTop: 1 }} />
-              <span>{m.content}</span>
+              <CheckCircle2 size={17} style={{ color: '#e11d48', flexShrink: 0, marginTop: 1 }} />
+              <span>{renderMessage(m.content)}</span>
             </div>
           ) : m.bookingLink ? (
             <div style={{
               maxWidth: '82%', padding: '10px 13px', borderRadius: '16px 16px 16px 4px',
               fontSize: 13, lineHeight: 1.55,
-              background: '#f3f4f6', color: '#111',
+              background: 'linear-gradient(160deg, #f5f5f7 0%, #e8e8ea 100%)', color: '#111',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
-              {m.content && <span>{m.content}</span>}
+              {m.content && <span>{renderMessage(m.content)}</span>}
               <button
                 onClick={() => onOpenBooking?.(m.bookingLink)}
                 style={{
@@ -783,19 +814,20 @@ function AiMessagesList({ messages, GRAD, aiLoading, onOpenBooking }: {
             <div style={{
               maxWidth: '82%', padding: '9px 13px', borderRadius: 16,
               fontSize: 13, lineHeight: 1.55,
-              background: m.role === 'user' ? GRAD : '#f3f4f6',
+              background: m.role === 'user' ? GRAD : 'linear-gradient(160deg, #f5f5f7 0%, #e8e8ea 100%)',
               color: m.role === 'user' ? '#fff' : '#111',
+              boxShadow: m.role === 'assistant' ? '0 1px 4px rgba(0,0,0,0.08)' : undefined,
               borderBottomRightRadius: m.role === 'user' ? 4 : 16,
               borderBottomLeftRadius: m.role === 'assistant' ? 4 : 16,
             }}>
-              {m.content}
+              {m.role === 'assistant' ? renderMessage(m.content) : m.content}
             </div>
           )}
         </div>
       ))}
       {aiLoading && (
         <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-          <div style={{ background: '#f3f4f6', borderRadius: '16px 16px 16px 4px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ background: 'linear-gradient(160deg, #f5f5f7 0%, #e8e8ea 100%)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderRadius: '16px 16px 16px 4px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#bbb', display: 'inline-block', animation: 'pulse 1s infinite' }} />
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#bbb', display: 'inline-block', animation: 'pulse 1s 0.2s infinite' }} />
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#bbb', display: 'inline-block', animation: 'pulse 1s 0.4s infinite' }} />
@@ -862,7 +894,7 @@ function LiveMessagesList({ messages, GRAD, sending, onOpenBooking }: {
       })}
       {sending && (
         <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-          <div style={{ background: '#f3f4f6', borderRadius: '16px 16px 16px 4px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ background: 'linear-gradient(160deg, #f5f5f7 0%, #e8e8ea 100%)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderRadius: '16px 16px 16px 4px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#bbb', display: 'inline-block', animation: 'pulse 1s infinite' }} />
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#bbb', display: 'inline-block', animation: 'pulse 1s 0.2s infinite' }} />
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#bbb', display: 'inline-block', animation: 'pulse 1s 0.4s infinite' }} />

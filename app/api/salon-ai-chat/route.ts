@@ -382,12 +382,12 @@ export async function POST(req: NextRequest) {
 
       staffSlots = (await Promise.allSettled(
         staffWithIds.map(async (sm) => {
-          const days = await getStaffFreeSlots(salonId, sm.id, wh, 60);
+          const days = await getStaffFreeSlots(salonId, sm.id, wh, 60, 14);
           return { staffName: sm.name, days };
         }),
       )).flatMap((r) => r.status === 'fulfilled' ? [r.value] : []);
     } else if (!isTeamPlan) {
-      soloSlots = await getSalonFreeSlots(salonId, wh, 60).catch(() => []);
+      soloSlots = await getSalonFreeSlots(salonId, wh, 60, 14).catch(() => []);
     }
 
     const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
