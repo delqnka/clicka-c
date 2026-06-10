@@ -828,7 +828,9 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
 
   // Any other text — try admin commands first, then booking block parser
   if (text) {
+    const _t0 = Date.now();
     const salon = await findSalonByChatId(chatId);
+    const _t1 = Date.now();
     if (salon) {
       const handled = await handleAdminCommand(chatId, text, {
         salonId: salon.salonId,
@@ -836,6 +838,8 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         name: salon.name,
         staffMemberId: salon.staffMemberId,
       });
+      const _t2 = Date.now();
+      console.log(`[TIMING] webhook | salon_lookup: ${_t1 - _t0}ms | handleAdminCommand: ${_t2 - _t1}ms | total: ${_t2 - _t0}ms | text: "${text.slice(0, 60)}"`);
       if (handled) return NextResponse.json({ ok: true });
 
       // Admin command not recognised — try booking-block parser ("зает 14:00-16:00")

@@ -1189,11 +1189,14 @@ async function handleContextReference(
 
 async function handleWithAI(chatId: number, text: string, salon: SalonRef): Promise<boolean> {
   const apiKey = getOpenRouterApiKey();
-  console.log('[AI] handleWithAI called, text:', text, 'hasApiKey:', !!apiKey);
   if (!apiKey) return false;
+
+  const _t: Record<string, number> = { start: Date.now() };
+  const _ms = (key: string) => { _t[key] = Date.now(); };
 
   // ── State machine: handle all multi-step flows programmatically, no AI ────
   const convState = await getState(chatId);
+  _ms('state_load');
 
   if (convState) {
     // ── waiting_reschedule_time: user must reply with a time ─────────────────
@@ -1302,6 +1305,10 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
 
   // Load salon context for conversational answers
   const salonContext = await loadSalonContext(salon.salonId);
+  _ms('salon_ctx');
+  const smsRows = await sql`SELECT sms_enabled FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1` as { sms_enabled: boolean }[];
+  const smsEnabled = smsRows[0]?.sms_enabled ?? false;
+  _ms('sms_check');
 
   const currentServices = await getSalonServices(salon.salonId);
   const servicesJson = JSON.stringify(currentServices.map((s, i) => ({ id: String(i + 1), name: s.name, price: s.price, duration_min: s.duration_min, category: s.category ?? null })), null, 2);
@@ -1356,6 +1363,8 @@ ${servicesJson}
 КРИТИЧНО ВАЖНО: Никога не измисляй резервации, клиенти или данни. Ако не знаеш точните данни, върни съответния action (bookings_day, bookings_week и т.н.) вместо да ги пишеш в chat reply. Никога не слагай списък с резервации в "chat" reply.
 
 КРИТИЧНО ВАЖНО: Никога не измисляй ограничения на системата. Не казвай "системата не може", "нямам функция", "не мога да изчисля" — ако не знаеш нещо, кажи "Не знам" или поискай повторна команда. Никога не лъжи потребителя за възможностите на системата.
+
+ИМЕЙЛ УВЕДОМЛЕНИЯ: Системата автоматично изпраща имейли при: (1) нова резервация — на клиента и на собственика; (2) преместване на резервация — на клиента с новия час; (3) напомняния преди час. Имейлите се изпращат само ако клиентът има записан имейл адрес. Не казвай никога, че системата не може да изпраща имейли.${smsEnabled ? '' : '\n\nSMS НАПОМНЯНИЯ: В момента SMS услугата е деактивирана. Не предлагай SMS опции на потребителя.'}
 
 ═══ НАЙ-ВАЖНО ПРАВИЛО ЗА УСЛУГИ ═══
 
@@ -1516,8 +1525,8 @@ ${servicesJson}
 - { "action": "top_services" }
 - { "action": "list_services" }
 - { "action": "pending_bookings" }
-- { "action": "sms_balance" }
-- { "action": "send_sms_to_client", "client_name": "Диана" }  ← изпраща SMS напомняне до конкретен клиент за предстоящата му резервация
+${smsEnabled ? `- { "action": "sms_balance" }
+- { "action": "send_sms_to_client", "client_name": "Диана" }  ← изпраща SMS напомняне до конкретен клиент за предстоящата му резервация` : ''}
 - { "action": "complete_booking", "client_name": "..." }
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
@@ -1549,7 +1558,7 @@ ${servicesJson}
 - { "action": "update_email", "email": "..." }
 - { "action": "update_bio", "bio": "..." }
 - { "action": "update_owner_bio", "bio": "..." }
-- { "action": "toggle_sms", "enabled": true }
+${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
 - { "action": "chat", "reply": "естествен отговор на български" }
 
 Само JSON, без обяснения извън полето reply.`;
@@ -1557,9 +1566,11 @@ ${servicesJson}
   let intent: AIIntent = { action: 'chat', reply: '' };
 
   const history = await getHistory(chatId);
+  _ms('history_load');
   await appendHistory(chatId, 'user', text);
 
   try {
+    _ms('openrouter_start');
     const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
       method: 'POST',
       headers: openRouterHeaders(),
@@ -1579,6 +1590,7 @@ ${servicesJson}
       await sendTelegramMessage(chatId, '⚠️ AI асистентът не отговори. Пробвай пак след малко.');
       return true;
     }
+    _ms('openrouter_response');
 
     const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
     // Strip thinking tokens (<think>...</think>) that Gemini 2.5 Flash may prepend
@@ -1592,6 +1604,7 @@ ${servicesJson}
       return false;
     }
     intent = parsed;
+    _ms('parse_done');
     // Record the action taken so future messages have context (only for known actions)
     if (intent.action !== 'chat') {
       await appendHistory(chatId, 'assistant', `[изпълнено действие: ${intent.action}]`);
@@ -1602,6 +1615,8 @@ ${servicesJson}
     return true;
   }
 
+  _ms('tool_start');
+  _logTiming(`AI action=${intent.action} chatId=${chatId}`, _t);
   switch (intent.action) {
     case 'bookings_day':
       await handleBookingsForDay(chatId, salon, intent.date, intent.date === todayStr ? 'днес' : intent.date === tomorrowStr ? 'утре' : intent.date);
@@ -1977,6 +1992,19 @@ ${servicesJson}
     default:
       return false;
   }
+  // unreachable, but _t is available if needed
+}
+
+function _logTiming(label: string, t: Record<string, number>): void {
+  const keys = Object.keys(t);
+  const rows: string[] = [];
+  for (let i = 1; i < keys.length; i++) {
+    const prev = keys[i - 1]!;
+    const curr = keys[i]!;
+    rows.push(`  ${prev}→${curr}: ${t[curr]! - t[prev]!}ms`);
+  }
+  const total = t[keys[keys.length - 1]!]! - t[keys[0]!]!;
+  console.log(`[TIMING] ${label} | total: ${total}ms\n${rows.join('\n')}`);
 }
 
 // ─── Salon context loader ─────────────────────────────────────────────────────
