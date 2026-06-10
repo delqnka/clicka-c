@@ -28,6 +28,9 @@ const jsonLd = [
     alternateName: 'Clicka',
     url: 'https://www.clicka.bg/',
     logo: 'https://www.clicka.bg/clicka-logo.png',
+    sameAs: [
+      'https://www.facebook.com/clickabg',
+    ],
   },
   {
     '@context': 'https://schema.org',
