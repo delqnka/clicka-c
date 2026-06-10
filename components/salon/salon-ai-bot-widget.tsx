@@ -781,13 +781,12 @@ function AiMessagesList({ messages, GRAD, aiLoading, onOpenBooking }: {
             <div style={{
               maxWidth: '92%', padding: '13px 15px', borderRadius: 18,
               fontSize: 13, lineHeight: 1.6,
-              background: 'linear-gradient(135deg, #fdf4ff 0%, #fff1f5 100%)',
-              boxShadow: '0 0 0 1.5px rgba(168,85,247,0.2), 0 6px 20px rgba(225,29,72,0.09)',
+              background: 'transparent',
+              boxShadow: '0 0 0 1.5px #16a34a',
               animation: 'booking-pop 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards',
               display: 'flex', alignItems: 'flex-start', gap: 10,
-              color: '#1a1a2e',
             }}>
-              <CheckCircle2 size={17} style={{ color: '#e11d48', flexShrink: 0, marginTop: 1 }} />
+              <CheckCircle2 size={18} style={{ color: '#16a34a', flexShrink: 0, marginTop: 1, animation: 'check-bounce 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.2s both' }} />
               <span>{renderMessage(m.content)}</span>
             </div>
           ) : m.bookingLink ? (

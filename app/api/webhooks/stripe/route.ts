@@ -422,6 +422,22 @@ export async function POST(request: NextRequest) {
       console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
       console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
       notifyOwnerNewSale({ flow: 'new_purchase', salonSlug: String(salonSlug), plan: canonicalPlan ?? 'solo', billingPeriod, amountCents: session.amount_total ?? 0, currency: session.currency?.toUpperCase() });
+
+      // ── Promo slot tracking ─────────────────────────────────────────────────
+      const promoRef = String(session.metadata?.promoRef ?? '').trim();
+      if (promoRef === 'purvite10') {
+        try {
+          await sql`
+            UPDATE promo_campaigns
+            SET used = LEAST(used + 1, total)
+            WHERE key = 'purvite10'
+          `;
+          console.log(`[stripe-webhook] 🎟 Promo slot used — ref=${promoRef} slug=${salonSlug}`);
+        } catch (promoErr) {
+          // non-critical — log but don't fail the webhook
+          console.error('[stripe-webhook] Promo slot update failed:', promoErr);
+        }
+      }
     } catch (err) {
       console.error('[stripe-webhook] Salon activation failed:', err);
       Sentry.captureException(err, { extra: { eventId: event.id, salonSlug, planType } });

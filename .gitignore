@@ -1,3 +1,6 @@
+# MCP credentials (never commit)
+.mcp.json
+
 # env files
 .env
 .env.local
