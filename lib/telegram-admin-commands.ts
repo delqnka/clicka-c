@@ -70,7 +70,8 @@ type ConvState =
   | { type: 'last_context'; entity_type: 'booking' | 'service' | 'client' | 'review'; entities: LastContextEntity[]; selected_entity?: LastContextEntity; created_at: string }
   | { type: 'waiting_entity_clarification'; pending_command: string; entities: LastContextEntity[]; created_at: string }
   | { type: 'last_photo'; url: string; created_at: string }
-  | { type: 'last_imported_services'; serviceNames: string[]; created_at: string };
+  | { type: 'last_imported_services'; serviceNames: string[]; created_at: string }
+  | { type: 'last_client'; name: string; created_at: string };
 
 async function getState(chatId: number): Promise<ConvState | null> {
   try {
@@ -329,35 +330,18 @@ export async function handleAdminCommand(
   salon: SalonRef,
 ): Promise<boolean> {
 
-  // ── New client + booking (combined) ──────────────────────────────────────
-  const newClientBookingMatch = text.match(NEW_CLIENT_BOOKING_RE);
-  if (newClientBookingMatch) {
-    const hasBookingInfo = /\d{1,2}[\/\.\-]\d{1,2}|\bутре\b|\bднес\b|понеделник|вторник|сряда|четвъртък|петък|събота|неделя|\d{1,2}\s*ч\b|\d{1,2}:\d{2}/i.test(text);
-    if (hasBookingInfo) {
-      await handleNewClientWithBooking(chatId, text, newClientBookingMatch[1]!.trim(), salon);
+  // ── Bare phone or email → apply to last_client if active ─────────────────
+  const barePhone = /^(\+?(?:359|0)\d[\d\s\-]{6,12}\d)$/.exec(text.trim());
+  const bareEmail = /^([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$/.exec(text.trim());
+  if (barePhone || bareEmail) {
+    const state = await getState(chatId);
+    if (state?.type === 'last_client') {
+      const phone = barePhone?.[1]?.replace(/[\s\-]/g, '');
+      const email = bareEmail?.[1];
+      await handleSaveClientContact(chatId, salon, state.name, phone, email);
+      await appendHistory(chatId, 'user', text);
       return true;
     }
-  }
-
-  // ── Add client ───────────────────────────────────────────────────────────
-  const addClientMatch = text.match(ADD_CLIENT_RE);
-  if (addClientMatch) {
-    const rest = addClientMatch[1]!.trim();
-    // Extract phone: Bulgarian mobile (08xx) or international (+359...)
-    const phoneMatch = rest.match(/(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/);
-    // Extract email
-    const emailMatch = rest.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
-    // Name = rest stripped of phone and email
-    const clientName = rest
-      .replace(phoneMatch?.[0] ?? '', '')
-      .replace(emailMatch?.[0] ?? '', '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (!clientName) return await handleWithAI(chatId, text, salon);
-    const phone = phoneMatch?.[1]?.replace(/\s/g, '');
-    const email = emailMatch?.[1];
-    await handleSaveClientContact(chatId, salon, clientName, phone, email);
-    return true;
   }
 
   // ── Add service ──────────────────────────────────────────────────────────
@@ -1337,9 +1321,13 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
         return `\n\n[ПОСЛЕДНО ПОКАЗАНИ ЗАПИСИ (${lastCtxEntities.length} бр.): ${entityLines}. ${hasPrices ? `Обща стойност: ${totalPrice} €. Ако потребителят пита "за колко пари", "обща сума", "колко струват" — отговори директно с тази сума.` : ''} Ако потребителят използва "я", "го", "нея", "него", "тя", "той", "тази", "този" — имат предвид ${lastCtxEntities.length === 1 ? lastCtxEntities[0]!.name : 'някой от тези хора'}. ЗАДЪЛЖИТЕЛНО използвай точното им пълно ime от този списък — НЕ измисляй или съкращавай имена.]`;
       })()
     : '';
+  const lastClientCtx = (freshState?.type === 'last_client')
+    ? `\n\n[ПОСЛЕДНО РАБОТЕН КЛИЕНТ: "${freshState.name}". Ако следващото съобщение добавя телефон, имейл, бележка или резервация без да посочва изрично клиент — отнася се за "${freshState.name}". Използвай точно това ime.]`
+    : '';
   const stateContext = [
     pendingBlockDate ? `\n\n[КОНТЕКСТ: Преди това потребителят искаше да блокира ${formatDateBg(pendingBlockDate)} (${pendingBlockDate}). Ако сега казва "блокирай деня" или "блокирай" без дата, имат предвид тази дата.]` : '',
     lastCtxContext,
+    lastClientCtx,
   ].join('');
 
   const systemPrompt = `Ти си личен AI асистент на собственик на малък бизнес. Говориш на естествен, топъл български — като добър приятел с опит в бранша.${stateContext}
@@ -2566,10 +2554,14 @@ async function getNextBookingForClient(salonId: string, clientName: string): Pro
 
 async function handleSaveClientContact(chatId: number, salon: SalonRef, clientName: string, phone?: string, email?: string): Promise<void> {
   await upsertSalonClient(salon.salonId, clientName, { phone, email });
+  await setState(chatId, { type: 'last_client', name: clientName, created_at: new Date().toISOString() });
   const parts: string[] = [];
   if (phone) parts.push(`телефон: <b>${phone}</b>`);
   if (email) parts.push(`имейл: <b>${email}</b>`);
-  await sendTelegramMessage(chatId, `✅ Запазих за <b>${clientName}</b> — ${parts.join(', ')}.`);
+  const detail = parts.length ? ` — ${parts.join(', ')}` : '';
+  const reply = `✅ Запазих за <b>${clientName}</b>${detail}.`;
+  await sendTelegramMessage(chatId, reply);
+  await appendHistory(chatId, 'assistant', `[save_client_contact: ${clientName}${phone ? `, tel: ${phone}` : ''}${email ? `, email: ${email}` : ''}]`);
 }
 
 async function handleSaveClientNote(chatId: number, salon: SalonRef, clientName: string, note: string): Promise<void> {
@@ -3591,6 +3583,7 @@ async function handleCreateBooking(
   // Auto-confirm owner-created bookings
   await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${result.id}`;
   revalidateTag(`salon-public-${salon.slug}`);
+  await setState(chatId, { type: 'last_client', name: clientName, created_at: new Date().toISOString() });
 
   const priceStr = servicePrice != null ? ` — ${servicePrice} €` : '';
   await sendTelegramMessage(
