@@ -794,6 +794,7 @@ type AIIntent =
   | { action: 'client_note'; client_name: string }
   | { action: 'client_bookings'; client_name: string }
   | { action: 'reschedule_booking'; client_name: string; from_date: string; to_date: string; to_time?: string }
+  | { action: 'update_booking_service'; client_name: string; date: string; time: string; new_service: string }
   | { action: 'confirm_day_off'; date: string }
   | { action: 'chat'; reply: string };
 
@@ -1537,6 +1538,7 @@ ${smsEnabled ? `- { "action": "sms_balance" }
 - { "action": "client_note", "client_name": "..." }
 - { "action": "client_bookings", "client_name": "..." }
 - { "action": "reschedule_booking", "client_name": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
+- { "action": "update_booking_service", "client_name": "...", "date": "YYYY-MM-DD", "time": "HH:mm", "new_service": "..." }  ← когато потребителят коригира грешна услуга на вече създадена резервация ("не маникюр а педикюр", "промени услугата на мъжко подстригване"). Използвай date/time от [ПОСЛЕДНА РЕЗЕРВАЦИЯ] ако не са посочени изрично.
 - { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
 - { "action": "add_service", "name": "...", "duration_min": 45, "price_eur": 30, "category": "...", "variants": [{"label":"Barber","price":15},{"label":"Master","price":25}] }
 - { "action": "update_service", "service_name": "...", "price_eur": 35, "duration_min": 60, "category": "...", "new_name": "..." }  ← подавай само полетата, които се променят
@@ -1606,7 +1608,8 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
       console.error('[AI] JSON.parse failed', { parseErr, finishReason, rawLen: raw.length, rawSnippet: raw.slice(0, 200) });
       _ms('parse_error');
       _logTiming(`AI parse_error chatId=${chatId}`, _t);
-      return false;
+      await sendTelegramMessage(chatId, '⚠️ Грешка при свързване с AI. Пробвай отново.');
+      return true;
     }
 
     // Guard: if parse gave us garbage (no valid action), reset history and bail
@@ -1982,6 +1985,32 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
         return true;
       }
       await handleRescheduleBooking(chatId, salon, intent.client_name, intent.from_date, intent.to_date, intent.to_time);
+      return true;
+    }
+    case 'update_booking_service': {
+      const services = await getSalonServices(salon.salonId);
+      const svcIdx = findServiceIndex(services, intent.new_service);
+      const resolvedName = svcIdx !== -1 ? services[svcIdx]!.name : intent.new_service;
+      const resolvedPrice = svcIdx !== -1 ? services[svcIdx]!.price : null;
+      const updated = await sql`
+        UPDATE bookings
+        SET service_name = ${resolvedName},
+            service_price = ${resolvedPrice},
+            updated_at = now()
+        WHERE CAST(salon_id AS text) = ${salon.salonId}
+          AND lower(client_name) = lower(${intent.client_name})
+          AND date = ${intent.date}
+          AND start_time = ${intent.time}
+        RETURNING id
+      ` as { id: string }[];
+      if (updated.length === 0) {
+        await sendTelegramMessage(chatId, `⚠️ Не намерих резервация на <b>${intent.client_name}</b> на ${formatDateBg(intent.date)} в ${intent.time}.`);
+        return true;
+      }
+      revalidateTag(`salon-public-${salon.slug}`);
+      await setState(chatId, { type: 'last_booking', bookingId: updated[0]!.id, clientName: intent.client_name, clientId: null, date: intent.date, time: intent.time, serviceName: resolvedName, created_at: new Date().toISOString() });
+      const priceStr = resolvedPrice != null ? ` — ${resolvedPrice} €` : '';
+      await sendTelegramMessage(chatId, `✅ Услугата е променена на <b>${resolvedName}</b>${priceStr} за <b>${intent.client_name}</b>.`);
       return true;
     }
     case 'chat':
