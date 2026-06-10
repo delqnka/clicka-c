@@ -1348,6 +1348,16 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
     lastServiceCtx,
   ].join('');
 
+  // ── DEBUG: log all context for intent debugging ─────────────────────────
+  console.log('[AI_DEBUG] ─────────────────────────────────────────────────');
+  console.log('[AI_DEBUG] user_message:', JSON.stringify(text));
+  console.log('[AI_DEBUG] freshState.type:', freshState?.type ?? 'null');
+  console.log('[AI_DEBUG] last_client_ctx:', lastClientCtx || '(none)');
+  console.log('[AI_DEBUG] last_booking_ctx:', lastBookingCtx || '(none)');
+  console.log('[AI_DEBUG] last_service_ctx:', lastServiceCtx || '(none)');
+  console.log('[AI_DEBUG] last_ctx_context:', lastCtxContext ? lastCtxContext.slice(0, 200) : '(none)');
+  console.log('[AI_DEBUG] ─────────────────────────────────────────────────');
+
   const systemPrompt = `Ти си личен AI асистент на собственик на малък бизнес. Говориш на естествен, топъл български — като добър приятел с опит в бранша.${stateContext}
 
 Днес е ${today.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
@@ -1601,9 +1611,13 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
     const raw = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     const jsonStr = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/) ?? ['{}'])[0]!;
 
+    console.log('[AI_DEBUG] raw_openrouter_response:', raw.slice(0, 500));
+    console.log('[AI_DEBUG] json_string_to_parse:', jsonStr.slice(0, 300));
+
     let parsed: AIIntent;
     try {
       parsed = JSON.parse(jsonStr) as AIIntent;
+      console.log('[AI_DEBUG] parsed_intent:', JSON.stringify(parsed));
     } catch (parseErr) {
       console.error('[AI] JSON.parse failed', { parseErr, finishReason, rawLen: raw.length, rawSnippet: raw.slice(0, 200) });
       _ms('parse_error');
