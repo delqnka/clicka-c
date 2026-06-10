@@ -365,6 +365,122 @@ function SalonGalleryMosaic({
   );
 }
 
+/* ─── Team members row + profile modal ──────────────────────────────── */
+type TeamMember = { id: string; name: string; role: string; bio: string; photoUrl: string };
+
+function TeamMembersRow({
+  members,
+  optimizedSrc,
+}: {
+  members: TeamMember[];
+  optimizedSrc: (src: string, w: number) => string;
+}) {
+  const [selected, setSelected] = useState<TeamMember | null>(null);
+
+  return (
+    <>
+      <div className="mt-3 flex gap-4 overflow-x-auto pb-1">
+        {members.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setSelected(m)}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'center', flexShrink: 0, width: 80 }}
+          >
+            <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', margin: '0 auto' }}>
+              {m.photoUrl ? (
+                <img
+                  src={optimizedSrc(m.photoUrl, 128)}
+                  alt={m.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  loading="lazy"
+                  decoding="async"
+                  width={64}
+                  height={64}
+                />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0' }}>
+                  <User style={{ width: 28, height: 28, color: 'rgba(0,0,0,0.25)' }} aria-hidden />
+                </div>
+              )}
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 600, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{m.name}</p>
+            {m.role ? <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(0,0,0,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{m.role}</p> : null}
+          </button>
+        ))}
+      </div>
+
+      {/* Profile modal */}
+      {selected ? (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 0 0' }}
+          onClick={() => setSelected(null)}
+        >
+          {/* Backdrop */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }} />
+
+          {/* Sheet */}
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: 480,
+              background: '#fff',
+              borderRadius: '24px 24px 0 0',
+              padding: '32px 24px 48px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 12,
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', width: 36, height: 4, borderRadius: 999, background: 'rgba(0,0,0,0.12)' }} />
+
+            {/* Large avatar */}
+            <div style={{ width: 96, height: 96, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+              {selected.photoUrl ? (
+                <img
+                  src={optimizedSrc(selected.photoUrl, 192)}
+                  alt={selected.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  width={96}
+                  height={96}
+                />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0' }}>
+                  <User style={{ width: 40, height: 40, color: 'rgba(0,0,0,0.25)' }} aria-hidden />
+                </div>
+              )}
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>{selected.name}</p>
+              {selected.role ? <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(0,0,0,0.5)' }}>{selected.role}</p> : null}
+            </div>
+
+            {selected.bio ? (
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: 'rgba(0,0,0,0.65)', textAlign: 'center', maxWidth: 360 }}>
+                {selected.bio}
+              </p>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              style={{ marginTop: 8, padding: '11px 32px', borderRadius: 999, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#1a1a1a', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Затвори
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export default function SalonPublicParity({
   salonSlug,
   salon: rawSalon,
@@ -1702,27 +1818,7 @@ export default function SalonPublicParity({
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">{publicTeamSectionLabel}</h2>
               {publicTeamMembers.length > 0 ? (
-                <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-                  {publicTeamMembers.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex w-28 shrink-0 flex-col items-center p-1 text-center"
-                    >
-                      <div className="h-16 w-16 overflow-hidden rounded-full">
-                        {member.photoUrl ? (
-                          <img src={optimizedSrc(member.photoUrl, 128)} alt={name} className="h-full w-full object-cover" loading="lazy" decoding="async" width={64} height={64} />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <User className="h-7 w-7 text-black/35" aria-hidden />
-                          </div>
-                        )}
-                      </div>
-                      <p className="mt-2 w-full truncate text-sm font-medium text-[#1a1a1a]">{member.name}</p>
-                      {member.role ? <p className="w-full truncate text-xs salon-text-muted">{member.role}</p> : null}
-                      {member.bio ? <p className="mt-1 w-full text-[11px] leading-relaxed salon-text-muted">{member.bio}</p> : null}
-                    </div>
-                  ))}
-                </div>
+                <TeamMembersRow members={publicTeamMembers} optimizedSrc={optimizedSrc} />
               ) : (
                 <p className="mt-3 text-sm salon-text-muted">Няма добавени специалисти.</p>
               )}
