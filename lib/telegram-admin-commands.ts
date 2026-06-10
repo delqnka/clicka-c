@@ -322,15 +322,6 @@ export async function handleAdminCommand(
   salon: SalonRef,
 ): Promise<boolean> {
 
-  // ── Brands ───────────────────────────────────────────────────────────────
-  const isBrandsQuery = /^брандов[еи]$/i.test(text.trim());
-  const isAddBrand = /(?:добав[ии]|работ[яеи]|ползв[ам]|работим с|ползваме)\s+(?:бранд[а]?\s+)?(.+)/i.test(text) && !/услуг/i.test(text);
-  const isRemoveBrand = /(?:махн[иеа]|изтри[й]?|премахн[иеа])\s+(?:бранд[а]?\s+)?(.+)/i.test(text) && !/услуг/i.test(text);
-  if (isBrandsQuery || isAddBrand || isRemoveBrand) {
-    await handleBrandsCommand(chatId, text, salon);
-    return true;
-  }
-
   // ── Add service ──────────────────────────────────────────────────────────
   const addMatch = text.match(ADD_SERVICE_RE);
   const hasServiceKeyword = /услуг[аa]/i.test(text);
