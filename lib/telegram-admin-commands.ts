@@ -2635,7 +2635,7 @@ async function upsertSalonClient(
   salonId: string,
   name: string,
   fields: { phone?: string; email?: string; notes?: string },
-): Promise<string | null> {
+): Promise<{ id: string | null; isNew: boolean }> {
   const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
   await ensureSalonClientsSchema();
 
@@ -2654,12 +2654,12 @@ async function upsertSalonClient(
         updated_at = now()
       RETURNING id
     ` as { id: string }[];
-    return inserted[0]?.id ?? null;
+    return { id: inserted[0]?.id ?? null, isNew: true };
   } else {
     if (fields.phone !== undefined) await sql`UPDATE salon_clients SET phone = ${fields.phone}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
     if (fields.email !== undefined) await sql`UPDATE salon_clients SET email = ${fields.email}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
     if (fields.notes !== undefined) await sql`UPDATE salon_clients SET notes = ${fields.notes}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
-    return existing[0]?.id ?? null;
+    return { id: existing[0]?.id ?? null, isNew: false };
   }
 }
 
@@ -2678,20 +2678,22 @@ async function getNextBookingForClient(salonId: string, clientName: string): Pro
 }
 
 async function handleSaveClientContact(chatId: number, salon: SalonRef, clientName: string, phone?: string, email?: string): Promise<void> {
-  const clientId = await upsertSalonClient(salon.salonId, clientName, { phone, email });
+  const { id: clientId, isNew } = await upsertSalonClient(salon.salonId, clientName, { phone, email });
   await setState(chatId, { type: 'last_client', clientId, name: clientName, created_at: new Date().toISOString() });
   const parts: string[] = [];
   if (phone) parts.push(`телефон: <b>${phone}</b>`);
   if (email) parts.push(`имейл: <b>${email}</b>`);
   const detail = parts.length ? ` — ${parts.join(', ')}` : '';
-  const reply = `✅ Запазих за <b>${clientName}</b>${detail}.`;
+  const reply = isNew
+    ? `✅ Добавен е нов клиент <b>${clientName}</b>${detail}.`
+    : `✅ Запазих за <b>${clientName}</b>${detail}.`;
   await sendTelegramMessage(chatId, reply);
   await appendHistory(chatId, 'assistant', `[save_client_contact: ${clientName}${phone ? `, tel: ${phone}` : ''}${email ? `, email: ${email}` : ''}]`);
 }
 
 async function handleSaveClientNote(chatId: number, salon: SalonRef, clientName: string, note: string): Promise<void> {
   const { sendTelegramInlineKeyboard } = await import('@/lib/telegram');
-  await upsertSalonClient(salon.salonId, clientName, { notes: note });
+  await upsertSalonClient(salon.salonId, clientName, { notes: note }); // id/isNew unused here
 
   const next = await getNextBookingForClient(salon.salonId, clientName);
   const dateLabel = next ? ` (${formatDateBg(next.date)} в ${next.time.slice(0, 5)})` : '';
@@ -3646,7 +3648,7 @@ async function handleNewClientWithBooking(
     .trim();
 
   // Save client contact
-  await upsertSalonClient(salon.salonId, clientName, { phone, email });
+  await upsertSalonClient(salon.salonId, clientName, { phone, email }); // isNew unused here — booking message covers it
 
   if (date && time && servicePart) {
     // Full combo: client + phone + booking
@@ -3711,7 +3713,7 @@ async function handleCreateBooking(
   revalidateTag(`salon-public-${salon.slug}`);
 
   // Upsert client to get/create clientId for session memory
-  const clientId = await upsertSalonClient(salon.salonId, clientName, {
+  const { id: clientId } = await upsertSalonClient(salon.salonId, clientName, {
     ...(clientPhone ? { phone: clientPhone } : {}),
     ...(clientEmail ? { email: clientEmail } : {}),
   });
