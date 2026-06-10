@@ -71,7 +71,9 @@ type ConvState =
   | { type: 'waiting_entity_clarification'; pending_command: string; entities: LastContextEntity[]; created_at: string }
   | { type: 'last_photo'; url: string; created_at: string }
   | { type: 'last_imported_services'; serviceNames: string[]; created_at: string }
-  | { type: 'last_client'; name: string; created_at: string };
+  | { type: 'last_client'; clientId: string | null; name: string; created_at: string }
+  | { type: 'last_booking'; bookingId: string; clientName: string; clientId: string | null; date: string; time: string; serviceName: string; created_at: string }
+  | { type: 'last_service'; name: string; created_at: string };
 
 async function getState(chatId: number): Promise<ConvState | null> {
   try {
@@ -1322,12 +1324,20 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
       })()
     : '';
   const lastClientCtx = (freshState?.type === 'last_client')
-    ? `\n\n[ПОСЛЕДНО РАБОТЕН КЛИЕНТ: "${freshState.name}". Ако следващото съобщение добавя телефон, имейл, бележка или резервация без да посочва изрично клиент — отнася се за "${freshState.name}". Използвай точно това ime.]`
+    ? `\n\n[ПОСЛЕДНО РАБОТЕН КЛИЕНТ: "${freshState.name}"${freshState.clientId ? ` (id: ${freshState.clientId})` : ''}. Ако следващото съобщение добавя телефон, имейл, бележка или резервация без да посочва изрично клиент — отнася се за "${freshState.name}". Използвай точно това ime.]`
+    : '';
+  const lastBookingCtx = (freshState?.type === 'last_booking')
+    ? `\n\n[ПОСЛЕДНА РЕЗЕРВАЦИЯ: ${freshState.clientName} — ${freshState.serviceName} на ${formatDateBg(freshState.date, { day: 'numeric', month: 'long' })} в ${freshState.time}${freshState.clientId ? ` (clientId: ${freshState.clientId})` : ''}. Ако потребителят казва "я", "го", "него", "нея", "премести я", "откажи я", "добави бележка" без да уточнява — имат предвид тази резервация/клиент.]`
+    : '';
+  const lastServiceCtx = (freshState?.type === 'last_service')
+    ? `\n\n[ПОСЛЕДНО РАБОТЕНА УСЛУГА: "${freshState.name}". Ако следващото съобщение промени цена, продължителност или категория без да посочва услуга изрично — отнася се за "${freshState.name}".]`
     : '';
   const stateContext = [
     pendingBlockDate ? `\n\n[КОНТЕКСТ: Преди това потребителят искаше да блокира ${formatDateBg(pendingBlockDate)} (${pendingBlockDate}). Ако сега казва "блокирай деня" или "блокирай" без дата, имат предвид тази дата.]` : '',
     lastCtxContext,
     lastClientCtx,
+    lastBookingCtx,
+    lastServiceCtx,
   ].join('');
 
   const systemPrompt = `Ти си личен AI асистент на собственик на малък бизнес. Говориш на естествен, топъл български — като добър приятел с опит в бранша.${stateContext}
@@ -1683,6 +1693,7 @@ ${servicesJson}
         ...(variants ? { variants } : {}),
       });
       await saveSalonServices(salon.salonId, salon.slug, services);
+      await setState(chatId, { type: 'last_service', name: intent.name, created_at: new Date().toISOString() });
       const catLine = intent.category ? ` (${intent.category})` : '';
       const variantLine = variants ? `\n${variants.map(v => `  • ${v.label} — ${v.price} €`).join('\n')}` : ` — ${Math.round(intent.price_eur)} €`;
       const addReply = `✅ Добавена в ${salon.name}:\n${intent.name}${catLine}${variantLine}`;
@@ -1699,6 +1710,7 @@ ${servicesJson}
       }
       services[idx]!.price = Math.round(intent.price_eur);
       await saveSalonServices(salon.salonId, salon.slug, services);
+      await setState(chatId, { type: 'last_service', name: services[idx]!.name, created_at: new Date().toISOString() });
       await sendTelegramMessage(chatId, `✅ Цената на <b>${services[idx]!.name}</b> е <b>${Math.round(intent.price_eur)} €</b>`);
       return true;
     }
@@ -2513,7 +2525,7 @@ async function upsertSalonClient(
   salonId: string,
   name: string,
   fields: { phone?: string; email?: string; notes?: string },
-): Promise<void> {
+): Promise<string | null> {
   const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
   await ensureSalonClientsSchema();
 
@@ -2522,7 +2534,7 @@ async function upsertSalonClient(
   ` as { id: string }[];
 
   if (existing.length === 0) {
-    await sql`
+    const inserted = await sql`
       INSERT INTO salon_clients (salon_id, name, phone, email, notes)
       VALUES (${salonId}, ${name}, ${fields.phone ?? null}, ${fields.email ?? null}, ${fields.notes ?? null})
       ON CONFLICT (salon_id, name) DO UPDATE SET
@@ -2530,11 +2542,14 @@ async function upsertSalonClient(
         email = COALESCE(EXCLUDED.email, salon_clients.email),
         notes = COALESCE(EXCLUDED.notes, salon_clients.notes),
         updated_at = now()
-    `;
+      RETURNING id
+    ` as { id: string }[];
+    return inserted[0]?.id ?? null;
   } else {
     if (fields.phone !== undefined) await sql`UPDATE salon_clients SET phone = ${fields.phone}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
     if (fields.email !== undefined) await sql`UPDATE salon_clients SET email = ${fields.email}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
     if (fields.notes !== undefined) await sql`UPDATE salon_clients SET notes = ${fields.notes}, updated_at = now() WHERE salon_id = ${salonId} AND lower(name) = lower(${name})`;
+    return existing[0]?.id ?? null;
   }
 }
 
@@ -2553,8 +2568,8 @@ async function getNextBookingForClient(salonId: string, clientName: string): Pro
 }
 
 async function handleSaveClientContact(chatId: number, salon: SalonRef, clientName: string, phone?: string, email?: string): Promise<void> {
-  await upsertSalonClient(salon.salonId, clientName, { phone, email });
-  await setState(chatId, { type: 'last_client', name: clientName, created_at: new Date().toISOString() });
+  const clientId = await upsertSalonClient(salon.salonId, clientName, { phone, email });
+  await setState(chatId, { type: 'last_client', clientId, name: clientName, created_at: new Date().toISOString() });
   const parts: string[] = [];
   if (phone) parts.push(`телефон: <b>${phone}</b>`);
   if (email) parts.push(`имейл: <b>${email}</b>`);
@@ -3455,7 +3470,7 @@ async function handleNewClientWithBooking(
   originalText: string,
   rest: string,
   salon: SalonRef,
-): Promise<void> {
+): Promise<boolean> {
   // 1. Extract phone
   const phoneMatch = rest.match(/(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/);
   const phone = phoneMatch?.[1]?.replace(/[\s\-]/g, '');
@@ -3535,6 +3550,7 @@ async function handleNewClientWithBooking(
     if (email) parts.push(`имейл: <b>${email}</b>`);
     await sendTelegramMessage(chatId, `✅ Запазих за <b>${clientName}</b>${parts.length ? ` — ${parts.join(', ')}` : ''}.`);
   }
+  return true;
 }
 
 async function handleCreateBooking(
@@ -3583,7 +3599,23 @@ async function handleCreateBooking(
   // Auto-confirm owner-created bookings
   await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${result.id}`;
   revalidateTag(`salon-public-${salon.slug}`);
-  await setState(chatId, { type: 'last_client', name: clientName, created_at: new Date().toISOString() });
+
+  // Upsert client to get/create clientId for session memory
+  const clientId = await upsertSalonClient(salon.salonId, clientName, {
+    ...(clientPhone ? { phone: clientPhone } : {}),
+    ...(clientEmail ? { email: clientEmail } : {}),
+  });
+
+  await setState(chatId, {
+    type: 'last_booking',
+    bookingId: result.id,
+    clientName,
+    clientId,
+    date,
+    time,
+    serviceName: resolvedServiceName,
+    created_at: new Date().toISOString(),
+  });
 
   const priceStr = servicePrice != null ? ` — ${servicePrice} €` : '';
   await sendTelegramMessage(
