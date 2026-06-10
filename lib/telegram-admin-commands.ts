@@ -164,17 +164,44 @@ const BOOKINGS_TODAY_RE =
 const NEXT_CLIENT_RE =
   /^(?:кой\s+е\s+)?следващ(?:ият|ия|ото)?\s+(?:ми\s+)?клиент\b/i;
 
+const REVENUE_LAST_WEEK_RE =
+  /^(?:приход|оборот).*(?:минал|предишн).*седмиц|(?:приход|оборот).*седмиц.*(?:минал|предишн)/i;
+
 const REVENUE_THIS_WEEK_RE =
   /^(?:приход|оборот).*седмиц/i;
+
+const REVENUE_LAST_MONTH_RE =
+  /^(?:приход|оборот).*(?:минал|предишн|предн).*месец|(?:приход|оборот).*месец.*(?:минал|предишн|предн)/i;
 
 const REVENUE_THIS_MONTH_RE =
   /^(?:приход|оборот).*(?:месец|month)/i;
 
+const REVENUE_LAST_YEAR_RE =
+  /^(?:приход|оборот).*(?:минал|предишн|предн).*годин|(?:приход|оборот).*годин.*(?:минал|предишн|предн)/i;
+
+const REVENUE_THIS_YEAR_RE =
+  /^(?:приход|оборот).*годин/i;
+
+const BOOKINGS_LAST_WEEK_RE =
+  /^(?:колко\s+)?(?:записа?|резервации?|часов[еa]?|час[аa]?)\s+(?:имах?\s+)?(?:(?:минал|предишн)\w*\s+седмиц|седмиц\w*\s+(?:минал|предишн))/i;
+
 const REVENUE_CLIENT_RE =
   /^(?:оборот|приход)[^\s]*\s+(?:от\s+(?:клиент\s+)?)?(.+)$/i;
 
+const CLIENT_COUNT_LAST_WEEK_RE =
+  /^колко\s+клиент.*(?:минал|предишн).*седмиц|^колко\s+клиент.*седмиц.*(?:минал|предишн)/i;
+
+const CLIENT_COUNT_THIS_WEEK_RE =
+  /^колко\s+клиент.*(?:тази|тая)\s+седмиц|^колко\s+клиент.*седмиц/i;
+
 const CLIENT_COUNT_MONTH_RE =
   /^колко\s+клиент/i;
+
+const NEW_CLIENTS_RE =
+  /^(?:кои\s+са\s+(?:ми\s+)?)?(?:нов[иате]+\s+(?:ми\s+)?клиент|клиент[и]?\s+(?:нов|за\s+първи\s+път))/i;
+
+const TOP_CLIENTS_RE =
+  /^(?:топ|най-добр[иe]|най-верн[иe]|кои\s+са\s+(?:ми\s+)?(?:най-добр[иe]|топ|най-верн[иe]))\s+(?:ми\s+)?клиент|(?:клиент[и]?\s+(?:по|колко\s+са\s+(?:изхарч|платил))|кои\s+клиент.*(?:изхарч|платил|похарч))|\bвсич[кие]+\s+клиент.*(?:изхарч|платил|похарч|оборот|хар[ч])/i;
 
 const TOP_SERVICES_RE =
   /^(?:кои\s+са\s+)?(?:най-популярни(?:те)?|топ)\s+(?:ми\s+)?услуги\b/i;
@@ -297,8 +324,8 @@ export async function handleAdminCommand(
 
   // ── Brands ───────────────────────────────────────────────────────────────
   const isBrandsQuery = /^брандов[еи]$/i.test(text.trim());
-  const isAddBrand = /(?:добав[ии]|работ[яеи]|ползв[ам]|работим с|ползваме)\s+(?:бранд[а]?\s+)?(.+)/i.test(text);
-  const isRemoveBrand = /(?:махн[иеа]|изтри[й]?|премахн[иеа])\s+(?:бранд[а]?\s+)?(.+)/i.test(text);
+  const isAddBrand = /(?:добав[ии]|работ[яеи]|ползв[ам]|работим с|ползваме)\s+(?:бранд[а]?\s+)?(.+)/i.test(text) && !/услуг/i.test(text);
+  const isRemoveBrand = /(?:махн[иеа]|изтри[й]?|премахн[иеа])\s+(?:бранд[а]?\s+)?(.+)/i.test(text) && !/услуг/i.test(text);
   if (isBrandsQuery || isAddBrand || isRemoveBrand) {
     await handleBrandsCommand(chatId, text, salon);
     return true;
@@ -573,9 +600,21 @@ export async function handleAdminCommand(
     }
   }
 
+  // ── Revenue last week ────────────────────────────────────────────────────
+  if (REVENUE_LAST_WEEK_RE.test(text)) {
+    await handleRevenue(chatId, salon, 'last_week');
+    return true;
+  }
+
   // ── Revenue this week ─────────────────────────────────────────────────────
   if (REVENUE_THIS_WEEK_RE.test(text)) {
     await handleRevenue(chatId, salon, 'week');
+    return true;
+  }
+
+  // ── Revenue last month ────────────────────────────────────────────────────
+  if (REVENUE_LAST_MONTH_RE.test(text)) {
+    await handleRevenue(chatId, salon, 'last_month');
     return true;
   }
 
@@ -585,9 +624,47 @@ export async function handleAdminCommand(
     return true;
   }
 
-  // ── Client count this month ───────────────────────────────────────────────
+  // ── Revenue last year ─────────────────────────────────────────────────────
+  if (REVENUE_LAST_YEAR_RE.test(text)) {
+    await handleRevenue(chatId, salon, 'last_year');
+    return true;
+  }
+
+  // ── Revenue this year ─────────────────────────────────────────────────────
+  if (REVENUE_THIS_YEAR_RE.test(text)) {
+    await handleRevenue(chatId, salon, 'year');
+    return true;
+  }
+
+  // ── Bookings last week ────────────────────────────────────────────────────
+  if (BOOKINGS_LAST_WEEK_RE.test(text)) {
+    await handleBookingsForWeek(chatId, salon, 'last');
+    return true;
+  }
+
+  // ── Client count — last week / this week / month ─────────────────────────
+  if (CLIENT_COUNT_LAST_WEEK_RE.test(text)) {
+    await handleClientCount(chatId, salon, 'last_week');
+    return true;
+  }
+  if (CLIENT_COUNT_THIS_WEEK_RE.test(text)) {
+    await handleClientCount(chatId, salon, 'week');
+    return true;
+  }
   if (CLIENT_COUNT_MONTH_RE.test(text)) {
     await handleClientCountMonth(chatId, salon);
+    return true;
+  }
+
+  // ── New clients ───────────────────────────────────────────────────────────
+  if (NEW_CLIENTS_RE.test(text)) {
+    await handleNewClients(chatId, salon);
+    return true;
+  }
+
+  // ── Top clients by spend ──────────────────────────────────────────────────
+  if (TOP_CLIENTS_RE.test(text)) {
+    await handleTopClients(chatId, salon);
     return true;
   }
 
@@ -2120,9 +2197,23 @@ async function handleBookingsForDay(
   });
 }
 
-async function handleBookingsForWeek(chatId: number, salon: SalonRef): Promise<void> {
-  const startDate = todayISO();
-  const endDate = offsetDayISO(6);
+async function handleBookingsForWeek(chatId: number, salon: SalonRef, mode: 'current' | 'last' = 'current'): Promise<void> {
+  let startDate: string;
+  let endDate: string;
+  if (mode === 'last') {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const lastMonday = new Date(today);
+    lastMonday.setDate(today.getDate() + mondayOffset - 7);
+    const lastSunday = new Date(lastMonday);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    startDate = lastMonday.toISOString().slice(0, 10);
+    endDate = lastSunday.toISOString().slice(0, 10);
+  } else {
+    startDate = todayISO();
+    endDate = offsetDayISO(6);
+  }
 
   const rows = await sql`
     SELECT CAST(id AS text) AS id, client_name, client_phone, date, time, service_name, service_price, status
@@ -2136,7 +2227,7 @@ async function handleBookingsForWeek(chatId: number, salon: SalonRef): Promise<v
   ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string; service_price: number | null; status: string }[];
 
   if (rows.length === 0) {
-    await sendTelegramMessage(chatId, `📅 Няма резервации за следващите 7 дни.`);
+    await sendTelegramMessage(chatId, mode === 'last' ? `📅 Няма резервации за миналата седмица.` : `📅 Няма резервации за следващите 7 дни.`);
     return;
   }
 
@@ -2148,7 +2239,8 @@ async function handleBookingsForWeek(chatId: number, salon: SalonRef): Promise<v
     byDate.set(r.date, list);
   }
 
-  const lines = [`📅 <b>Резервации за тази седмица (${rows.length} ${pluralBooking(rows.length)}):</b>`];
+  const weekLabel = mode === 'last' ? 'миналата седмица' : 'тази седмица';
+  const lines = [`📅 <b>Резервации за ${weekLabel} (${rows.length} ${pluralBooking(rows.length)}):</b>`];
   for (const [date, dayRows] of byDate) {
     lines.push('', `<b>${formatDateBg(date)}</b>`);
     for (let i = 0; i < dayRows.length; i++) {
@@ -2559,7 +2651,7 @@ async function handleRemindTomorrow(chatId: number, salon: SalonRef): Promise<vo
 
 // ─── Revenue handlers ────────────────────────────────────────────────────────
 
-async function handleRevenue(chatId: number, salon: SalonRef, period: 'week' | 'month' | 'range', rangeFrom?: string, rangeTo?: string): Promise<void> {
+async function handleRevenue(chatId: number, salon: SalonRef, period: 'week' | 'last_week' | 'month' | 'last_month' | 'year' | 'last_year' | 'range', rangeFrom?: string, rangeTo?: string): Promise<void> {
   let periodStart: string;
   let periodEnd: string;
   let label: string;
@@ -2570,16 +2662,31 @@ async function handleRevenue(chatId: number, salon: SalonRef, period: 'week' | '
     periodStart = rangeFrom;
     periodEnd = rangeTo;
     label = `${formatDateBg(rangeFrom, { day: 'numeric', month: 'long' })} – ${formatDateBg(rangeTo, { day: 'numeric', month: 'long' })}`;
-  } else if (period === 'week') {
+  } else if (period === 'week' || period === 'last_week') {
     const dayOfWeek = today.getDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(today);
-    monday.setDate(today.getDate() + mondayOffset);
+    monday.setDate(today.getDate() + mondayOffset + (period === 'last_week' ? -7 : 0));
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     periodStart = monday.toISOString().slice(0, 10);
     periodEnd = sunday.toISOString().slice(0, 10);
     label = `${monday.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long' })} – ${sunday.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long' })}`;
+  } else if (period === 'last_month') {
+    const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    periodStart = firstOfLastMonth.toISOString().slice(0, 10);
+    periodEnd = lastOfLastMonth.toISOString().slice(0, 10);
+    label = firstOfLastMonth.toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' });
+  } else if (period === 'year') {
+    periodStart = `${today.getFullYear()}-01-01`;
+    periodEnd = `${today.getFullYear()}-12-31`;
+    label = `${today.getFullYear()} г.`;
+  } else if (period === 'last_year') {
+    const y = today.getFullYear() - 1;
+    periodStart = `${y}-01-01`;
+    periodEnd = `${y}-12-31`;
+    label = `${y} г.`;
   } else {
     periodStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -2686,6 +2793,96 @@ async function handleClientCountMonth(chatId: number, salon: SalonRef): Promise<
     chatId,
     `👥 <b>${month}:</b>\n\n📊 Резервации: ${r.total}\n👤 Уникални клиенти: ${r.unique_clients}`,
   );
+}
+
+async function handleClientCount(chatId: number, salon: SalonRef, period: 'week' | 'last_week'): Promise<void> {
+  const today = new Date();
+  let periodStart: string;
+  let periodEnd: string;
+  let label: string;
+
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset + (period === 'last_week' ? -7 : 0));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  periodStart = monday.toISOString().slice(0, 10);
+  periodEnd = sunday.toISOString().slice(0, 10);
+  label = period === 'last_week' ? 'миналата седмица' : 'тази седмица';
+
+  const rows = await sql`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(DISTINCT lower(client_name))::int AS unique_clients
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND date >= ${periodStart}
+      AND date <= ${periodEnd}
+      AND status NOT IN ('cancelled')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
+  ` as { total: number; unique_clients: number }[];
+
+  const r = rows[0]!;
+  await sendTelegramMessage(
+    chatId,
+    `👥 <b>${label.charAt(0).toUpperCase() + label.slice(1)}:</b>\n\n📊 Резервации: ${r.total}\n👤 Уникални клиенти: ${r.unique_clients}`,
+  );
+}
+
+async function handleNewClients(chatId: number, salon: SalonRef): Promise<void> {
+  const since = offsetDayISO(-30);
+
+  const rows = await sql`
+    SELECT lower(client_name) AS name_key, client_name, MIN(date) AS first_visit, COUNT(*)::int AS visits
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND status NOT IN ('cancelled')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
+    GROUP BY lower(client_name), client_name
+    HAVING MIN(date) >= ${since}
+    ORDER BY MIN(date) DESC
+  ` as { name_key: string; client_name: string; first_visit: string; visits: number }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, `ℹ️ Няма нови клиенти през последните 30 дни.`);
+    return;
+  }
+
+  const lines = [`🆕 <b>Нови клиенти (последните 30 дни) — ${rows.length}:</b>`, ''];
+  for (const r of rows) {
+    lines.push(`👤 <b>${r.client_name}</b> — първо посещение: ${formatDateBg(r.first_visit, { day: 'numeric', month: 'long' })}`);
+  }
+  await sendTelegramMessage(chatId, lines.join('\n'));
+}
+
+async function handleTopClients(chatId: number, salon: SalonRef): Promise<void> {
+  const rows = await sql`
+    SELECT
+      client_name,
+      COUNT(*)::int AS visits,
+      COALESCE(SUM(service_price), 0)::numeric AS revenue,
+      MAX(date) AS last_visit
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND status NOT IN ('cancelled')
+      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
+    GROUP BY lower(client_name), client_name
+    ORDER BY revenue DESC
+    LIMIT 15
+  ` as { client_name: string; visits: number; revenue: number; last_visit: string }[];
+
+  if (rows.length === 0) {
+    await sendTelegramMessage(chatId, 'ℹ️ Все още няма данни за клиенти.');
+    return;
+  }
+
+  const lines = [`💎 <b>Топ клиенти по изхарчено:</b>`, ''];
+  rows.forEach((r, i) => {
+    const eur = Number(r.revenue);
+    lines.push(`${i + 1}. <b>${r.client_name}</b> — ${eur.toFixed(0)} € — ${r.visits} посещ.`);
+  });
+  await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
 async function handleTopServices(chatId: number, salon: SalonRef): Promise<void> {
