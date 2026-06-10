@@ -110,6 +110,9 @@ async function clearState(chatId: number): Promise<void> {
 
 // ─── Regex patterns ─────────────────────────────────────────────────────────
 
+const ADD_CLIENT_RE =
+  /^(?:добав(?:[ии]|ете(?:\s+ми)?)|запиш[ии]|регистрир[ии])\s+(?:ми\s+)?(?:нов[а]?\s+)?клиент[аa]?\s+(.+)/i;
+
 const ADD_SERVICE_RE =
   /^(?:добав(?:[ии]|яне\s+на|ете(?:\s+ми)?)|add)\s+(?:ми\s+)?(?:нова\s+)?(?:услуг[аa][:：]?\s+)?(.+)/i;
 
@@ -321,6 +324,27 @@ export async function handleAdminCommand(
   text: string,
   salon: SalonRef,
 ): Promise<boolean> {
+
+  // ── Add client ───────────────────────────────────────────────────────────
+  const addClientMatch = text.match(ADD_CLIENT_RE);
+  if (addClientMatch) {
+    const rest = addClientMatch[1]!.trim();
+    // Extract phone: Bulgarian mobile (08xx) or international (+359...)
+    const phoneMatch = rest.match(/(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/);
+    // Extract email
+    const emailMatch = rest.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+    // Name = rest stripped of phone and email
+    const clientName = rest
+      .replace(phoneMatch?.[0] ?? '', '')
+      .replace(emailMatch?.[0] ?? '', '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!clientName) return await handleWithAI(chatId, text, salon);
+    const phone = phoneMatch?.[1]?.replace(/\s/g, '');
+    const email = emailMatch?.[1];
+    await handleSaveClientContact(chatId, salon, clientName, phone, email);
+    return true;
+  }
 
   // ── Add service ──────────────────────────────────────────────────────────
   const addMatch = text.match(ADD_SERVICE_RE);
@@ -1373,8 +1397,11 @@ ${servicesJson}
 
 ЗАПАЗИ КОНТАКТ НА КЛИЕНТ (save_client_contact):
   "телефонът на Мария е 0888123456", "Иван има имейл ivan@mail.com", "добави тел на Деляна 0877000111", "Мария 0888123456"
+  "добави нов клиент Румен Иванов 0899000111", "нов клиент Анна anна@mail.com", "запиши клиент Петър 0877123456"
   → { "action": "save_client_contact", "client_name": "Мария", "phone": "0888123456" }
   → { "action": "save_client_contact", "client_name": "Иван", "email": "ivan@mail.com" }
+  → { "action": "save_client_contact", "client_name": "Румен Иванов", "phone": "0899000111" }
+  ВАЖНО: Телефонът и имейлът са незадължителни — може да се подадат един или двата. Никога не измисляй телефон/имейл ако не са изрично написани.
 
 БЕЛЕЖКА ЗА КЛИЕНТ (save_client_note):
   "бележка за Виолета: не искаше да е много руса"
