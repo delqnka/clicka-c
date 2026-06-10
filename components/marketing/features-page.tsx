@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ButtonColorful } from '@/components/ui/button-colorful';
+import { ClickaLogo } from '@/components/brand/clicka-logo';
 
 const GRADIENT_TEXT = {
   backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
@@ -182,6 +183,31 @@ export function FeaturesPage() {
   return (
     <main style={{ fontFamily: 'var(--font-client-manrope), sans-serif', overflowX: 'hidden' }}>
 
+      {/* ── Nav ──────────────────────────────────────────── */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        background: 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid #f3e8ff',
+        padding: '0 clamp(20px,5vw,60px)',
+        height: 60,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <ClickaLogo size="compact" href="/" priority />
+        <Link
+          href="/create"
+          style={{
+            display: 'inline-flex', alignItems: 'center', height: 36,
+            padding: '0 18px', borderRadius: 999,
+            background: 'linear-gradient(135deg, #e11d48, #a855f7)',
+            fontSize: 13, fontWeight: 600, color: '#fff',
+            textDecoration: 'none',
+          }}
+        >
+          Стартирай безплатно
+        </Link>
+      </header>
+
       {/* ── Hero ─────────────────────────────────────────── */}
       <section
         aria-label="Всички функции на Clicka"
@@ -248,20 +274,6 @@ export function FeaturesPage() {
           >
             <div style={{ maxWidth: 860, margin: '0 auto' }}>
               <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
-                {/* Icon badge */}
-                <div style={{
-                  flexShrink: 0,
-                  width: 'clamp(48px,7vw,64px)',
-                  height: 'clamp(48px,7vw,64px)',
-                  borderRadius: 16,
-                  background: 'linear-gradient(135deg, #fce7ef, #ede9fe)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 'clamp(22px,3vw,30px)',
-                  marginTop: 4,
-                }}>
-                  {f.icon}
-                </div>
-
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#db2777', marginBottom: 8 }}>
                     {f.eyebrow}
