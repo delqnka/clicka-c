@@ -518,45 +518,51 @@ export default function DomainPurchaseSection({
       {isAbandoned ? (
         <div
           style={{
-            border: '1px solid #fbbf24',
-            borderRadius: 20,
-            background: '#fffbeb',
-            boxShadow: '0 8px 24px rgba(251,191,36,0.15)',
-            padding: 20,
+            border: '1px solid rgba(0,0,0,0.1)',
+            borderRadius: 16,
+            background: '#fff',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.07)',
+            padding: '16px 18px',
             display: 'grid',
-            gap: 12,
+            gap: 8,
           }}
         >
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#92400e' }}>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)' }}>
             Незавършена заявка
           </p>
-          <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1a1a1a' }}>{request!.fullDomain}</p>
-          <p style={{ margin: 0, fontSize: 14, color: '#78350f', lineHeight: 1.6 }}>
-            Заявката е попълнена, но плащането не е завършено. Можеш да продължиш оттам, където си спрял/а — без да попълваш данните отново.
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>{request!.fullDomain}</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(0,0,0,0.55)', lineHeight: 1.55 }}>
+            Заявката е попълнена, но плащането не е завършено. Можеш да продължиш оттам, където си спрял/а.
           </p>
-          <p style={{ margin: 0, fontSize: 14, color: '#92400e' }}>
-            Сума: <strong>{formatMoney(request!.totalFeeCents, request!.currency.toUpperCase())}</strong>
-          </p>
-          <button
-            type="button"
-            onClick={resumePayment}
-            disabled={busy}
-            style={{
-              ...primaryButtonStyle,
-              opacity: busy ? 0.5 : 1,
-              cursor: busy ? 'default' : 'pointer',
-              marginTop: 4,
-            }}
-          >
-            {busy ? 'Подготвяме…' : `Продължи с плащане → ${formatMoney(request!.totalFeeCents, request!.currency.toUpperCase())}`}
-          </button>
-          <button
-            type="button"
-            onClick={() => setRequest(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#92400e', textDecoration: 'underline', padding: 0, textAlign: 'left' }}
-          >
-            Искам да направя нова заявка с различен домейн
-          </button>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={resumePayment}
+              disabled={busy}
+              style={{
+                border: 'none',
+                borderRadius: 999,
+                background: ACTIVE_GRADIENT,
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: 13,
+                padding: '10px 18px',
+                cursor: busy ? 'default' : 'pointer',
+                opacity: busy ? 0.5 : 1,
+                boxShadow: '0 6px 18px rgba(219,39,119,0.28)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {busy ? 'Подготвяме…' : `Продължи с плащане → ${formatMoney(request!.totalFeeCents, request!.currency.toUpperCase())}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRequest(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(0,0,0,0.4)', textDecoration: 'underline', padding: 0 }}
+            >
+              Нова заявка с различен домейн
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -601,9 +607,7 @@ export default function DomainPurchaseSection({
       ) : null}
 
       {notice ? (
-        <div style={{ borderRadius: 14, border: '1px solid rgba(0,0,0,0.1)', background: '#f0fdf4', padding: '14px 16px' }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#15803d' }}>{notice}</p>
-        </div>
+        <p style={{ margin: 0, fontSize: 12, color: '#dc2626' }}>{notice}</p>
       ) : null}
 
       {/* Wizard — only when not loading and no abandoned request */}

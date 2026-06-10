@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   const slug = auth.salon.slug;
 
   const rows = await sql`
-    SELECT plan, stripe_customer_id FROM salons WHERE id = ${salonId}::uuid LIMIT 1
+    SELECT plan, stripe_customer_id FROM salons WHERE id::text = ${salonId} LIMIT 1
   `;
   if (rows.length === 0) {
     return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });
