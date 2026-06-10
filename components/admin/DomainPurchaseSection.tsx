@@ -487,11 +487,81 @@ export default function DomainPurchaseSection({
 
   const isPayDisabled = busy;
 
+  // Is there an unpaid (abandoned) request?
+  const isAbandoned = request !== null && request.status === 'requested';
+
+  async function resumePayment() {
+    if (!request) return;
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/domain-purchase-request', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, requestId: request.id }),
+      });
+      const data = await readJson(res) as { checkoutUrl?: string; error?: string };
+      if (!res.ok) throw new Error(data.error || 'Не успяхме да подновим плащането.');
+      if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
+      throw new Error('Няма линк за плащане.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Грешка при подновяване на плащането.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ display: 'grid', gap: 16, marginTop: 18 }}>
 
-      {/* Existing request status */}
-      {request ? (
+      {/* Abandoned (unpaid) request — resume payment */}
+      {isAbandoned ? (
+        <div
+          style={{
+            border: '1px solid #fbbf24',
+            borderRadius: 20,
+            background: '#fffbeb',
+            boxShadow: '0 8px 24px rgba(251,191,36,0.15)',
+            padding: 20,
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#92400e' }}>
+            Незавършена заявка
+          </p>
+          <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1a1a1a' }}>{request!.fullDomain}</p>
+          <p style={{ margin: 0, fontSize: 14, color: '#78350f', lineHeight: 1.6 }}>
+            Заявката е попълнена, но плащането не е завършено. Можеш да продължиш оттам, където си спрял/а — без да попълваш данните отново.
+          </p>
+          <p style={{ margin: 0, fontSize: 14, color: '#92400e' }}>
+            Сума: <strong>{formatMoney(request!.totalFeeCents, request!.currency.toUpperCase())}</strong>
+          </p>
+          <button
+            type="button"
+            onClick={resumePayment}
+            disabled={busy}
+            style={{
+              ...primaryButtonStyle,
+              opacity: busy ? 0.5 : 1,
+              cursor: busy ? 'default' : 'pointer',
+              marginTop: 4,
+            }}
+          >
+            {busy ? 'Подготвяме…' : `Продължи с плащане → ${formatMoney(request!.totalFeeCents, request!.currency.toUpperCase())}`}
+          </button>
+          <button
+            type="button"
+            onClick={() => setRequest(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#92400e', textDecoration: 'underline', padding: 0, textAlign: 'left' }}
+          >
+            Искам да направя нова заявка с различен домейн
+          </button>
+        </div>
+      ) : null}
+
+      {/* Existing paid/processing/connected request status */}
+      {request && !isAbandoned ? (
         <div
           style={{
             border: '1px solid rgba(0,0,0,0.1)',
@@ -536,8 +606,8 @@ export default function DomainPurchaseSection({
         </div>
       ) : null}
 
-      {/* Wizard — only when not loading */}
-      {!loading ? (
+      {/* Wizard — only when not loading and no abandoned request */}
+      {!loading && !isAbandoned ? (
         <>
           {/* Step pills — above the card */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingLeft: 4 }}>

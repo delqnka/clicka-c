@@ -316,3 +316,85 @@ export async function POST(request: NextRequest) {
     requestId,
   });
 }
+
+// PATCH — resume payment for an existing unpaid (status='requested') domain purchase request
+export async function PATCH(request: NextRequest) {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Невалидни данни.' }, { status: 400 });
+  }
+
+  const slug = String(body.slug ?? request.nextUrl.searchParams.get('slug') ?? '');
+  const requestId = String(body.requestId ?? '');
+
+  const auth = await requireAdminRequestAccess(request, slug);
+  if (!auth.ok) return auth.response;
+
+  if (!requestId) {
+    return NextResponse.json({ error: 'Липсва requestId.' }, { status: 400 });
+  }
+
+  // Load the existing request and verify it belongs to this salon and is unpaid
+  const rows = await sql`
+    SELECT
+      id, full_domain, registrant_email, total_fee_cents, currency,
+      tld, status
+    FROM domain_purchase_requests
+    WHERE id = ${requestId}
+      AND salon_id = ${auth.salon.salonId}
+    LIMIT 1
+  `;
+
+  if (rows.length === 0) {
+    return NextResponse.json({ error: 'Заявката не е намерена.' }, { status: 404 });
+  }
+
+  const row = rows[0] as Record<string, unknown>;
+
+  if (row.status !== 'requested') {
+    return NextResponse.json({ error: 'Заявката вече е платена или обработена.' }, { status: 409 });
+  }
+
+  const fullDomain = String(row.full_domain ?? '');
+  const registrantEmail = String(row.registrant_email ?? '');
+  const totalFeeCents = Number(row.total_fee_cents ?? 0);
+  const currency = String(row.currency ?? 'eur');
+
+  const adminUrl = `${request.nextUrl.origin}/admin`;
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    currency,
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency,
+          unit_amount: totalFeeCents,
+          product_data: {
+            name: `Clicka.bg Домейн ${fullDomain}`,
+            description: 'Домейн за 1 година + Техническа администрация и конфигуриране',
+          },
+        },
+      },
+    ],
+    metadata: {
+      flow: 'domain_purchase_request',
+      domainPurchaseRequestId: requestId,
+      salonSlug: auth.salon.slug,
+      fullDomain,
+    },
+    customer_email: registrantEmail,
+    success_url: `${adminUrl}?tab=domain&domainPurchase=success`,
+    cancel_url:  `${adminUrl}?tab=domain&domainPurchase=cancelled`,
+  });
+
+  await sql`
+    UPDATE domain_purchase_requests
+    SET stripe_session_id = ${session.id}, updated_at = now()
+    WHERE id = ${requestId}
+  `;
+
+  return NextResponse.json({ success: true, checkoutUrl: session.url });
+}
