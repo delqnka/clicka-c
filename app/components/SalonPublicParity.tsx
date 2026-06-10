@@ -436,6 +436,16 @@ function TeamMembersRow({
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Close X */}
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', padding: 4, cursor: 'pointer', lineHeight: 1, color: '#1a1a1a' }}
+              aria-label="Затвори"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 4l12 12M16 4L4 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            </button>
+
             {/* Handle */}
             <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', width: 36, height: 4, borderRadius: 999, background: 'rgba(0,0,0,0.12)' }} />
 
@@ -467,13 +477,6 @@ function TeamMembersRow({
               </p>
             ) : null}
 
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              style={{ marginTop: 8, padding: '11px 32px', borderRadius: 999, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#1a1a1a', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-            >
-              Затвори
-            </button>
           </div>
         </div>
       ) : null}
@@ -729,15 +732,15 @@ export default function SalonPublicParity({
   const publicTeamSectionLabel = publicTeamMembers.length > 1 ? 'Екип' : 'Вашият специалист';
   const salonTabsWithTeamLabel = useMemo(
     () =>
-      SALON_TABS.filter((t) => t.id !== 'portfolio' || hasPortfolio).map((t) =>
+      SALON_TABS.filter((t) => (t.id !== 'portfolio' || hasPortfolio) && (t.id !== 'offers' || activeOffers.length > 0)).map((t) =>
         t.id === 'team' ? { ...t, label: publicTeamSectionLabel } : t
       ),
     [publicTeamSectionLabel, hasPortfolio]
   );
 
   const scrollSpyTabOrder = useMemo(
-    () => SCROLL_SPY_TAB_ORDER.filter((id) => id !== 'portfolio' || hasPortfolio),
-    [hasPortfolio]
+    () => SCROLL_SPY_TAB_ORDER.filter((id) => (id !== 'portfolio' || hasPortfolio) && (id !== 'offers' || activeOffers.length > 0)),
+    [hasPortfolio, activeOffers.length]
   );
 
   const requestGeolocation = useCallback(() => {
@@ -1543,7 +1546,7 @@ export default function SalonPublicParity({
               </div>
             </div>
 
-            <DeferredSection
+            {activeOffers.length > 0 ? <DeferredSection
               className="scroll-mt-36 pt-6"
               minHeight={240}
               eager={revealedSections.has('offers')}
@@ -1552,7 +1555,6 @@ export default function SalonPublicParity({
               }}
             >
               <h2 className="text-lg font-semibold text-[#1a1a1a]">Оферти на салона</h2>
-              {activeOffers.length > 0 ? (
                 <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
                   {activeOffers.map((o) => {
                     const spots = offerSpotsLeft(o);
@@ -1603,12 +1605,8 @@ export default function SalonPublicParity({
                   );
                   })}
                 </div>
-              ) : (
-                <p className="mt-3 rounded-xl border border-black/10 bg-white px-4 py-6 text-center text-sm salon-text-muted">
-                  Няма активни оферти в момента
-                </p>
-              )}
-            </DeferredSection>
+                </div>
+            </DeferredSection> : null}
 
             <DeferredSection
               className="scroll-mt-36 pt-10"
