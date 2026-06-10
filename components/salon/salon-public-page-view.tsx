@@ -10,6 +10,7 @@ import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
 import { getBrandsByIds } from '@/lib/brands';
 import { mergeOpeningHours } from '@/lib/salon-opening-hours';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
+import { getStaffMembers } from '@/lib/staff-members';
 
 type SalonPageData = NonNullable<Awaited<ReturnType<typeof getPublicSalonPageData>>>;
 
@@ -59,7 +60,7 @@ function computeGoogleRating(
   return { reviewCount: ratings.length, averageRating: avg };
 }
 
-export function SalonPublicPageView({ pageData, highlightReviewId, tabParam }: Props) {
+export async function SalonPublicPageView({ pageData, highlightReviewId, tabParam }: Props) {
   const salonRecord = pageData.salon as Record<string, unknown>;
   const googlePlaceId = (salonRecord.google_place_id as string | null | undefined) ?? null;
   const ratingOptions = computeGoogleRating(pageData.googleReviews, googlePlaceId) ?? undefined;
@@ -84,26 +85,26 @@ export function SalonPublicPageView({ pageData, highlightReviewId, tabParam }: P
       ? (salonRecord.opening_hours as Record<string, unknown>).booking_blocks
       : null,
   );
-  const teamJson = salonRecord.team as { name?: string; role?: string; photo_url?: string }[] | undefined;
   const ownerName = String(salonRecord.owner_name ?? '').trim();
   const salonName = String(salonRecord.name ?? 'Салон');
   const ownerRole = String(salonRecord.owner_public_role ?? '').trim();
   const ownerPhoto = String(salonRecord.owner_public_photo_url ?? '').trim();
   const ownerBio = String(salonRecord.owner_public_bio ?? '').trim();
-  const fromTeamJson = Array.isArray(teamJson)
-    ? teamJson
-        .filter((m) => (m.name ?? '').trim())
-        .map((m, i) => ({
-          id: `tm-${i}`,
-          name: (m.name ?? '').trim(),
-          role: (m.role ?? '').trim(),
-          bio: '',
-          photoUrl: (m.photo_url ?? '').trim(),
-        }))
-    : [];
+
+  // Load active staff members from staff_members table
+  const salonId = String(salonRecord.id ?? '');
+  const staffRows = salonId ? await getStaffMembers(salonId).catch(() => []) : [];
+  const activeStaff = staffRows.filter((s) => s.isActive);
+
   const publicTeamMembers =
-    fromTeamJson.length > 0
-      ? fromTeamJson
+    activeStaff.length > 0
+      ? activeStaff.map((s) => ({
+          id: s.id,
+          name: s.name,
+          role: '',
+          bio: s.bio ?? '',
+          photoUrl: s.avatarUrl ?? '',
+        }))
       : ownerName || salonName
         ? [{ id: 'owner', name: ownerName || salonName, role: ownerRole, bio: ownerBio, photoUrl: ownerPhoto }]
         : [];

@@ -610,7 +610,7 @@ export default function SalonPublicParity({
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`
       : null;
 
-  const publicTeamSectionLabel = 'Вашият специалист';
+  const publicTeamSectionLabel = publicTeamMembers.length > 1 ? 'Екип' : 'Вашият специалист';
   const salonTabsWithTeamLabel = useMemo(
     () =>
       SALON_TABS.filter((t) => t.id !== 'portfolio' || hasPortfolio).map((t) =>
