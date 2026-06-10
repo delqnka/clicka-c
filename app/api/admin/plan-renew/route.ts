@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   const rows = await sql`
     SELECT plan, pending_plan, stripe_customer_id
-    FROM salons WHERE id = ${salonId}::uuid LIMIT 1
+    FROM salons WHERE id::text = ${salonId} LIMIT 1
   `;
   if (rows.length === 0) {
     return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });

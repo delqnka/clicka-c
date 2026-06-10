@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const salonId = auth.salon.salonId;
 
   const rows = await sql`
-    SELECT plan, billing_period, pending_plan FROM salons WHERE id = ${salonId}::uuid LIMIT 1
+    SELECT plan, billing_period, pending_plan FROM salons WHERE id::text = ${salonId} LIMIT 1
   `;
   if (rows.length === 0) {
     return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     await sql`
       UPDATE salons
       SET pending_plan = null, pending_plan_type = null, pending_billing_period = null, updated_at = now()
-      WHERE id = ${salonId}::uuid
+      WHERE id::text = ${salonId}
     `;
     return NextResponse.json({ success: true, cancelled: true });
   }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       pending_plan_type = 'solo',
       pending_billing_period = ${billingPeriod},
       updated_at = now()
-    WHERE id = ${salonId}::uuid
+    WHERE id::text = ${salonId}
   `;
 
   return NextResponse.json({ success: true, effectiveAt: 'next_renewal' });
