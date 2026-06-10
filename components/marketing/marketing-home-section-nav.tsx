@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 
 const SECTION_LINKS = [
-  { id: 'audience', label: 'За кого е', mobileHidden: false },
-  { id: 'how-it-works', label: 'Как работи', mobileHidden: false },
-  { id: 'features', label: 'Какво получаваш', mobileHidden: false },
-  { id: 'pricing', label: 'Цени', mobileHidden: false },
-  { id: 'chat', label: 'Контакт', mobileHidden: false },
+  { id: 'audience', label: 'За кого е', mobileHidden: false, href: undefined },
+  { id: 'how-it-works', label: 'Как работи', mobileHidden: false, href: undefined },
+  { id: 'features', label: 'Какво получаваш', mobileHidden: false, href: undefined },
+  { id: 'pricing', label: 'Цени', mobileHidden: false, href: '/pricing' },
+  { id: 'faq', label: 'FAQ', mobileHidden: false, href: '/faq' },
+  { id: 'chat', label: 'Контакт', mobileHidden: false, href: undefined },
 ] as const;
 
 const HOME_SECTION_IDS = SECTION_LINKS.map((s) => s.id);
@@ -104,7 +105,7 @@ export function MarketingHomeSectionNav() {
           ) : (
             <a
               key={section.id}
-              href={`#${section.id}`}
+              href={section.href ?? `#${section.id}`}
               className={`hp-section-link${activeSection === section.id ? ' active' : ''}${section.mobileHidden ? ' hp-section-link-desktop' : ''}`}
             >
               {section.label}

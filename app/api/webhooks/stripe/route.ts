@@ -14,7 +14,7 @@ import {
 import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 import { creditSmsPack } from '@/lib/sms-reminders';
 import { SMS_PACK_CREDITS } from '@/lib/sms-shared';
-import { alertOwnerWebhookFailure } from '@/lib/webhook-alert';
+import { alertOwnerWebhookFailure, notifyOwnerNewSale } from '@/lib/webhook-alert';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -303,6 +303,7 @@ export async function POST(request: NextRequest) {
         `.catch(() => {});
 
         console.log(`[stripe-webhook] ✅ Plan renewed — slug=${salonSlug} plan=${renewPlan} stacked by ${billingMonths}m`);
+        notifyOwnerNewSale({ flow: 'plan_renew', salonSlug, plan: renewPlan, billingPeriod, amountCents: session.amount_total ?? 0, currency });
       } catch (err) {
         console.error('[stripe-webhook] Plan renew failed:', err);
         Sentry.captureException(err, { extra: { eventId: event.id, salonSlug } });
@@ -356,6 +357,7 @@ export async function POST(request: NextRequest) {
         `.catch(() => {});
 
         console.log(`[stripe-webhook] ✅ Plan upgraded to team — slug=${salonSlug}`);
+        notifyOwnerNewSale({ flow: 'plan_upgrade', salonSlug, plan: 'team', billingPeriod, amountCents: session.amount_total ?? 0, currency });
       } catch (err) {
         console.error('[stripe-webhook] Plan upgrade failed:', err);
         Sentry.captureException(err, { extra: { eventId: event.id, salonSlug } });
@@ -419,6 +421,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`[stripe-webhook] ✅ Plan updated — plan=${canonicalPlan} expires_at=now()+${billingMonths}months`);
       console.log(`[stripe-webhook] 🏁 Checkout completed successfully — slug=${salonSlug} plan=${canonicalPlan} period=${billingPeriod}`);
+      notifyOwnerNewSale({ flow: 'new_purchase', salonSlug: String(salonSlug), plan: canonicalPlan ?? 'solo', billingPeriod, amountCents: session.amount_total ?? 0, currency: session.currency?.toUpperCase() });
     } catch (err) {
       console.error('[stripe-webhook] Salon activation failed:', err);
       Sentry.captureException(err, { extra: { eventId: event.id, salonSlug, planType } });

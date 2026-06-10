@@ -15,6 +15,15 @@ export function SiteFooter() {
           <Link href="/create" className="footer-link text-white/55">
             Създай сайт
           </Link>
+          <Link href="/features" className="footer-link text-white/55">
+            Функции
+          </Link>
+          <Link href="/pricing" className="footer-link text-white/55">
+            Цени
+          </Link>
+          <Link href="/faq" className="footer-link text-white/55">
+            FAQ
+          </Link>
           <span className="hidden sm:inline">·</span>
           <Link href="/terms" className="footer-link">
             Общи условия
