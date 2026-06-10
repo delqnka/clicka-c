@@ -4332,7 +4332,8 @@ function DomainTab({
     return () => { cancelled = true; };
   }, [slug]);
 
-  const activePurchaseStatuses = ['requested', 'paid', 'processing', 'pending', 'registered'];
+  // 'requested' = created but not yet paid — show resume-payment UI, not processing notice
+  const activePurchaseStatuses = ['paid', 'processing', 'pending', 'registered'];
   const hasActivePurchaseRequest = Boolean(
     purchaseRequest &&
     activePurchaseStatuses.includes(purchaseRequest.status) &&
