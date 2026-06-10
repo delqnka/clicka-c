@@ -30,6 +30,8 @@ type Period = '6m' | '12m';
 
 const TEAM_PRICES: Record<Period, number> = { '12m': 499, '6m': 279 };
 const SOLO_PRICES: Record<Period, number> = { '12m': 299, '6m': 169 };
+// Shown in upgrade modal — only the difference
+const UPGRADE_PRICES: Record<Period, number> = { '12m': 200, '6m': 110 };
 
 function formatMoney(eur: number) {
   return `€${eur.toFixed(0)}`;
@@ -266,7 +268,7 @@ export function PaymentsTabPanel({
             desc="Team планът включва до 3 специалисти, отделни профили и персонализирани услуги за всеки. Новият период започва от днес."
             selectedPeriod={selectedPeriod}
             setSelectedPeriod={setSelectedPeriod}
-            prices={TEAM_PRICES}
+            prices={UPGRADE_PRICES}
             busy={planBusy}
             error={planError}
             confirmLabel="Плати и ъпгрейдни →"
@@ -308,8 +310,8 @@ export function PaymentsTabPanel({
           title={
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               Stripe Connect
-              <svg width="48" height="20" viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Stripe" style={{ display: 'block', flexShrink: 0 }}>
-                <path d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a8.33 8.33 0 0 1-4.56 1.1c-4.01 0-6.83-2.5-6.83-7.48 0-4.19 2.39-7.52 6.3-7.52 3.92 0 5.96 3.28 5.96 7.5 0 .4-.04 1.26-.06 1.48zm-5.92-5.62c-1.03 0-2.17.73-2.17 2.58h4.25c0-1.85-1.07-2.58-2.08-2.58zM40.95 20.3c-1.44 0-2.32-.6-2.9-1.04l-.02 4.63-4.12.87V5.57h3.76l.08 1.02a4.7 4.7 0 0 1 3.23-1.29c2.9 0 5.62 2.6 5.62 7.4 0 5.23-2.7 7.6-5.65 7.6zM40 8.95c-.95 0-1.54.34-1.97.81l.02 6.12c.4.44.98.78 1.95.78 1.52 0 2.54-1.65 2.54-3.87 0-2.15-1.04-3.84-2.54-3.84zM28.24 5.57h4.13v14.44h-4.13zM28.24.4 32.37 0v3.36l-4.13.87zM23.62 6.79l.26 1.22c1-1.78 2.99-1.6 3.55-1.4v3.79c-.55-.18-2.36-.43-3.43.96v8.65h-4.12V5.57h3.55l.19 1.22zM15.3 1.91v3.66h2.87v3.39h-2.87v6.18c0 1.43.62 1.78 1.84 1.78.45 0 .94-.08 1.4-.21v3.46c-.78.4-2.06.66-3.36.66-2.84 0-4-1.5-4-3.91l.02-7.96-1.91-.4V5.57h1.9V2.65zM6.36 9.92c0 .73.6 1.07 2.27 1.6 2.46.78 5.6 1.81 5.6 5.5 0 3.05-2.42 5.07-6.4 5.07-1.6 0-3.34-.32-5.07-1.05v-4.42c1.55.85 3.5 1.48 5.07 1.48 1.06 0 1.83-.28 1.83-1.13 0-.84-.96-1.18-2.78-1.78C4.3 14.42.93 13.2.93 9.16.93 6.05 3.36 4 7.18 4c1.53 0 3.06.23 4.59.86V9.2c-1.4-.74-3.18-1.13-4.6-1.13-1 0-1.62.28-1.62.95l.01-.1z" fill="#635BFF"/>
+              <svg width="44" height="18" viewBox="0 0 468 222" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Stripe" style={{ display: 'block', flexShrink: 0 }}>
+                <path fillRule="evenodd" clipRule="evenodd" d="M414 113.4c0-25.4-12.3-45.5-35.9-45.5-23.7 0-38 20.1-38 45.3 0 29.9 16.9 45 41.1 45 11.8 0 20.7-2.7 27.5-6.4V131c-6.8 3.4-14.6 5.5-24.5 5.5-9.7 0-18.3-3.4-19.4-15.2h48.9c0-1.3.3-6.5.3-7.9zm-49.4-9.4c0-11.3 6.9-16 13.2-16 6.1 0 12.6 4.7 12.6 16h-25.8zM301.1 67.9c-9.8 0-16.1 4.6-19.6 7.8l-1.3-6.2h-22v116.3l25-5.3.1-28.2c3.6 2.6 9 6.3 17.8 6.3 18 0 34.4-14.5 34.4-46.4-.1-29.2-16.7-44.3-34.4-44.3zm-6 68.1c-5.9 0-9.4-2.1-11.8-4.7l-.1-37.1c2.6-2.9 6.2-4.9 11.9-4.9 9.1 0 15.4 10.2 15.4 23.3 0 13.4-6.2 23.4-15.4 23.4zM223.8 61l25.1-5.4V36l-25.1 5.3zM223.8 69.5h25.1v87.5h-25.1zM196.9 76.7l-1.6-7.2h-21.6v87.5h25V97.5c5.9-7.7 15.9-6.3 19-5.2V69.5c-3.2-1.2-14.9-3.4-20.8 7.2zM146.9 47.6l-24.4 5.2-.1 80.1c0 14.8 11.1 25.7 25.9 25.7 8.2 0 14.2-1.5 17.5-3.3V135c-3.2 1.3-19 5.9-19-8.9V90.6H166V69.5h-19.1V47.6zM79.3 94.7c0-3.9 3.2-5.4 8.5-5.4 7.6 0 17.2 2.3 24.8 6.4V72.2c-8.3-3.3-16.5-4.6-24.8-4.6C67.5 67.6 52 76.3 52 95.8c0 30.5 42 25.6 42 38.7 0 4.6-4 6.1-9.6 6.1-8.3 0-18.9-3.4-27.3-8v23.8c9.3 4 18.7 5.7 27.3 5.7 20.8 0 35.1-10.3 35.1-30 .1-32.9-42.2-27.1-42.2-37.4z" fill="#635BFF"/>
               </svg>
             </span>
           }
@@ -414,9 +416,9 @@ function PlanActionCard({
               flex: 1, padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
               border: selectedPeriod === p ? '2px solid transparent' : '1.5px solid rgba(0,0,0,0.12)',
               backgroundImage: selectedPeriod === p ? `linear-gradient(#fff,#fff), ${GRAD}` : 'none',
-              backgroundOrigin: selectedPeriod === p ? 'border-box' : undefined,
-              backgroundClip: selectedPeriod === p ? 'padding-box, border-box' : undefined,
-              background: selectedPeriod === p ? undefined : '#fafafa',
+              backgroundOrigin: selectedPeriod === p ? 'border-box' : 'padding-box',
+              backgroundClip: selectedPeriod === p ? 'padding-box, border-box' : 'border-box',
+              backgroundColor: selectedPeriod === p ? 'transparent' : '#fafafa',
               boxShadow: selectedPeriod === p ? '0 4px 12px rgba(219,39,119,0.15)' : 'none',
             }}
           >

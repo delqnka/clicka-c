@@ -9,10 +9,17 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: '2024-06-20' });
 }
 
+// Full prices (cents)
 const TEAM_PRICES: Record<string, number> = { '12m': 49900, '6m': 27900 };
-const TEAM_NAMES:  Record<string, string>  = {
-  '12m': 'Team — 12 месеца',
-  '6m':  'Team — 6 месеца',
+const SOLO_PRICES: Record<string, number> = { '12m': 29900, '6m': 16900 };
+// Upgrade diff = Team - Solo
+const UPGRADE_PRICES: Record<string, number> = {
+  '12m': TEAM_PRICES['12m'] - SOLO_PRICES['12m'], // 200 €
+  '6m':  TEAM_PRICES['6m']  - SOLO_PRICES['6m'],  // 110 €
+};
+const TEAM_NAMES: Record<string, string> = {
+  '12m': 'Upgrade към Team — 12 месеца',
+  '6m':  'Upgrade към Team — 6 месеца',
 };
 
 export async function POST(request: NextRequest) {
@@ -43,7 +50,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Вече сте на TEAM план.' }, { status: 400 });
   }
 
-  const amount = TEAM_PRICES[billingPeriod];
+  const amount = UPGRADE_PRICES[billingPeriod];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
   try {
@@ -55,7 +62,10 @@ export async function POST(request: NextRequest) {
         price_data: {
           currency: 'eur',
           unit_amount: amount,
-          product_data: { name: `Clicka.bg — ${TEAM_NAMES[billingPeriod]}` },
+          product_data: {
+            name: `Clicka.bg — ${TEAM_NAMES[billingPeriod]}`,
+            description: `Доплащане за надграждане от Solo към Team (разлика в цената)`,
+          },
         },
       }],
       metadata: {

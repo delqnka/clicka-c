@@ -14,7 +14,7 @@ export type DomainTldOption = {
 
 export const DOMAIN_TLD_OPTIONS: DomainTldOption[] = [
   { value: 'com', label: '.com', feeCents: 1200, feeBgnCents: 2347 },
-  { value: 'bg',  label: '.bg',  feeCents: 3000, feeBgnCents: 5867 },
+  { value: 'bg',  label: '.bg',  feeCents: 3200, feeBgnCents: 6258 },
   { value: 'org', label: '.org', feeCents:  800, feeBgnCents: 1565 },
   { value: 'info',label: '.info',feeCents:  800, feeBgnCents: 1565 },
 ];
