@@ -736,6 +736,32 @@ export async function handleAdminCommand(
     return true;
   }
 
+  // ── "Нов клиент ИМЕ" без booking детайли → save_client_contact ──────────
+  // Guards against AI misrouting "нов клиент Мария" to create_booking when
+  // last_booking/last_service context is active.
+  const NEW_CLIENT_PLAIN_RE =
+    /^(?:нов[а]?\s+клиент[аa]?|запиши?\s+(?:нов[а]?\s+)?клиент[аa]?|добав[ии]\s+(?:ми\s+)?(?:нов[а]?\s+)?клиент[аa]?)\s+(.+)/i;
+  const BOOKING_SIGNALS_RE =
+    /\d{1,2}:\d{2}|утре|днес|вчера|понеделник|вторник|сряда|четвъртък|петък|събота|неделя|следващ|тази\s+седмица/i;
+  const newClientMatch = text.match(NEW_CLIENT_PLAIN_RE);
+  if (newClientMatch) {
+    const rest = newClientMatch[1]!.trim();
+    // If no booking signals detected → treat as a plain "add client" command
+    if (!BOOKING_SIGNALS_RE.test(rest)) {
+      // Extract phone/email if present, rest is the client name
+      const phoneMatch = rest.match(/(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/);
+      const emailMatch = rest.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+      const clientName = rest
+        .replace(phoneMatch?.[0] ?? '', '')
+        .replace(emailMatch?.[0] ?? '', '')
+        .trim();
+      if (clientName) {
+        await handleSaveClientContact(chatId, salon, clientName, phoneMatch?.[1]?.replace(/[\s\-]/g, ''), emailMatch?.[1]);
+        return true;
+      }
+    }
+  }
+
   // ── AI fallback — free natural language ──────────────────────────────────
   return await handleWithAI(chatId, text, salon);
 }
