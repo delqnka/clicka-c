@@ -8,13 +8,13 @@ export const metadata: Metadata = {
   description:
     'Отговори на най-честите въпроси за clicka.bg — цени, онлайн резервации, управление от Telegram, домейн и специалисти.',
   alternates: {
-    canonical: 'https://clicka.bg/faq',
+    canonical: 'https://www.clicka.bg/faq',
   },
   openGraph: {
     title: 'Въпроси и отговори | clicka.bg',
     description:
       'Колко струва абонаментът? Как работят резервациите? Мога ли да свържа собствен домейн? Отговори на всички въпроси.',
-    url: 'https://clicka.bg/faq',
+    url: 'https://www.clicka.bg/faq',
     type: 'website',
   },
 };

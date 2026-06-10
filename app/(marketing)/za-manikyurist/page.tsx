@@ -6,13 +6,13 @@ export const metadata: Metadata = {
   description:
     'Собствен сайт за маникюрист с онлайн резервации за гел лак, ноктопластика и дизайн. AI асистент, Telegram управление и 0% комисионна. Готов веднага. От 0.82 € на ден.',
   alternates: {
-    canonical: 'https://clicka.bg/za-manikyurist',
+    canonical: 'https://www.clicka.bg/za-manikyurist',
   },
   openGraph: {
     title: 'Сайт за маникюрист с онлайн записвания | clicka.bg',
     description:
       'Собствен сайт за маникюрист с онлайн резервации, AI асистент и 0% комисионна. Готов за 15 минути.',
-    url: 'https://clicka.bg/za-manikyurist',
+    url: 'https://www.clicka.bg/za-manikyurist',
     type: 'website',
   },
 };
@@ -26,7 +26,7 @@ const jsonLd = [
     operatingSystem: 'Web',
     description:
       'Сайт за маникюрист с онлайн записвания — гел лак, ноктопластика, дизайн. AI асистент, Telegram управление и Stripe депозити. 0% комисионна.',
-    url: 'https://clicka.bg',
+    url: 'https://www.clicka.bg',
     offers: {
       '@type': 'Offer',
       price: '299',

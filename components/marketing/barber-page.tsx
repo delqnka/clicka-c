@@ -242,20 +242,22 @@ function OwnSiteSection() {
           </span>
         </h2>
         <p style={{ fontSize: 'clamp(15px,1.8vw,17px)', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 32 }}>
-          Получаваш готов сайт с твоето лого, твоите услуги и твоите цени. Клиентите намират бизнеса ти в Google, отварят сайта и се записват директно. Без посредници, без платформи, без чужд бранд.
+          Получаваш готов сайт с твоите услуги и твоите цени. Клиентите намират бизнеса ти в Google, отварят сайта и се записват директно. Без посредници, без платформи, без чужд бранд.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {[
-            { title: 'Твое лого и бранд', body: 'Сайтът е персонализиран под твоето барбършоп. Клиентите виждат само теб.' },
-            { title: 'Списък с услуги и цени', body: 'Добавяш подстригване, оформяне на брада, бръснене и всяка друга услуга с точна цена и времетраене.' },
-            { title: 'Собствен домейн', body: 'Получаваш адрес на сайта с твоето барбершоп. Например barbershop-ivan.bg или твоето.clicka.bg.' },
-            { title: 'Готов веднага', body: 'Сайтът е онлайн в рамките на минути. Не чакаш агенция, не учиш нов софтуер.' },
-          ].map((item, i) => (
+          {(
+            [
+              { title: 'Твоя собствен сайт', body: 'Сайтът е персонализиран под твоя барбършоп с твоите услуги, цени и съдържание. Клиентите виждат само теб.' },
+              { title: 'Списък с услуги и цени', body: 'Добавяш снимка на ценоразписа си или ръчно добавяш подстригване, оформяне на брада, бръснене и всяка друга услуга с точна цена и времетраене.' },
+              { title: 'Собствен домейн', body: (<>Получаваш адрес на сайта. Например barbershop-ivan.bg или <span style={{ backgroundImage: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>твоятсалон.clicka.bg</span>.</>) },
+              { title: 'Готов веднага', body: 'Сайтът е онлайн в рамките на минути. Не чакаш агенция, не учиш нов софтуер.' },
+            ] as { title: string; body: React.ReactNode }[]
+          ).map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', padding: '18px 20px', borderRadius: 14, ...GLASS_CARD }}>
               <span style={{ fontSize: 22, fontWeight: 900, backgroundImage: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', flexShrink: 0, lineHeight: 1, minWidth: 28 }}>0{i + 1}</span>
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 5 }}>{item.title}</h3>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, margin: 0 }}>{item.body}</p>
+                <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, margin: 0 }}>{item.body}</p>
               </div>
             </div>
           ))}

@@ -6,13 +6,13 @@ export const metadata: Metadata = {
   description:
     'Собствен сайт за твоя барбършоп с онлайн резервации, AI рецепционист и 0% комисионна. Онлайн записване за барбър, управление от Telegram. Готов веднага. От 0.82 € на ден.',
   alternates: {
-    canonical: 'https://clicka.bg/za-barber',
+    canonical: 'https://www.clicka.bg/za-barber',
   },
   openGraph: {
     title: 'Сайт за барбър с онлайн записвания | clicka.bg',
     description:
       'Собствен сайт за твоя барбършоп с онлайн резервации, AI рецепционист и 0% комисионна. Готов веднага.',
-    url: 'https://clicka.bg/za-barber',
+    url: 'https://www.clicka.bg/za-barber',
     type: 'website',
   },
 };
@@ -26,7 +26,7 @@ const jsonLd = [
     operatingSystem: 'Web',
     description:
       'Сайт за барбър с онлайн резервации, AI рецепционист, Telegram управление и Stripe депозити. 0% комисионна.',
-    url: 'https://clicka.bg',
+    url: 'https://www.clicka.bg',
     offers: {
       '@type': 'Offer',
       price: '299',

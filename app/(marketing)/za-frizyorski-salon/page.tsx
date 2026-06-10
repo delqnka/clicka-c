@@ -6,13 +6,13 @@ export const metadata: Metadata = {
   description:
     'Собствен сайт за твоя фризьорски салон с онлайн резервации, AI рецепционист и 0% комисионна. Готов за 15 минути. От 0.82 € на ден.',
   alternates: {
-    canonical: 'https://clicka.bg/za-frizyorski-salon',
+    canonical: 'https://www.clicka.bg/za-frizyorski-salon',
   },
   openGraph: {
     title: 'Сайт за фризьорски салон с онлайн записвания | clicka.bg',
     description:
       'Собствен сайт за твоя фризьорски салон с онлайн резервации, AI рецепционист и 0% комисионна. Готов за 15 минути.',
-    url: 'https://clicka.bg/za-frizyorski-salon',
+    url: 'https://www.clicka.bg/za-frizyorski-salon',
     type: 'website',
   },
 };
@@ -26,7 +26,7 @@ const jsonLd = [
     operatingSystem: 'Web',
     description:
       'Платформа за фризьорски салони — собствен сайт с онлайн записвания, AI рецепционист и Stripe депозити. 0% комисионна.',
-    url: 'https://clicka.bg',
+    url: 'https://www.clicka.bg',
     offers: {
       '@type': 'Offer',
       price: '299',

@@ -12,13 +12,13 @@ export const metadata: Metadata = {
   description:
     'Solo от 0.82 € на ден, Team от 1.37 € на ден. Включени: сайт, AI рецепционист, онлайн резервации, хостинг, SSL и 0% комисионна. Без скрити такси.',
   alternates: {
-    canonical: 'https://clicka.bg/pricing',
+    canonical: 'https://www.clicka.bg/pricing',
   },
   openGraph: {
     title: 'Цени | clicka.bg — Сайт за салони с онлайн резервации',
     description:
       'Solo от 0.82 € на ден, Team от 1.37 € на ден. Включени: сайт, AI рецепционист, онлайн резервации, хостинг, SSL и 0% комисионна.',
-    url: 'https://clicka.bg/pricing',
+    url: 'https://www.clicka.bg/pricing',
     type: 'website',
   },
 };
@@ -27,14 +27,14 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
   name: 'Цени — clicka.bg',
-  url: 'https://clicka.bg/pricing',
+  url: 'https://www.clicka.bg/pricing',
   description:
     'Планове и цени за платформата clicka.bg — собствен сайт за салони с онлайн записвания, AI рецепционист и 0% комисионна.',
   breadcrumb: {
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Начало', item: 'https://clicka.bg' },
-      { '@type': 'ListItem', position: 2, name: 'Цени', item: 'https://clicka.bg/pricing' },
+      { '@type': 'ListItem', position: 1, name: 'Начало', item: 'https://www.clicka.bg' },
+      { '@type': 'ListItem', position: 2, name: 'Цени', item: 'https://www.clicka.bg/pricing' },
     ],
   },
 };
