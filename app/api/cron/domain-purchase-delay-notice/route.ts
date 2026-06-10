@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       s.slug  AS salon_slug
     FROM bookings b
     JOIN salons s ON s.id::text = b.salon_id::text
-    WHERE b.date = CURRENT_DATE
+    WHERE b.date::date = CURRENT_DATE
       AND b.time::time <= (NOW() AT TIME ZONE 'Europe/Sofia' - INTERVAL '1 hour')::time
       AND b.status = 'confirmed'
       AND b.google_review_invite_sent_at IS NULL
