@@ -1605,7 +1605,6 @@ export default function SalonPublicParity({
                   );
                   })}
                 </div>
-                </div>
             </DeferredSection> : null}
 
             <DeferredSection
