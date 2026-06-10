@@ -141,6 +141,24 @@ export function MarketingHomePricingSection() {
           </p>
         </div>
 
+        {/* Promo banner */}
+        <a
+          href="/purvite-10"
+          data-reveal
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: 'linear-gradient(135deg,#fff0f3,#faf5ff)',
+            border: '1px solid #fce7f3', borderRadius: 9999,
+            padding: '8px 18px', marginBottom: 28, textDecoration: 'none',
+            fontSize: 13, fontWeight: 600,
+          }}
+        >
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#e11d48', display: 'inline-block', flexShrink: 0 }} />
+          <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            Промо оферта за първите 10 бизнеса — виж тук →
+          </span>
+        </a>
+
         <div data-reveal style={{ display: 'inline-flex', alignItems: 'center', background: '#f3f4f6', borderRadius: 9999, padding: 4, marginBottom: 40, gap: 2 }}>
           {(['12m', '6m'] as const).map((p) => (
             <button

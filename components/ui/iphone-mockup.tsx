@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type IPhoneMockupProps = {
   /** @deprecated Use mp4Src/webmSrc + poster instead */
@@ -12,6 +12,7 @@ type IPhoneMockupProps = {
   playbackRate?: number;
   blurQuickType?: boolean;
   blurTimeRange?: [number, number];
+  showPlayButton?: boolean;
 };
 
 export function IPhoneMockup({
@@ -23,10 +24,12 @@ export function IPhoneMockup({
   playbackRate = 1,
   blurQuickType = false,
   blurTimeRange,
+  showPlayButton = false,
 }: IPhoneMockupProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -36,12 +39,15 @@ export function IPhoneMockup({
     video.playbackRate = playbackRate;
     video.preload = 'none';
 
-    let playing = false;
+    // If showPlayButton, don't autoplay — wait for user click
+    if (showPlayButton) return;
+
+    let isPlaying = false;
     const playWhenVisible = () => {
-      if (playing) return;
-      playing = true;
+      if (isPlaying) return;
+      isPlaying = true;
       void video.play().catch(() => {
-        playing = false;
+        isPlaying = false;
       });
     };
 
@@ -71,7 +77,15 @@ export function IPhoneMockup({
       visibilityObs.disconnect();
       if (onTimeUpdate) video.removeEventListener('timeupdate', onTimeUpdate);
     };
-  }, [playbackRate, blurQuickType, blurTimeRange]);
+  }, [playbackRate, blurQuickType, blurTimeRange, showPlayButton]);
+
+  function handlePlayClick() {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = playbackRate;
+    void video.play();
+    setPlaying(true);
+  }
 
   const legacySrc = src && !mp4Src && !webmSrc ? src : undefined;
 
@@ -135,6 +149,41 @@ export function IPhoneMockup({
           {mp4Src ? <source src={mp4Src} type="video/mp4" /> : null}
           {legacySrc ? <source src={legacySrc} /> : null}
         </video>
+
+        {showPlayButton && !playing && (
+          <button
+            onClick={handlePlayClick}
+            aria-label="Пусни видеото"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              background: 'rgba(0,0,0,0.30)',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 15,
+            }}
+          >
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #e11d48, #a855f7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 20px rgba(225,29,72,0.5)',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <polygon points="6,4 20,12 6,20" />
+              </svg>
+            </div>
+          </button>
+        )}
 
         {blurQuickType && (
           <div

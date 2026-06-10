@@ -128,9 +128,9 @@ function RealExample() {
         <div style={{ width: '100%', maxWidth: 'min(52vw, 200px)' }}>
           <IPhoneMockup
             poster="/vid1-poster.webp"
-            webmSrc="/vid1.webm"
-            mp4Src="/vid1.mp4"
+            mp4Src="/video-clicka.mov"
             playbackRate={2}
+              showPlayButton
             blurQuickType
             blurTimeRange={[44, 57]}
           />
@@ -353,9 +353,9 @@ function IPhoneDemoSection() {
         <div style={{ width: '100%', maxWidth: 'min(52vw, 200px)' }}>
           <IPhoneMockup
             poster="/vid1-poster.webp"
-            webmSrc="/vid1.webm"
-            mp4Src="/vid1.mp4"
+            mp4Src="/video-clicka.mov"
             playbackRate={2}
+              showPlayButton
             blurQuickType
             blurTimeRange={[44, 57]}
           />

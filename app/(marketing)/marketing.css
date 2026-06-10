@@ -466,10 +466,11 @@
 }
 
 /* ── SiteFooter hover styles moved here to fix React 18 hydration ── */
-.footer-link { transition: color 0.2s; }
+.footer-link { transition: filter 0.2s ease, opacity 0.2s ease; }
 .footer-link:hover {
   background: linear-gradient(135deg, #e11d48, #db2777, #a855f7);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  opacity: 1 !important;
 }

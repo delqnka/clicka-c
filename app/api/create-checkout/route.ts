@@ -17,10 +17,10 @@ type PlanOption = {
 };
 
 const PLAN_OPTIONS: Record<string, PlanOption> = {
-  solo_12m: { amount: 29900, plan: 'solo', billingPeriod: '12m', name: 'Solo сайт — 12 месеца' },
-  solo_6m:  { amount: 16900, plan: 'solo', billingPeriod: '6m',  name: 'Solo сайт — 6 месеца' },
-  team_12m: { amount: 49900, plan: 'team', billingPeriod: '12m', name: 'Team сайт — 12 месеца' },
-  team_6m:  { amount: 27900, plan: 'team', billingPeriod: '6m',  name: 'Team сайт — 6 месеца' },
+  solo_12m: { amount: 100, plan: 'solo', billingPeriod: '12m', name: 'Solo сайт — 12 месеца' },
+  solo_6m:  { amount: 100, plan: 'solo', billingPeriod: '6m',  name: 'Solo сайт — 6 месеца' },
+  team_12m: { amount: 100, plan: 'team', billingPeriod: '12m', name: 'Team сайт — 12 месеца' },
+  team_6m:  { amount: 100, plan: 'team', billingPeriod: '6m',  name: 'Team сайт — 6 месеца' },
 };
 
 interface BillingInfo {
@@ -30,7 +30,7 @@ interface BillingInfo {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { planKey: string; ownerName?: string; email?: string; salonName?: string; slug?: string; smsAddon?: boolean; billingInfo?: BillingInfo };
+  let body: { planKey: string; ownerName?: string; email?: string; salonName?: string; slug?: string; smsAddon?: boolean; billingInfo?: BillingInfo; promoRef?: string };
 
   try {
     body = await request.json();
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
   }
 
-  const { planKey, ownerName, email, salonName, slug, smsAddon, billingInfo } = body;
+  const { planKey, ownerName, email, salonName, slug, smsAddon, billingInfo, promoRef } = body;
   const option = PLAN_OPTIONS[planKey];
 
   if (!option) {
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         salonName: (salonName ?? '').slice(0, 64),
         salonSlug: (slug ?? '').slice(0, 32),
         smsAddon: smsAddon ? '1' : '0',
+        ...(promoRef && { promoRef: String(promoRef).slice(0, 32) }),
         ...(billingInfo && {
           invoiceCompanyName: billingInfo.companyName,
           invoiceEik: billingInfo.eik,
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
         }),
       },
       success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/create`,
+      cancel_url: promoRef === 'purvite10' ? `${appUrl}/purvite-10` : `${appUrl}/create`,
     });
 
     console.log(`[create-checkout] ✅ Checkout session created — id=${session.id}`);
