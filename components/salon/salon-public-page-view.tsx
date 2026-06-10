@@ -96,17 +96,26 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
   const staffRows = salonId ? await getStaffMembers(salonId).catch(() => []) : [];
   const activeStaff = staffRows.filter((s) => s.isActive);
 
+  // If owner is already a staff member (is_owner=true) don't duplicate them
+  const ownerAlreadyInStaff = activeStaff.some((s) => s.isOwner);
+  const ownerEntry = (ownerName || salonName) && !ownerAlreadyInStaff
+    ? [{ id: 'owner', name: ownerName || salonName, role: ownerRole, bio: ownerBio, photoUrl: ownerPhoto }]
+    : [];
+
+  const staffEntries = activeStaff.map((s) => ({
+    id: s.id,
+    name: s.name,
+    role: '',
+    bio: s.bio ?? '',
+    photoUrl: s.avatarUrl ?? '',
+  }));
+
+  // Owner first, then staff members — always show both when staff exist
   const publicTeamMembers =
     activeStaff.length > 0
-      ? activeStaff.map((s) => ({
-          id: s.id,
-          name: s.name,
-          role: '',
-          bio: s.bio ?? '',
-          photoUrl: s.avatarUrl ?? '',
-        }))
-      : ownerName || salonName
-        ? [{ id: 'owner', name: ownerName || salonName, role: ownerRole, bio: ownerBio, photoUrl: ownerPhoto }]
+      ? [...ownerEntry, ...staffEntries]
+      : ownerEntry.length > 0
+        ? ownerEntry
         : [];
 
   return (
