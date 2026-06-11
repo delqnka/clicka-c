@@ -242,12 +242,12 @@ function buildSystemPrompt(
 1. Услуга
 2. Майстор (ако не посочи — предложи кой е наличен за тази услуга)
 3. Дата и час (само от СВОБОДНИТЕ ЧАСОВЕ по-долу — не измисляй!)
-4. Три имена на клиента
+4. Ime на клиента
 5. Телефон
 6. Имейл
 
 Когато имаш ВСИЧКИТЕ 6 потвърдени, отговори САМО с:
-<<BOOK:{"staffName":"ИМЕ","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ","depositAmount":ДЕПОЗИТ_ИЛИ_0}>>
+<<BOOK:{"staffName":"ИМЕ","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ИМЕ","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ","depositAmount":ДЕПОЗИТ_ИЛИ_0}>>
 (ДЕПОЗИТ_ИЛИ_0 = числото от депозита на услугата от списъка с услуги, или 0 ако няма депозит)
 
 ${slotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n${slotsText}` : noSlotsMsg}` : `
@@ -255,12 +255,12 @@ ${slotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n$
 Записвай клиентите сам — не ги пращай на линкове. Когато клиент иска час, събери стъпка по стъпка (не всичко наведнъж):
 1. Услуга (от списъка)
 2. Дата и час (само от СВОБОДНИТЕ ЧАСОВЕ по-долу — не измисляй!)
-3. Три имена на клиента
+3. Ime на клиента
 4. Телефон
 5. Имейл
 
 Когато имаш ВСИЧКИТЕ 5 потвърдени, отговори САМО с:
-<<BOOK:{"staffName":"","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ","depositAmount":ДЕПОЗИТ_ИЛИ_0}>>
+<<BOOK:{"staffName":"","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ИМЕ","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ","depositAmount":ДЕПОЗИТ_ИЛИ_0}>>
 (ДЕПОЗИТ_ИЛИ_0 = числото от депозита на услугата от списъка с услуги, или 0 ако няма депозит)
 
 ${soloSlotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n${soloSlotsText}` : noSlotsMsg}`;
@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
 
-    const models = ['google/gemini-2.5-flash', 'google/gemini-2.0-flash-001', 'anthropic/claude-haiku-4-5'];
+    const models = ['google/gemini-2.0-flash-001', 'google/gemini-2.5-flash', 'anthropic/claude-haiku-4-5'];
     const chatMessages = [
       { role: 'system', content: systemPrompt },
       ...messages.slice(-8),
@@ -417,23 +417,34 @@ export async function POST(req: NextRequest) {
 
     let reply = 'Нещо се обърка. Опитай пак.';
     for (const model of models) {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://clicka.bg',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 300,
-          ...(model.startsWith('google/') ? { thinking: { type: 'disabled' } } : {}),
-          messages: chatMessages,
-        }),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 9000);
+      let res: Response;
+      try {
+        res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://clicka.bg',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 300,
+            ...(model.startsWith('google/') ? { thinking: { type: 'disabled' } } : {}),
+            messages: chatMessages,
+          }),
+        });
+      } catch (err) {
+        clearTimeout(timeout);
+        console.warn(`[salon-ai-chat] timeout/error on ${model}, trying next`, err);
+        continue;
+      }
+      clearTimeout(timeout);
 
       const data = await res.json() as { choices?: { message?: { content?: string } }[]; error?: { code?: number } };
-      const is429 = !res.ok && res.status === 429
+      const is429 = (!res.ok && res.status === 429)
         || (data.error && (data.error as { code?: number }).code === 429);
 
       if (is429) {
