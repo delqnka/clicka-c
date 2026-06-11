@@ -277,6 +277,14 @@ ${soloSlotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни)
 
   const bookingLinkRule = 'Записвай директно в чата — не пращай клиента на линк (ОСВЕН за услуги с депозит — за тях използвай <<BOOK_LINK:>>)';
 
+  const contactRule = `АНУЛИРАНЕ / ПРОМЯНА НА ЧАС — СПЕЦИАЛНО ПРАВИЛО:
+Когато клиент иска да анулира или промени резервация:
+1. Кажи: "Разбира се! За да уведомя салона, трябва ми само твоето име и телефон."
+2. Събери: име и телефон (стъпка по стъпка)
+3. Когато имаш И ДВЕТЕ, отговори САМО с:
+<<CONTACT_REQUEST:{"clientName":"ИМЕ","clientPhone":"ТЕЛЕФОН","reason":"анулиране/промяна на час"}>>
+НЕ казвай нищо друго освен тага — фронтендът ще покаже потвърждение автоматично.`;
+
   return `Ти си рецепционист на "${name}"${city ? ` в ${city}` : ''} — отговаряш като истински служител на салона, не като бот.
 
 ТВОЯТА ЦЕЛ: Всеки разговор да завърши с резервация. Ти не просто отговаряш на въпроси — ти водиш клиента към записване.
@@ -327,7 +335,9 @@ ${offersText ? `АКТУАЛНИ ОФЕРТИ:\n${offersText}\n` : ''}
 ${faqText ? `ЧЕСТИ ВЪПРОСИ:\n${faqText}\n` : ''}
 ${bookingInstructions}
 
-${depositRule ? `${depositRule}\n` : ''}ДОПЪЛНИТЕЛНИ ПРАВИЛА:
+${depositRule ? `${depositRule}\n` : ''}${contactRule}
+
+ДОПЪЛНИТЕЛНИ ПРАВИЛА:
 - Отговаряй само за "${name}"
 - ${bookingLinkRule}`;
 }
@@ -399,29 +409,43 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
 
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://clicka.bg',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        max_tokens: 300,
-        thinking: { type: 'disabled' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages.slice(-8),
-        ],
-      }),
-    });
+    const models = ['google/gemini-2.5-flash', 'google/gemini-2.0-flash-001', 'anthropic/claude-haiku-4-5'];
+    const chatMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.slice(-8),
+    ];
 
-    const data = await res.json() as { choices?: { message?: { content?: string } }[]; error?: unknown };
-    if (!res.ok || data.error) {
-      console.error('[salon-ai-chat] OpenRouter error', res.status, JSON.stringify(data));
+    let reply = 'Нещо се обърка. Опитай пак.';
+    for (const model of models) {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://clicka.bg',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 300,
+          ...(model.startsWith('google/') ? { thinking: { type: 'disabled' } } : {}),
+          messages: chatMessages,
+        }),
+      });
+
+      const data = await res.json() as { choices?: { message?: { content?: string } }[]; error?: { code?: number } };
+      const is429 = !res.ok && res.status === 429
+        || (data.error && (data.error as { code?: number }).code === 429);
+
+      if (is429) {
+        console.warn(`[salon-ai-chat] 429 on ${model}, trying next`);
+        continue;
+      }
+      if (!res.ok || data.error) {
+        console.error('[salon-ai-chat] OpenRouter error', res.status, JSON.stringify(data));
+      }
+      reply = data.choices?.[0]?.message?.content ?? reply;
+      break;
     }
-    const reply = data.choices?.[0]?.message?.content ?? 'Нещо се обърка. Опитай пак.';
 
     return NextResponse.json({ message: reply });
   } catch (e) {

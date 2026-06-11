@@ -29,6 +29,7 @@ type Props = {
 
 const BOOK_RE = /<<BOOK:(\{[\s\S]*?\})>>/;
 const BOOK_LINK_RE = /<<BOOK_LINK:([^>]+)>>/;
+const CONTACT_REQUEST_RE = /<<CONTACT_REQUEST:(\{[\s\S]*?\})>>/;
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
@@ -229,6 +230,20 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
         const cleanContent = raw.replace(BOOK_LINK_RE, '').trim();
         setAiMessages([...next, { role: 'assistant', content: cleanContent, bookingLink: serviceName }]);
         return;
+      }
+
+      const contactMatch = CONTACT_REQUEST_RE.exec(raw);
+      if (contactMatch) {
+        try {
+          const { clientName, clientPhone, reason } = JSON.parse(contactMatch[1]!) as { clientName: string; clientPhone: string; reason?: string };
+          setAiMessages([...next, { role: 'assistant' as const, content: '✅ Получено! Салонът ще те потърси скоро 😊' }]);
+          fetch('/api/salon-ai-chat/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ salonId, clientName, clientPhone, reason }),
+          }).catch(() => {});
+          return;
+        } catch { /* fall through */ }
       }
 
       setAiMessages([...next, { role: 'assistant', content: raw }]);
