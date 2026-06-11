@@ -2057,8 +2057,8 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
       if (intent.reply) {
         // Guard: if AI hallucinated a success message for a write action, fall through so the
         // user gets the "not understood" hint instead of a fake confirmation.
-        const looksLikeFakeAction = /добав[ии]|запис[ао]|обнов[ии]|промен[ии]|изтр[ии]|запаз[ии]/i.test(intent.reply)
-          && /✅|успешно|добавена|добавен/i.test(intent.reply);
+        const looksLikeFakeAction = /добав[ии]|добавен[аa]?|записан[аa]?|запис[ао]|обнов[ии]|промен[ии]|изтр[ии]|запаз[ии]|резервац/i.test(intent.reply)
+          && /✅|успешно|добавена|добавен|записан|записах|добавих/i.test(intent.reply);
         if (looksLikeFakeAction) return false;
         // Strip Markdown formatting (**, *, __) since Telegram uses HTML parse mode
         const cleanReply = intent.reply

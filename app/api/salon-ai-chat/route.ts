@@ -247,7 +247,8 @@ function buildSystemPrompt(
 6. Имейл
 
 Когато имаш ВСИЧКИТЕ 6 потвърдени, отговори САМО с:
-<<BOOK:{"staffName":"ИМЕ","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ"}>>
+<<BOOK:{"staffName":"ИМЕ","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ","depositAmount":ДЕПОЗИТ_ИЛИ_0}>>
+(ДЕПОЗИТ_ИЛИ_0 = числото от депозита на услугата от списъка с услуги, или 0 ако няма депозит)
 
 ${slotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n${slotsText}` : noSlotsMsg}` : `
 ЗАПИСВАНЕ ДИРЕКТНО В ЧАТ:
@@ -259,7 +260,8 @@ ${slotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n$
 5. Имейл
 
 Когато имаш ВСИЧКИТЕ 5 потвърдени, отговори САМО с:
-<<BOOK:{"staffName":"","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ"}>>
+<<BOOK:{"staffName":"","serviceName":"УСЛУГА","date":"YYYY-MM-DD","time":"HH:MM","clientName":"ТРИ ИМЕНА","clientPhone":"ТЕЛЕФОН","clientEmail":"ИМЕЙЛ","depositAmount":ДЕПОЗИТ_ИЛИ_0}>>
+(ДЕПОЗИТ_ИЛИ_0 = числото от депозита на услугата от списъка с услуги, или 0 ако няма депозит)
 
 ${soloSlotsText ? `СВОБОДНИ ЧАСОВЕ (следващите 7 дни):\n${soloSlotsText}` : noSlotsMsg}`;
 

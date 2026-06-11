@@ -5,13 +5,7 @@ import { useState } from 'react';
 function Check() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }}>
-      <defs>
-        <linearGradient id="chk-fl" x1="4" y1="12" x2="20" y2="12" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#e11d48" />
-          <stop offset="1" stopColor="#a855f7" />
-        </linearGradient>
-      </defs>
-      <path d="M20 6L9 17l-5-5" stroke="url(#chk-fl)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 6L9 17l-5-5" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -71,15 +65,12 @@ export default function FeaturesList() {
             fontWeight: 700,
             padding: '6px 0',
             display: 'flex',
-            backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            color: '#6b7280',
             alignItems: 'center',
             gap: 4,
           }}
         >
-          + Виж всички функции ({HIDDEN.length} още)
+          <span style={{ color: '#22c55e' }}>+</span> Виж всички функции ({HIDDEN.length} още)
         </button>
       )}
     </div>

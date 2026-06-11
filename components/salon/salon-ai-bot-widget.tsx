@@ -16,6 +16,7 @@ type BookingPayload = {
   clientName: string;
   clientPhone: string;
   clientEmail?: string;
+  depositAmount?: number;
 };
 
 type Props = {
@@ -207,7 +208,14 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
       if (bookMatch) {
         try {
           const payload = JSON.parse(bookMatch[1]!) as BookingPayload;
-          const interim = [...next, { role: 'assistant' as const, content: `Записвам те при ${payload.staffName}...` }];
+          if (payload.depositAmount && payload.depositAmount > 0) {
+            // Service requires deposit — redirect to booking modal for payment
+            setAiMessages([...next, { role: 'assistant' as const, content: `Тази услуга изисква депозит от ${payload.depositAmount} €. Пренасочвам те към формата за записване и плащане.` }]);
+            setAiLoading(false);
+            setTimeout(() => onOpenBooking(payload.serviceName), 800);
+            return;
+          }
+          const interim = [...next, { role: 'assistant' as const, content: payload.staffName ? `Записвам те при ${payload.staffName}...` : 'Записвам те...' }];
           setAiMessages(interim);
           setAiLoading(false);
           await handleBooking(payload, next);
@@ -748,9 +756,9 @@ function renderMessage(content: string): React.ReactNode {
       nodes.push(
         <span key={i} style={{
           display: 'inline-block', padding: '2px 9px', borderRadius: 20,
-          background: 'rgba(225,29,72,0.07)', color: '#e11d48',
+          background: 'rgba(22,163,74,0.08)', color: '#16a34a',
           fontWeight: 700, fontSize: '0.92em', margin: '0 1px',
-          border: '1px solid rgba(225,29,72,0.15)',
+          border: '1px solid rgba(22,163,74,0.18)',
         }}>
           {part}
         </span>

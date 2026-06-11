@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 import { insertBookingIfNoOverlap } from '@/lib/booking-insert';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 import { runAfterResponse } from '@/lib/run-after-response';
+import { upsertSalonClient } from '@/lib/salon-clients';
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,6 +96,11 @@ export async function POST(req: NextRequest) {
     if (!result) {
       return NextResponse.json({ error: 'Slot taken' }, { status: 409 });
     }
+
+    runAfterResponse(upsertSalonClient(salonId, clientName, {
+      phone: clientPhone,
+      email: clientEmail ?? undefined,
+    }));
 
     const notesLine = staff ? `Майстор: ${staff.name} | Записан през AI чат` : 'Записан през AI чат';
 

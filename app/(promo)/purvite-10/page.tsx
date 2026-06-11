@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Script from 'next/script';
 import VideoPlayer from './VideoPlayer';
 import FeaturesList from './FeaturesList';
 import FaqList from './FaqList';
@@ -73,11 +74,13 @@ const PROFESSIONS = [
 const FAQ = [
   { q: 'Колко е сложно? Трябват ли ми технически знания?', a: 'Не. Сайтът е готов веднага след регистрация. Управляваш всичко от Telegram — добавяш услуги, качваш снимки, следиш резервации. Без технически познания, без обучение.' },
   { q: 'Какво се случва след плащане?', a: 'Получаваш имейл с достъп до сайта си. Влизаш, попълваш услугите и работното си време — и сайтът е готов за клиенти. Целият процес отнема под 30 минути.' },
-  { q: 'Получавам ли собствен сайт?', a: 'Да. Сайтът е изцяло за твоя бизнес и твоя бранд.' },
-  { q: 'Мога ли да използвам собствен домейн?', a: 'Да. Можеш да свържеш собствен домейн по всяко време.' },
+  { q: 'Получавам ли собствен сайт?', a: 'Да. Сайтът е изцяло за твоя бизнес и твоя бранд — твой домейн, твое лого, твои клиенти. Работи върху нашата инфраструктура, която поддържаме и обновяваме вместо теб.' },
+  { q: 'Мога ли да използвам собствен домейн?', a: 'Да. Ако вече имаш собствен домейн, можеш да го свържеш самостоятелно — има инструкции стъпка по стъпка в дашборда. Ако предпочиташ ние да се погрижим за свързването, има еднократна такса за услугата + цената на домейна. Домейнът се регистрира на твоята фирма! Ако не искаш да свързваш собствен домейн, сайтът ти работи веднага на безплатен адрес от вида tvoiasalon.clicka.bg.' },
   { q: 'Има ли комисионна върху резервациите?', a: 'Не. Запазваш 100% от приходите си.' },
   { q: 'Как работят онлайн депозитите и плащанията?', a: 'Използваме Stripe — водещата платежна платформа в света. Нужен ти е безплатен Stripe акаунт (5 мин. регистрация). Парите от депозити и плащания постъпват директно в твоята банкова сметка. Ние не докосваме приходите ти.' },
   { q: 'Запазвам ли цената и след 1 година?', a: 'Да. Първите 10 бизнеса запазват тази цена завинаги — независимо от бъдещи увеличения.' },
+  { q: 'Получавам ли фактура?', a: 'Да. Можеш да отбележиш опцията за фактура при плащането.' },
+  { q: 'Ами ако не ми хареса?', a: 'Уеб дизайнер взима от 500 евро стартово за обикновен сайт без резервационна система, а после трябва да плащаш хостинг, поддръжка и актуализации всеки месец. При нас за 299 € / година получаваш готов сайт, резервации, AI рецепционист и поддръжката е включена. Ако след като видиш сайта си решиш, че не е за теб — пиши ни.' },
 ];
 
 export default async function Purvite10Page() {
@@ -99,7 +102,23 @@ export default async function Purvite10Page() {
 
   return (
     <div style={{ fontFamily: 'var(--font-client-manrope), sans-serif', color: '#1a1a1a', lineHeight: 1.6, background: '#fff', minHeight: '100vh' }}>
+      <Script id="meta-pixel" strategy="afterInteractive">{`
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '2880139309045289');
+        fbq('track', 'PageView');
+      `}</Script>
       <style>{`
+        @keyframes p10-bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(6px); }
+        }
         @keyframes pulse-dot {
           0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
           50% { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
@@ -142,11 +161,12 @@ export default async function Purvite10Page() {
         .p10-pain-item {
           display: flex;
           align-items: flex-start;
-          gap: 10px;
-          padding: 12px 16px;
-          border-radius: 10px;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 8px;
           background: #fff5f5;
           border: 1px solid #fee2e2;
+          box-shadow: 0 2px 8px rgba(225,29,72,0.08), 0 1px 3px rgba(0,0,0,0.06);
         }
         .p10-testimonial {
           background: #fafafa;
@@ -178,28 +198,42 @@ export default async function Purvite10Page() {
         </h1>
 
         <p style={{ fontSize: 'clamp(20px,3.5vw,28px)', color: '#1a1a1a', marginBottom: 12, lineHeight: 1.5, fontWeight: 700, letterSpacing: '-0.01em' }}>
-          Клиентите идват заради теб. Заради работата ти. Заради доверието, което си изградил/а.
+          Клиентите идват заради теб, заради работата ти и заради личното отношение, което им даваш.
         </p>
         <p style={{ fontSize: 'clamp(15px,1.8vw,17px)', color: '#6b7280', marginBottom: 28, lineHeight: 1.8 }}>
-          Но значителна част от стойността на труда ти остава за платформата. Плащаш комисионни. Събираш ревюта там. Конкурираш се с десетки други специалисти на същата страница. Ти си просто позиция в един каталог.
+          Но значителна част от стойността на труда ти остава за платформата. <strong>Плащаш комисионни.</strong> Събираш ревюта там. Конкурираш се с десетки други специалисти на същата страница. И накрая ти си просто позиция в един каталог.
         </p>
 
-        {/* Pain points — grouped */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 36 }}>
+        {/* Болка 1 — платформата */}
+        <p style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 900, color: '#1a1a1a', marginBottom: 14, letterSpacing: '-0.02em' }}>Проблемът с платформите.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
           {[
             'Платформата взема тлъст % от труда ти.',
-            'Дължиш комисионна за всеки клиент, когото сам си спечелил.',
-            'Изграждаш чужд бранд вместо своя.',
             'Конкурираш се с десетки специалисти на една и съща страница.',
-            'Клиентът сравнява теб с конкуренцията, още преди да те е избрал.',
-            'Ако платформата промени правилата — просто трябва да се съобразиш.',
-            'Клиентите, ревютата и историята остават при тях.',
             'Клиентът помни платформата, а не твоя бранд.',
-            'Понякога се налага да даваш отчет по телефона за всеки клиент.',
+            'Ревютата ти и репутацията ти изграждат стойност за платформата, а не за теб.',
           ].map((line) => (
             <div key={line} className="p10-pain-item">
-              <span style={{ color: '#e11d48', fontWeight: 700, fontSize: 15, lineHeight: '1.6', flexShrink: 0 }}>✗</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', lineHeight: 1.65 }}>{line}</span>
+              <span style={{ color: '#e11d48', fontWeight: 700, fontSize: 17, lineHeight: '1.5', flexShrink: 0 }}>✗</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a', lineHeight: 1.5 }}>{line}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Болка 2 — комуникацията */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 900, color: '#1a1a1a', marginBottom: 6, letterSpacing: '-0.02em' }}>А комуникацията?</p>
+          <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 14 }}>Тя също не става по-лесна.</p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 36 }}>
+          {[
+            'Клиентите пишат навсякъде — Instagram, Viber, Facebook, телефон.',
+            'Пропускаш запитвания, защото не си видял съобщението навреме.',
+            'Губиш време да отговаряш на едни и същи въпроси отново и отново.',
+          ].map((line) => (
+            <div key={line} className="p10-pain-item">
+              <span style={{ color: '#e11d48', fontWeight: 700, fontSize: 17, lineHeight: '1.5', flexShrink: 0 }}>✗</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a', lineHeight: 1.5 }}>{line}</span>
             </div>
           ))}
         </div>
@@ -207,7 +241,7 @@ export default async function Purvite10Page() {
         {/* Agitation question */}
         <div style={{ margin: '32px 0' }}>
           <p style={{ margin: 0, fontSize: 'clamp(22px,5vw,36px)', fontWeight: 900, lineHeight: 1.3, letterSpacing: '-0.02em', color: '#1a1a1a' }}>
-            А какво ще направиш, ако утре увеличат <span style={{ color: '#e11d48', fontSize: '1.2em', lineHeight: 1 }}>%</span>-а още<span style={{ color: '#e11d48', fontSize: '1.6em', lineHeight: 1, marginLeft: '0.15em' }}>?</span>
+            А какво ще направиш, ако утре платформата увеличи <span style={{ color: '#e11d48', fontSize: '1.2em', lineHeight: 1 }}>%</span>-а още<span style={{ color: '#e11d48', fontSize: '1.6em', lineHeight: 1, marginLeft: '0.15em' }}>?</span>
           </p>
         </div>
 
@@ -215,41 +249,37 @@ export default async function Purvite10Page() {
           <p style={{ fontSize: 'clamp(18px,3.5vw,26px)', fontWeight: 800, lineHeight: 1.4, marginBottom: 8, letterSpacing: '-0.02em' }}>
             Има по-добър начин.
           </p>
+          <p style={{ fontSize: 'clamp(32px,8vw,56px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 16, letterSpacing: '-0.03em', ...grad }}>
+            Собствен сайт. Онлайн резервации.
+          </p>
           <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 24, lineHeight: 1.7 }}>
-            Собствен сайт. Собствени клиенти. 0% комисионна.
+            Плюс твой <strong style={{ color: '#1a1a1a' }}>AI рецепционист</strong>, който работи 24/7 и записва часовете ти, докато ти работиш или спиш!
           </p>
-          <a
-            href={ctaHref}
-            className="p10-cta"
-            style={{
-              display: 'inline-block',
-              padding: '14px 32px',
-              borderRadius: 9999,
-              background: gradFull,
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 15,
-              textDecoration: 'none',
-              boxShadow: '0 4px 20px rgba(225,29,72,0.28)',
-            }}
-          >
-            {isSoldOut ? 'Виж другите планове' : 'Искам собствен сайт →'}
-          </a>
-          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>
-            ⚡ Плащаш. Получаваш сайта си веднага.
-          </p>
+          {/* Arrow to video */}
+          <div style={{ textAlign: 'center', marginTop: 32, marginBottom: 4 }}>
+            <p style={{ fontSize: 13, color: '#9ca3af', margin: '0 0 6px' }}>виж как изглежда готов сайт</p>
+            <svg width="36" height="48" viewBox="0 0 36 48" fill="none" style={{ display: 'block', margin: '0 auto', animation: 'p10-bounce 1.4s ease-in-out infinite' }}>
+              <defs>
+                <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#e11d48" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+              </defs>
+              <line x1="18" y1="2" x2="18" y2="38" stroke="url(#arrowGrad)" strokeWidth="4" strokeLinecap="round"/>
+              <polyline points="6,26 18,40 30,26" stroke="url(#arrowGrad)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
+          </div>
         </div>
       </section>
 
-      {/* ── DEMO — show it early ─────────────────────────────────────────────── */}
-      <section style={{ background: '#fff', padding: 'clamp(40px,6vw,64px) 24px' }}>
+      {/* ── DEMO — video first, then CTA ─────────────────────────────────────── */}
+      <section style={{ background: '#fff', padding: 'clamp(24px,4vw,48px) 24px' }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 6, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Виж как изглежда</p>
           <h2 style={{ fontSize: 'clamp(18px,3vw,26px)', fontWeight: 800, marginBottom: 20, textAlign: 'center', letterSpacing: '-0.02em' }}>
             Собственият ти сайт изглежда така
           </h2>
           <VideoPlayer />
-          <div style={{ textAlign: 'center', marginTop: 14 }}>
+          <div style={{ textAlign: 'center', marginTop: 14, marginBottom: 24 }}>
             <a
               href="https://salonurban.online"
               target="_blank"
@@ -258,46 +288,57 @@ export default async function Purvite10Page() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                fontSize: 12,
-                fontWeight: 500,
+                gap: 6,
+                fontSize: 13,
+                fontWeight: 600,
                 color: '#6b7280',
-                border: '1px solid #d1d5db',
+                border: '1px solid #e5e7eb',
                 borderRadius: 9999,
-                padding: '5px 14px',
+                padding: '6px 16px',
                 textDecoration: 'none',
+                background: '#fff',
               }}
             >
-              Посети демо сайта ↗
+              Посети реален сайт ↗
             </a>
           </div>
-        </div>
-      </section>
 
-      {/* ── SOCIAL PROOF — testimonial ───────────────────────────────────────── */}
-      <section style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(48px,7vw,72px) 24px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 20, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Реален резултат</p>
-        <div className="p10-testimonial">
-          {/* Stars */}
-          <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
-            {[1,2,3,4,5].map((i) => (
-              <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" aria-hidden="true">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            ))}
+          {/* Social proof before CTA */}
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: '20px 20px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.07)', marginBottom: 24 }}>
+            <p style={{ fontSize: 'clamp(15px,3.5vw,20px)', fontWeight: 400, lineHeight: 1.5, color: '#1a1a1a', marginBottom: 10 }}>
+              Първите салони в България вече приемат резервации онлайн чрез собствените си сайтове.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,22px)', fontWeight: 800, ...grad, marginBottom: 0 }}>
+              Ти следващият ли си?
+            </p>
           </div>
-          <p style={{ fontSize: 'clamp(15px,2.2vw,18px)', fontWeight: 600, color: '#1a1a1a', lineHeight: 1.65, marginBottom: 20 }}>
-            &ldquo;Преди клиентите ме намираха само в Instagram и ме питаха за часове в Direct. Сега резервират директно от сайта — дори когато работя. Вечерта имам нови записани часове, без да съм пипала телефона.&rdquo;
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%',
-              background: gradFull,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0,
-            }}>М</div>
-            <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1a1a1a' }}>Мими</p>
-              <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>Козметик · anibeauty.clicka.bg</p>
+
+          {/* CTA after social proof */}
+          <div style={{ textAlign: 'center', paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
+            <a
+              href={ctaHref}
+              className="p10-cta"
+              style={{
+                display: 'inline-block',
+                padding: '14px 32px',
+                borderRadius: 9999,
+                background: gradFull,
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: 15,
+                textDecoration: 'none',
+                boxShadow: '0 4px 20px rgba(225,29,72,0.28)',
+              }}
+            >
+              {isSoldOut ? 'Виж другите планове' : 'Искам собствен сайт →'}
+            </a>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>
+              ⚡ Плащаш. Получаваш сайта си веднага.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6l-8-4z" fill="#635BFF"/><path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{ fontSize: 11, color: '#9ca3af' }}>Сигурно плащане с</span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#635BFF', letterSpacing: '-0.02em' }}>stripe</span>
             </div>
           </div>
         </div>
@@ -306,16 +347,16 @@ export default async function Purvite10Page() {
       {/* ── WHAT YOU GET — benefit-led ───────────────────────────────────────── */}
       <section style={{ background: '#fff', padding: 'clamp(48px,7vw,72px) 24px' }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Какво получаваш</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, letterSpacing: '0.02em' }}>Какво получаваш?</p>
           <h2 style={{ fontSize: 'clamp(20px,3.5vw,32px)', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>
             Всичко необходимо за бизнес с резервации
           </h2>
           <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 28, lineHeight: 1.7 }}>
-            Не само сайт. Цял дигитален асистент за твоя бизнес.
+            <strong>Не само сайт.</strong> Цял дигитален асистент за твоя бизнес.
           </p>
 
           {/* 3 highlight cards */}
-          <div style={{ display: 'grid', gap: 12, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gap: 8, marginBottom: 28 }}>
             {[
               {
                 title: 'Резервации 24/7 — без теб',
@@ -329,20 +370,41 @@ export default async function Purvite10Page() {
                 title: '0% комисионна',
                 desc: 'Приходите от депозити и плащания постъпват директно в твоята банкова сметка.',
               },
+              {
+                title: 'Приемай депозити през Stripe',
+                desc: 'Клиентите плащат депозит при резервация. Парите идват директно при теб.',
+              },
+              {
+                title: 'Автоматични напомняния',
+                desc: 'Клиентът получава потвърждение и напомняне за часа. По-малко no-show, без да вдигаш телефона.',
+              },
+              {
+                title: 'Google ревюта на автопилот',
+                desc: 'След посещението системата изпраща покана за ревю. Репутацията ти расте в твоя Google профил — не в платформата.',
+              },
+              {
+                title: 'Линк за споделяне веднага',
+                desc: 'Веднага след регистрация получаваш линк, който можеш да сложиш в Instagram, Facebook, Viber — и клиентите вече могат да резервират.',
+              },
+              {
+                title: 'QR код стикер за салона',
+                desc: 'Получаваш QR код с името на салона си, който можеш да разпечаташ и залепиш на вратата. Клиентът сканира и директно резервира час.',
+              },
             ].map((card) => (
               <div key={card.title} style={{
                 background: '#fff',
                 border: '1px solid #e5e7eb',
-                borderRadius: 14,
-                padding: '18px 20px',
+                borderRadius: 12,
+                padding: '12px 14px',
                 display: 'flex',
-                gap: 14,
+                gap: 10,
                 alignItems: 'flex-start',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.05)',
               }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg,#e11d48,#a855f7)', flexShrink: 0, marginTop: 7 }} />
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, marginTop: 7 }} />
                 <div>
-                  <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#1a1a1a' }}>{card.title}</p>
-                  <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>{card.desc}</p>
+                  <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 700, color: '#1a1a1a' }}>{card.title}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{card.desc}</p>
                 </div>
               </div>
             ))}
@@ -354,13 +416,12 @@ export default async function Purvite10Page() {
 
       {/* ── AI RECEPTIONIST ─────────────────────────────────────────────────── */}
       <section style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(48px,7vw,72px) 24px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI асистент</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, letterSpacing: '0.02em' }}>AI асистент</p>
         <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
           Докато работиш — сайтът работи за теб
         </h2>
         <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 20, lineHeight: 1.8 }}>
-          Докато си зает с клиент. Докато спиш. Докато си на почивка.
-          AI рецепционистът в сайта ти отговаря, записва и насочва.
+          Докато си зает с клиент, докато спиш, докато си на почивка, твоят AI рецепционист в сайта ти отговаря в чата, записва клиентки и ги насочва.
         </p>
         <div style={{ display: 'grid', gap: 8, marginBottom: 28 }}>
           {['Отговаря на въпроси за услугите и цените', 'Препоръчва подходящи услуги', 'Записва резервации вместо теб', 'Насочва клиентите към свободни часове', 'Работи 24 часа в денонощието, 7 дни в седмицата'].map((f) => (
@@ -378,9 +439,10 @@ export default async function Purvite10Page() {
       {/* ── TELEGRAM ────────────────────────────────────────────────────────── */}
       <section style={{ background: '#fff', padding: 'clamp(48px,7vw,72px) 24px' }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Управление</p>
-          <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>
-            Управляваш всичко от Telegram
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, letterSpacing: '0.02em' }}>Управление</p>
+          <p style={{ fontSize: 'clamp(13px,2vw,15px)', fontWeight: 800, color: '#e11d48', letterSpacing: '0.08em', marginBottom: 6 }}>БЕЗ сложни системи!!!</p>
+          <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em', ...grad }}>
+            Свържи Telegram и контролирай сайта си като в обикновен чат.
           </h2>
           <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 20, lineHeight: 1.7 }}>
             Без нови приложения. Без сложни панели. Без обучение.<br />
@@ -415,13 +477,9 @@ export default async function Purvite10Page() {
 
       {/* ── FOR WHOM ────────────────────────────────────────────────────────── */}
       <section style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(48px,7vw,72px) 24px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>За кого е</p>
-        <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.02em' }}>
-          Работиш с клиенти по часове?
+        <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 900, marginBottom: 20, letterSpacing: '-0.02em' }}>
+          Все още записваш часове през Instagram, Viber и по телефона?
         </h2>
-        <p style={{ fontSize: 15, color: '#4b5563', marginBottom: 24, lineHeight: 1.8 }}>
-          Clicka.bg е за всеки специалист, на когото клиентите записват час.
-        </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
           {PROFESSIONS.map((p) => (
             <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -430,8 +488,8 @@ export default async function Purvite10Page() {
             </div>
           ))}
         </div>
-        <p style={{ fontSize: 14, fontWeight: 600, color: '#6b7280', lineHeight: 1.7 }}>
-          И всеки друг специалист, който работи с резервации.
+        <p style={{ fontSize: 'clamp(18px,4vw,26px)', fontWeight: 800, lineHeight: 1.35, backgroundImage: gradFull, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline-block' }}>
+          Време е клиентите ти да започнат да се записват сами.
         </p>
       </section>
 
@@ -439,7 +497,11 @@ export default async function Purvite10Page() {
       <section style={{ background: '#fff', padding: 'clamp(48px,7vw,72px) 24px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
 
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Офертата</p>
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', backgroundImage: gradFull, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', border: '1.5px solid #e9d5ff', borderRadius: 9999, padding: '5px 14px' }}>
+              Цена само за първите 10
+            </span>
+          </div>
 
           {/* Gradient border card */}
           <div style={{
@@ -449,7 +511,7 @@ export default async function Purvite10Page() {
             backgroundClip: 'padding-box, border-box',
             borderRadius: 24,
             padding: 'clamp(28px,5vw,44px)',
-            boxShadow: '0 8px 40px rgba(225,29,72,0.10), 0 2px 8px rgba(0,0,0,0.06)',
+            boxShadow: '0 16px 60px rgba(225,29,72,0.18), 0 4px 16px rgba(0,0,0,0.10)',
           }}>
 
             {/* Slots */}
@@ -524,28 +586,11 @@ export default async function Purvite10Page() {
             <p style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af', textAlign: 'center', marginTop: 12, marginBottom: 0 }}>
               Плащаш. Получаваш сайта си веднага.
             </p>
-
-            {/* Risk removal */}
-            <div style={{
-              marginTop: 20,
-              paddingTop: 20,
-              borderTop: '1px solid #f0f0f0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-            }}>
-              {[
-                'Без договор и без обвързване',
-                'Без скрити такси или комисионни',
-                'Можеш да го спреш по всяко време',
-              ].map((line) => (
-                <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <Check size={12} />
-                  <p style={{ margin: 0, fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{line}</p>
-                </div>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6l-8-4z" fill="#635BFF"/><path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{ fontSize: 11, color: '#9ca3af' }}>Сигурно плащане с</span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#635BFF', letterSpacing: '-0.02em' }}>stripe</span>
             </div>
-
           </div>
 
           {/* Team plan nudge */}
@@ -565,9 +610,9 @@ export default async function Purvite10Page() {
         <p style={{ fontSize: 14, color: '#9ca3af', marginBottom: 28 }}>Отговорихме на тези, които чуваме най-често.</p>
         <FaqList items={FAQ} />
         <div style={{ marginTop: 32, padding: '20px 24px', background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0' }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#6b7280', lineHeight: 1.7 }}>
+          <p style={{ margin: 0, fontSize: 15, color: '#6b7280', lineHeight: 1.7 }}>
             Имаш друг въпрос?{' '}
-            <a href="mailto:support@clicka.bg" style={{ color: '#e11d48', fontWeight: 600, textDecoration: 'none' }}>support@clicka.bg</a>
+            <a href="mailto:support@clicka.bg" style={{ fontWeight: 700, textDecoration: 'none', backgroundImage: gradFull, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline' }}>support@clicka.bg</a>
             {' '}— отговаряме в рамките на деня.
           </p>
         </div>
@@ -577,7 +622,7 @@ export default async function Purvite10Page() {
       <section style={{ background: '#fff', padding: 'clamp(40px,6vw,64px) 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
           <p style={{
-            fontSize: 'clamp(22px,4vw,34px)',
+            fontSize: 'clamp(30px,6vw,48px)',
             fontWeight: 900,
             lineHeight: 1.25,
             letterSpacing: '-0.02em',
@@ -617,6 +662,11 @@ export default async function Purvite10Page() {
             {isSoldOut ? 'Виж другите планове' : 'Създай своя сайт'}
           </a>
           <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>⚡ Плащаш. Получаваш сайта си веднага.</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6l-8-4z" fill="#635BFF"/><path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span style={{ fontSize: 11, color: '#9ca3af' }}>Сигурно плащане с</span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#635BFF', letterSpacing: '-0.02em' }}>stripe</span>
+          </div>
         </div>
       </section>
 
