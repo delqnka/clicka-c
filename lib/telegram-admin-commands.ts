@@ -762,6 +762,18 @@ export async function handleAdminCommand(
     }
   }
 
+  // ── Fast path: "ИМЕ ТЕЛЕФОН [услуга] [дата] [час]" — regex parse, no AI ──
+  // Catches "Мария 0884595000 маникюр утре 10ч" and
+  // "запиши Мария 0884595000 маникюр утре 10ч" patterns before hitting the AI.
+  const PHONE_IN_TEXT_RE = /(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/;
+  if (PHONE_IN_TEXT_RE.test(text)) {
+    // Strip leading action verbs so name extraction works correctly
+    const ACTION_PREFIX_RE = /^(?:запиши?\s+(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|добав[ии]\s+(?:ми\s+)?(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|нов[а]?\s+клиент[аa]?\s+)/i;
+    const stripped = text.replace(ACTION_PREFIX_RE, '').trim();
+    const handled = await handleNewClientWithBooking(chatId, text, stripped, salon);
+    if (handled) return true;
+  }
+
   // ── AI fallback — free natural language ──────────────────────────────────
   return await handleWithAI(chatId, text, salon);
 }
@@ -785,7 +797,7 @@ type AIIntent =
   | { action: 'top_services' }
   | { action: 'list_services' }
   | { action: 'pending_bookings' }
-  | { action: 'create_booking'; client_name: string; service_name: string; date: string; time: string }
+  | { action: 'create_booking'; client_name: string; service_name: string; date: string; time: string; phone?: string; email?: string }
   | { action: 'complete_booking'; client_name: string }
   | { action: 'sort_services'; by: 'price_asc' | 'price_desc' | 'duration_asc' | 'name_asc' }
   | { action: 'add_service'; name: string; duration_min: number; price_eur: number; category?: string; variants?: { label: string; price: number }[] }
@@ -1454,12 +1466,13 @@ ${servicesJson}
   → { "action": "client_phone", "client_name": "Мария" }
 
 ЗАПАЗИ КОНТАКТ НА КЛИЕНТ (save_client_contact):
-  "телефонът на Мария е 0888123456", "Иван има имейл ivan@mail.com", "добави тел на Деляна 0877000111", "Мария 0888123456"
-  "добави нов клиент Румен Иванов 0899000111", "нов клиент Анна anна@mail.com", "запиши клиент Петър 0877123456"
+  Само когато няма дата/час/услуга — просто се запазва контакт.
+  "телефонът на Мария е 0888123456", "Иван има имейл ivan@mail.com", "добави тел на Деляна 0877000111"
+  "добави нов клиент Румен Иванов 0899000111", "нов клиент Анна с имейл anna@mail.com"
   → { "action": "save_client_contact", "client_name": "Мария", "phone": "0888123456" }
   → { "action": "save_client_contact", "client_name": "Иван", "email": "ivan@mail.com" }
-  → { "action": "save_client_contact", "client_name": "Румен Иванов", "phone": "0899000111" }
-  ВАЖНО: Телефонът и имейлът са незадължителни — може да се подадат един или двата. Никога не измисляй телефон/имейл ако не са изрично написани.
+  ВАЖНО: Ако съобщението съдържа И телефон, И услуга, И дата → използвай create_booking (с phone поле), НЕ save_client_contact.
+  Телефонът и имейлът са незадължителни — може да се подадат един или двата. Никога не измисляй телефон/имейл ако не са изрично написани.
 
 БЕЛЕЖКА ЗА КЛИЕНТ (save_client_note):
   "бележка за Виолета: не искаше да е много руса"
@@ -1485,10 +1498,13 @@ ${servicesJson}
   to_time е незадължително — пропусни го ако потребителят не е споменал час.
 
 НОВА РЕЗЕРВАЦИЯ ОТ СОБСТВЕНИКА (create_booking):
-  "нов клиент Виолета утре подстригване 13ч", "създай нов клиент Виолета подстригване утре 13:00",
-  "запиши Виолета утре 13 подстригване", "Виолета подстригване утре 13ч"
+  "нов клиент Виолета утре подстригване 13ч", "запиши Виолета утре 13 подстригване", "Виолета подстригване утре 13ч"
+  "запиши Мария 0884595000 маникюр утре 10ч", "нов клиент Иван 0877123456 подстригване в петък 11:00"
   → { "action": "create_booking", "client_name": "Виолета", "service_name": "подстригване", "date": "YYYY-MM-DD", "time": "13:00" }
-  Важно: date и time ЗАДЪЛЖИТЕЛНО са точни стойности. Резервацията се записва директно — без потвърждение.
+  → { "action": "create_booking", "client_name": "Мария", "service_name": "маникюр", "date": "YYYY-MM-DD", "time": "10:00", "phone": "0884595000" }
+  ВАЖНО: Ако съобщението съдържа ЕДНОВРЕМЕННО услуга + дата/час → ВИНАГИ използвай create_booking, дори ако има телефон.
+  Телефонът се подава в полето "phone" — НЕ се прави отделен save_client_contact.
+  date и time ЗАДЪЛЖИТЕЛНО са точни стойности. Резервацията се записва директно — без потвърждение.
 
 ПОТВЪРЖДАВАНЕ на запис (confirm_booking):
   "потвърди Мария", "окей записа на Иван", "да, потвърди", "ок потвърждавам"
@@ -1702,7 +1718,7 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
       await handleTopServices(chatId, salon);
       return true;
     case 'create_booking':
-      await handleCreateBooking(chatId, salon, intent.client_name, intent.service_name, intent.date, intent.time);
+      await handleCreateBooking(chatId, salon, intent.client_name, intent.service_name, intent.date, intent.time, intent.phone ?? '', intent.email ?? '');
       return true;
 
     case 'list_services': {
