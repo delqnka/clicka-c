@@ -325,8 +325,6 @@ ${bookingInstructions}
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  const rl = await checkRateLimit('salon-ai-chat', ip, 20, 60 * 1000);
-  if (rl.limited) return NextResponse.json({ error: 'Твърде много заявки. Опитай след малко.' }, { status: 429 });
 
   try {
     const { salonId, messages } = await req.json() as { salonId: string; messages: ChatMessage[] };
@@ -335,26 +333,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid' }, { status: 400 });
     }
 
-    const rows = await sql`
-      SELECT *, CAST(id AS text) AS id
-      FROM salons
-      WHERE CAST(id AS text) = ${salonId} AND is_active = true
-      LIMIT 1
-    ` as Record<string, unknown>[];
-
-    if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-    const salon = rows[0]!;
-
-    // Load active offers and staff in parallel
-    const [offersResult, staffResult] = await Promise.allSettled([
+    // Run rate limit check + salon lookup + offers + staff all in parallel
+    const [rlResult, salonRows, offersRows, staffRows] = await Promise.all([
+      checkRateLimit('salon-ai-chat', ip, 20, 60 * 1000),
+      sql`
+        SELECT CAST(id AS text) AS id, name, category, city, address, phone, about,
+               instagram_username, services, working_hours, brand_domains, faq_items,
+               plan, email, telegram_chat_id, owner_name
+        FROM salons
+        WHERE CAST(id AS text) = ${salonId} AND is_active = true
+        LIMIT 1
+      ` as Promise<Record<string, unknown>[]>,
       sql`
         SELECT title, description, discount FROM salon_offers
         WHERE salon_id = ${salonId} AND is_active = true
         ORDER BY created_at DESC LIMIT 5
-      `,
+      `.catch(() => []) as Promise<Record<string, unknown>[]>,
       sql`
-        SELECT sm.name, sm.role, sm.bio,
+        SELECT CAST(sm.id AS text) AS id, sm.name, sm.role, sm.bio,
           ARRAY(
             SELECT svc->>'name'
             FROM jsonb_array_elements(salons.services) AS svc
@@ -366,13 +362,15 @@ export async function POST(req: NextRequest) {
         WHERE sm.salon_id = ${salonId} AND sm.is_active = true
         ORDER BY sm.created_at ASC
         LIMIT 20
-      `,
+      `.catch(() => []) as Promise<(StaffRow & { id: string })[]>,
     ]);
 
-    salon.offers = offersResult.status === 'fulfilled' ? offersResult.value : [];
-    const staff: StaffRow[] = staffResult.status === 'fulfilled'
-      ? (staffResult.value as StaffRow[])
-      : [];
+    if (rlResult.limited) return NextResponse.json({ error: 'Твърде много заявки. Опитай след малко.' }, { status: 429 });
+    if (salonRows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const salon = salonRows[0]!;
+    salon.offers = offersRows;
+    const staff = staffRows as (StaffRow & { id: string })[];
 
     const isTeamPlan = String(salon.plan ?? '') === 'team';
     const wh = (salon.working_hours as Record<string, { open?: string; close?: string; closed?: boolean }> | null) ?? {};
@@ -380,21 +378,14 @@ export async function POST(req: NextRequest) {
     let soloSlots: { date: string; slots: string[] }[] = [];
 
     if (isTeamPlan && staff.length > 0) {
-      // Load staff member IDs so we can query their bookings
-      const staffWithIds = await sql`
-        SELECT CAST(id AS text) AS id, name FROM staff_members
-        WHERE salon_id = ${salonId} AND is_active = true
-        ORDER BY created_at ASC LIMIT 20
-      ` as { id: string; name: string }[];
-
       staffSlots = (await Promise.allSettled(
-        staffWithIds.map(async (sm) => {
-          const days = await getStaffFreeSlots(salonId, sm.id, wh, 60, 14);
+        staff.map(async (sm) => {
+          const days = await getStaffFreeSlots(salonId, sm.id, wh, 60, 7);
           return { staffName: sm.name, days };
         }),
       )).flatMap((r) => r.status === 'fulfilled' ? [r.value] : []);
     } else if (!isTeamPlan) {
-      soloSlots = await getSalonFreeSlots(salonId, wh, 60, 14).catch(() => []);
+      soloSlots = await getSalonFreeSlots(salonId, wh, 60, 7).catch(() => []);
     }
 
     const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
@@ -407,7 +398,7 @@ export async function POST(req: NextRequest) {
         'HTTP-Referer': 'https://clicka.bg',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.0-flash-001',
         max_tokens: 300,
         messages: [
           { role: 'system', content: systemPrompt },
