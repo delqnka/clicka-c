@@ -85,6 +85,7 @@ async function ProvisionedSuccess({
 }) {
   let salonEmail = '';
   let salonSlug = legacySlug;
+  let ownerName = '';
   let purchaseValue = 0;
   let provisionError = false;
 
@@ -96,19 +97,20 @@ async function ProvisionedSuccess({
   } else if (sessionId) {
     try {
       const existing = await sql`
-        SELECT slug, email FROM salons WHERE stripe_session_id = ${sessionId} LIMIT 1
+        SELECT slug, email, owner_name FROM salons WHERE stripe_session_id = ${sessionId} LIMIT 1
       `;
 
       if (existing.length > 0) {
         salonSlug = String(existing[0].slug);
         salonEmail = String(existing[0].email ?? '');
+        ownerName = String(existing[0].owner_name ?? '');
       } else {
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId);
 
         if (session.payment_status === 'paid') {
           const email = session.customer_details?.email ?? '';
-          const ownerName = (session.metadata?.ownerName ?? '').trim();
+          ownerName = (session.metadata?.ownerName ?? '').trim();
           const salonName = (session.metadata?.salonName ?? '').trim();
           const desiredSlug = toSlug((session.metadata?.salonSlug ?? '').trim());
           const planType = session.metadata?.planType ?? 'solo';
@@ -189,6 +191,7 @@ async function ProvisionedSuccess({
     <SuccessClient
       slug={salonSlug || ''}
       email={salonEmail}
+      ownerName={ownerName}
       purchaseValue={purchaseValue}
       provisionError={!salonSlug && provisionError}
       sessionRef={sessionId || ''}

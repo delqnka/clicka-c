@@ -12,12 +12,14 @@ const FONT = "var(--font-client-manrope,'Manrope',system-ui,sans-serif)";
 export default function SuccessClient({
   slug,
   email,
+  ownerName = '',
   purchaseValue = 0,
   provisionError = false,
   sessionRef = '',
 }: {
   slug: string;
   email: string;
+  ownerName?: string;
   purchaseValue?: number;
   provisionError?: boolean;
   sessionRef?: string;
@@ -35,22 +37,43 @@ export default function SuccessClient({
   useEffect(() => {
     if (!slug || typeof window === 'undefined') return;
     const PIXEL_ID = '2880139309045289';
+
+    async function sha256hex(str: string): Promise<string> {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
     async function trackPurchase() {
-      // Hash email with SHA-256 for Meta advanced matching
-      let hashedEmail: string | undefined;
-      if (email) {
-        try {
-          const normalized = email.toLowerCase().trim();
-          const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
-          hashedEmail = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-        } catch { /* noop */ }
-      }
       const fbq = (window as any).fbq;
       if (!fbq) return;
-      // Re-init with hashed email for advanced matching
-      if (hashedEmail) fbq('init', PIXEL_ID, { em: hashedEmail });
+
+      // Build advanced matching user data
+      const userData: Record<string, string> = {};
+
+      if (email) {
+        try { userData.em = await sha256hex(email.toLowerCase().trim()); } catch { /* noop */ }
+      }
+
+      // Parse first/last name from ownerName
+      if (ownerName) {
+        const parts = ownerName.trim().split(/\s+/);
+        try {
+          if (parts[0]) userData.fn = await sha256hex(parts[0].toLowerCase());
+          if (parts.length > 1) userData.ln = await sha256hex(parts[parts.length - 1].toLowerCase());
+        } catch { /* noop */ }
+      }
+
+      // Country — all clients are in Bulgaria
+      try { userData.country = await sha256hex('bg'); } catch { /* noop */ }
+
+      // External ID — stable identifier
+      if (slug) userData.external_id = slug;
+
+      // Re-init pixel with full user data
+      fbq('init', PIXEL_ID, userData);
       fbq('track', 'Purchase', { value: purchaseValue, currency: 'EUR' });
     }
+
     trackPurchase();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
