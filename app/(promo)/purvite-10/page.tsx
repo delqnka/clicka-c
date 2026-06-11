@@ -113,6 +113,11 @@ export default async function Purvite10Page() {
         'https://connect.facebook.net/en_US/fbevents.js');
         fbq('init', '2880139309045289');
         fbq('track', 'PageView');
+        fbq('track', 'ViewContent', { content_name: 'Purvite 10 Promo', content_category: 'Landing Page', currency: 'EUR', value: 299 });
+        document.addEventListener('click', function(e) {
+          var el = e.target && e.target.closest && e.target.closest('.p10-cta');
+          if (el) fbq('track', 'InitiateCheckout', { currency: 'EUR', value: 299, num_items: 1 });
+        });
       `}</Script>
       <style>{`
         @keyframes p10-bounce {
