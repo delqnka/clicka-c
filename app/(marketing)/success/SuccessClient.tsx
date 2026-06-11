@@ -33,9 +33,25 @@ export default function SuccessClient({
   const sentRef = useRef(false);
 
   useEffect(() => {
-    if (slug && typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'Purchase', { value: purchaseValue, currency: 'BGN' });
+    if (!slug || typeof window === 'undefined') return;
+    const PIXEL_ID = '2880139309045289';
+    async function trackPurchase() {
+      // Hash email with SHA-256 for Meta advanced matching
+      let hashedEmail: string | undefined;
+      if (email) {
+        try {
+          const normalized = email.toLowerCase().trim();
+          const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
+          hashedEmail = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch { /* noop */ }
+      }
+      const fbq = (window as any).fbq;
+      if (!fbq) return;
+      // Re-init with hashed email for advanced matching
+      if (hashedEmail) fbq('init', PIXEL_ID, { em: hashedEmail });
+      fbq('track', 'Purchase', { value: purchaseValue, currency: 'EUR' });
     }
+    trackPurchase();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
