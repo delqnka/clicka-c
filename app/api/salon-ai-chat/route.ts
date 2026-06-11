@@ -380,12 +380,12 @@ export async function POST(req: NextRequest) {
     if (isTeamPlan && staff.length > 0) {
       staffSlots = (await Promise.allSettled(
         staff.map(async (sm) => {
-          const days = await getStaffFreeSlots(salonId, sm.id, wh, 60, 7);
+          const days = await getStaffFreeSlots(salonId, sm.id, wh, 60, 14);
           return { staffName: sm.name, days };
         }),
       )).flatMap((r) => r.status === 'fulfilled' ? [r.value] : []);
     } else if (!isTeamPlan) {
-      soloSlots = await getSalonFreeSlots(salonId, wh, 60, 7).catch(() => []);
+      soloSlots = await getSalonFreeSlots(salonId, wh, 60, 14).catch(() => []);
     }
 
     const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
@@ -398,8 +398,9 @@ export async function POST(req: NextRequest) {
         'HTTP-Referer': 'https://clicka.bg',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',
+        model: 'google/gemini-2.5-flash',
         max_tokens: 300,
+        thinking: { type: 'disabled' },
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages.slice(-8),
