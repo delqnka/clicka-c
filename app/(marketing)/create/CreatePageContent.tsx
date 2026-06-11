@@ -266,12 +266,12 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
       <style>{`
         .cp-grad-text { background: linear-gradient(135deg, #e11d48, #db2777, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .cp-plan-card { position: relative; border-radius: 20px; border: 1.5px solid #e5e7eb; background: #ffffff; padding: 20px 22px; cursor: pointer; transition: border-color 180ms, box-shadow 180ms; text-align: left; width: 100%; box-shadow: 0 2px 0 rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.10); }
-        .cp-plan-card.selected { border-color: transparent; background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #db2777, #a855f7) border-box; border: 2px solid transparent; box-shadow: 0 0 0 0px transparent, 0 4px 20px rgba(219,39,119,0.15); }
-        .cp-period-btn { flex: 1; padding: 9px 0; border: 1.5px solid #e5e7eb; background: #ffffff; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color 120ms; color: #6b7280; }
-        .cp-period-btn.selected { border-color: transparent; background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #db2777, #a855f7) border-box; border: 2px solid transparent; color: #0a0a0a; }
+        .cp-plan-card.selected { border: 1px solid #0f0f0f; box-shadow: 0 0 0 0px transparent, 0 4px 20px rgba(0,0,0,0.12); }
+        .cp-period-btn { flex: 1; padding: 9px 0; border: 1.5px solid #e5e7eb; background: #ffffff; border-radius: 12px; font-size: 14px; font-weight: 400; cursor: pointer; transition: border-color 120ms; color: #6b7280; }
+        .cp-period-btn.selected { border: 1px solid #0f0f0f; color: #0a0a0a; }
         .cp-period-btn.selected .cp-period-badge { display: inline-flex; }
-        .cp-period-badge { display: none; margin-left: 6px; background: linear-gradient(135deg, #e11d48, #a855f7); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; letter-spacing: .04em; vertical-align: middle; }
-        .cp-input-focus:focus { border-color: #db2777 !important; box-shadow: 0 0 0 3px rgba(219,39,119,0.12) !important; outline: none; }
+        .cp-period-badge { display: none; margin-left: 6px; background: linear-gradient(135deg, #e11d48, #db2777, #a855f7); color: #fff; font-size: 9px; font-weight: 400; padding: 2px 8px; border-radius: 999px; letter-spacing: .02em; vertical-align: middle; }
+        .cp-input-focus:focus { border-color: #0f0f0f !important; box-shadow: 0 0 0 3px rgba(0,0,0,0.08) !important; outline: none; }
         @media (max-width: 639px) {
           .cp-sticky-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid #e5e7eb; padding: 12px 16px 20px; z-index: 40; }
           .cp-sticky-spacer { height: 160px; }
@@ -293,7 +293,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
 
         <h1
           className="mb-2 text-[clamp(1.75rem,5vw,2.5rem)] font-bold leading-[1.08] tracking-[-0.03em]"
-          style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+          style={{ color: '#0f0f0f' }}
         >
           Избери план
         </h1>
@@ -332,11 +332,11 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: plan === 'solo' ? 'none' : '2px solid #e5e7eb', background: plan === 'solo' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: plan === 'solo' ? 'none' : '2px solid #e5e7eb', background: plan === 'solo' ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {plan === 'solo' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
                 </span>
                 <div>
-                  <p style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>SOLO</p>
+                  <p style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', margin: 0, color: '#0f0f0f' }}>SOLO</p>
                   <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>За самостоятелни специалисти</p>
                 </div>
               </div>
@@ -348,7 +348,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
             </div>
             {plan === 'solo' && (
               <>
-                <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                <p style={{ fontSize: 12, fontWeight: 400, margin: '10px 0 10px', color: '#6b7280' }}>
                   Само {formatDualEurText((PRICES.solo[period] / DAYS[period]).toFixed(2))} на ден
                 </p>
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
@@ -356,7 +356,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
                     {SOLO_HIGHLIGHTS.map(f => {
                       const isZero = f === '0% комисионна';
                       return (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : '#0a0a0a' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: '#0a0a0a' }}>
                           <IconCheck /> {f}
                         </span>
                       );
@@ -375,7 +375,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
                     role="button" tabIndex={0}
                     onClick={e => { e.stopPropagation(); setExpanded(v => ({ ...v, solo: !v.solo })); }}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setExpanded(v => ({ ...v, solo: !v.solo })); } }}
-                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
                   >
                     {expanded.solo ? 'Скрий функциите ↑' : 'Виж всички функции ↓'}
                   </span>
@@ -392,11 +392,11 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: plan === 'team' ? 'none' : '2px solid #e5e7eb', background: plan === 'team' ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: plan === 'team' ? 'none' : '2px solid #e5e7eb', background: plan === 'team' ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {plan === 'team' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
                 </span>
                 <div>
-                  <p style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>TEAM</p>
+                  <p style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', margin: 0, color: '#0f0f0f' }}>TEAM</p>
                   <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>За салони с екип</p>
                 </div>
               </div>
@@ -408,7 +408,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
             </div>
             {plan === 'team' && (
               <>
-                <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 10px', backgroundImage: 'linear-gradient(135deg,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                <p style={{ fontSize: 12, fontWeight: 400, margin: '10px 0 10px', color: '#6b7280' }}>
                   Само {formatDualEurText((PRICES.team[period] / DAYS[period]).toFixed(2))} на ден
                 </p>
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
@@ -416,7 +416,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
                     {TEAM_HIGHLIGHTS.map(f => {
                       const isZero = f === '0% комисионна';
                       return (
-                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, backgroundImage: isZero ? 'linear-gradient(135deg,#db2777,#a855f7)' : undefined, WebkitBackgroundClip: isZero ? 'text' : undefined, WebkitTextFillColor: isZero ? 'transparent' : undefined, color: isZero ? undefined : '#0a0a0a' }}>
+                        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: '#0a0a0a' }}>
                           <IconCheck /> {f}
                         </span>
                       );
@@ -435,7 +435,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
                     role="button" tabIndex={0}
                     onClick={e => { e.stopPropagation(); setExpanded(v => ({ ...v, team: !v.team })); }}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setExpanded(v => ({ ...v, team: !v.team })); } }}
-                    style={{ fontSize: 12, fontWeight: 600, color: '#db2777', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
                   >
                     {expanded.team ? 'Скрий функциите ↑' : 'Виж всички функции ↓'}
                   </span>
@@ -447,17 +447,17 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
 
         {/* ── Owner name ── */}
         <div className="mt-8">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">Твоето ime</label>
-          <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)} placeholder="напр. Деляна Иванова"
-            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]" />
+          <label className="mb-1.5 block text-[13px] text-[#0f0f0f]">Твоето име</label>
+          <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)} placeholder="напр. Мария Иванова"
+            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#0f0f0f] shadow-[0_2px_0_rgba(0,0,0,0.18)]" />
         </div>
 
         {/* ── Email ── */}
         <div className="mt-6">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">Имейл</label>
+          <label className="mb-1.5 block text-[13px] text-[#0f0f0f]">Имейл</label>
           <div className="relative">
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="napr. ime@email.com"
-              className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 pr-10 text-[15px] outline-none focus:border-[#a855f7]" />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="напр. maria@gmail.com"
+              className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 pr-10 text-[15px] outline-none focus:border-[#0f0f0f]" />
             {emailStatus === 'free' && (
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 text-[16px] font-bold">✓</span>
             )}
@@ -469,18 +469,18 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
 
         {/* ── Salon name + slug ── */}
         <div className="mt-6">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">Ime на салона</label>
+          <label className="mb-1.5 block text-[13px] text-[#0f0f0f]">Име на салона</label>
           <input type="text" value={salonName}
             onChange={e => { const v = e.target.value; setSalonName(v); if (!slugEdited) setSlug(slugify(v)); }}
-            placeholder="напр. Salon Urban"
-            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]" />
+            placeholder="напр. Salon Mia"
+            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#0f0f0f] shadow-[0_2px_0_rgba(0,0,0,0.18)]" />
 
-          <label className="mb-1.5 mt-4 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">Адрес на сайта (по желание промени)</label>
-          <input type="text" value={slug} onChange={e => { setSlugEdited(true); setSlug(slugify(e.target.value)); }} placeholder="salonurban"
-            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#a855f7]" />
+          <label className="mb-1.5 mt-4 block text-[13px] text-[#0f0f0f]">Адрес на сайта (по желание промени)</label>
+          <input type="text" value={slug} onChange={e => { setSlugEdited(true); setSlug(slugify(e.target.value)); }} placeholder="salonmia"
+            className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#0f0f0f] shadow-[0_2px_0_rgba(0,0,0,0.18)]" />
           <p className="mt-1.5 text-[12px] text-[#6b7280]">
             Безплатният ти адрес ще бъде:{' '}
-            <span className="font-semibold text-[#0a0a0a]">{slug || 'salonurban'}.clicka.bg</span>
+            <span className="font-semibold text-[#0a0a0a]">{slug || 'salonmia'}.clicka.bg</span>
           </p>
           {slugStatus === 'checking'  && <p className="mt-1 text-[12px] text-[#6b7280]">Проверка на адреса…</p>}
           {slugStatus === 'available' && <p className="mt-1 text-[12px] font-semibold text-emerald-600">✓ Адресът е свободен</p>}
@@ -492,15 +492,15 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
           <span
             onClick={() => setTermsAccepted(v => !v)} role="checkbox" aria-checked={termsAccepted} tabIndex={0}
             onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setTermsAccepted(v => !v); } }}
-            style={{ marginTop: 1, flexShrink: 0, width: 20, height: 20, borderRadius: 6, border: termsAccepted ? 'none' : '1.5px solid #e5e7eb', background: termsAccepted ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ marginTop: 1, flexShrink: 0, width: 20, height: 20, borderRadius: 6, border: termsAccepted ? 'none' : '1.5px solid #e5e7eb', background: termsAccepted ? '#0f0f0f' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {termsAccepted && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           </span>
           <span className="text-[13px] leading-snug text-[#6b7280]" onClick={() => setTermsAccepted(v => !v)}>
             Съгласявам се с{' '}
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75" onClick={e => e.stopPropagation()}>Общите условия</a>{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2 hover:opacity-75" style={{ color: '#007AFF' }} onClick={e => e.stopPropagation()}>Общите условия</a>{' '}
             и{' '}
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2 hover:opacity-75" onClick={e => e.stopPropagation()}>Политиката за поверителност</a>{' '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2 hover:opacity-75" style={{ color: '#007AFF' }} onClick={e => e.stopPropagation()}>Политиката за поверителност</a>{' '}
             на Clicka.bg
           </span>
         </label>
@@ -511,7 +511,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
             <span
               onClick={() => setWantsInvoice(v => !v)} role="checkbox" aria-checked={wantsInvoice} tabIndex={0}
               onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setWantsInvoice(v => !v); } }}
-              style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 6, border: wantsInvoice ? 'none' : '1.5px solid #e5e7eb', background: wantsInvoice ? 'linear-gradient(135deg,#e11d48,#a855f7)' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 6, border: wantsInvoice ? 'none' : '1.5px solid #e5e7eb', background: wantsInvoice ? '#0f0f0f' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {wantsInvoice && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>}
             </span>
@@ -520,18 +520,18 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
           {wantsInvoice && (
             <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-[#e5e7eb] bg-[#ffffff] p-5">
               <div>
-                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">Фирма / Търговско наименование <span className="cp-grad-text">*</span></label>
+                <label className="mb-1.5 block text-[13px] text-[#0f0f0f]">Фирма / Търговско наименование <span>*</span></label>
                 <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="ПРИМЕРНА ФИРМА ЕООД"
                   className="cp-input-focus w-full rounded-xl border border-[#e5e7eb] bg-[#ffffff] px-4 py-2.5 text-[14px] outline-none transition-all" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">ЕИК <span className="cp-grad-text">*</span></label>
+                  <label className="mb-1.5 block text-[13px] text-[#0f0f0f]">ЕИК <span>*</span></label>
                   <input type="text" value={eik} onChange={e => setEik(e.target.value.replace(/\D/g, '').slice(0, 9))} placeholder="123456789" maxLength={9}
                     className="cp-input-focus w-full rounded-xl border border-[#e5e7eb] bg-[#ffffff] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#6b7280]">ДДС номер <span className="normal-case font-normal">(по желание)</span></label>
+                  <label className="mb-1.5 block text-[13px] text-[#0f0f0f]">ДДС номер <span className="normal-case font-normal">(по желание)</span></label>
                   <input type="text" value={vatNumber} onChange={e => setVatNumber(e.target.value.toUpperCase())} placeholder="BG123456789"
                     className="cp-input-focus w-full rounded-xl border border-[#e5e7eb] bg-[#ffffff] px-4 py-2.5 font-mono text-[14px] outline-none transition-all" />
                 </div>
@@ -550,8 +550,8 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
         {/* Pay button */}
         <div className="cp-sticky-bar mt-6">
           {!grantToken && (
-            <p className="mb-2 text-center text-[13px] font-semibold text-[#0a0a0a]">
-              Плащаш еднократно {formatDualEur(price)} за {period === '12m' ? '12 месеца' : '6 месеца'}.
+            <p className="mb-2 text-center text-[13px] font-normal text-[#6b7280]">
+              Плащаш за {period === '12m' ? '12 месеца' : '6 месеца'}. Сайтът е готов веднага.
             </p>
           )}
           <ButtonColorful
@@ -559,7 +559,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
               ? (grantToken ? 'Активира…' : 'Пренасочване към Stripe…')
               : grantToken
                 ? 'Активирай безплатния абонамент'
-                : `Плати ${formatDualEur(price)} — ${plan.toUpperCase()} ${period === '12m' ? '(12 месеца)' : '(6 месеца)'}`}
+                : `Създай сайта си · ${plan.toUpperCase()}`}
             onClick={handlePay}
             disabled={isSubmitting || !ownerName.trim() || !salonName.trim() || !slug.trim() || slugStatus === 'taken' || slugStatus === 'checking' || (!grantToken && !termsAccepted)}
             className="h-14 w-full rounded-full text-[15px] font-bold sm:h-12"
@@ -569,7 +569,7 @@ export function CreatePageContent({ showSixMonth = true, backHref = '/' }: Creat
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
             Сигурно плащане чрез{' '}
-            <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="cp-grad-text font-semibold underline underline-offset-2">Stripe</a>.
+            <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2" style={{ color: '#007AFF' }}>Stripe</a>.
           </p>
         </div>
 

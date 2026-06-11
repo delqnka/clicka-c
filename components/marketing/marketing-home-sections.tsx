@@ -145,8 +145,8 @@ export function PriceListImportSection() {
     <section
       aria-label="Качи ценоразпис"
       style={{
-        background: 'linear-gradient(180deg, #fff 0%, #fdf2f8 100%)',
-        padding: 'clamp(20px,4vw,40px) clamp(20px,5vw,60px) clamp(72px,11vw,110px)',
+        background: '#fff',
+        padding: 'clamp(48px,8vw,96px) clamp(20px,5vw,60px) clamp(96px,14vw,140px)',
         overflow: 'hidden',
       }}
     >
@@ -214,27 +214,116 @@ export function PriceListImportSection() {
           </div>
 
           {/* Losing clients? */}
-          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
-            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Дали не губиш нови клиенти?
+          <div style={{ marginBottom: 'clamp(100px,16vw,160px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(16px,3vw,28px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Губиш клиенти без да го осъзнаваш.
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 10 }}>
-              Какво става, когато някой те намери в Google?
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>
+              Някой те намира в Google.
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 10 }}>
-              Изпращаш го към Instagram профил, за да си пишете съобщения?
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>
+              Разглежда работата ти. Харесва я.
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 0, fontWeight: 700 }}>
-              Изпрати го към истински сайт с цени, услуги, онлайн записване за секунди и дори може да ти плати депозит.
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Но не може да резервира веднага.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Трябва да ти пише и да чака отговор.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(24px,4vw,40px)' }}>
+              И отива при следващия.
+            </p>
+
+            <p style={{ fontSize: 'clamp(26px,6vw,52px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 'clamp(16px,3vw,24px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Колко клиенти си изпуснала тази седмица?
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Докато работиш.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Докато си в почивка.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              Докато спиш.
+            </p>
+            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 0, fontWeight: 700 }}>
+              Сайтът работи дори когато ти не работиш.
             </p>
           </div>
 
-          {/* Easy? */}
-          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
-            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Сложно ли е?
+          {/* Messages all day? */}
+          <div style={{ marginBottom: 'clamp(100px,16vw,160px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(16px,3vw,28px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Прекарваш деня си в съобщения?
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 8 }}>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
+              „Имате ли свободен час?"
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
+              „Колко струва...?"
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)', fontStyle: 'italic' }}>
+              „Може ли в събота?"
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>
+              Пишеш едни и същи отговори по 20 пъти на ден.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Докато работиш с клиент.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Докато шофираш.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              В 22:00 ч.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              И след всичко това, някои от тях пак не идват.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6, fontWeight: 700 }}>
+              Ето решението:
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>
+              Клиентът вижда свободните часове и резервира сам.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              И ти плаща депозит, стига да активираш функцията.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Ти получаваш известие в Telegram.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              А той получава автоматични напомняния за часа си.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              Ако има въпрос, пише в чата на сайта. AI отговаря вместо теб.
+            </p>
+            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 0, fontWeight: 700 }}>
+              Без съобщения. Без чакане. Без пропуснати резервации.
+            </p>
+          </div>
+
+          {/* Section 4: No tech knowledge */}
+          <div style={{ marginBottom: 'clamp(100px,16vw,160px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(16px,3vw,28px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Не разбираш от технологии?
+            </p>
+            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)', fontWeight: 700 }}>
+              Не трябва.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>
+              Качваш снимка на ценоразписа.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              AI добавя всичките ти услуги за секунди.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Искаш промяна? Пишеш в Telegram.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              Готово.
+            </p>
+            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 6, fontWeight: 700 }}>
               Ако ползваш Instagram ще се справиш.
             </p>
             <p style={{ fontSize: 'clamp(14px,3vw,17px)', color: '#6b7280', margin: 0 }}>
@@ -243,7 +332,7 @@ export function PriceListImportSection() {
           </div>
 
           {/* Time? */}
-          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
+          <div style={{ marginBottom: 'clamp(100px,16vw,160px)', textAlign: 'center' }}>
             <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Ще ми спести ли време?
             </p>
@@ -261,40 +350,63 @@ export function PriceListImportSection() {
             </p>
           </div>
 
-          {/* Own site? */}
-          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
-            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Защо собствен сайт?
+          {/* Section 3: Platform profile */}
+          <div style={{ marginBottom: 'clamp(100px,16vw,160px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(16px,3vw,28px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Писна ли ти да си поредния профил в платформата?
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 8 }}>
-              Докато клиентът разглежда профила ти в платформата, вижда и конкурентите ти.
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Там профилът ти е един от хиляди.
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 8 }}>
-              На твоя сайт няма конкуренти.
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Клиентите виждат конкурентите ти до теб.
             </p>
-            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', margin: 0, fontWeight: 700 }}>
-              Само ти, твоя бранд, твоите услуги и твоите цени.
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Плащаш им 30–50% за клиент…
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 24 }}>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
+              Ревютата остават в тяхната платформа.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              Ако утре се откажеш, нямаш ревюта.<br /><em>Я стига.</em>
+            </p>
+            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 6, fontWeight: 700 }}>
+              На твоя сайт е различно.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>
+              Само ти. Твоят бранд. Твоите клиенти.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>
+              И нито един конкурент наоколо.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 'clamp(16px,4vw,20px)', fontWeight: 700, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                 mariasalon.bg
               </span>
               <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400, marginBottom: 10 }}>
                 представя теб и твоя бизнес.
               </span>
-              <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400, marginTop: 4 }}>
-                а
-              </span>
+              <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400, marginTop: 4 }}>а</span>
               <span style={{ fontSize: 'clamp(14px,3.5vw,17px)', color: '#0f0f0f', fontWeight: 500, textDecoration: 'line-through' }}>
                 platforma.com/12470
               </span>
-              <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400 }}>
+              <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400, marginBottom: 20 }}>
                 казва че си номер в каталога им.
               </span>
-              <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', fontWeight: 700, marginTop: 20, marginBottom: 0 }}>
-                И най-хубавото е, че никой няма да ти иска комисионна върху труда ти.
+              <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', fontWeight: 700, margin: 0 }}>
+                И никой няма да ти иска комисионна върху труда ти.
               </p>
             </div>
+          </div>
+
+          {/* Bridge */}
+          <div style={{ textAlign: 'center', marginBottom: 'clamp(40px,6vw,64px)', marginTop: 'clamp(16px,3vw,24px)' }}>
+            <p style={{ fontSize: 'clamp(32px,6.5vw,64px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(12px,2vw,20px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Направихме продукта, който решава всичко изброено.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', margin: 0, fontStyle: 'italic' }}>
+              Ето какво прави за теб:
+            </p>
           </div>
 
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
@@ -314,9 +426,9 @@ export function PriceListImportSection() {
         {/* Flow: price list → AI → bot result → site */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 'clamp(12px,3vw,32px)',
-          alignItems: 'end',
+          gridTemplateColumns: '1fr auto 1fr auto 1fr',
+          gap: 0,
+          alignItems: 'center',
         }}>
 
           {/* 1: real price list photo */}
@@ -324,7 +436,7 @@ export function PriceListImportSection() {
             <div style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: '100%' }}>
               <Image
                 src="/images/IMG_2403.jpg"
-                alt="Ценоразпис — Diana Stoyanova"
+                alt="Ценоразпис Diana Stoyanova"
                 width={560}
                 height={900}
                 sizes="(max-width: 640px) 30vw, 280px"
@@ -337,10 +449,22 @@ export function PriceListImportSection() {
               <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#e11d48,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>1</span>
               </div>
-              <p style={{ fontSize: 11, fontWeight: 700, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.3 }}>Снимка на ценоразписа</p>
+              <p style={{ fontSize: 11, fontWeight: 400, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.3 }}>Качи снимка на ценоразписа си</p>
             </div>
           </div>
 
+          {/* Arrow 1→2 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 40, paddingLeft: 6, paddingRight: 6 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="url(#arr1)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <defs>
+                <linearGradient id="arr1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#e11d48"/>
+                  <stop offset="100%" stopColor="#a855f7"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
 
           {/* 2: Telegram bot screenshot */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
@@ -360,10 +484,22 @@ export function PriceListImportSection() {
               <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#e11d48,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>2</span>
               </div>
-              <p style={{ fontSize: 11, fontWeight: 700, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.3 }}>AI чете за секунди</p>
+              <p style={{ fontSize: 11, fontWeight: 400, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.3 }}>AI ще я разчете за секунди</p>
             </div>
           </div>
 
+          {/* Arrow 2→3 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 40, paddingLeft: 6, paddingRight: 6 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="url(#arr2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <defs>
+                <linearGradient id="arr2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#e11d48"/>
+                  <stop offset="100%" stopColor="#a855f7"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
 
           {/* 3: real site screenshot */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
@@ -383,17 +519,20 @@ export function PriceListImportSection() {
               <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#e11d48,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>3</span>
               </div>
-              <p style={{ fontSize: 11, fontWeight: 700, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.3 }}>Готови за резервиране</p>
+              <p style={{ fontSize: 11, fontWeight: 400, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.3 }}>Услугите ти са качени автоматично в сайта ти</p>
             </div>
           </div>
         </div>
 
-        {/* Bottom note */}
-        <div style={{ textAlign: 'center', marginTop: 'clamp(28px,4vw,44px)' }}>
-          <p style={{ fontSize: 14, color: '#888' }}>
-            Работи с всякакъв ценоразпис - ръкописен, принтиран, скрийншот или снимка.
+        <div style={{ textAlign: 'center', marginTop: 'clamp(32px,5vw,56px)' }}>
+          <p style={{ fontSize: 'clamp(18px,4vw,26px)', fontWeight: 700, color: '#0f0f0f', margin: 0 }}>
+            Снимка, Telegram, готово.<br />
+            <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Точно толкова е просто!
+            </span>
           </p>
         </div>
+
       </div>
     </section>
   );
@@ -519,45 +658,41 @@ export function TelegramChatSection() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(40px,6vw,72px)' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 12, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Живи разговори с клиенти
-          </p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Ти си на стола и работиш с клиентката.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>Някой нов клиент пише в сайта ти.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Назначихме AI да поеме контрола вместо теб.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Той ще консултира, ще отговаря и накрая ще я резервира.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>Резервацията ще се появи в графика ти, а името и номерът на клиента в базата ти с клиенти.</p>
           <h2 style={{
-            fontSize: 'clamp(26px,5vw,48px)', fontWeight: 800, lineHeight: 1.1, marginBottom: 16,
+            fontSize: 'clamp(26px,5vw,48px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 0,
             backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>
-            Клиентите пишат в сайта ти.<br />Ти отговаряш от Telegram.
+            Ти не пропускаш нищо.
           </h2>
-          <p style={{ fontSize: 'clamp(15px,1.8vw,18px)', color: '#0f0f0f', maxWidth: 520, margin: '0 auto', lineHeight: 1.65, fontWeight: 400 }}>
-            Получаваш съобщенията директно в Telegram и можеш да отговаряш на клиентите си отвсякъде.
-          </p>
         </div>
 
         {/* Story visual — all phones stacked vertically */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 'clamp(40px,6vw,64px)' }}>
 
-          {/* Phone 1: клиентът пише */}
-          <div style={{ width: '100%', maxWidth: 220 }}>
-            <IPhoneFrame src="/chat.png" alt="Клиентът пише в чата" size="lg" />
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#0f0f0f', margin: '0 0 2px' }}>💬 Клиентът пише в сайта</p>
-            <p style={{ fontSize: 12, color: '#666', margin: 0 }}>Задава въпрос директно от сайта ти</p>
+          {/* Phone 0: AI consultation */}
+          <div style={{ width: '100%', maxWidth: 240 }}>
+            <IPhoneFrame src="/IMG_2007.jpg" alt="AI консултация с нов клиент в сайта" size="lg" />
           </div>
 
-          {/* Arrow */}
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M6 13l6 6 6-6" stroke="#f9196e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          {/* Live chat heading */}
+          <div style={{ textAlign: 'center', margin: 'clamp(40px,7vw,64px) 0 clamp(8px,2vw,16px)' }}>
+            <p style={{ fontSize: 'clamp(18px,4vw,28px)', fontWeight: 700, lineHeight: 1.3, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Когато клиентката се нуждае от жив човек
+            </p>
+            <p style={{ fontSize: 'clamp(18px,4vw,28px)', fontWeight: 700, lineHeight: 1.3, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              получаваш съобщението и й отговаряш от Telegram.
+            </p>
+          </div>
 
           {/* Phone 2: известие */}
           <div style={{ width: '100%', maxWidth: 280 }}>
             <IPhoneFrame src="/IMG_1851.jpg" alt="Известие в Telegram" size="lg" />
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#0f0f0f', margin: '0 0 2px' }}>🔔 Известие в Telegram</p>
-            <p style={{ fontSize: 12, color: '#666', margin: 0 }}>Веднага на телефона ти</p>
           </div>
 
           {/* Arrow */}
@@ -569,49 +704,13 @@ export function TelegramChatSection() {
           <div style={{ width: '100%', maxWidth: 280 }}>
             <IPhoneFrame src="/IMG_1852.jpg" alt="Отговаряш от Telegram" size="lg" />
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: '0 0 2px', textShadow: '0 1px 4px rgba(0,0,0,0.35)' }}>📲 Отговаряш от Telegram</p>
-            <p style={{ fontSize: 12, color: '#fff', margin: 0, textShadow: '0 1px 4px rgba(0,0,0,0.35)' }}>Клиентът вижда отговора в реално време</p>
-          </div>
 
-        </div>
-
-        {/* Checkmarks */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 'clamp(36px,5vw,56px)' }}>
-          {[
-            'Без допълнителни приложения',
-            'Отговаряш директно от телефона си',
-            'Не губиш клиенти преди резервация',
-          ].map((text, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.35)',
-              borderRadius: 999,
-              padding: '6px 14px',
-              width: 'fit-content',
-            }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                <defs>
-                  <linearGradient id={`chk-pill-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#e11d48" />
-                    <stop offset="100%" stopColor="#a855f7" />
-                  </linearGradient>
-                </defs>
-                <path d="M20 6L9 17l-5-5" stroke="#ffffff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap' }}>{text}</span>
-            </div>
-          ))}
         </div>
 
         {/* Bottom tagline */}
-        <div style={{ textAlign: 'center', paddingBottom: 'clamp(80px,12vw,120px)', paddingTop: 'clamp(20px,3vw,32px)' }}>
-          <p style={{ fontSize: 'clamp(20px,3vw,32px)', fontWeight: 800, marginBottom: 8, color: '#fff' }}>
-            Това не е просто чат.
-          </p>
-          <p style={{ fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: 800, color: '#fff' }}>
-            💬 AI асистент + чат с реален човек в една система
+        <div style={{ textAlign: 'center', paddingBottom: 'clamp(80px,12vw,120px)', paddingTop: 'clamp(32px,5vw,52px)' }}>
+          <p style={{ fontSize: 'clamp(22px,4.5vw,38px)', fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.15 }}>
+            С AI чат и лайв чат няма как да пропуснеш нито един нов клиент.
           </p>
         </div>
 
@@ -627,7 +726,7 @@ export function TelegramManagementSection() {
     <section
       aria-label="Управление от Telegram"
       style={{
-        background: 'linear-gradient(180deg, #fdf2f8 0%, #fff 100%)',
+        background: '#fff',
         padding: 'clamp(48px,9vw,96px) clamp(20px,5vw,60px)',
         overflow: 'hidden',
         position: 'relative',
@@ -636,14 +735,17 @@ export function TelegramManagementSection() {
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,5vw,52px)' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
-            Твоят AI асистент
-          </p>
-          <h2 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 14, color: '#0f0f0f' }}>
-            <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Управляваш всичко с едно съобщение.</span>
-          </h2>
-          <p style={{ fontSize: 'clamp(14px,1.8vw,17px)', color: '#666', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
-            Добавяй услуги, снимки, променяй работното си време, записвай часове и виждай резервациите си директно в <span style={{ color: '#229ED9', fontWeight: 700 }}>Telegram</span>, веднага.
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Промени цени.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Добави услуга.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Редактирай цена на услуга.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Качи снимки в галерията.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Добави нов клиент.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Премести резервация.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Разбери какъв ти е оборотът.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Кой клиент колко пари е изхарчил при теб.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>Какви са предстоящите ти часове.</p>
+          <p style={{ fontSize: 'clamp(20px,4.5vw,32px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 14, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            С едно съобщение в Telegram. Готово.
           </p>
         </div>
 
@@ -947,15 +1049,14 @@ export function MarketingFounderSection() {
           data-reveal
           className="text-[clamp(1rem,2.2vw,1.15rem)] font-medium leading-snug text-[var(--foreground)]"
         >
-          {'Знаем какво е да работиш с часове, да пазиш стандарта си и да усещаш, че някой друг печели от труда ти. '}
-          <span style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 700 }}>Clicka.bg</span>
-          {' е създаден, за да върне контрола при теб.'}
+          Всяка резервация трябва да изгражда твоя бранд.
         </p>
         <p
           data-reveal
-          className="mt-5 text-[clamp(0.95rem,2vw,1.1rem)] italic leading-relaxed text-[var(--muted-foreground)]"
+          className="mt-2 text-[clamp(1rem,2.2vw,1.15rem)] font-medium leading-snug"
+          style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
         >
-          <span style={{ fontStyle: 'normal', fontWeight: 500, color: 'var(--muted-foreground)' }}>с фокус върху кредото: </span><span style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>„Изграждаш собствен бранд, а не чужда платформа."</span>
+          Не на някой друг, а Твоя.
         </p>
       </div>
 

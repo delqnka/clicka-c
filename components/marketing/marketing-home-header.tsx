@@ -9,12 +9,6 @@ export function MarketingHomeHeader() {
         <ClickaLogo size="nav" priority />
         <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px,2vw,24px)' }}>
           <Link
-            href="/features"
-            style={{ fontSize: 13, fontWeight: 500, color: 'var(--muted-foreground)', textDecoration: 'none' }}
-          >
-            Функции
-          </Link>
-          <Link
             href="/pricing"
             style={{ fontSize: 13, fontWeight: 500, color: 'var(--muted-foreground)', textDecoration: 'none' }}
           >

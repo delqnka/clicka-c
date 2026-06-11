@@ -251,12 +251,6 @@ export function FaqPage() {
           <Link href="/features" style={{ color: 'var(--muted-foreground)', textDecoration: 'none' }}>
             → Всички функции
           </Link>
-          <Link href="/za-frizyorski-salon" style={{ color: 'var(--muted-foreground)', textDecoration: 'none' }}>
-            → Сайт за фризьорски салон
-          </Link>
-          <Link href="/za-manikyurist" style={{ color: 'var(--muted-foreground)', textDecoration: 'none' }}>
-            → Сайт за маникюрист
-          </Link>
         </div>
       </main>
     </div>

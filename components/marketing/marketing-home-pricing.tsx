@@ -25,27 +25,20 @@ const PLANS = [
 ];
 
 const SOLO_FEATURES = [
-  'AI рецепционист — записва клиенти 24/7 вместо теб',
-  'Онлайн записване директно от чат',
-  'Автоматичен клиентски профил при всяка резервация',
-  'Жив чат — поемаш разговора от Telegram когато искаш',
+  'AI рецепционист 24/7',
   'Собствен сайт с резервации',
-  'Качване на услуги от ценоразпис със снимка',
   'Онлайн плащания и депозити',
-  'Email и Telegram известия за теб и клиентите',
-  'Автоматично събиране на Google ревюта',
-  'Неограничена галерия',
-  'Хостинг, SSL и поддръжка включени',
-  '0% комисионна върху резервациите ти',
+  'Автоматични Google ревюта',
+  'Управление от Telegram',
+  'Email напомняния за клиентите',
+  '0% комисионна',
 ];
 
 const EKIP_FEATURES = [
-  'До 3 специалисти в един сайт',
-  'Отделни графици и известия за всеки специалист',
-  'Онлайн записване при избран специалист директно от чат',
+  'Отделни графици за всеки специалист',
+  'Клиентите избират при кого да дойдат',
+  'Отделни Telegram известия за всеки специалист',
   'AI рецепционист за целия екип',
-  'Директно резервиране при избран специалист',
-  'Жив чат — поемаш разговора от Telegram',
 ];
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -72,12 +65,9 @@ export function MarketingHomePricingSection() {
           {/* Left: Without Clicka */}
           <div style={{ flex: '1 1 260px' }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 16 }}>Без clicka.bg</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              {['Уеб сайт', 'Онлайн резервации', 'Хостинг и SSL', 'Домейн', 'Поддръжка', 'AI чат асистент', 'Имейл известия', 'Google ревюта'].map((item) => (
-                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 13, color: '#d1d5db', flexShrink: 0 }}>✓</span>
-                  <span style={{ fontSize: 'clamp(13px,1.6vw,14px)', color: '#9ca3af' }}>{item}</span>
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
+              {['Уеб агенция.', 'Booking платформа.', 'Хостинг.', 'SSL.', 'Имейл.', 'AI инструмент.', 'Google интеграция.'].map((item) => (
+                <p key={item} style={{ fontSize: 'clamp(13px,1.6vw,14px)', color: '#9ca3af', margin: 0 }}>{item}</p>
               ))}
             </div>
             <div>
@@ -85,7 +75,7 @@ export function MarketingHomePricingSection() {
                 <p key={line} style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 700, color: '#6b7280', margin: '0 0 3px' }}>{line}</p>
               ))}
               <p style={{ fontSize: 'clamp(12px,1.5vw,13px)', color: '#9ca3af', margin: '8px 0 0', lineHeight: 1.6 }}>
-                и задължително да плащаш на специалист, който да се грижи за тези неща.
+                И специалист, който да се грижи за всичко.
               </p>
             </div>
           </div>
@@ -93,13 +83,17 @@ export function MarketingHomePricingSection() {
           {/* Right: With Clicka */}
           <div style={{ flex: '1 1 260px' }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>С clicka.bg</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {['Собствен сайт', 'Онлайн резервации', 'AI асистент', 'Хостинг и SSL', 'Имейл известия', 'Google ревюта', '0% комисионна', 'Лесен контрол на сайта'].map((item) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {['Собствен сайт', 'Онлайн резервации', 'AI асистент', 'Хостинг и SSL', 'Имейл известия', 'Google ревюта'].map((item) => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 13, color: '#16a34a', flexShrink: 0, fontWeight: 700 }}>✓</span>
                   <span style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 500, color: '#1a1a1a' }}>{item}</span>
                 </div>
               ))}
+            </div>
+            <div>
+              <p style={{ fontSize: 'clamp(14px,1.7vw,15px)', fontWeight: 700, color: '#0f0f0f', margin: '0 0 4px' }}>Всичко включено. Едно плащане. 0% комисионна.</p>
+              <p style={{ fontSize: 'clamp(12px,1.5vw,13px)', color: '#6b7280', margin: 0, lineHeight: 1.6 }}>Контролираш всичко сам от телефона.</p>
             </div>
           </div>
 
@@ -110,54 +104,17 @@ export function MarketingHomePricingSection() {
           <span style={{ fontSize: 'clamp(18px,2.8vw,32px)' }}>tvoiatsalon.clicka.bg.</span>
         </h2>
         <p data-reveal style={{ fontSize: 'clamp(15px,1.8vw,18px)', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: 28, lineHeight: 1.6, maxWidth: 720 }}>
-          И можеш да приемаш резервации{' '}
-          <span style={{ fontWeight: 800, backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>ВЕДНАГА!</span>
+          И можеш да приемаш резервации веднага.
         </p>
         <div style={{ marginBottom: 36, maxWidth: 720 }}>
           <p style={{ fontSize: 'clamp(16px,2vw,20px)', fontWeight: 600, color: 'var(--foreground)', marginBottom: 10, lineHeight: 1.5 }}>
-            {'Искаш собствен домейн (например '}
-            <span style={{ backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 600, fontStyle: 'italic' }}>moiatsalon.com или salondidi.bg</span>
-            {')? Или вече имаш такъв?'}
+            Искаш собствен домейн? Можеш да го свържеш сам без допълнителна такса. Или ние го регистрираме и настройваме вместо теб, услугата се заплаща допълнително.
           </p>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-            <span style={{ flexShrink: 0, marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #e11d48, #a855f7)', display: 'inline-block' }} />
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0, lineHeight: 1.6 }}>
-                {MARKETING_PRICING.domainBullet1main}
-              </p>
-              <p style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted-foreground)', margin: '2px 0 0', lineHeight: 1.5, opacity: 0.75 }}>
-                {MARKETING_PRICING.domainBullet1sub}
-              </p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
-            <span style={{ flexShrink: 0, marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #e11d48, #a855f7)', display: 'inline-block' }} />
-            <p style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted-foreground)', margin: 0, lineHeight: 1.6 }}>
-              {MARKETING_PRICING.domainBullet2}
-            </p>
-          </div>
           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.6 }}>
-            {MARKETING_PRICING.domainNoteBold}
+            Домейнът се регистрира на твоето име и остава твоя собственост.
           </p>
         </div>
 
-        {/* Promo banner */}
-        <a
-          href="/purvite-10"
-          data-reveal
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: 'linear-gradient(135deg,#fff0f3,#faf5ff)',
-            border: '1px solid #fce7f3', borderRadius: 9999,
-            padding: '8px 18px', marginBottom: 28, textDecoration: 'none',
-            fontSize: 13, fontWeight: 600,
-          }}
-        >
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#e11d48', display: 'inline-block', flexShrink: 0 }} />
-          <span style={{ backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            Промо оферта за първите 10 бизнеса — виж тук →
-          </span>
-        </a>
 
         <div data-reveal style={{ display: 'inline-flex', alignItems: 'center', background: '#f3f4f6', borderRadius: 9999, padding: 4, marginBottom: 40, gap: 2 }}>
           {(['12m', '6m'] as const).map((p) => (

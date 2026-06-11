@@ -76,15 +76,6 @@ export default function PricingPage() {
             fontSize: 13,
           }}
         >
-          <Link href="/za-frizyorski-salon" style={{ color: 'var(--muted-foreground)', textDecoration: 'none' }}>
-            → Сайт за фризьорски салон
-          </Link>
-          <Link href="/za-manikyurist" style={{ color: 'var(--muted-foreground)', textDecoration: 'none' }}>
-            → Сайт за маникюрист
-          </Link>
-          <Link href="/create" style={{ color: 'var(--muted-foreground)', textDecoration: 'none' }}>
-            → Създай сайт сега
-          </Link>
         </div>
       </main>
     </div>

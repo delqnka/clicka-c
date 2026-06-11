@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const SECTION_LINKS = [
-  { id: 'audience', label: 'За кого е', mobileHidden: false, href: undefined },
   { id: 'how-it-works', label: 'Как работи', mobileHidden: false, href: undefined },
-  { id: 'features', label: 'Какво получаваш', mobileHidden: false, href: undefined },
   { id: 'pricing', label: 'Цени', mobileHidden: false, href: '/pricing' },
   { id: 'faq', label: 'FAQ', mobileHidden: false, href: '/faq' },
   { id: 'chat', label: 'Контакт', mobileHidden: false, href: undefined },
@@ -22,7 +20,7 @@ function getHomeSectionElement(id: string): HTMLElement | null {
 }
 
 export function MarketingHomeSectionNav() {
-  const [activeSection, setActiveSection] = useState<string>('audience');
+  const [activeSection, setActiveSection] = useState<string>('how-it-works');
   const sectionRatiosRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
