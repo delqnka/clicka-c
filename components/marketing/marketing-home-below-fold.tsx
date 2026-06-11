@@ -7,12 +7,6 @@ import { DeferredMount } from '@/components/marketing/deferred-mount';
 import { ButtonColorful } from '@/components/ui/button-colorful';
 import { formatDualEurText } from '@/lib/salon-currency';
 
-const MarketingAudienceSection = dynamic(
-  () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.MarketingAudienceSection })),
-);
-const OwnPlatformSection = dynamic(
-  () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.OwnPlatformSection })),
-);
 const PriceListImportSection = dynamic(
   () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.PriceListImportSection })),
 );
@@ -21,12 +15,6 @@ const TelegramManagementSection = dynamic(
 );
 const TelegramChatSection = dynamic(
   () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.TelegramChatSection })),
-);
-const MarketingFeaturesSection = dynamic(
-  () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.MarketingFeaturesSection })),
-);
-const MarketingComparisonSection = dynamic(
-  () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.MarketingComparisonSection })),
 );
 const MarketingFounderSection = dynamic(
   () => import('@/components/marketing/marketing-home-sections').then((m) => ({ default: m.MarketingFounderSection })),
@@ -81,9 +69,6 @@ export function MarketingHomeBelowFold() {
 
   return (
     <>
-      <MarketingAudienceSection />
-      <OwnPlatformSection />
-
       <div data-home-section="how-it-works" id="how-it-works">
         <DeferredMount minHeight={240}>
           <PriceListImportSection />
@@ -95,9 +80,6 @@ export function MarketingHomeBelowFold() {
           <TelegramChatSection />
         </DeferredMount>
       </div>
-
-      <MarketingFeaturesSection />
-      <MarketingComparisonSection />
 
       <section
         aria-label="Клиентски сайт"

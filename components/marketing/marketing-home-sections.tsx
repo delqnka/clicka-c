@@ -64,19 +64,14 @@ export function MarketingAudienceSection() {
           className={`text-balance text-[clamp(1.75rem,5vw,3rem)] font-bold leading-[1.1] tracking-[-0.03em] ${GRADIENT_HEADING}`}
           style={GRADIENT_BG}
         >
-          Работиш с клиенти по часове?
+          Всеки нов клиент става твой.
         </h2>
-        <div className="mx-auto mt-3 max-w-lg space-y-4 leading-relaxed">
-          <p className="text-[clamp(1.1rem,2.5vw,1.3rem)] font-semibold" style={{ color: '#1a1a1a' }}>
-            Когато някой те потърси онлайн - трябва да те намери.
+        <div className="mx-auto mt-4 max-w-lg space-y-2 leading-relaxed">
+          <p className="text-[clamp(1rem,2.2vw,1.15rem)] font-semibold" style={{ color: '#1a1a1a' }}>
+            В собствения ти сайт. В собствената ти клиентска база. Със собствения ти домейн.
           </p>
-          <p className="text-[clamp(0.95rem,1.8vw,1.05rem)]" style={{ color: '#9ca3af' }}>
-            <span className="font-bold" style={{ color: '#1a1a1a' }}>Не</span> каталог.<br />
-            <span className="font-bold" style={{ color: '#1a1a1a' }}>Не</span> платформа.<br />
-            <span className="font-bold" style={{ color: '#1a1a1a' }}>Не</span> конкурентите ти.
-          </p>
-          <p className={`text-[clamp(1.6rem,4vw,2.2rem)] font-bold ${GRADIENT_HEADING}`} style={GRADIENT_BG}>Теб.</p>
         </div>
+
         <p className={`mt-8 text-[0.7rem] leading-relaxed ${GRADIENT_HEADING}`} style={{ backgroundImage: 'linear-gradient(135deg, #db2777, #a855f7)' }}>
           {['Фризьори', 'Маникюристи', 'Козметици', 'Барбъри', 'Масажисти', 'Груумъри', 'Терапевти', 'Треньори', 'Консултанти', 'Гримьори', 'Татуисти'].join(' • ')}
         </p>
@@ -167,33 +162,141 @@ export function PriceListImportSection() {
               { n: '1', text: 'Избираш план', green: false },
               { n: '✓', text: 'Сайтът ти е готов веднага', green: true },
               { n: '3', text: 'Качваш снимка на услугите си', green: false },
-              { n: '4', text: 'Вече приемаш резервации', green: false },
+              { n: '4', text: 'Свързваш Telegram за известия', green: false },
+              { n: '✓', text: 'Вече приемаш резервации', green: true },
             ].map((s, i, arr) => (
               <div key={s.n} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0' }}>
-                  <span style={{
-                    width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    background: s.green ? '#16a34a' : '#ffffff',
-                    border: s.green ? 'none' : 'none',
-                    fontWeight: 700, fontSize: s.green ? 16 : 14,
-                    color: s.green ? '#fff' : '#6b7280',
-                    boxShadow: s.green ? '0 4px 16px rgba(22,163,74,0.35)' : '0 6px 18px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,1)',
-                  }}>{s.n}</span>
+                  {s.green ? (
+                    <span style={{
+                      width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      background: '#16a34a',
+                      fontWeight: 700, fontSize: 16,
+                      color: '#fff',
+                      boxShadow: '0 4px 16px rgba(22,163,74,0.35)',
+                    }}>{s.n}</span>
+                  ) : (
+                    <span style={{
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+                      padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 16px rgba(219,39,119,0.25)',
+                    }}>
+                        <span style={{
+                        width: '100%', height: '100%', borderRadius: '50%',
+                        background: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <span style={{
+                          fontWeight: 700, fontSize: 14,
+                          backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                        }}>{s.n}</span>
+                      </span>
+                    </span>
+                  )}
                   <span style={{
                     fontSize: 'clamp(14px,1.8vw,16px)',
-                    fontWeight: s.green ? 700 : 500,
+                    fontWeight: 500,
                     color: s.green ? '#15803d' : '#1a1a1a',
                     fontFamily: 'var(--font-client-manrope), sans-serif',
                   }}>{s.text}</span>
                 </div>
                 {i < arr.length - 1 && (
-                  <div style={{ paddingLeft: 16, lineHeight: 1 }}>
-                    <span style={{ color: '#d1d5db', fontSize: 13 }}>│</span>
+                  <div style={{ paddingLeft: 17, lineHeight: 1 }}>
+                    <div style={{ width: 2, height: 24, background: 'linear-gradient(to bottom, #e11d48, #a855f7)', borderRadius: 2, opacity: 0.35 }} />
                   </div>
                 )}
               </div>
             ))}
           </div>
+
+          {/* Losing clients? */}
+          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Дали не губиш нови клиенти?
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 10 }}>
+              Какво става, когато някой те намери в Google?
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 10 }}>
+              Изпращаш го към Instagram профил, за да си пишете съобщения?
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 0, fontWeight: 700 }}>
+              Изпрати го към истински сайт с цени, услуги, онлайн записване за секунди и дори може да ти плати депозит.
+            </p>
+          </div>
+
+          {/* Easy? */}
+          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Сложно ли е?
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 8 }}>
+              Ако ползваш Instagram ще се справиш.
+            </p>
+            <p style={{ fontSize: 'clamp(14px,3vw,17px)', color: '#6b7280', margin: 0 }}>
+              Направихме го за хора, а не за програмисти.
+            </p>
+          </div>
+
+          {/* Time? */}
+          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Ще ми спести ли време?
+            </p>
+            <p style={{ fontSize: 'clamp(20px,5vw,28px)', color: '#0f0f0f', marginBottom: 10, fontWeight: 700 }}>
+              Спираш да отговаряш на „Имате ли свободен час в петък?" в 23:00 ч. и в почивните дни.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 10 }}>
+              Клиентите виждат свободните часове и си запазват сами.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>
+              Ако имат въпрос, могат да пишат в чата на сайта.
+            </p>
+            <p style={{ fontSize: 'clamp(14px,3vw,17px)', color: '#6b7280', margin: 0 }}>
+              Твоят AI рецепционист отговаря вместо теб. 24/7. Без заплата.
+            </p>
+          </div>
+
+          {/* Own site? */}
+          <div style={{ marginBottom: 'clamp(40px,6vw,64px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(8px,1.5vw,14px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Защо собствен сайт?
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 8 }}>
+              Докато клиентът разглежда профила ти в платформата, вижда и конкурентите ти.
+            </p>
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 8 }}>
+              На твоя сайт няма конкуренти.
+            </p>
+            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', margin: 0, fontWeight: 700 }}>
+              Само ти, твоя бранд, твоите услуги и твоите цени.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 24 }}>
+              <span style={{ fontSize: 'clamp(16px,4vw,20px)', fontWeight: 700, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                mariasalon.bg
+              </span>
+              <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400, marginBottom: 10 }}>
+                представя теб и твоя бизнес.
+              </span>
+              <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400, marginTop: 4 }}>
+                а
+              </span>
+              <span style={{ fontSize: 'clamp(14px,3.5vw,17px)', color: '#0f0f0f', fontWeight: 500, textDecoration: 'line-through' }}>
+                platforma.com/12470
+              </span>
+              <span style={{ fontSize: 'clamp(13px,3vw,15px)', color: '#6b7280', fontWeight: 400 }}>
+                казва че си номер в каталога им.
+              </span>
+              <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', fontWeight: 700, marginTop: 20, marginBottom: 0 }}>
+                И най-хубавото е, че никой няма да ти иска комисионна върху труда ти.
+              </p>
+            </div>
+          </div>
+
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
             Без ръчно въвеждане
           </p>
