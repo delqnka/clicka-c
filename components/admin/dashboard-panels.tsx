@@ -431,7 +431,7 @@ export function ClientsPanel({
                 {client.email ? ` · ${client.email}` : ''}
               </p>
               <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle }}>
-                Последна резервация: {new Date(client.lastVisit).toLocaleString('bg-BG', { dateStyle: 'medium', timeStyle: 'short' })}
+                Последна резервация: {client.lastVisit ? new Date(client.lastVisit).toLocaleString('bg-BG', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
               </p>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>

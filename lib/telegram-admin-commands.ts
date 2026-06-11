@@ -763,15 +763,25 @@ export async function handleAdminCommand(
   }
 
   // ── Fast path: "ИМЕ ТЕЛЕФОН [услуга] [дата] [час]" — regex parse, no AI ──
-  // Catches "Мария 0884595000 маникюр утре 10ч" and
-  // "запиши Мария 0884595000 маникюр утре 10ч" patterns before hitting the AI.
-  const PHONE_IN_TEXT_RE = /(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/;
-  if (PHONE_IN_TEXT_RE.test(text)) {
-    // Strip leading action verbs so name extraction works correctly
-    const ACTION_PREFIX_RE = /^(?:запиши?\s+(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|добав[ии]\s+(?:ми\s+)?(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|нов[а]?\s+клиент[аa]?\s+)/i;
-    const stripped = text.replace(ACTION_PREFIX_RE, '').trim();
-    const handled = await handleNewClientWithBooking(chatId, text, stripped, salon);
-    if (handled) return true;
+  // Only triggers when phone comes BEFORE booking signals, i.e. "Мария 0884595000 маникюр утре 10ч".
+  // If phone comes AFTER booking info (e.g. "Мария маникюр утре\n08845...") → skip to AI.
+  {
+    const PHONE_IN_TEXT_RE = /(\+?(?:359|0)\d[\d\s\-]{6,12}\d)/;
+    const phoneInTextMatch = text.match(PHONE_IN_TEXT_RE);
+    if (phoneInTextMatch) {
+      const phonePos = text.indexOf(phoneInTextMatch[0]);
+      const bookingSignalMatch = text.search(BOOKING_SIGNALS_RE);
+      // Only fast-path if phone is on first line and no booking signals appear before the phone
+      const firstLineEnd = text.indexOf('\n');
+      const phoneIsOnFirstLine = firstLineEnd === -1 || phonePos < firstLineEnd;
+      if (phoneIsOnFirstLine && (bookingSignalMatch === -1 || phonePos <= bookingSignalMatch)) {
+        // Strip leading action verbs so name extraction works correctly
+        const ACTION_PREFIX_RE = /^(?:запиши?\s+(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|добав[ии]\s+(?:ми\s+)?(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|нов[а]?\s+клиент[аa]?\s+)/i;
+        const stripped = text.replace(ACTION_PREFIX_RE, '').trim();
+        const handled = await handleNewClientWithBooking(chatId, text, stripped, salon);
+        if (handled) return true;
+      }
+    }
   }
 
   // ── AI fallback — free natural language ──────────────────────────────────
@@ -1534,6 +1544,7 @@ ${servicesJson}
 - "в понеделник" / "следващия понеделник" → намери следващата такава дата
 - "другата сряда" / "другия петък" / "другата седмица в X" → сряда/петък/X на седмицата СЛЕД следващата (т.е. +2 седмици от последното минало или +1 ако следващата вече е тази седмица)
 - "след 2 дни" → изчисли ISO датата
+- "18ти" / "18-ти" / "18-о" / "на 18" / "18 число" → 18-то число на текущия месец; ако е в миналото → следващия месец
 - "сутринта" → 09:00, "на обяд" → 13:00, "следобед" → 15:00, "вечерта" → 18:00
 - "и половина" след час → добави :30 (напр. "в 3 и половина" → 15:30)
 - Ако часът е без AM/PM и е между 7 и 21 → приеми го директно; ако е под 7 → добави 12
@@ -3645,10 +3656,21 @@ async function handleNewClientWithBooking(
       : String(new Date().getFullYear());
     date = `${year}-${month}-${day}`;
   } else {
-    for (const dn of ['утре', 'днес', 'понеделник', 'вторник', 'сряда', 'четвъртък', 'петък', 'събота', 'неделя']) {
-      if (new RegExp(`\\b${dn}\\b`, 'i').test(afterSep)) {
-        date = resolveDayName(dn);
-        break;
+    // "18ти" / "18-ти" / "на 18" / "18 число" — day of current (or next) month
+    const dayOfMonthMatch = afterSep.match(/(?:на\s+)?(\d{1,2})\s*(?:ти|ри|ви|ми|ия|и|-ти|-ри|-ви|-ми|число)\b/i);
+    if (dayOfMonthMatch) {
+      const day = parseInt(dayOfMonthMatch[1]!, 10);
+      const now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth(); // 0-indexed
+      if (day < now.getDate()) { month++; if (month > 11) { month = 0; year++; } }
+      date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    } else {
+      for (const dn of ['утре', 'днес', 'понеделник', 'вторник', 'сряда', 'четвъртък', 'петък', 'събота', 'неделя']) {
+        if (new RegExp(`\\b${dn}\\b`, 'i').test(afterSep)) {
+          date = resolveDayName(dn);
+          break;
+        }
       }
     }
   }
