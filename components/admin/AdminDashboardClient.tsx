@@ -681,6 +681,26 @@ export default function AdminDashboardClient({
       .catch(() => undefined);
   }, [activeTab, slug]);
 
+  // Load salon_clients (added via Telegram or manually) when clients tab opens
+  useEffect(() => {
+    if (activeTab !== 'clients') return;
+    fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null }[] } | null) => {
+        if (!data?.clients?.length) return;
+        setExtraClients(data.clients.map((c) => ({
+          key: `sc-${c.id}`,
+          name: c.name,
+          phone: c.phone ?? '',
+          email: c.email ?? '',
+          visits: 0,
+          totalSpent: 0,
+          lastVisit: '',
+        })));
+      })
+      .catch(() => undefined);
+  }, [activeTab, slug]);
+
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;

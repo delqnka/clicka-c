@@ -2678,7 +2678,17 @@ async function getNextBookingForClient(salonId: string, clientName: string): Pro
 }
 
 async function handleSaveClientContact(chatId: number, salon: SalonRef, clientName: string, phone?: string, email?: string): Promise<void> {
-  const { id: clientId, isNew } = await upsertSalonClient(salon.salonId, clientName, { phone, email });
+  let clientId: string | null = null;
+  let isNew = true;
+  try {
+    const result = await upsertSalonClient(salon.salonId, clientName, { phone, email });
+    clientId = result.id;
+    isNew = result.isNew;
+  } catch (err) {
+    console.error('[TG_CLIENT] upsertSalonClient failed:', err);
+    await sendTelegramMessage(chatId, `❌ Грешка при запазване на клиента. Провери връзката с базата данни.`);
+    return;
+  }
   await setState(chatId, { type: 'last_client', clientId, name: clientName, created_at: new Date().toISOString() });
   const parts: string[] = [];
   if (phone) parts.push(`телефон: <b>${phone}</b>`);
@@ -3647,8 +3657,10 @@ async function handleNewClientWithBooking(
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Save client contact
-  await upsertSalonClient(salon.salonId, clientName, { phone, email }); // isNew unused here — booking message covers it
+  // Save client contact (non-fatal — booking message covers the response)
+  await upsertSalonClient(salon.salonId, clientName, { phone, email }).catch((err: unknown) => {
+    console.error('[TG_CLIENT] upsertSalonClient failed (non-fatal):', err);
+  });
 
   if (date && time && servicePart) {
     // Full combo: client + phone + booking
@@ -3716,12 +3728,18 @@ async function handleCreateBooking(
   await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${result.id}`;
   revalidateTag(`salon-public-${salon.slug}`);
 
-  // Upsert client to get/create clientId for session memory
-  const { id: clientId, isNew: clientIsNew } = await upsertSalonClient(salon.salonId, clientName, {
-    ...(clientPhone ? { phone: clientPhone } : {}),
-    ...(clientEmail ? { email: clientEmail } : {}),
-  });
-  console.log(`[TG_BOOKING] client upsert clientId=${clientId} isNew=${clientIsNew}`);
+  // Upsert client record — non-fatal: booking is already saved, don't let this kill the response
+  let clientId: string | null = null;
+  try {
+    const { id, isNew: clientIsNew } = await upsertSalonClient(salon.salonId, clientName, {
+      ...(clientPhone ? { phone: clientPhone } : {}),
+      ...(clientEmail ? { email: clientEmail } : {}),
+    });
+    clientId = id;
+    console.log(`[TG_BOOKING] client upsert clientId=${clientId} isNew=${clientIsNew}`);
+  } catch (err) {
+    console.error('[TG_BOOKING] upsertSalonClient failed (non-fatal):', err);
+  }
 
   await setState(chatId, {
     type: 'last_booking',
