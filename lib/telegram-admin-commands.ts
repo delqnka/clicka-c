@@ -3686,6 +3686,8 @@ async function handleCreateBooking(
   const resolvedServiceName = svc?.name ?? serviceName;
 
   const id = crypto.randomUUID();
+  console.log(`[TG_BOOKING] salonId=${salon.salonId} client="${clientName}" service="${resolvedServiceName}" date=${date} time=${time}`);
+
   const result = await insertBookingIfNoOverlap({
     id,
     salonId: salon.salonId,
@@ -3703,6 +3705,8 @@ async function handleCreateBooking(
     offerId: null,
   });
 
+  console.log(`[TG_BOOKING] insertResult=${result ? result.id : 'NULL (slot taken or insert failed)'}`);
+
   if (!result) {
     await sendTelegramMessage(chatId, `⚠️ Часът ${time} на ${formatDateBg(date)} вече е зает. Провери календара.`);
     return;
@@ -3713,10 +3717,11 @@ async function handleCreateBooking(
   revalidateTag(`salon-public-${salon.slug}`);
 
   // Upsert client to get/create clientId for session memory
-  const { id: clientId } = await upsertSalonClient(salon.salonId, clientName, {
+  const { id: clientId, isNew: clientIsNew } = await upsertSalonClient(salon.salonId, clientName, {
     ...(clientPhone ? { phone: clientPhone } : {}),
     ...(clientEmail ? { email: clientEmail } : {}),
   });
+  console.log(`[TG_BOOKING] client upsert clientId=${clientId} isNew=${clientIsNew}`);
 
   await setState(chatId, {
     type: 'last_booking',
