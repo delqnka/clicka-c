@@ -747,9 +747,12 @@ export function SalonAiBotWidget({ salonId, salonName, hasTelegram = false, onOp
 
 // ─── Message renderer — strips markdown, highlights time slots ────────────────
 
+const DATE_RE = /(\b(?:понеделник|вторник|сряда|четвъртък|петък|събота|неделя)(?:[,\s]+\d{1,2}[.\s]+(?:януари|февруари|март|април|май|юни|юли|август|септември|октомври|ноември|декември)(?:\s+\d{4}\s+г\.?)?)?|\b\d{1,2}[.\-\/]\d{1,2}(?:[.\-\/]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b)/i;
+const TOKEN_RE = /(\b\d{1,2}:\d{2}\b|\b(?:понеделник|вторник|сряда|четвъртък|петък|събота|неделя)(?:[,\s]+\d{1,2}[.\s]+(?:януари|февруари|март|април|май|юни|юли|август|септември|октомври|ноември|декември)(?:\s+\d{4}\s+г\.?)?)?|\b\d{1,2}[.\-\/]\d{1,2}(?:[.\-\/]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b)/i;
+
 function renderMessage(content: string): React.ReactNode {
   const cleaned = content.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
-  const parts = cleaned.split(/(\b\d{1,2}:\d{2}\b)/);
+  const parts = cleaned.split(TOKEN_RE);
   const nodes: React.ReactNode[] = [];
   parts.forEach((part, i) => {
     if (/^\d{1,2}:\d{2}$/.test(part)) {
@@ -763,6 +766,8 @@ function renderMessage(content: string): React.ReactNode {
           {part}
         </span>
       );
+    } else if (DATE_RE.test(part)) {
+      nodes.push(<strong key={i}>{part}</strong>);
     } else {
       part.split('\n').forEach((line, j, arr) => {
         nodes.push(line);
@@ -801,8 +806,8 @@ function AiMessagesList({ messages, GRAD, aiLoading, onOpenBooking }: {
             <div style={{
               maxWidth: '82%', padding: '10px 13px', borderRadius: '16px 16px 16px 4px',
               fontSize: 13, lineHeight: 1.55,
-              background: 'linear-gradient(160deg, #f5f5f7 0%, #e8e8ea 100%)', color: '#111',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+              background: '#fff', color: '#111',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06)',
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               {m.content && <span>{renderMessage(m.content)}</span>}
@@ -821,9 +826,9 @@ function AiMessagesList({ messages, GRAD, aiLoading, onOpenBooking }: {
             <div style={{
               maxWidth: '82%', padding: '9px 13px', borderRadius: 16,
               fontSize: 13, lineHeight: 1.55,
-              background: m.role === 'user' ? GRAD : 'linear-gradient(160deg, #f5f5f7 0%, #e8e8ea 100%)',
+              background: m.role === 'user' ? GRAD : '#fff',
               color: m.role === 'user' ? '#fff' : '#111',
-              boxShadow: m.role === 'assistant' ? '0 1px 4px rgba(0,0,0,0.08)' : undefined,
+              boxShadow: m.role === 'assistant' ? '0 2px 10px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06)' : undefined,
               borderBottomRightRadius: m.role === 'user' ? 4 : 16,
               borderBottomLeftRadius: m.role === 'assistant' ? 4 : 16,
             }}>
@@ -865,7 +870,8 @@ function LiveMessagesList({ messages, GRAD, sending, onOpenBooking }: {
             <div key={i} style={{ display: 'flex', justifyContent: 'flex-start' }}>
               <div style={{
                 maxWidth: '82%', padding: '10px 14px', borderRadius: '16px 16px 16px 4px',
-                fontSize: 13, lineHeight: 1.5, background: '#f3f4f6', color: '#111',
+                fontSize: 13, lineHeight: 1.5, background: '#fff', color: '#111',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06)',
                 display: 'flex', flexDirection: 'column', gap: 8,
               }}>
                 {textBefore && <span>{textBefore}</span>}
@@ -889,8 +895,9 @@ function LiveMessagesList({ messages, GRAD, sending, onOpenBooking }: {
             <div style={{
               maxWidth: '82%', padding: '9px 13px', borderRadius: 16,
               fontSize: 13, lineHeight: 1.55,
-              background: isClient ? GRAD : '#f3f4f6',
+              background: isClient ? GRAD : '#fff',
               color: isClient ? '#fff' : '#111',
+              boxShadow: !isClient ? '0 2px 10px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06)' : undefined,
               borderBottomRightRadius: isClient ? 4 : 16,
               borderBottomLeftRadius: !isClient ? 4 : 16,
             }}>
