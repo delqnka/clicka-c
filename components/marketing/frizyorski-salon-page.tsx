@@ -273,7 +273,6 @@ const PLATFORM_ROWS = [
   { label: 'Собствен домейн и бранд', platform: 'Не', clicka: 'Да' },
   { label: 'Google SEO за твоя салон', platform: 'Не', clicka: 'Да' },
   { label: 'Контрол над клиентските данни', platform: 'Не', clicka: 'Да' },
-  { label: 'Данни за реклами (Meta Pixel, GA4)', platform: 'Не', clicka: 'Да' },
 ] as const;
 
 function VsPlatformSection() {

@@ -351,7 +351,7 @@ function InstagramToBookingsSection() {
             {
               step: '03',
               title: 'Реклама → директна резервация',
-              body: 'Когато пускаш реклама в Instagram или Facebook, насочи я към сайта си. Meta Pixel, вграден в сайта, проследява резервациите и оптимизира рекламата автоматично.',
+              body: 'Когато пускаш реклама в Instagram или Facebook, насочи я към сайта си. Клиентките резервират директно — без комисионна, без платформа посредник.',
             },
             {
               step: '04',
@@ -381,7 +381,6 @@ const PLATFORM_ROWS = [
   { label: 'Собствен домейн и бранд', platform: 'Не', clicka: 'Да' },
   { label: 'Google SEO за твоя бизнес', platform: 'Не', clicka: 'Да' },
   { label: 'Контрол над клиентските данни', platform: 'Не', clicka: 'Да' },
-  { label: 'Meta Pixel за реклами', platform: 'Не', clicka: 'Да' },
 ] as const;
 
 function VsPlatformSection() {

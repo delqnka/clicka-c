@@ -271,7 +271,7 @@ export function MarketingHomeBelowFold() {
             Готов за Facebook и Google реклами
           </h2>
           <p style={{ fontSize: 'clamp(15px,1.8vw,17px)', color: '#555', lineHeight: 1.65, marginBottom: 28, maxWidth: 520 }}>
-            Интегрирай Meta Pixel, Google Analytics и Microsoft Clarity само с няколко клика и виж как рекламите ти се превръщат в реални резервации.
+            Пусни реклама в Facebook или Instagram и виж как се превръща в реални резервации — директно при теб, без комисионна.
           </p>
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
@@ -290,19 +290,6 @@ export function MarketingHomeBelowFold() {
               </li>
             ))}
           </ul>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#0f0f0f', marginBottom: 12 }}>Включени интеграции</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              { name: 'Meta Pixel', color: '#1877F2' },
-              { name: 'Google Analytics 4', color: '#e37400' },
-              { name: 'Microsoft Clarity', color: '#0078D4' },
-            ].map(({ name, color }) => (
-              <span key={name} style={{ fontSize: 14, fontWeight: 400, color: '#0f0f0f', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
-                {name}
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 

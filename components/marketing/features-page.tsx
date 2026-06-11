@@ -101,7 +101,6 @@ const FEATURES = [
       'Автоматичен sitemap.xml при всяка промяна',
       'Meta тагове, Open Graph и structured data за всяка страница',
       'Blog секция за съдържание и дългосрочен SEO трафик',
-      'Google Analytics и Facebook Pixel готови за свързване',
     ],
   },
   {
@@ -163,7 +162,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Как Clicka помага за SEO на моя салон?',
-    a: 'Сайтът постига 100/100 в Google Lighthouse. Генерира автоматичен sitemap, има коректни meta тагове и structured data. Можеш да публикуваш blog статии за дългосрочен SEO трафик. Свързваш Google Analytics и Facebook Pixel с едно кликване.',
+    a: 'Сайтът постига 100/100 в Google Lighthouse. Генерира автоматичен sitemap, има коректни meta тагове и structured data. Можеш да публикуваш blog статии за дългосрочен SEO трафик.',
   },
   {
     q: 'Как да намаля пропуснатите посещения?',

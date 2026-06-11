@@ -587,7 +587,6 @@ const PLATFORM_ROWS = [
   { label: 'Собствен домейн и бранд', platform: 'Не', clicka: 'Да' },
   { label: 'Google SEO за твоя барбършоп', platform: 'Не', clicka: 'Да' },
   { label: 'Контрол над клиентските данни', platform: 'Не', clicka: 'Да' },
-  { label: 'Meta Pixel за реклами', platform: 'Не', clicka: 'Да' },
 ] as const;
 
 function VsPlatformSection() {

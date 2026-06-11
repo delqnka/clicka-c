@@ -73,7 +73,7 @@ export function MarketingHomePricingSection() {
           <div style={{ flex: '1 1 260px' }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 16 }}>Без clicka.bg</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              {['Уеб сайт', 'Онлайн резервации', 'Хостинг и SSL', 'Домейн', 'Поддръжка', 'AI чат асистент', 'Имейл известия', 'Meta Pixel, Google Analytics', 'Google ревюта'].map((item) => (
+              {['Уеб сайт', 'Онлайн резервации', 'Хостинг и SSL', 'Домейн', 'Поддръжка', 'AI чат асистент', 'Имейл известия', 'Google ревюта'].map((item) => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 13, color: '#d1d5db', flexShrink: 0 }}>✓</span>
                   <span style={{ fontSize: 'clamp(13px,1.6vw,14px)', color: '#9ca3af' }}>{item}</span>
@@ -94,7 +94,7 @@ export function MarketingHomePricingSection() {
           <div style={{ flex: '1 1 260px' }}>
             <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>С clicka.bg</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {['Собствен сайт', 'Онлайн резервации', 'AI асистент', 'Хостинг и SSL', 'Имейл известия', 'Google ревюта', 'Meta Pixel и Google Analytics', '0% комисионна', 'Лесен контрол на сайта'].map((item) => (
+              {['Собствен сайт', 'Онлайн резервации', 'AI асистент', 'Хостинг и SSL', 'Имейл известия', 'Google ревюта', '0% комисионна', 'Лесен контрол на сайта'].map((item) => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 13, color: '#16a34a', flexShrink: 0, fontWeight: 700 }}>✓</span>
                   <span style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 500, color: '#1a1a1a' }}>{item}</span>
