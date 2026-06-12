@@ -3009,8 +3009,49 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
       LIMIT 5
     ` as { id: string; name: string; existing_phone: string | null; visit_count: number; last_visit: string | null }[];
 
+    // ── If no match in salon_clients, also check bookings (older clients) ────
+    let allCandidateRows = rawCandidates;
+    if (rawCandidates.length === 0) {
+      const bookingMatches = await sql`
+        SELECT
+          client_name AS name,
+          MAX(client_phone) AS existing_phone,
+          COUNT(*)::int AS visit_count,
+          MAX(date) AS last_visit
+        FROM bookings
+        WHERE CAST(salon_id AS text) = ${salon.salonId}
+          AND lower(client_name) LIKE ${`%${clientName.toLowerCase()}%`}
+          AND status NOT IN ('cancelled')
+        GROUP BY lower(client_name), client_name
+        ORDER BY client_name ASC
+        LIMIT 5
+      ` as { name: string; existing_phone: string | null; visit_count: number; last_visit: string | null }[];
+      // Upsert into salon_clients so future lookups work, collect their ids
+      for (const bm of bookingMatches) {
+        try {
+          const upserted = await sql`
+            INSERT INTO salon_clients (salon_id, name, phone)
+            VALUES (${salon.salonId}, ${bm.name}, ${bm.existing_phone ?? null})
+            ON CONFLICT (salon_id, name) DO UPDATE SET
+              phone = COALESCE(EXCLUDED.phone, salon_clients.phone),
+              updated_at = now()
+            RETURNING CAST(id AS text) AS id
+          ` as { id: string }[];
+          if (upserted[0]) {
+            allCandidateRows = [...allCandidateRows, {
+              id: upserted[0].id,
+              name: bm.name,
+              existing_phone: bm.existing_phone,
+              visit_count: bm.visit_count,
+              last_visit: bm.last_visit,
+            }];
+          }
+        } catch { /* non-fatal */ }
+      }
+    }
+
     // Build hint string per candidate for disambiguation display
-    const candidates = rawCandidates.map(c => {
+    const candidates = allCandidateRows.map(c => {
       const parts: string[] = [];
       if (c.existing_phone) parts.push(`тел: ${c.existing_phone.slice(-4).padStart(c.existing_phone.length, '*').slice(-8)}`);
       if (c.visit_count > 0) parts.push(`${c.visit_count} посещения`);
@@ -3039,7 +3080,7 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
     }
 
     // ── Single match or no match → confirmation card ─────────────────────────
-    const match = rawCandidates[0] ?? null;
+    const match = allCandidateRows[0] ?? null;
     const resolvedName = match?.name ?? clientName;
     const clientId = match?.id ?? null;
     const clientExists = match !== null;
