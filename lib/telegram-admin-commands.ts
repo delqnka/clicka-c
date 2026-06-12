@@ -786,7 +786,7 @@ export async function handleAdminCommand(
       const phoneIsOnFirstLine = firstLineEnd === -1 || phonePos < firstLineEnd;
       if (phoneIsOnFirstLine && (bookingSignalMatch === -1 || phonePos <= bookingSignalMatch)) {
         // Strip leading action verbs so name extraction works correctly
-        const ACTION_PREFIX_RE = /^(?:запиши?\s+(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|добав[ии]\s+(?:ми\s+)?(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?(?:телефон(?:а|ът)?\s+на\s+|тел(?:ефон)?\.?\s+на\s+)?|нов[а]?\s+клиент[аa]?\s+)/i;
+        const ACTION_PREFIX_RE = /^(?:запиши?\s+(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?|добав[ии]\s+(?:ми\s+)?(?:нов[а]?\s+)?(?:клиент[аa]?\s+)?(?:телефон(?:а|ът)?\s+на\s+|тел(?:ефон)?\.?\s+на\s+|номер(?:а|ът)?\s+на\s+)?|нов[а]?\s+клиент[аa]?\s+)/i;
         const stripped = text.replace(ACTION_PREFIX_RE, '').trim();
         const handled = await handleNewClientWithBooking(chatId, text, stripped, salon);
         if (handled) return true;
@@ -4047,7 +4047,7 @@ async function handleNewClientWithBooking(
 
   const clientName = (separatorPos > 0
     ? rest.slice(0, separatorPos).trim()
-      .replace(/^(?:телефон(?:а|ът)?\s+на\s+|тел(?:ефон)?\.?\s+на\s+|тел\.\s*)/i, '').trim()
+      .replace(/^(?:телефон(?:а|ът)?\s+на\s+|тел(?:ефон)?\.?\s+на\s+|номер(?:а|ът)?\s+на\s+|тел\.\s*)/i, '').trim()
     : null) || null;
 
   if (!clientName) {
