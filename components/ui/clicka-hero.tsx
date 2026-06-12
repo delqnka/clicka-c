@@ -16,7 +16,7 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
   return (
     <section
       aria-label="Hero"
-      className="clicka-hero relative flex min-h-[85svh] w-full flex-col overflow-hidden"
+      className="clicka-hero relative flex min-h-[85vh] w-full flex-col overflow-hidden"
       style={{ background: '#ffffff' }}
     >
       {/* Fade from white at top */}
