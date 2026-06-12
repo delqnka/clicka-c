@@ -1468,8 +1468,10 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
         const isEmail = convState.phone.startsWith('email:');
         const emailVal = isEmail ? convState.phone.slice(6) : undefined;
         const phoneVal = isEmail ? undefined : convState.phone;
-        await upsertSalonClient(salon.salonId, convState.clientName, { phone: phoneVal, email: emailVal });
-        await setState(chatId, { type: 'last_client', clientId: convState.clientId, name: convState.clientName, created_at: new Date().toISOString() });
+        const upsertResult = await upsertSalonClient(salon.salonId, convState.clientName, { phone: phoneVal, email: emailVal });
+        // Use the upsert result id — covers booking-derived clients whose clientId was null before confirmation
+        const savedClientId = upsertResult.id ?? convState.clientId;
+        await setState(chatId, { type: 'last_client', clientId: savedClientId, name: convState.clientName, created_at: new Date().toISOString() });
         const verb = convState.clientExists ? 'Запазих' : 'Добавих нов клиент';
         const detail = phoneVal ? `телефон: <b>${phoneVal}</b>` : `имейл: <b>${emailVal}</b>`;
         await sendTelegramMessage(chatId, `✅ ${verb} <b>${convState.clientName}</b> — ${detail}`);
@@ -3010,6 +3012,8 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
     ` as { id: string; name: string; existing_phone: string | null; visit_count: number; last_visit: string | null }[];
 
     // ── If no match in salon_clients, also check bookings (older clients) ────
+    // NOTE: we do NOT pre-upsert here — upsert happens only after the user confirms.
+    // Pre-upserting before confirmation would create salon_clients rows even if the user says "не".
     let allCandidateRows = rawCandidates;
     if (rawCandidates.length === 0) {
       const bookingMatches = await sql`
@@ -3026,27 +3030,15 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
         ORDER BY client_name ASC
         LIMIT 5
       ` as { name: string; existing_phone: string | null; visit_count: number; last_visit: string | null }[];
-      // Upsert into salon_clients so future lookups work, collect their ids
+      // Add booking-derived candidates with id=null (id is assigned when the user confirms)
       for (const bm of bookingMatches) {
-        try {
-          const upserted = await sql`
-            INSERT INTO salon_clients (salon_id, name, phone)
-            VALUES (${salon.salonId}, ${bm.name}, ${bm.existing_phone ?? null})
-            ON CONFLICT (salon_id, name) DO UPDATE SET
-              phone = COALESCE(EXCLUDED.phone, salon_clients.phone),
-              updated_at = now()
-            RETURNING CAST(id AS text) AS id
-          ` as { id: string }[];
-          if (upserted[0]) {
-            allCandidateRows = [...allCandidateRows, {
-              id: upserted[0].id,
-              name: bm.name,
-              existing_phone: bm.existing_phone,
-              visit_count: bm.visit_count,
-              last_visit: bm.last_visit,
-            }];
-          }
-        } catch { /* non-fatal */ }
+        allCandidateRows = [...allCandidateRows, {
+          id: null as unknown as string,
+          name: bm.name,
+          existing_phone: bm.existing_phone,
+          visit_count: bm.visit_count,
+          last_visit: bm.last_visit,
+        }];
       }
     }
 
@@ -3084,6 +3076,7 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
     const resolvedName = match?.name ?? clientName;
     const clientId = match?.id ?? null;
     const clientExists = match !== null;
+    console.log('[TG_SAVE_CONTACT] clientName:', clientName, '| match:', match?.name ?? 'null', '| clientExists:', clientExists);
 
     const isEmail = contact.startsWith('email:');
     const contactLabel = isEmail
