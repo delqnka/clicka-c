@@ -2150,9 +2150,7 @@ export default function AdminDashboardClient({
     <div
       className="admin-mobile-root"
       style={{
-        ...(isMobile
-          ? { height: '100dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }
-          : { minHeight: '100dvh' }),
+        minHeight: '100dvh',
         background: T.bg,
         color: T.text,
         fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif)',
@@ -2196,12 +2194,13 @@ export default function AdminDashboardClient({
 
       {/* ── Top nav ───────────────────────────────────── */}
       <header style={{
-        position: isMobile ? 'relative' : 'sticky', top: 0, zIndex: 50,
-        flexShrink: 0,
+        position: 'sticky', top: 0, zIndex: 50,
         background: isMobile ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.85)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderBottom: isMobile ? '0.5px solid rgba(0,0,0,0.06)' : `1px solid ${T.border}`,
         height: isMobile ? 52 : 56,
+        transform: 'translateZ(0)',
+        willChange: 'transform',
       }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '0 16px' : '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
           {isMobile ? (
@@ -2821,7 +2820,7 @@ export default function AdminDashboardClient({
       })()}
 
       {/* ── Body layout ───────────────────────────────── */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1, ...(isMobile ? { flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties : {}) }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
 
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
@@ -2887,8 +2886,9 @@ export default function AdminDashboardClient({
             flex: 1,
             minWidth: 0,
             padding: isMobile
-              ? '16px 12px 24px 12px'
+              ? `16px 12px ${MOBILE_BOTTOM_INSET} 12px`
               : '28px 32px 48px',
+            scrollPaddingBottom: isMobile ? MOBILE_BOTTOM_INSET : undefined,
           }}
         >
 
@@ -3661,12 +3661,17 @@ export default function AdminDashboardClient({
         <nav
           aria-label="Навигация"
           style={{
-            flexShrink: 0,
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
             padding: '0 8px max(8px, env(safe-area-inset-bottom, 8px))',
             zIndex: 50,
             pointerEvents: 'none',
             width: '100%',
             boxSizing: 'border-box',
+            transform: 'translateZ(0)',
+            willChange: 'transform',
           }}
         >
           <div
