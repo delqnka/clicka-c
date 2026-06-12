@@ -37,6 +37,7 @@ export function MarketingHomeBelowFold() {
 
     const setup = () => {
       if (cancelled) return;
+      document.documentElement.classList.add('js-ready');
       const els = document.querySelectorAll('[data-reveal]');
       obs = new IntersectionObserver(
         (entries) => entries.forEach((e) => {

@@ -24,9 +24,9 @@ export const clickaMarketingSite = {
   name: 'clicka.bg',
   logoSrc: CLICKA_LOGO_PATH,
   legal: 'Clicka',
-  title: 'clicka.bg — Собствен сайт с резервации за твоя салон',
+  title: 'clicka.bg | Собствен сайт с резервации за фризьори и салони',
   description:
-    'Готов за 15 минути. 0% комисионна. Собствен домейн, Google ревюта, SEO 100/100.',
+    'За фризьори, маникюристи и козметици. Готов веднага след плащане. 0% комисионна. Собствен домейн, AI рецепционист, Google ревюта.',
   hero: {
     webm: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_HERO_VIDEO_WEBM) || '',
     mp4: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_HERO_VIDEO_MP4) || '',
