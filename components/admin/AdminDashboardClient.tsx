@@ -3373,15 +3373,43 @@ export default function AdminDashboardClient({
                 isMobile={isMobile}
                 T={T}
                 onEdit={async (key, data) => {
-                  const id = key.slice(3);
-                  await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, ...data }),
-                  });
-                  setExtraClients((prev) => prev.map((c) =>
-                    c.key === key ? { ...c, name: data.name, phone: data.phone, email: data.email } : c
-                  ));
+                  if (key.startsWith('sc-')) {
+                    const id = key.slice(3);
+                    await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id, ...data }),
+                    });
+                    setExtraClients((prev) => prev.map((c) =>
+                      c.key === key ? { ...c, name: data.name, phone: data.phone, email: data.email } : c
+                    ));
+                  } else {
+                    // Booking-derived client — upsert into salon_clients
+                    const r = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: data.name, phone: data.phone, email: data.email }),
+                    });
+                    const json = await r.json() as { client?: { id: string } };
+                    if (json.client?.id) {
+                      const newKey = `sc-${json.client.id}`;
+                      const original = clients.find((c) => c.key === key);
+                      setExtraClients((prev) => {
+                        const exists = prev.some((c) => c.key === newKey);
+                        if (exists) return prev.map((c) => c.key === newKey ? { ...c, ...data } : c);
+                        return [...prev, {
+                          key: newKey,
+                          name: data.name,
+                          phone: data.phone,
+                          email: data.email,
+                          visits: original?.visits ?? 0,
+                          totalSpent: original?.totalSpent ?? 0,
+                          lastVisit: original?.lastVisit ?? '',
+                        }];
+                      });
+                      setHiddenClientKeys((prev) => new Set([...prev, key]));
+                    }
+                  }
                 }}
                 onDelete={(key) => {
                   // For salon_clients (sc-*) — delete from DB

@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
   const salonId = auth.salon.salonId;
 
-  let body: { name?: string; phone?: string };
+  let body: { name?: string; phone?: string; email?: string };
   try {
     body = await request.json();
   } catch {
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
 
   const name = body.name?.trim();
   const phone = body.phone?.trim() || null;
+  const email = body.email?.trim().toLowerCase() || null;
   if (!name) {
     return NextResponse.json({ error: 'Името е задължително.' }, { status: 400 });
   }
@@ -96,10 +97,12 @@ export async function POST(request: NextRequest) {
   await ensureSalonClientsSchema();
 
   const rows = await sql`
-    INSERT INTO salon_clients (salon_id, name, phone)
-    VALUES (${salonId}, ${name}, ${phone})
-    ON CONFLICT (salon_id, name) DO UPDATE SET phone = COALESCE(EXCLUDED.phone, salon_clients.phone)
-    RETURNING id, name, phone
+    INSERT INTO salon_clients (salon_id, name, phone, email)
+    VALUES (${salonId}, ${name}, ${phone}, ${email})
+    ON CONFLICT (salon_id, name) DO UPDATE SET
+      phone = COALESCE(EXCLUDED.phone, salon_clients.phone),
+      email = COALESCE(EXCLUDED.email, salon_clients.email)
+    RETURNING id, name, phone, email
   `;
 
   return NextResponse.json({ client: rows[0] });

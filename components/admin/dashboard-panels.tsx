@@ -501,8 +501,7 @@ export function ClientsPanel({
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                {/* Edit — only for salon_clients records */}
-                {onEdit && client.key.startsWith('sc-') && confirmKey !== client.key && (
+                {onEdit && confirmKey !== client.key && (
                   <button
                     type="button"
                     onClick={() => setEditDraft({ key: client.key, id: client.key.slice(3), name: client.name, phone: client.phone, email: client.email })}

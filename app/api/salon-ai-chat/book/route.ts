@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
 
     const { salonId, staffName, serviceName, date, time, clientName, clientPhone, clientEmail } = body;
 
+    console.log('[AI BOOK]', { salonId, serviceName, date, time, clientName, hasPhone: !!clientPhone, hasEmail: !!clientEmail });
+
     if (!salonId || !serviceName || !date || !time || !clientName || !clientPhone) {
+      console.error('[AI BOOK] missing fields', { salonId: !!salonId, serviceName: !!serviceName, date: !!date, time: !!time, clientName: !!clientName, clientPhone: !!clientPhone });
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
@@ -39,6 +42,14 @@ export async function POST(req: NextRequest) {
     const salon = salonRows[0]!;
     const isTeamPlan = String(salon.plan ?? '') === 'team';
 
+    // Normalize date — AI may generate DD.MM.YYYY or DD/MM/YYYY instead of YYYY-MM-DD
+    const normalizeDate = (raw: string): string => {
+      const dmyMatch = raw.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+      if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]!.padStart(2, '0')}-${dmyMatch[1]!.padStart(2, '0')}`;
+      return raw;
+    };
+    const normalizedDate = normalizeDate(date);
+
     // Find staff member by name (team plan only)
     let staff: { id: string; name: string; role?: string; email?: string; telegram_chat_id?: string } | null = null;
     if (isTeamPlan && staffName) {
@@ -52,9 +63,19 @@ export async function POST(req: NextRequest) {
       ` as { id: string; name: string; role?: string; email?: string; telegram_chat_id?: string }[];
 
       if (staffRows.length === 0) {
-        return NextResponse.json({ error: 'Staff not found', staffName }, { status: 404 });
+        // Fuzzy fallback — partial name match (AI may generate slightly different spelling)
+        const fuzzyRows = await sql`
+          SELECT id, name, role, email, telegram_chat_id
+          FROM staff_members
+          WHERE salon_id = ${salonId}
+            AND is_active = true
+            AND lower(name) LIKE ${`%${staffName.toLowerCase().slice(0, 6)}%`}
+          LIMIT 1
+        ` as { id: string; name: string; role?: string; email?: string; telegram_chat_id?: string }[];
+        staff = fuzzyRows[0] ?? null;
+      } else {
+        staff = staffRows[0]!;
       }
-      staff = staffRows[0]!;
     }
 
     // Resolve service duration from salon.services json
@@ -85,7 +106,7 @@ export async function POST(req: NextRequest) {
       serviceName,
       servicePrice,
       serviceDuration,
-      date,
+      date: normalizedDate,
       time,
       notes: 'Записан през AI чат',
       smsReminderConsent: false,
@@ -119,7 +140,7 @@ export async function POST(req: NextRequest) {
         clientPhone,
         serviceName,
         servicePrice: servicePrice ?? undefined,
-        date,
+        date: normalizedDate,
         time,
         notes: notesLine,
       },
@@ -128,7 +149,7 @@ export async function POST(req: NextRequest) {
         clientName,
         clientPhone,
         serviceName,
-        date,
+        date: normalizedDate,
         time,
         notes: notesLine,
       },
@@ -138,7 +159,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       bookingId: result.id,
       staffName: staff?.name ?? null,
-      date,
+      date: normalizedDate,
       time,
       serviceName,
     });
