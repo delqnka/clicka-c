@@ -107,11 +107,15 @@ export function MarketingHomePricingSection() {
           И можеш да приемаш резервации веднага.
         </p>
         <div style={{ marginBottom: 36, maxWidth: 720 }}>
-          <p style={{ fontSize: 'clamp(16px,2vw,20px)', fontWeight: 600, color: 'var(--foreground)', marginBottom: 10, lineHeight: 1.5 }}>
-            Искаш собствен домейн? Можеш да го свържеш сам без допълнителна такса. Или ние го регистрираме и настройваме вместо теб, услугата се заплаща допълнително.
+          <p style={{ fontSize: 'clamp(15px,1.8vw,18px)', fontWeight: 500, color: 'var(--foreground)', marginBottom: 8, lineHeight: 1.6 }}>
+            Искаш собствен домейн? Можеш да го свържеш сам — без допълнителна такса.
+            Или ние го регистрираме и настройваме вместо теб — такса за услугата <strong>19.99 €</strong>.
           </p>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.6 }}>
-            Домейнът се регистрира на твоето име и остава твоя собственост.
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 6px', lineHeight: 1.7 }}>
+            Цена на домейн (годишно): <strong style={{ color: '#0f0f0f' }}>.com — 12 €</strong> · <strong style={{ color: '#0f0f0f' }}>.bg — 32 €</strong> · <strong style={{ color: '#0f0f0f' }}>.org — 8 €</strong> · <strong style={{ color: '#0f0f0f' }}>.info — 8 €</strong>
+          </p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', margin: 0, lineHeight: 1.6 }}>
+            Домейнът се регистрира на твоето иМЕ и остава твоя собственост.
           </p>
         </div>
 
