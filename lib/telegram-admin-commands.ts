@@ -73,7 +73,9 @@ type ConvState =
   | { type: 'last_imported_services'; serviceNames: string[]; created_at: string }
   | { type: 'last_client'; clientId: string | null; name: string; created_at: string }
   | { type: 'last_booking'; bookingId: string; clientName: string; clientId: string | null; date: string; time: string; serviceName: string; created_at: string }
-  | { type: 'last_service'; name: string; created_at: string };
+  | { type: 'last_service'; name: string; created_at: string }
+  | { type: 'waiting_confirm_save_phone'; clientName: string; phone: string; clientId: string | null; clientExists: boolean; created_at: string }
+  | { type: 'waiting_disambig_save_phone'; candidates: { name: string; id: string; hint: string }[]; contact: string; created_at: string };
 
 async function getState(chatId: number): Promise<ConvState | null> {
   try {
@@ -226,6 +228,11 @@ const DELETE_IMPORTED_SERVICES_RE =
   /^(?:изтри[йи]|махни|премахни|изчисти)\s+(?:тези\s+)?(?:всички\s+)?(?:добавените?|внесените?|импортираните?|тези)\s+услуги(?:те)?$/i;
 
 const PRICE_LIST_CAPTION_RE = /ценоразпис|прайс\s*лист|услуги\s+цени|price\s*list/i;
+
+// Matches "номер на X", "телефона на X", "дай (ми) номера на X" etc. — without a phone number in the text
+// Used to route directly to client_phone lookup (not save_client_contact)
+const GET_CLIENT_PHONE_RE =
+  /^(?:(?:дай\s+(?:ми\s+)?)?(?:номер[а]?|телефон[а]?(?:та)?)\s+(?:на\s+)?|какъв\s+е\s+телефон[аъ](?:т)?\s+(?:на\s+)?)(.+)$/i;
 
 const FREE_SLOTS_RE =
   /(?:кога\s+(?:има\s+)?(?:свободн[оеа]|може|мога|мож[еа]\s+да\s+запиш[еа]?|има\s+час|е\s+свободн[оеа]))|(?:свободн[иоеа]\s+(?:часов[еa]?|час[аa]?|места?))|(?:има\s+ли\s+свободн[оеа])|(?:кога\s+(?:мога|можем)\s+да\s+(?:запиш[еа]?|дойд[еа]?))|(?:покажи\s+свободн[иоеа])|(?:кога\s+(?:си|сте)\s+свободн[иоеа]?)|(?:кога\s+следващи[ят]\s+свободен)/i;
@@ -783,6 +790,23 @@ export async function handleAdminCommand(
         const stripped = text.replace(ACTION_PREFIX_RE, '').trim();
         const handled = await handleNewClientWithBooking(chatId, text, stripped, salon);
         if (handled) return true;
+      }
+    }
+  }
+
+  // ── "Номер на X" / "телефон на X" without a phone number → client_phone lookup ──
+  // Guards against AI misrouting "номер на Мария Петрова" to save_client_contact
+  // with the full phrase as the client name.
+  {
+    const BARE_PHONE_PRESENT_RE = /\+?(?:359|0)\d[\d\s\-]{6,12}\d/;
+    const clientPhoneMatch = text.match(GET_CLIENT_PHONE_RE);
+    if (clientPhoneMatch && !BARE_PHONE_PRESENT_RE.test(text)) {
+      const clientName = clientPhoneMatch[1]!.trim();
+      // Sanity check: name shouldn't look like a bare phone number or contain booking signals
+      const BOOKING_SIGNALS_RE2 = /\d{1,2}:\d{2}|утре|днес|понеделник|вторник|сряда|четвъртък|петък|събота|неделя/i;
+      if (clientName && !BOOKING_SIGNALS_RE2.test(clientName)) {
+        await handleClientPhone(chatId, salon, clientName);
+        return true;
       }
     }
   }
@@ -1435,6 +1459,71 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
       // Not a yes/no — clear state and fall through to AI
       await clearState(chatId);
     }
+
+    // ── waiting_confirm_save_phone: confirm before adding phone/email to client ─
+    if (convState.type === 'waiting_confirm_save_phone') {
+      if (CONFIRM_RE.test(text.trim())) {
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        const isEmail = convState.phone.startsWith('email:');
+        const emailVal = isEmail ? convState.phone.slice(6) : undefined;
+        const phoneVal = isEmail ? undefined : convState.phone;
+        await upsertSalonClient(salon.salonId, convState.clientName, { phone: phoneVal, email: emailVal });
+        await setState(chatId, { type: 'last_client', clientId: convState.clientId, name: convState.clientName, created_at: new Date().toISOString() });
+        const verb = convState.clientExists ? 'Запазих' : 'Добавих нов клиент';
+        const detail = phoneVal ? `телефон: <b>${phoneVal}</b>` : `имейл: <b>${emailVal}</b>`;
+        await sendTelegramMessage(chatId, `✅ ${verb} <b>${convState.clientName}</b> — ${detail}`);
+        await appendHistory(chatId, 'assistant', `[save_client_contact: ${convState.clientName}${phoneVal ? `, tel: ${phoneVal}` : ''}${emailVal ? `, email: ${emailVal}` : ''}]`);
+        return true;
+      }
+      if (DENY_RE.test(text.trim())) {
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        await sendTelegramMessage(chatId, `ОК, нищо не е записано.`);
+        return true;
+      }
+      // User sent something else — notify and clear, then process the new command normally
+      await clearState(chatId);
+      const isEmailCancel = convState.phone.startsWith('email:');
+      const cancelDetail = isEmailCancel ? `имейл за <b>${convState.clientName}</b>` : `телефон за <b>${convState.clientName}</b>`;
+      await sendTelegramMessage(chatId, `⚠️ Добавянето на ${cancelDetail} е отменено.`);
+    }
+
+    // ── waiting_disambig_save_phone: user picks which client to add phone to ─
+    if (convState.type === 'waiting_disambig_save_phone') {
+      const pickMatch = text.trim().match(/^(?:за\s+)?(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)[.\s]*$/i);
+      if (pickMatch) {
+        const idx = resolveOrdinalToIndex(pickMatch[1]!);
+        const candidate = idx !== null ? convState.candidates[idx] : undefined;
+        if (!candidate) {
+          await sendTelegramMessage(chatId, `⚠️ Невалиден избор. Отговори с число от 1 до ${convState.candidates.length}.`);
+          return true;
+        }
+        await clearState(chatId);
+        await appendHistory(chatId, 'user', text);
+        await setState(chatId, {
+          type: 'waiting_confirm_save_phone',
+          clientName: candidate.name,
+          phone: convState.contact,
+          clientId: candidate.id,
+          clientExists: true,
+          created_at: new Date().toISOString(),
+        });
+        const isEmail = convState.contact.startsWith('email:');
+        const contactLabel = isEmail
+          ? `✉️ Да добавя ли имейл:\n<b>${convState.contact.slice(6)}</b>`
+          : `📞 Да добавя ли телефон:\n<b>${convState.contact}</b>`;
+        await sendTelegramMessage(chatId, `👤 Намерих клиент:\n<b>${candidate.name}</b>\n\n${contactLabel}\n\n<i>Отговори да / не</i>`);
+        return true;
+      }
+      if (DENY_RE.test(text.trim())) {
+        await clearState(chatId);
+        await sendTelegramMessage(chatId, `ОК, нищо не е записано.`);
+        return true;
+      }
+      // Something else — clear and fall through
+      await clearState(chatId);
+    }
   }
 
   // ── waiting_entity_clarification: user answered "2" / "за 2" / "втория" ───
@@ -1626,13 +1715,17 @@ ${servicesJson}
 
 ТЕЛЕФОН НА КЛИЕНТ (client_phone):
   "дай ми номера на Мария", "какъв е телефонът на Иван", "номера на Деляна", "телефон на клиента"
+  "номер на Мария Петрова", "телефон на Ваня Велчева"  ← БЕЗ цифри = търсене, НЕ запазване!
   → { "action": "client_phone", "client_name": "Мария" }
+  ВАЖНО: "номер на X" / "телефон на X" БЕЗ цифри в текста = client_phone (ТЪРСЕНЕ), НЕ save_client_contact!
+  НЕ използвай пълния текст като client_name — извлечи САМО името след "на".
 
 ЗАПАЗИ КОНТАКТ НА КЛИЕНТ (save_client_contact):
   Само когато няма дата/час/услуга — просто се запазва контакт.
   "телефонът на Мария е 0888123456", "Иван има имейл ivan@mail.com", "добави тел на Деляна 0877000111"
   "добави нов клиент Румен Иванов 0899000111", "нов клиент Анна с имейл anna@mail.com"
   → { "action": "save_client_contact", "client_name": "Мария", "phone": "0888123456" }
+  ВАЖНО: Никога не подавай цялата команда като client_name ("номер на Мария" НЕ е клиентско ime)!
   → { "action": "save_client_contact", "client_name": "Иван", "email": "ivan@mail.com" }
   ВАЖНО: Ако съобщението съдържа И телефон, И услуга, И дата → използвай create_booking (с phone поле), НЕ save_client_contact.
   Телефонът и имейлът са незадължителни — може да се подадат един или двата. Никога не измисляй телефон/имейл ако не са изрично написани.
@@ -2890,10 +2983,107 @@ async function getNextBookingForClient(salonId: string, clientName: string): Pro
 }
 
 async function handleSaveClientContact(chatId: number, salon: SalonRef, clientName: string, phone?: string, email?: string): Promise<void> {
+  // All write operations (phone/email) go through a confirmation step.
+  if (phone || email) {
+    const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
+    await ensureSalonClientsSchema();
+
+    // Partial name search with visit count hint — used for disambiguation display.
+    // JOIN with bookings so duplicates (same name) can be told apart.
+    const rawCandidates = await sql`
+      SELECT
+        CAST(sc.id AS text) AS id,
+        sc.name,
+        sc.phone AS existing_phone,
+        COUNT(b.id)::int AS visit_count,
+        MAX(b.date) AS last_visit
+      FROM salon_clients sc
+      LEFT JOIN bookings b
+        ON lower(b.client_name) = lower(sc.name)
+        AND CAST(b.salon_id AS text) = ${salon.salonId}
+        AND b.status NOT IN ('cancelled')
+      WHERE sc.salon_id = ${salon.salonId}
+        AND lower(sc.name) LIKE ${`%${clientName.toLowerCase()}%`}
+      GROUP BY sc.id, sc.name, sc.phone
+      ORDER BY sc.name ASC
+      LIMIT 5
+    ` as { id: string; name: string; existing_phone: string | null; visit_count: number; last_visit: string | null }[];
+
+    // Build hint string per candidate for disambiguation display
+    const candidates = rawCandidates.map(c => {
+      const parts: string[] = [];
+      if (c.existing_phone) parts.push(`тел: ${c.existing_phone.slice(-4).padStart(c.existing_phone.length, '*').slice(-8)}`);
+      if (c.visit_count > 0) parts.push(`${c.visit_count} посещения`);
+      if (c.last_visit) parts.push(`последно ${c.last_visit.slice(8, 10)}.${c.last_visit.slice(5, 7)}`);
+      return { id: c.id, name: c.name, hint: parts.join(' · ') };
+    });
+
+    // contact encodes either a phone or "email:xxx" — preserved through all state transitions
+    const contact = phone ?? (email ? `email:${email}` : '');
+
+    // ── Multiple matches → disambiguation first ──────────────────────────────
+    if (candidates.length > 1) {
+      await setState(chatId, {
+        type: 'waiting_disambig_save_phone',
+        candidates,
+        contact,
+        created_at: new Date().toISOString(),
+      });
+      const lines = [`🔍 Намерих няколко клиента:\n`];
+      candidates.forEach((c, i) => {
+        lines.push(c.hint ? `${i + 1}. <b>${c.name}</b> — ${c.hint}` : `${i + 1}. <b>${c.name}</b>`);
+      });
+      lines.push(`\nКой имаш предвид?`);
+      await sendTelegramMessage(chatId, lines.join('\n'));
+      return;
+    }
+
+    // ── Single match or no match → confirmation card ─────────────────────────
+    const match = rawCandidates[0] ?? null;
+    const resolvedName = match?.name ?? clientName;
+    const clientId = match?.id ?? null;
+    const clientExists = match !== null;
+
+    const isEmail = contact.startsWith('email:');
+    const contactLabel = isEmail
+      ? `✉️ Да добавя ли имейл:\n<b>${contact.slice(6)}</b>`
+      : `📞 Да добавя ли телефон:\n<b>${contact}</b>`;
+
+    if (clientExists) {
+      await setState(chatId, {
+        type: 'waiting_confirm_save_phone',
+        clientName: resolvedName,
+        phone: contact,
+        clientId,
+        clientExists: true,
+        created_at: new Date().toISOString(),
+      });
+      await sendTelegramMessage(
+        chatId,
+        `👤 Намерих клиент:\n<b>${resolvedName}</b>\n\n${contactLabel}\n\n<i>Отговори да / не</i>`,
+      );
+    } else {
+      await setState(chatId, {
+        type: 'waiting_confirm_save_phone',
+        clientName,
+        phone: contact,
+        clientId: null,
+        clientExists: false,
+        created_at: new Date().toISOString(),
+      });
+      await sendTelegramMessage(
+        chatId,
+        `⚠️ Клиентът <b>${clientName}</b> не е в базата.\n\nДа създам ли нов клиент с:\n${contactLabel}\n\n<i>Отговори да / не</i>`,
+      );
+    }
+    return;
+  }
+
+  // No phone or email — just create/register the client name, no confirmation needed
   let clientId: string | null = null;
   let isNew = true;
   try {
-    const result = await upsertSalonClient(salon.salonId, clientName, { phone, email });
+    const result = await upsertSalonClient(salon.salonId, clientName, {});
     clientId = result.id;
     isNew = result.isNew;
   } catch (err) {
@@ -2902,15 +3092,11 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
     return;
   }
   await setState(chatId, { type: 'last_client', clientId, name: clientName, created_at: new Date().toISOString() });
-  const parts: string[] = [];
-  if (phone) parts.push(`телефон: <b>${phone}</b>`);
-  if (email) parts.push(`имейл: <b>${email}</b>`);
-  const detail = parts.length ? ` — ${parts.join(', ')}` : '';
   const reply = isNew
-    ? `✅ Добавен е нов клиент <b>${clientName}</b>${detail}.`
-    : `✅ Запазих за <b>${clientName}</b>${detail}.`;
+    ? `✅ Добавен е нов клиент <b>${clientName}</b>.\n\n<i>Изпрати телефонния номер за да го запиша.</i>`
+    : `✅ Клиент <b>${clientName}</b> вече е в базата.`;
   await sendTelegramMessage(chatId, reply);
-  await appendHistory(chatId, 'assistant', `[save_client_contact: ${clientName}${phone ? `, tel: ${phone}` : ''}${email ? `, email: ${email}` : ''}]`);
+  await appendHistory(chatId, 'assistant', `[save_client_contact: ${clientName}]`);
 }
 
 async function handleSaveClientNote(chatId: number, salon: SalonRef, clientName: string, note: string): Promise<void> {
@@ -3881,22 +4067,20 @@ async function handleNewClientWithBooking(
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Save client contact (non-fatal — booking message covers the response)
-  await upsertSalonClient(salon.salonId, clientName, { phone, email }).catch((err: unknown) => {
-    console.error('[TG_CLIENT] upsertSalonClient failed (non-fatal):', err);
-  });
-
-  if (date && time && servicePart) {
-    // Full combo: client + phone + booking
-    await handleCreateBooking(chatId, salon, clientName, servicePart, date, time, phone ?? '', email ?? '');
-  } else if (date && time) {
-    await sendTelegramMessage(chatId, `✅ Клиент <b>${clientName}</b> запазен${phone ? ` (${phone})` : ''}.\n⚠️ Не разбрах услугата — запиши часа ръчно или уточни.`);
+  if (date && time) {
+    // Booking path — save contact silently, then create the booking.
+    // No confirmation needed: the booking response itself confirms the whole action.
+    await upsertSalonClient(salon.salonId, clientName, { phone, email }).catch((err: unknown) => {
+      console.error('[TG_CLIENT] upsertSalonClient failed (non-fatal):', err);
+    });
+    if (servicePart) {
+      await handleCreateBooking(chatId, salon, clientName, servicePart, date, time, phone ?? '', email ?? '');
+    } else {
+      await sendTelegramMessage(chatId, `✅ Клиент <b>${clientName}</b> запазен${phone ? ` (${phone})` : ''}.\n⚠️ Не разбрах услугата — запиши часа ръчно или уточни.`);
+    }
   } else {
-    // Only client info, no booking
-    const parts: string[] = [];
-    if (phone) parts.push(`тел: <b>${phone}</b>`);
-    if (email) parts.push(`имейл: <b>${email}</b>`);
-    await sendTelegramMessage(chatId, `✅ Запазих за <b>${clientName}</b>${parts.length ? ` — ${parts.join(', ')}` : ''}.`);
+    // No booking — only contact info. Route through confirmation flow.
+    await handleSaveClientContact(chatId, salon, clientName, phone, email);
   }
   return true;
 }
