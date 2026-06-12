@@ -378,13 +378,7 @@ export default function AdminDashboardClient({
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>(() => {
-    try {
-      const saved = localStorage.getItem(`admin-tab:${slug}`);
-      if (saved && TABS.some(t => t.id === saved)) return saved as TabId;
-    } catch { /* ignore */ }
-    return 'site';
-  });
+  const [activeTab, setActiveTab] = useState<TabId>('site');
   const [siteNav, setSiteNav] = useState<{ section: string; v: number } | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
@@ -659,8 +653,16 @@ export default function AdminDashboardClient({
     const p = new URLSearchParams(window.location.search);
     let t = p.get('tab');
     if (t === 'notifications') t = p.get('smsPurchase') ? 'sms' : 'integrations';
-    if (t && TABS.some(tab => tab.id === t)) setActiveTab(t as TabId);
-  }, []);
+    if (t && TABS.some(tab => tab.id === t)) {
+      setActiveTab(t as TabId);
+      return;
+    }
+    // Restore last visited tab from localStorage (client-only, no SSR)
+    try {
+      const saved = localStorage.getItem(`admin-tab:${slug}`);
+      if (saved && TABS.some(tab => tab.id === saved)) setActiveTab(saved as TabId);
+    } catch { /* ignore */ }
+  }, [slug]);
 
   // Trap browser back-swipe without adding a duplicate history entry on load.
   useEffect(() => {
