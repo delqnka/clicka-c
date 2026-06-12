@@ -395,6 +395,7 @@ export function BookingsPanel({
 }
 
 type EditDraft = { key: string; id: string; name: string; phone: string; email: string };
+type ClientSort = 'newest' | 'visits' | 'alpha';
 
 export function ClientsPanel({
   clients,
@@ -412,6 +413,33 @@ export function ClientsPanel({
   const [confirmKey, setConfirmKey] = React.useState<string | null>(null);
   const [editDraft, setEditDraft] = React.useState<EditDraft | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [sortBy, setSortBy] = React.useState<ClientSort>('newest');
+  const frozenOrderRef = React.useRef<string[] | null>(null);
+
+  const sortedClients = React.useMemo(() => {
+    const arr = [...clients];
+    if (sortBy === 'alpha') return arr.sort((a, b) => a.name.localeCompare(b.name, 'bg'));
+    if (sortBy === 'visits') return arr.sort((a, b) => b.visits - a.visits || b.lastVisit.localeCompare(a.lastVisit));
+    return arr.sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
+  }, [clients, sortBy]);
+
+  const displayClients = React.useMemo(() => {
+    if (frozenOrderRef.current) {
+      const map = new Map(clients.map(c => [c.key, c]));
+      return frozenOrderRef.current.map(k => map.get(k)).filter(Boolean) as ClientSummary[];
+    }
+    return sortedClients;
+  }, [clients, sortedClients]);
+
+  function openEdit(client: ClientSummary) {
+    frozenOrderRef.current = sortedClients.map(c => c.key);
+    setEditDraft({ key: client.key, id: client.key.slice(3), name: client.name, phone: client.phone, email: client.email });
+  }
+
+  function closeEdit() {
+    frozenOrderRef.current = null;
+    setEditDraft(null);
+  }
 
   if (clients.length === 0) {
     return (
@@ -421,13 +449,19 @@ export function ClientsPanel({
     );
   }
 
+  const SORT_OPTIONS: { id: ClientSort; label: string }[] = [
+    { id: 'newest', label: 'Най-нови' },
+    { id: 'visits', label: 'Резервации' },
+    { id: 'alpha', label: 'А–Я' },
+  ];
+
   return (
     <>
     {/* Edit modal */}
     {editDraft && (
       <div
         style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', padding: 16 }}
-        onClick={() => setEditDraft(null)}
+        onClick={closeEdit}
       >
         <div
           style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 12 }}
@@ -452,7 +486,7 @@ export function ClientsPanel({
                 setSaving(true);
                 await onEdit?.(editDraft.key, { name: editDraft.name, phone: editDraft.phone, email: editDraft.email });
                 setSaving(false);
-                setEditDraft(null);
+                closeEdit();
               }}
               style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#e11d48,#a855f7)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
             >
@@ -460,7 +494,7 @@ export function ClientsPanel({
             </button>
             <button
               type="button"
-              onClick={() => setEditDraft(null)}
+              onClick={closeEdit}
               style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${T.border}`, background: 'transparent', fontSize: 14, cursor: 'pointer', color: T.muted }}
             >
               Отказ
@@ -469,8 +503,33 @@ export function ClientsPanel({
         </div>
       </div>
     )}
+
+    {/* Sort controls */}
+    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+      {SORT_OPTIONS.map(opt => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => setSortBy(opt.id)}
+          style={{
+            padding: '5px 12px',
+            borderRadius: 20,
+            border: `1px solid ${sortBy === opt.id ? '#18181B' : T.border}`,
+            background: sortBy === opt.id ? '#18181B' : 'transparent',
+            color: sortBy === opt.id ? '#fff' : T.muted,
+            fontSize: 12,
+            fontWeight: sortBy === opt.id ? 600 : 400,
+            cursor: 'pointer',
+            transition: 'all 120ms',
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+
     <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
-      {clients.map(client => (
+      {displayClients.map(client => (
         <div
           key={client.key}
           style={{
@@ -504,7 +563,7 @@ export function ClientsPanel({
                 {onEdit && confirmKey !== client.key && (
                   <button
                     type="button"
-                    onClick={() => setEditDraft({ key: client.key, id: client.key.slice(3), name: client.name, phone: client.phone, email: client.email })}
+                    onClick={() => openEdit(client)}
                     style={{ fontSize: 13, color: T.subtle, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}
                     title="Редактирай"
                   >

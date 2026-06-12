@@ -171,6 +171,13 @@ const SHEET_GROUPS: { label: string; ids: TabId[] }[] = [
 ];
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 
+const SIDEBAR_GROUPS: { label?: string; ids: TabId[] }[] = [
+  { ids: ['bookings', 'clients'] },
+  { label: 'Сайт', ids: ['site', 'images', 'services', 'offers', 'brands', 'blog'] },
+  { label: 'Екип', ids: ['specialist', 'staff'] },
+  { label: 'Настройки', ids: ['hours', 'sms', 'integrations', 'marketing', 'domain', 'payments', 'legal', 'account'] },
+];
+
 const ICON_GRADIENT = 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)';
 /** Space for fixed mobile bottom tab bar (bar + safe area + tap margin). */
 const MOBILE_BOTTOM_INSET = 'calc(96px + env(safe-area-inset-bottom, 0px))';
@@ -371,7 +378,13 @@ export default function AdminDashboardClient({
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('site');
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    try {
+      const saved = localStorage.getItem(`admin-tab:${slug}`);
+      if (saved && TABS.some(t => t.id === saved)) return saved as TabId;
+    } catch { /* ignore */ }
+    return 'site';
+  });
   const [siteNav, setSiteNav] = useState<{ section: string; v: number } | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
@@ -1844,7 +1857,13 @@ export default function AdminDashboardClient({
   const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: isMobile ? 14 : 12 };
 
   /* ── Nav tab switch ── */
-  const switchTab = (id: TabId) => { setActiveTab(id); setError(''); setNotice(''); setNavOpen(false); };
+  const switchTab = (id: TabId) => {
+    setActiveTab(id);
+    setError('');
+    setNotice('');
+    setNavOpen(false);
+    try { localStorage.setItem(`admin-tab:${slug}`, id); } catch { /* ignore */ }
+  };
   async function saveOffers() {
     setError('');
     setNotice('');
@@ -2129,7 +2148,9 @@ export default function AdminDashboardClient({
     <div
       className="admin-mobile-root"
       style={{
-        minHeight: '100dvh',
+        ...(isMobile
+          ? { height: '100dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }
+          : { minHeight: '100dvh' }),
         background: T.bg,
         color: T.text,
         fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif)',
@@ -2173,13 +2194,12 @@ export default function AdminDashboardClient({
 
       {/* ── Top nav ───────────────────────────────────── */}
       <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
+        position: isMobile ? 'relative' : 'sticky', top: 0, zIndex: 50,
+        flexShrink: 0,
         background: isMobile ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.85)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderBottom: isMobile ? '0.5px solid rgba(0,0,0,0.06)' : `1px solid ${T.border}`,
         height: isMobile ? 52 : 56,
-        transform: 'translateZ(0)',
-        willChange: 'transform',
       }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '0 16px' : '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
           {isMobile ? (
@@ -2799,7 +2819,7 @@ export default function AdminDashboardClient({
       })()}
 
       {/* ── Body layout ───────────────────────────────── */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1, ...(isMobile ? { flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties : {}) }}>
 
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
@@ -2810,62 +2830,51 @@ export default function AdminDashboardClient({
             background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '14px 8px',
             display: 'flex', flexDirection: 'column', gap: 2,
           }}>
-            {TABS.map(({ id, label, Icon }) => {
-              const active = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => switchTab(id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '7px 10px', borderRadius: T.radiusSm,
-                    border: active ? '1px solid #E4E4E7' : '1px solid transparent',
-                    width: '100%', textAlign: 'left',
-                    background: '#fff',
-                    color: active ? T.text : T.muted,
-                    fontSize: 14, fontWeight: active ? 600 : 400,
-                    cursor: 'pointer',
-                    transition: 'background 120ms, color 120ms',
-                  }}
-                >
-                  <Icon size={14} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1 }}>{label}</span>
-                  {active && <ChevronRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />}
-                </button>
-              );
-            })}
-
-            <div style={{ flex: 1 }} />
-
-            <a
-              href="https://t.me/clickabg_support"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '7px 10px', borderRadius: T.radiusSm,
-                border: '1px solid transparent',
-                width: '100%', textAlign: 'left',
-                background: 'transparent',
-                color: T.muted,
-                fontSize: 14, fontWeight: 400,
-                cursor: 'pointer',
-                textDecoration: 'none',
-                transition: 'background 120ms, color 120ms',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLAnchorElement).style.background = '#f4f4f5';
-                (e.currentTarget as HTMLAnchorElement).style.color = T.text;
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                (e.currentTarget as HTMLAnchorElement).style.color = T.muted;
-              }}
-            >
-              <LifeBuoy size={14} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>Поддръжка</span>
-            </a>
+            {SIDEBAR_GROUPS.map((group, gi) => (
+              <div key={gi} style={{ marginBottom: gi < SIDEBAR_GROUPS.length - 1 ? 4 : 0 }}>
+                {group.label && (
+                  <div style={{
+                    padding: '6px 10px 4px',
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+                    color: T.subtle, textTransform: 'uppercase',
+                    userSelect: 'none',
+                  }}>
+                    {group.label}
+                  </div>
+                )}
+                {group.ids.map(id => {
+                  const tab = TABS.find(t => t.id === id)!;
+                  const active = activeTab === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => switchTab(id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '7px 10px', borderRadius: T.radiusSm,
+                        border: active ? '1px solid #E4E4E7' : '1px solid transparent',
+                        width: '100%', textAlign: 'left',
+                        background: active ? '#fff' : 'transparent',
+                        color: active ? T.text : T.muted,
+                        fontSize: 14, fontWeight: active ? 600 : 400,
+                        cursor: 'pointer',
+                        transition: 'background 120ms, color 120ms',
+                      }}
+                      onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = '#f4f4f5'; (e.currentTarget as HTMLButtonElement).style.color = T.text; } }}
+                      onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = T.muted; } }}
+                    >
+                      <tab.Icon size={14} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>{tab.label}</span>
+                      {active && <ChevronRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />}
+                    </button>
+                  );
+                })}
+                {gi < SIDEBAR_GROUPS.length - 1 && (
+                  <div style={{ height: 1, background: T.border, margin: '6px 10px 2px' }} />
+                )}
+              </div>
+            ))}
 
           </aside>
         )}
@@ -2876,9 +2885,8 @@ export default function AdminDashboardClient({
             flex: 1,
             minWidth: 0,
             padding: isMobile
-              ? `16px 12px ${MOBILE_BOTTOM_INSET} 12px`
+              ? '16px 12px 24px 12px'
               : '28px 32px 48px',
-            scrollPaddingBottom: isMobile ? MOBILE_BOTTOM_INSET : undefined,
           }}
         >
 
@@ -3651,17 +3659,12 @@ export default function AdminDashboardClient({
         <nav
           aria-label="Навигация"
           style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
+            flexShrink: 0,
             padding: '0 8px max(8px, env(safe-area-inset-bottom, 8px))',
             zIndex: 50,
             pointerEvents: 'none',
             width: '100%',
             boxSizing: 'border-box',
-            transform: 'translateZ(0)',
-            willChange: 'transform',
           }}
         >
           <div
