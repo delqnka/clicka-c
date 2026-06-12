@@ -153,66 +153,6 @@ export function PriceListImportSection() {
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,5vw,56px)' }}>
-          <h2 style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(16px,3vw,28px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Как работи?
-          </h2>
-          {/* Steps */}
-          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0, marginBottom: 'clamp(80px,12vw,120px)', textAlign: 'left' }}>
-            {[
-              { n: '1', text: 'Избираш план', green: false },
-              { n: '✓', text: 'Сайтът ти е готов веднага', green: true },
-              { n: '3', text: 'Качваш снимка на услугите си', green: false },
-              { n: '4', text: 'Свързваш Telegram за известия', green: false },
-              { n: '✓', text: 'Вече приемаш резервации', green: true },
-            ].map((s, i, arr) => (
-              <div key={s.n} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0' }}>
-                  {s.green ? (
-                    <span style={{
-                      width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      background: '#16a34a',
-                      fontWeight: 700, fontSize: 16,
-                      color: '#fff',
-                      boxShadow: '0 4px 16px rgba(22,163,74,0.35)',
-                    }}>{s.n}</span>
-                  ) : (
-                    <span style={{
-                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                      background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
-                      padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 4px 16px rgba(219,39,119,0.25)',
-                    }}>
-                        <span style={{
-                        width: '100%', height: '100%', borderRadius: '50%',
-                        background: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <span style={{
-                          fontWeight: 700, fontSize: 14,
-                          backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text',
-                        }}>{s.n}</span>
-                      </span>
-                    </span>
-                  )}
-                  <span style={{
-                    fontSize: 'clamp(14px,1.8vw,16px)',
-                    fontWeight: 500,
-                    color: s.green ? '#15803d' : '#1a1a1a',
-                    fontFamily: 'var(--font-client-manrope), sans-serif',
-                  }}>{s.text}</span>
-                </div>
-                {i < arr.length - 1 && (
-                  <div style={{ paddingLeft: 17, lineHeight: 1 }}>
-                    <div style={{ width: 2, height: 24, background: 'linear-gradient(to bottom, #e11d48, #a855f7)', borderRadius: 2, opacity: 0.35 }} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
           {/* Losing clients? */}
           <div style={{ marginBottom: 'clamp(100px,16vw,160px)', textAlign: 'center' }}>
             <p style={{ fontSize: 'clamp(36px,7vw,72px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(16px,3vw,28px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -246,8 +186,8 @@ export function PriceListImportSection() {
             <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>
               Докато спиш.
             </p>
-            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 0, fontWeight: 700 }}>
-              Сайтът работи дори когато ти не работиш.
+            <p style={{ fontSize: 'clamp(22px,5vw,36px)', color: '#0f0f0f', marginBottom: 0, fontWeight: 700 }}>
+              Сайтът работи дори, когато ти не работиш.
             </p>
           </div>
 
@@ -317,17 +257,17 @@ export function PriceListImportSection() {
             <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>
               AI добавя всичките ти услуги за секунди.
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6 }}>
-              Искаш промяна? Пишеш в Telegram.
+            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 6, maxWidth: 560, margin: '0 auto clamp(8px,2vw,12px)' }}>
+              Искаш да промениш цена на услугата или да преместиш резервацията на Петя за друг ден? Просто пишеш в Telegram.
             </p>
             <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>
               Готово.
             </p>
-            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 6, fontWeight: 700 }}>
+            <p style={{ fontSize: 'clamp(18px,4vw,24px)', color: '#0f0f0f', marginBottom: 10, fontWeight: 700 }}>
               Ако ползваш Instagram ще се справиш.
             </p>
-            <p style={{ fontSize: 'clamp(14px,3vw,17px)', color: '#6b7280', margin: 0 }}>
-              Направихме го за хора, а не за програмисти.
+            <p style={{ fontSize: 'clamp(14px,3vw,16px)', color: '#6b7280', margin: 0 }}>
+              Толкова е лесно управлението на този сайт.
             </p>
           </div>
 
@@ -404,12 +344,12 @@ export function PriceListImportSection() {
             <p style={{ fontSize: 'clamp(32px,6.5vw,64px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(12px,2vw,20px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Направихме продукта, който решава всичко изброено.
             </p>
-            <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', margin: 0, fontStyle: 'italic' }}>
+            <p style={{ fontSize: 'clamp(22px,5vw,36px)', color: '#0f0f0f', margin: 0, fontWeight: 700 }}>
               Ето какво прави за теб:
             </p>
           </div>
 
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#db2777', marginBottom: 10 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', color: '#9ca3af', marginBottom: 10, marginTop: 'clamp(48px,8vw,80px)' }}>
             Без ръчно въвеждане
           </p>
           <h3 style={{ fontSize: 'clamp(24px,4.5vw,40px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 14, color: '#0f0f0f' }}>
@@ -659,10 +599,21 @@ export function TelegramChatSection() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'clamp(40px,6vw,72px)' }}>
           <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Ти си на стола и работиш с клиентката.</p>
-          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>Някой нов клиент пише в сайта ти.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(64px,12vw,120px)' }}>Някой нов клиент пише в сайта ти.</p>
           <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Назначихме AI да поеме контрола вместо теб.</p>
           <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Той ще консултира, ще отговаря и накрая ще я резервира.</p>
-          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(20px,4vw,32px)' }}>Резервацията ще се появи в графика ти, а името и номерът на клиента в базата ти с клиенти.</p>
+          <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#6b7280', marginBottom: 'clamp(32px,6vw,56px)' }}>Резервацията ще се появи в графика ти, а името и номерът на клиента в базата ти с клиенти.</p>
+
+          <div style={{ width: '100%', maxWidth: 420, margin: '0 auto clamp(32px,6vw,56px)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.10)' }}>
+            <Image
+              src="/klienti.png"
+              alt="База с клиенти в clicka.bg"
+              width={680}
+              height={420}
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
+          </div>
+
           <h2 style={{
             fontSize: 'clamp(26px,5vw,48px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 0,
             backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
@@ -744,7 +695,7 @@ export function TelegramManagementSection() {
           <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Разбери какъв ти е оборотът.</p>
           <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 6 }}>Кой клиент колко пари е изхарчил при теб.</p>
           <p style={{ fontSize: 'clamp(16px,3.5vw,20px)', color: '#0f0f0f', marginBottom: 'clamp(20px,4vw,32px)' }}>Какви са предстоящите ти часове.</p>
-          <p style={{ fontSize: 'clamp(20px,4.5vw,32px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 14, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <p style={{ fontSize: 'clamp(20px,4.5vw,32px)', fontWeight: 900, lineHeight: 1.1, marginTop: 'clamp(80px,14vw,140px)', marginBottom: 14, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             С едно съобщение в Telegram. Готово.
           </p>
         </div>
@@ -767,7 +718,7 @@ export function TelegramManagementSection() {
         </div>
 
         {/* Divider label */}
-        <div style={{ textAlign: 'center', margin: 'clamp(56px,10vw,96px) 0 clamp(48px,8vw,80px)' }}>
+        <div style={{ textAlign: 'center', margin: 'clamp(80px,14vw,140px) 0 clamp(48px,8vw,80px)' }}>
           <p style={{ fontSize: 'clamp(22px,4vw,36px)', fontWeight: 800, lineHeight: 1.2, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Качваш снимки в галерията си с едно съобщение.
           </p>

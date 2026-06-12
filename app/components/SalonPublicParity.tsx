@@ -1049,19 +1049,16 @@ export default function SalonPublicParity({
   const offerDurationMin = Math.max(15, Number(selectedOffer?.duration_min ?? 60) || 60);
 
   const DAY_KEYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+  const slotIntervalMin = (() => {
+    const oh = rawSalon?.opening_hours;
+    if (oh && typeof oh === 'object') {
+      const v = Number((oh as Record<string, unknown>).slot_interval_min);
+      if ([15, 20, 30, 45, 60].includes(v)) return v;
+    }
+    return 30;
+  })();
   function pad(n: number) {
     return String(n).padStart(2, '0');
-  }
-  function generateSlots(openStr: string, closeStr: string, stepMin = 30): string[] {
-    const [oh, om] = openStr.split(':').map(Number);
-    const [ch, cm] = closeStr.split(':').map(Number);
-    const start = oh * 60 + om;
-    const end = ch * 60 + cm - stepMin;
-    const slots: string[] = [];
-    for (let t = start; t <= end; t += stepMin) {
-      slots.push(`${pad(Math.floor(t / 60))}:${pad(t % 60)}`);
-    }
-    return slots;
   }
 
   const wh = openingHoursMerged ?? {};
@@ -1117,7 +1114,7 @@ export default function SalonPublicParity({
     const start = oh * 60 + om;
     const latestStart = ch * 60 + cm - totalDuration;
     const slots: string[] = [];
-    for (let t = start; t <= latestStart; t += 30) {
+    for (let t = start; t <= latestStart; t += slotIntervalMin) {
       const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
       const slotStart = t;
       const slotEnd = t + totalDuration;
@@ -1184,8 +1181,12 @@ export default function SalonPublicParity({
     };
     const today = new Date();
     setMinDate(toLocalISODate(today));
+    const oh = rawSalon?.opening_hours;
+    const advanceDays = (oh && typeof oh === 'object' && Number.isFinite(Number((oh as Record<string, unknown>).booking_advance_days)) && Number((oh as Record<string, unknown>).booking_advance_days) >= 1)
+      ? Math.round(Number((oh as Record<string, unknown>).booking_advance_days))
+      : 60;
     setMaxDate(
-      toLocalISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60))
+      toLocalISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + advanceDays))
     );
   }, []);
 

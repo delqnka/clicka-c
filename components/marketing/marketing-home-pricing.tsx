@@ -60,40 +60,53 @@ export function MarketingHomePricingSection() {
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
 
         {/* Value comparison */}
-        <div style={{ marginBottom: 'clamp(48px,7vw,72px)', maxWidth: 760, display: 'flex', gap: 'clamp(24px,4vw,48px)', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <div style={{ marginBottom: 'clamp(48px,7vw,72px)', maxWidth: 780, display: 'flex', gap: 'clamp(24px,5vw,56px)', flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
-          {/* Left: Without Clicka */}
-          <div style={{ flex: '1 1 260px' }}>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 16 }}>Без clicka.bg</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
-              {['Уеб агенция.', 'Booking платформа.', 'Хостинг.', 'SSL.', 'Имейл.', 'AI инструмент.', 'Google интеграция.'].map((item) => (
-                <p key={item} style={{ fontSize: 'clamp(13px,1.6vw,14px)', color: '#9ca3af', margin: 0 }}>{item}</p>
+          {/* Left: Agency pain */}
+          <div style={{ flex: '1 1 280px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#9ca3af', marginBottom: 14 }}>Уеб агенцията ти казва</p>
+            <p style={{ fontSize: 'clamp(15px,1.9vw,17px)', fontWeight: 700, color: '#374151', margin: '0 0 12px', lineHeight: 1.4 }}>
+              Сайт — мин. 500 € за изработка.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {[
+                'После хостинг отделно.',
+                'Промени отделно.',
+                'Имейл известявания отделно.',
+                'Поддръжка отделно.',
+                'AI няма.',
+                'Чат бот отделно.',
+              ].map((item) => (
+                <p key={item} style={{ fontSize: 'clamp(13px,1.6vw,14px)', color: '#9ca3af', margin: 0, lineHeight: 1.5 }}>{item}</p>
               ))}
             </div>
-            <div>
-              {['Различни доставчици.', 'Различни настройки.', 'Различни абонаменти.'].map((line) => (
-                <p key={line} style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 700, color: '#6b7280', margin: '0 0 3px' }}>{line}</p>
-              ))}
-              <p style={{ fontSize: 'clamp(12px,1.5vw,13px)', color: '#9ca3af', margin: '8px 0 0', lineHeight: 1.6 }}>
-                И специалист, който да се грижи за всичко.
-              </p>
-            </div>
+            <p style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 700, color: '#6b7280', margin: '12px 0 0', lineHeight: 1.5 }}>
+              И чакаш 2 седмици да стане готов.
+            </p>
           </div>
 
-          {/* Right: With Clicka */}
-          <div style={{ flex: '1 1 260px' }}>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>С clicka.bg</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              {['Собствен сайт', 'Онлайн резервации', 'AI асистент', 'Хостинг и SSL', 'Имейл известия', 'Google ревюта'].map((item) => (
+          {/* Right: Clicka solution */}
+          <div style={{ flex: '1 1 280px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 14, backgroundImage: 'linear-gradient(135deg,#e11d48,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>clicka.bg ти казва</p>
+            <p style={{ fontSize: 'clamp(15px,1.9vw,17px)', fontWeight: 700, color: '#0f0f0f', margin: '0 0 8px', lineHeight: 1.4 }}>
+              Плащаш 299 € и сайтът ти е онлайн веднага.
+            </p>
+            <p style={{ fontSize: 'clamp(14px,1.7vw,16px)', fontWeight: 700, color: '#0f0f0f', margin: '0 0 14px', lineHeight: 1.4 }}>
+              Не в платформа, а на твой домейн.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                'Хостинг включен.',
+                'AI включен.',
+                'Чат включен.',
+                'Резервации включени.',
+                'Известявания включени.',
+              ].map((item) => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 13, color: '#16a34a', flexShrink: 0, fontWeight: 700 }}>✓</span>
                   <span style={{ fontSize: 'clamp(13px,1.6vw,14px)', fontWeight: 500, color: '#1a1a1a' }}>{item}</span>
                 </div>
               ))}
-            </div>
-            <div>
-              <p style={{ fontSize: 'clamp(14px,1.7vw,15px)', fontWeight: 700, color: '#0f0f0f', margin: '0 0 4px' }}>Всичко включено. Едно плащане. 0% комисионна.</p>
-              <p style={{ fontSize: 'clamp(12px,1.5vw,13px)', color: '#6b7280', margin: 0, lineHeight: 1.6 }}>Контролираш всичко сам от телефона.</p>
             </div>
           </div>
 
@@ -106,16 +119,20 @@ export function MarketingHomePricingSection() {
         <p data-reveal style={{ fontSize: 'clamp(15px,1.8vw,18px)', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: 28, lineHeight: 1.6, maxWidth: 720 }}>
           И можеш да приемаш резервации веднага.
         </p>
-        <div style={{ marginBottom: 36, maxWidth: 720 }}>
-          <p style={{ fontSize: 'clamp(15px,1.8vw,18px)', fontWeight: 500, color: 'var(--foreground)', marginBottom: 8, lineHeight: 1.6 }}>
-            Искаш собствен домейн? Можеш да го свържеш сам — без допълнителна такса.
-            Или ние го регистрираме и настройваме вместо теб — такса за услугата <strong>19.99 €</strong>.
+        <div style={{ marginBottom: 36, maxWidth: 680 }}>
+          <p style={{ fontSize: 'clamp(16px,2vw,20px)', fontWeight: 700, color: '#0f0f0f', marginBottom: 10, lineHeight: 1.4 }}>
+            Искаш собствен домейн?
           </p>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 6px', lineHeight: 1.7 }}>
-            Цена на домейн (годишно): <strong style={{ color: '#0f0f0f' }}>.com — 12 €</strong> · <strong style={{ color: '#0f0f0f' }}>.bg — 32 €</strong> · <strong style={{ color: '#0f0f0f' }}>.org — 8 €</strong> · <strong style={{ color: '#0f0f0f' }}>.info — 8 €</strong>
+          <p style={{ fontSize: 'clamp(14px,1.7vw,16px)', color: '#374151', marginBottom: 12, lineHeight: 1.7, fontWeight: 400 }}>
+            Свържи го сам без такса, в дашборда ще намериш стъпка по стъпка.<br />
+            Или ние го регистрираме и настройваме вместо теб срещу <strong style={{ color: '#0f0f0f' }}>19.99 €</strong> еднократно.
           </p>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', margin: 0, lineHeight: 1.6 }}>
-            Домейнът се регистрира на твоето иМЕ и остава твоя собственост.
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 4px', fontWeight: 500 }}>Цена на домейн:</p>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 12px', lineHeight: 1.8 }}>
+            .com : 12 €/год. &nbsp;·&nbsp; .bg : 32 €/год. &nbsp;·&nbsp; .org : 8 €/год. &nbsp;·&nbsp; .info : 8 €/год.
+          </p>
+          <p style={{ fontSize: 13, color: '#374151', margin: 0, lineHeight: 1.6 }}>
+            Домейнът се регистрира на твоето име като физическо лице или фирма и остава твоя собственост. Завинаги.
           </p>
         </div>
 
@@ -153,7 +170,7 @@ export function MarketingHomePricingSection() {
                     position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
                     background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
                     color: '#fff', borderRadius: 9999,
-                    padding: '4px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                    padding: '4px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', whiteSpace: 'nowrap',
                   }}
                   aria-label="Най-популярен план"
                 >

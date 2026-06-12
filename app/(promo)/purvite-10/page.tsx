@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
 import VideoPlayer from './VideoPlayer';
-import FeaturesList from './FeaturesList';
 import FaqList from './FaqList';
 
 export const revalidate = 60;
@@ -198,7 +197,7 @@ export default async function Purvite10Page() {
       <section style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(40px,7vw,72px) 24px clamp(32px,5vw,56px)' }}>
 
         <h1 style={{ marginBottom: 24, letterSpacing: '-0.03em' }}>
-          <span style={{ display: 'block', fontSize: 'clamp(44px,11vw,80px)', fontWeight: 900, lineHeight: 1.05 }}>Умори ли се да плащаш,</span>
+          <span style={{ display: 'block', fontSize: 'clamp(52px,14vw,96px)', fontWeight: 900, lineHeight: 1.0 }}>Умори ли се да плащаш,</span>
           <span style={{ display: 'block', fontSize: 'clamp(32px,8vw,58px)', fontWeight: 900, lineHeight: 1.1, ...grad }}>за да градиш чужд бизнес?</span>
         </h1>
 
@@ -216,7 +215,7 @@ export default async function Purvite10Page() {
             'Платформата взема тлъст % от труда ти.',
             'Конкурираш се с десетки специалисти на една и съща страница.',
             'Клиентът помни платформата, а не твоя бранд.',
-            'Ревютата ти и репутацията ти изграждат стойност за платформата, а не за теб.',
+            'Ревютата ти градят стойност за платформата, а не за теб.',
           ].map((line) => (
             <div key={line} className="p10-pain-item">
               <span style={{ color: '#e11d48', fontWeight: 700, fontSize: 17, lineHeight: '1.5', flexShrink: 0 }}>✗</span>
@@ -232,7 +231,7 @@ export default async function Purvite10Page() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 36 }}>
           {[
-            'Клиентите пишат навсякъде — Instagram, Viber, Facebook, телефон.',
+            'Клиентите пишат навсякъде: Instagram, Viber, Facebook, телефон.',
             'Пропускаш запитвания, защото не си видял съобщението навреме.',
             'Губиш време да отговаряш на едни и същи въпроси отново и отново.',
           ].map((line) => (
@@ -250,19 +249,22 @@ export default async function Purvite10Page() {
           </p>
         </div>
 
-        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 28, marginBottom: 0 }}>
+        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 48, marginBottom: 0 }}>
           <p style={{ fontSize: 'clamp(18px,3.5vw,26px)', fontWeight: 800, lineHeight: 1.4, marginBottom: 8, letterSpacing: '-0.02em' }}>
-            Има по-добър начин.
+            Има по-добър начин. И той е:
           </p>
-          <p style={{ fontSize: 'clamp(32px,8vw,56px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 16, letterSpacing: '-0.03em', ...grad }}>
-            Собствен сайт. Онлайн резервации.
+          <p style={{ fontSize: 'clamp(44px,12vw,80px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 16, letterSpacing: '-0.03em', ...grad }}>
+            Собствен сайт с онлайн резервации и твоето име.
           </p>
-          <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 24, lineHeight: 1.7 }}>
-            Плюс твой <strong style={{ color: '#1a1a1a' }}>AI рецепционист</strong>, който работи 24/7 и записва часовете ти, докато ти работиш или спиш!
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>⚡</span> Готов веднага след плащане. Не се чака.
+          </p>
+          <p style={{ fontSize: 15, color: '#1a1a1a', marginBottom: 24, lineHeight: 1.7 }}>
+            Плюс твой <strong>AI рецепционист</strong>, който работи 24/7 и записва часовете ти, докато ти работиш или спиш!
           </p>
           {/* Arrow to video */}
           <div style={{ textAlign: 'center', marginTop: 32, marginBottom: 4 }}>
-            <p style={{ fontSize: 13, color: '#9ca3af', margin: '0 0 6px' }}>виж как изглежда готов сайт</p>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 6px', fontWeight: 600 }}>виж как изглежда готов сайт</p>
             <svg width="36" height="48" viewBox="0 0 36 48" fill="none" style={{ display: 'block', margin: '0 auto', animation: 'p10-bounce 1.4s ease-in-out infinite' }}>
               <defs>
                 <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="1">
@@ -281,7 +283,7 @@ export default async function Purvite10Page() {
       <section style={{ background: '#fff', padding: 'clamp(24px,4vw,48px) 24px' }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
           <h2 style={{ fontSize: 'clamp(18px,3vw,26px)', fontWeight: 800, marginBottom: 20, textAlign: 'center', letterSpacing: '-0.02em' }}>
-            Собственият ти сайт изглежда така
+            Собственият ти сайт изглежда ето така:
           </h2>
           <VideoPlayer />
           <div style={{ textAlign: 'center', marginTop: 14, marginBottom: 24 }}>
@@ -306,6 +308,9 @@ export default async function Purvite10Page() {
             >
               Посети реален сайт ↗
             </a>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8, marginBottom: 0 }}>
+              и направи няколко резервации. Тествай как работи.
+            </p>
           </div>
 
           {/* Social proof before CTA */}
@@ -349,153 +354,20 @@ export default async function Purvite10Page() {
         </div>
       </section>
 
-      {/* ── WHAT YOU GET — benefit-led ───────────────────────────────────────── */}
-      <section style={{ background: '#fff', padding: 'clamp(48px,7vw,72px) 24px' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, letterSpacing: '0.02em' }}>Какво получаваш?</p>
-          <h2 style={{ fontSize: 'clamp(20px,3.5vw,32px)', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>
-            Всичко необходимо за бизнес с резервации
-          </h2>
-          <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 28, lineHeight: 1.7 }}>
-            <strong>Не само сайт.</strong> Цял дигитален асистент за твоя бизнес.
-          </p>
-
-          {/* 3 highlight cards */}
-          <div style={{ display: 'grid', gap: 8, marginBottom: 28 }}>
-            {[
-              {
-                title: 'Резервации 24/7 — без теб',
-                desc: 'Клиентите резервират сами по всяко време. Ти получаваш известие в Telegram.',
-              },
-              {
-                title: 'AI рецепционист в сайта',
-                desc: 'Отговаря на въпроси, препоръчва услуги, записва часове. Работи докато ти спиш.',
-              },
-              {
-                title: '0% комисионна',
-                desc: 'Приходите от депозити и плащания постъпват директно в твоята банкова сметка.',
-              },
-              {
-                title: 'Приемай депозити през Stripe',
-                desc: 'Клиентите плащат депозит при резервация. Парите идват директно при теб.',
-              },
-              {
-                title: 'Автоматични напомняния',
-                desc: 'Клиентът получава потвърждение и напомняне за часа. По-малко no-show, без да вдигаш телефона.',
-              },
-              {
-                title: 'Google ревюта на автопилот',
-                desc: 'След посещението системата изпраща покана за ревю. Репутацията ти расте в твоя Google профил — не в платформата.',
-              },
-              {
-                title: 'Линк за споделяне веднага',
-                desc: 'Веднага след регистрация получаваш линк, който можеш да сложиш в Instagram, Facebook, Viber — и клиентите вече могат да резервират.',
-              },
-              {
-                title: 'QR код стикер за салона',
-                desc: 'Получаваш QR код с името на салона си, който можеш да разпечаташ и залепиш на вратата. Клиентът сканира и директно резервира час.',
-              },
-            ].map((card) => (
-              <div key={card.title} style={{
-                background: '#fff',
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: '12px 14px',
-                display: 'flex',
-                gap: 10,
-                alignItems: 'flex-start',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.05)',
-              }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, marginTop: 7 }} />
-                <div>
-                  <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 700, color: '#1a1a1a' }}>{card.title}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{card.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <FeaturesList />
-        </div>
-      </section>
-
-      {/* ── AI RECEPTIONIST ─────────────────────────────────────────────────── */}
-      <section style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(48px,7vw,72px) 24px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, letterSpacing: '0.02em' }}>AI асистент</p>
-        <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-          Докато работиш — сайтът работи за теб
-        </h2>
-        <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 20, lineHeight: 1.8 }}>
-          Докато си зает с клиент, докато спиш, докато си на почивка, твоят AI рецепционист в сайта ти отговаря в чата, записва клиентки и ги насочва.
-        </p>
-        <div style={{ display: 'grid', gap: 8, marginBottom: 28 }}>
-          {['Отговаря на въпроси за услугите и цените', 'Препоръчва подходящи услуги', 'Записва резервации вместо теб', 'Насочва клиентите към свободни часове', 'Работи 24 часа в денонощието, 7 дни в седмицата'].map((f) => (
-            <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <Check />
-              <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.6 }}>{f}</span>
+      {/* ── 3 KEY BENEFITS ──────────────────────────────────────────────────── */}
+      <section style={{ background: '#fff', padding: 'clamp(32px,5vw,56px) 24px 0' }}>
+        <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { icon: '🤖', text: 'AI рецепционист записва клиентите ти, докато ти работиш или спиш.' },
+            { icon: '💬', text: 'Управляваш всичко от Telegram. Без нови приложения, без обучение.' },
+            { icon: '💳', text: '0% комисионна. Всички приходи са си за теб.' },
+          ].map((item) => (
+            <div key={item.text} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff', boxShadow: '0 4px 0 rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.08)' }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon}</span>
+              <p style={{ margin: 0, fontSize: 15, color: '#1a1a1a', lineHeight: 1.6, fontWeight: 500 }}>{item.text}</p>
             </div>
           ))}
         </div>
-        <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.10)' }}>
-          <img src="/tg-new-booking.jpg" alt="Нова резервация в Telegram" style={{ width: '100%', height: 'auto', display: 'block' }} />
-        </div>
-      </section>
-
-      {/* ── TELEGRAM ────────────────────────────────────────────────────────── */}
-      <section style={{ background: '#fff', padding: 'clamp(48px,7vw,72px) 24px' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8, letterSpacing: '0.02em' }}>Управление</p>
-          <p style={{ fontSize: 'clamp(13px,2vw,15px)', fontWeight: 800, color: '#e11d48', letterSpacing: '0.08em', marginBottom: 6 }}>БЕЗ сложни системи!!!</p>
-          <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em', ...grad }}>
-            Свържи Telegram и контролирай сайта си като в обикновен чат.
-          </h2>
-          <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 20, lineHeight: 1.7 }}>
-            Без нови приложения. Без сложни панели. Без обучение.<br />
-            Само Telegram — и всичко е под контрол.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 28 }}>
-            {[
-              'Добавяш услуги от снимка',
-              'Качваш снимки',
-              'Променяш работно време',
-              'Следиш резервации',
-              'Създаваш резервации',
-              'Отговаряш на клиентите',
-              'Статистика за клиент',
-              'Всичко от телефона ти',
-            ].map((f) => (
-              <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <Check size={12} />
-                <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{f}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <img
-              src="/Untitled design 2.PNG"
-              alt="Управление от телефона"
-              style={{ width: '100%', maxWidth: 380, height: 'auto', display: 'inline-block' }}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOR WHOM ────────────────────────────────────────────────────────── */}
-      <section style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(48px,7vw,72px) 24px' }}>
-        <h2 style={{ fontSize: 'clamp(20px,3.5vw,30px)', fontWeight: 900, marginBottom: 20, letterSpacing: '-0.02em' }}>
-          Все още записваш часове през Instagram, Viber и по телефона?
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
-          {PROFESSIONS.map((p) => (
-            <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Check size={12} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a' }}>{p}</span>
-            </div>
-          ))}
-        </div>
-        <p style={{ fontSize: 'clamp(18px,4vw,26px)', fontWeight: 800, lineHeight: 1.35, backgroundImage: gradFull, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline-block' }}>
-          Време е клиентите ти да започнат да се записват сами.
-        </p>
       </section>
 
       {/* ── OFFER / PRICE ────────────────────────────────────────────────────── */}
@@ -618,7 +490,7 @@ export default async function Purvite10Page() {
           <p style={{ margin: 0, fontSize: 15, color: '#6b7280', lineHeight: 1.7 }}>
             Имаш друг въпрос?{' '}
             <a href="mailto:support@clicka.bg" style={{ fontWeight: 700, textDecoration: 'none', backgroundImage: gradFull, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', display: 'inline' }}>support@clicka.bg</a>
-            {' '}— отговаряме в рамките на деня.
+            {' '}Отговаряме в рамките на деня.
           </p>
         </div>
       </section>

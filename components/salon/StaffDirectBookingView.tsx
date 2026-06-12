@@ -104,8 +104,12 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
       new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]!;
     const today = new Date();
     setMinDate(toLocal(today));
+    const oh = salonRecord?.opening_hours;
+    const advanceDays = (oh && typeof oh === 'object' && Number.isFinite(Number((oh as Record<string, unknown>).booking_advance_days)) && Number((oh as Record<string, unknown>).booking_advance_days) >= 1)
+      ? Math.round(Number((oh as Record<string, unknown>).booking_advance_days))
+      : 60;
     const max = new Date(today);
-    max.setDate(today.getDate() + 45);
+    max.setDate(today.getDate() + advanceDays);
     setMaxDate(toLocal(max));
   }, []);
 
@@ -141,6 +145,15 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
     [selectedServices],
   );
 
+  const slotIntervalMin = (() => {
+    const oh = salonRecord?.opening_hours;
+    if (oh && typeof oh === 'object') {
+      const v = Number((oh as Record<string, unknown>).slot_interval_min);
+      if ([15, 20, 30, 45, 60].includes(v)) return v;
+    }
+    return 30;
+  })();
+
   const timeSlots = useMemo((): string[] | 'closed' | null => {
     if (serviceIdxs.length === 0 || !selectedDate) return null;
     if (isDateBlockedAllDay(bookingBlocks, selectedDate)) return 'closed';
@@ -156,7 +169,7 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
     const startMin = oh * 60 + om;
     const latestStart = ch * 60 + cm - dur;
     const slots: string[] = [];
-    for (let t = startMin; t <= latestStart; t += 30) {
+    for (let t = startMin; t <= latestStart; t += slotIntervalMin) {
       const timeStr = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
       if (isBlockedForStartTime(bookingBlocks, selectedDate, timeStr, dur)) continue;
       const conflicts = occupied.some((o) => {
@@ -166,7 +179,7 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
       if (!conflicts) slots.push(timeStr);
     }
     return slots;
-  }, [serviceIdxs, selectedDate, totalDuration, openingHours, bookingBlocks, occupiedByDate]);
+  }, [serviceIdxs, selectedDate, totalDuration, openingHours, bookingBlocks, occupiedByDate, slotIntervalMin]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

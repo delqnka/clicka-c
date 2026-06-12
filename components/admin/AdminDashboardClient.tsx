@@ -432,6 +432,7 @@ export default function AdminDashboardClient({
   const [newClientDraft, setNewClientDraft] = useState({ name: '', phone: '' });
   const [clientSaving, setClientSaving] = useState(false);
   const [extraClients, setExtraClients] = useState<ClientSummary[]>([]);
+  const [hiddenClientKeys, setHiddenClientKeys] = useState<Set<string>>(new Set());
   const [selectedAdminServiceCategory, setSelectedAdminServiceCategory] = useState<string | null>(null);
   const [newServiceDraft, setNewServiceDraft] = useState({
     name: '',
@@ -1293,13 +1294,15 @@ export default function AdminDashboardClient({
     try {
       const res = await fetch(`/api/admin/site-hours?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workingHours: site.workingHours, bookingBlocks: site.bookingBlocks }),
+        body: JSON.stringify({ workingHours: site.workingHours, bookingBlocks: site.bookingBlocks, bookingAdvanceDays: site.bookingAdvanceDays, slotIntervalMin: site.slotIntervalMin }),
       });
       const data = await guardResponse(res);
       setSite(prev => ({
         ...prev,
         workingHours: data.workingHours as WorkingHours,
         bookingBlocks: (data.bookingBlocks ?? []) as BookingBlock[],
+        bookingAdvanceDays: typeof data.bookingAdvanceDays === 'number' ? data.bookingAdvanceDays : prev.bookingAdvanceDays,
+        slotIntervalMin: typeof data.slotIntervalMin === 'number' ? data.slotIntervalMin : prev.slotIntervalMin,
       }));
       setNotice('Работното време е запазено.');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
@@ -3338,7 +3341,7 @@ export default function AdminDashboardClient({
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
-                    {clients.length + extraClients.length} уникални
+                    {clients.filter(c => !hiddenClientKeys.has(c.key)).length + extraClients.length} уникални
                   </span>
                   <button
                     type="button"
@@ -3365,7 +3368,34 @@ export default function AdminDashboardClient({
                 </div>
               }
             >
-              <ClientsPanel clients={[...clients, ...extraClients]} isMobile={isMobile} T={T} />
+              <ClientsPanel
+                clients={[...clients.filter(c => !hiddenClientKeys.has(c.key)), ...extraClients]}
+                isMobile={isMobile}
+                T={T}
+                onEdit={async (key, data) => {
+                  const id = key.slice(3);
+                  await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, ...data }),
+                  });
+                  setExtraClients((prev) => prev.map((c) =>
+                    c.key === key ? { ...c, name: data.name, phone: data.phone, email: data.email } : c
+                  ));
+                }}
+                onDelete={(key) => {
+                  // For salon_clients (sc-*) — delete from DB
+                  if (key.startsWith('sc-')) {
+                    const id = key.slice(3);
+                    fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}&id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+                      .catch(() => undefined);
+                    setExtraClients((prev) => prev.filter((c) => c.key !== key));
+                  } else {
+                    // Booking-derived client — hide locally
+                    setHiddenClientKeys((prev) => new Set([...prev, key]));
+                  }
+                }}
+              />
             </Section>
           )}
 

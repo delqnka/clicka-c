@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
 
-    const models = ['google/gemini-2.0-flash', 'google/gemini-2.5-flash', 'anthropic/claude-haiku-4-5'];
+    const models = ['google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite-preview-06-17', 'anthropic/claude-haiku-4-5'];
     const chatMessages = [
       { role: 'system', content: systemPrompt },
       ...messages.slice(-8),

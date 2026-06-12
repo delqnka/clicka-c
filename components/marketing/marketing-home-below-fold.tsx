@@ -69,6 +69,21 @@ export function MarketingHomeBelowFold() {
 
   return (
     <>
+      {/* ── Losing clients pain ── */}
+      <section style={{ background: '#fff', padding: 'clamp(64px,10vw,120px) clamp(20px,5vw,60px)', textAlign: 'center' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <p style={{ fontSize: 'clamp(18px,4vw,26px)', color: '#0f0f0f', lineHeight: 1.4, marginBottom: 'clamp(12px,2vw,20px)' }}>
+            Клиентката търси фризьор в Google в 23:00.
+          </p>
+          <p style={{ fontSize: 'clamp(18px,4vw,26px)', color: '#0f0f0f', lineHeight: 1.4, marginBottom: 'clamp(12px,2vw,20px)' }}>
+            Ти нямаш сайт.
+          </p>
+          <p style={{ fontSize: 'clamp(18px,4vw,26px)', fontWeight: 700, lineHeight: 1.4, margin: 0, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Тя се записа при конкурентката ти.
+          </p>
+        </div>
+      </section>
+
       <div data-home-section="how-it-works" id="how-it-works">
         <DeferredMount minHeight={240}>
           <PriceListImportSection />
@@ -209,6 +224,45 @@ export function MarketingHomeBelowFold() {
       </section>
 
       <MarketingFounderSection />
+
+      {/* ── How it works steps ── */}
+      <section style={{ background: '#fff', padding: 'clamp(64px,10vw,96px) clamp(20px,5vw,60px)', textAlign: 'center' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 'clamp(28px,5vw,42px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 'clamp(32px,5vw,48px)', backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Как работи?
+          </h2>
+          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0, textAlign: 'left' }}>
+            {[
+              { n: '1', text: 'Избираш план', green: false },
+              { n: '✓', text: 'Сайтът ти е готов веднага', green: true },
+              { n: '3', text: 'Качваш снимка на услугите си', green: false },
+              { n: '4', text: 'Свързваш Telegram за известия', green: false },
+              { n: '✓', text: 'Вече приемаш резервации', green: true },
+            ].map((s, i, arr) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0' }}>
+                  {s.green ? (
+                    <span style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#16a34a', fontWeight: 700, fontSize: 16, color: '#fff', boxShadow: '0 4px 16px rgba(22,163,74,0.35)' }}>{s.n}</span>
+                  ) : (
+                    <span style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(219,39,119,0.25)' }}>
+                      <span style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.n}</span>
+                      </span>
+                    </span>
+                  )}
+                  <span style={{ fontSize: 'clamp(15px,2vw,17px)', fontWeight: 500, color: s.green ? '#15803d' : '#1a1a1a' }}>{s.text}</span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div style={{ paddingLeft: 17 }}>
+                    <div style={{ width: 2, height: 24, background: 'linear-gradient(to bottom,#e11d48,#a855f7)', borderRadius: 2, opacity: 0.35 }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <MarketingHomePricingSection />
       <MarketingFaqSection />
 

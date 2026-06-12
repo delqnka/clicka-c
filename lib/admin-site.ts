@@ -80,6 +80,8 @@ export type AdminSitePayload = {
   services: ServiceItem[];
   workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
+  bookingAdvanceDays: number;
+  slotIntervalMin: number;
   customDomain: string;
   domainStatus: string;
   domainConfig: unknown;
@@ -283,6 +285,22 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
         ? (row.opening_hours as Record<string, unknown>).booking_blocks
         : null
     ),
+    bookingAdvanceDays: (() => {
+      const oh = row.opening_hours;
+      if (oh && typeof oh === 'object') {
+        const v = Number((oh as Record<string, unknown>).booking_advance_days);
+        if (Number.isFinite(v) && v >= 1) return v;
+      }
+      return 60;
+    })(),
+    slotIntervalMin: (() => {
+      const oh = row.opening_hours;
+      if (oh && typeof oh === 'object') {
+        const v = Number((oh as Record<string, unknown>).slot_interval_min);
+        if ([15, 20, 30, 45, 60].includes(v)) return v;
+      }
+      return 30;
+    })(),
     customDomain: String(row.custom_domain ?? ''),
     domainStatus: String(row.domain_status ?? ''),
     domainConfig: row.domain_config ?? null,

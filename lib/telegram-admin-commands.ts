@@ -227,6 +227,9 @@ const DELETE_IMPORTED_SERVICES_RE =
 
 const PRICE_LIST_CAPTION_RE = /ценоразпис|прайс\s*лист|услуги\s+цени|price\s*list/i;
 
+const FREE_SLOTS_RE =
+  /(?:кога\s+(?:има\s+)?(?:свободн[оеа]|може|мога|мож[еа]\s+да\s+запиш[еа]?|има\s+час|е\s+свободн[оеа]))|(?:свободн[иоеа]\s+(?:часов[еa]?|час[аa]?|места?))|(?:има\s+ли\s+свободн[оеа])|(?:кога\s+(?:мога|можем)\s+да\s+(?:запиш[еа]?|дойд[еа]?))|(?:покажи\s+свободн[иоеа])|(?:кога\s+(?:си|сте)\s+свободн[иоеа]?)|(?:кога\s+следващи[ят]\s+свободен)/i;
+
 // ─── Day helpers ─────────────────────────────────────────────────────────────
 
 const BG_DAY_TO_JS: Record<string, number> = {
@@ -784,6 +787,11 @@ export async function handleAdminCommand(
     }
   }
 
+  // ── Free slots query ─────────────────────────────────────────────────────
+  if (FREE_SLOTS_RE.test(text)) {
+    return await handleWithAI(chatId, text, salon);
+  }
+
   // ── AI fallback — free natural language ──────────────────────────────────
   return await handleWithAI(chatId, text, salon);
 }
@@ -844,9 +852,18 @@ type AIIntent =
   | { action: 'reschedule_booking'; client_name: string; from_date: string; to_date: string; to_time?: string }
   | { action: 'update_booking_service'; client_name: string; date: string; time: string; new_service: string }
   | { action: 'confirm_day_off'; date: string }
+  | { action: 'find_free_slots'; date_from?: string; date_to?: string; after_time?: string; service_name?: string; duration_min?: number }
   | { action: 'chat'; reply: string };
 
 // ─── Free slot finder ────────────────────────────────────────────────────────
+
+function parseSlotInterval(openingHours: unknown): number {
+  if (openingHours && typeof openingHours === 'object') {
+    const v = Number((openingHours as Record<string, unknown>).slot_interval_min);
+    if ([15, 20, 30, 45, 60].includes(v)) return v;
+  }
+  return 30;
+}
 
 type FreeSlot = { date: string; time: string; label: string };
 
@@ -858,9 +875,10 @@ async function findNearestFreeSlots(
   durationMin: number,
   limit = 3,
 ): Promise<FreeSlot[]> {
-  // Load working hours
-  const whRows = await sql`SELECT working_hours FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
+  // Load working hours + slot interval
+  const whRows = await sql`SELECT working_hours, opening_hours FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
   const wh = (whRows[0]?.working_hours ?? {}) as Record<string, { open?: string; close?: string; closed?: boolean }>;
+  const SLOT_STEP = parseSlotInterval(whRows[0]?.opening_hours);
 
   // Load bookings for the next 14 days
   const searchStart = offsetDayISO(1);
@@ -887,7 +905,6 @@ async function findNearestFreeSlots(
   }
 
   const slots: FreeSlot[] = [];
-  const SLOT_STEP = 30;
 
   for (let d = 1; d <= 14 && slots.length < limit; d++) {
     const dateStr = offsetDayISO(d);
@@ -921,6 +938,122 @@ async function findNearestFreeSlots(
   }
 
   return slots;
+}
+
+async function handleFindFreeSlots(
+  chatId: number,
+  salon: SalonRef,
+  opts: { date_from?: string; date_to?: string; after_time?: string; service_name?: string; duration_min?: number },
+): Promise<void> {
+  const today = todayISO();
+  const fromDate = opts.date_from && opts.date_from >= today ? opts.date_from : today;
+  const toDate = opts.date_to ?? offsetDayISO(14);
+
+  // Resolve duration from service name if not provided directly
+  let durationMin = opts.duration_min ?? 30;
+  if (opts.service_name && !opts.duration_min) {
+    const services = await getSalonServices(salon.salonId);
+    const idx = findServiceIndex(services, opts.service_name);
+    if (idx !== -1) durationMin = services[idx]!.duration_min;
+  }
+
+  // Load working hours + slot interval
+  const whRows = await sql`SELECT working_hours, opening_hours FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
+  const wh = (whRows[0]?.working_hours ?? {}) as Record<string, { open?: string; close?: string; closed?: boolean }>;
+  const SLOT_STEP = parseSlotInterval(whRows[0]?.opening_hours);
+
+  // Load bookings in range
+  const bookingRows = await sql`
+    SELECT date, time, COALESCE(service_duration, 60) AS duration
+    FROM bookings
+    WHERE CAST(salon_id AS text) = ${salon.salonId}
+      AND date >= ${fromDate}
+      AND date <= ${toDate}
+      AND status NOT IN ('cancelled', 'completed')
+    ORDER BY date, time
+  ` as { date: string; time: string; duration: number }[];
+
+  const bookedByDate = new Map<string, { startMin: number; endMin: number }[]>();
+  for (const b of bookingRows) {
+    const [bh, bm] = b.time.split(':').map(Number);
+    const startMin = (bh ?? 0) * 60 + (bm ?? 0);
+    const endMin = startMin + b.duration;
+    const list = bookedByDate.get(b.date) ?? [];
+    list.push({ startMin, endMin });
+    bookedByDate.set(b.date, list);
+  }
+
+  // Parse after_time constraint (e.g. "14:00")
+  let afterMin = 0;
+  if (opts.after_time) {
+    const [ah, am] = opts.after_time.split(':').map(Number);
+    afterMin = (ah ?? 0) * 60 + (am ?? 0);
+  }
+
+  const slots: FreeSlot[] = [];
+  const SLOTS_PER_DAY = 3;
+  const MAX_TOTAL = 8;
+
+  // Iterate days from fromDate to toDate
+  let d = new Date(fromDate + 'T12:00:00');
+  const end = new Date(toDate + 'T12:00:00');
+  while (d <= end && slots.length < MAX_TOTAL) {
+    const dateStr = d.toISOString().slice(0, 10);
+    const jsDay = d.getDay();
+    const dayKey = JS_DAY_KEY[jsDay]!;
+    const dayHours = wh[dayKey];
+    if (!dayHours || dayHours.closed || !dayHours.open || !dayHours.close) {
+      d.setDate(d.getDate() + 1);
+      continue;
+    }
+
+    const [oh, om] = dayHours.open.split(':').map(Number);
+    const [ch, cm] = dayHours.close.split(':').map(Number);
+    const openMin = Math.max((oh ?? 9) * 60 + (om ?? 0), afterMin);
+    const closeMin = (ch ?? 18) * 60 + (cm ?? 0);
+    const booked = bookedByDate.get(dateStr) ?? [];
+
+    let slotsThisDay = 0;
+    for (let t = openMin; t + durationMin <= closeMin && slotsThisDay < SLOTS_PER_DAY && slots.length < MAX_TOTAL; t += SLOT_STEP) {
+      const overlaps = booked.some(b => t < b.endMin && t + durationMin > b.startMin);
+      if (!overlaps) {
+        const hh = String(Math.floor(t / 60)).padStart(2, '0');
+        const mm = String(t % 60).padStart(2, '0');
+        const timeStr = `${hh}:${mm}`;
+        const dayName = d.toLocaleDateString('bg-BG', { weekday: 'long' });
+        const dayNum = d.toLocaleDateString('bg-BG', { day: 'numeric', month: 'long' });
+        slots.push({ date: dateStr, time: timeStr, label: `${dayName} ${dayNum} в ${timeStr}` });
+        slotsThisDay++;
+      }
+    }
+
+    d.setDate(d.getDate() + 1);
+  }
+
+  if (slots.length === 0) {
+    const rangeLabel = opts.date_to
+      ? `до ${formatDateBg(toDate)}`
+      : `в следващите 2 седмици`;
+    await sendTelegramMessage(chatId, `😔 Нямам свободни часове ${rangeLabel}. Провери работното си време или блокираните дни.`);
+    return;
+  }
+
+  const serviceLabel = opts.service_name ? ` за <b>${opts.service_name}</b>` : '';
+  const lines = [`📅 <b>Свободни часове${serviceLabel}:</b>`, ''];
+
+  let lastDate = '';
+  for (const s of slots) {
+    if (s.date !== lastDate) {
+      if (lastDate) lines.push('');
+      const dateObj = new Date(s.date + 'T12:00:00');
+      lines.push(`<b>${dateObj.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' })}</b>`);
+      lastDate = s.date;
+    }
+    lines.push(`  • ${s.time}`);
+  }
+
+  lines.push('', '💡 Кажи "запиши [клиент] [услуга] [ден] в [час]" за да запазиш час.');
+  await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
 // Match "в 09:30", "09:30", "в 9", "14" etc.
@@ -1471,6 +1604,26 @@ ${servicesJson}
   → { "action": "client_bookings", "client_name": "Стоянка" }
   ВАЖНО: Никога не питай "коя Стоянка?" или "имаш предвид X или Y?" — подай директно каквото е написано. Системата сама ще намери по частично съвпадение на първото или пълното ime.
 
+СВОБОДНИ ЧАСОВЕ (find_free_slots):
+  Когато питаш кога имаш свободно / кога може клиент да дойде / какви са свободните часове.
+  "кога имам свободно", "кога може", "кога има свободен час", "свободни часове тази седмица"
+  "има ли свободно утре", "кога мога да запиша нов клиент", "покажи свободните ми часове"
+  "кога следващия свободен час", "кога мога да взема клиент", "кога съм свободна"
+  "свободно ли е тази седмица", "кога мога да запиша маникюр", "за маникюр кога може"
+  "кога има свободно след 14ч", "свободни часове в петък", "кога имаш място за педикюр"
+  "тази седмица кога мога да запиша", "следващата седмица кога има часове"
+  "има ли нещо свободно за утре", "можеш ли да ме запишеш за боядисване тази седмица"
+  → { "action": "find_free_slots" }
+  → { "action": "find_free_slots", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD" }
+  → { "action": "find_free_slots", "service_name": "маникюр" }
+  → { "action": "find_free_slots", "date_from": "YYYY-MM-DD", "after_time": "14:00" }
+  → { "action": "find_free_slots", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD", "service_name": "боядисване" }
+  ВАЖНО: date_from и date_to са незадължителни — пропусни ги ако потребителят не е посочил конкретен период.
+  Ако е посочен ден ("утре", "в петък") → date_from = date_to = тази дата.
+  Ако е посочена седмица ("тази седмица") → date_from = утре, date_to = края на тази работна седмица.
+  Ако е посочен час ("след 14ч", "след обяд") → after_time = "14:00".
+  Ако е спомената услуга → service_name = точното и́ name от списъка с услуги.
+
 ТЕЛЕФОН НА КЛИЕНТ (client_phone):
   "дай ми номера на Мария", "какъв е телефонът на Иван", "номера на Деляна", "телефон на клиента"
   → { "action": "client_phone", "client_name": "Мария" }
@@ -1600,6 +1753,7 @@ ${smsEnabled ? `- { "action": "sms_balance" }
 - { "action": "save_client_note", "client_name": "...", "note": "..." }
 - { "action": "client_note", "client_name": "..." }
 - { "action": "client_bookings", "client_name": "..." }
+- { "action": "find_free_slots", "date_from": "YYYY-MM-DD", "date_to": "YYYY-MM-DD", "after_time": "HH:mm", "service_name": "...", "duration_min": 60 }
 - { "action": "reschedule_booking", "client_name": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD", "to_time": "HH:mm" }
 - { "action": "update_booking_service", "client_name": "...", "date": "YYYY-MM-DD", "time": "HH:mm", "new_service": "..." }  ← когато потребителят коригира грешна услуга на вече създадена резервация ("не маникюр а педикюр", "промени услугата на мъжко подстригване"). Използвай date/time от [ПОСЛЕДНА РЕЗЕРВАЦИЯ] ако не са посочени изрично.
 - { "action": "sort_services", "by": "price_asc" }  ← by: price_asc | price_desc | duration_asc | name_asc
@@ -2035,6 +2189,15 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
       return true;
     case 'client_bookings':
       await handleClientBookings(chatId, salon, intent.client_name);
+      return true;
+    case 'find_free_slots':
+      await handleFindFreeSlots(chatId, salon, {
+        date_from: intent.date_from,
+        date_to: intent.date_to,
+        after_time: intent.after_time,
+        service_name: intent.service_name,
+        duration_min: intent.duration_min,
+      });
       return true;
     case 'confirm_day_off':
       // Handled by state machine above; AI may still emit this if confused — treat as block
@@ -2645,17 +2808,39 @@ async function handleClientPhone(chatId: number, salon: SalonRef, clientName: st
     LIMIT 1
   ` as { client_name: string; client_phone: string; date: string; time: string; service_name: string }[];
 
-  if (rows.length === 0) {
-    await sendTelegramMessage(chatId, `❌ Не намерих клиент с телефон за <b>${clientName}</b>.`);
+  if (rows.length > 0) {
+    const r = rows[0]!;
+    await sendTelegramMessage(
+      chatId,
+      `👤 <b>${r.client_name}</b>\n<i>Последен запис: ${formatDateBg(r.date)} в ${r.time} — ${r.service_name}</i>`,
+    );
+    await sendTelegramMessage(chatId, r.client_phone);
     return;
   }
 
-  const r = rows[0]!;
-  await sendTelegramMessage(
-    chatId,
-    `👤 <b>${r.client_name}</b>\n<i>Последен запис: ${formatDateBg(r.date)} в ${r.time} — ${r.service_name}</i>`,
-  );
-  await sendTelegramMessage(chatId, r.client_phone);
+  // Fallback: check salon_clients table (phones saved via "добави телефон на X")
+  try {
+    const { ensureSalonClientsSchema } = await import('@/lib/ensure-salon-clients-schema');
+    await ensureSalonClientsSchema();
+    const clientRows = await sql`
+      SELECT name, phone FROM salon_clients
+      WHERE salon_id = ${salon.salonId}
+        AND lower(name) LIKE ${`%${clientName.toLowerCase()}%`}
+        AND phone IS NOT NULL AND phone != ''
+      LIMIT 1
+    ` as { name: string; phone: string }[];
+
+    if (clientRows.length > 0) {
+      const c = clientRows[0]!;
+      await sendTelegramMessage(chatId, `👤 <b>${c.name}</b>`);
+      await sendTelegramMessage(chatId, c.phone);
+      return;
+    }
+  } catch {
+    // non-critical
+  }
+
+  await sendTelegramMessage(chatId, `❌ Не намерих клиент с телефон за <b>${clientName}</b>.`);
 }
 
 async function upsertSalonClient(

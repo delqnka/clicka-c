@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
   }
 
-  return NextResponse.json({ workingHours: site.workingHours, bookingBlocks: site.bookingBlocks });
+  return NextResponse.json({ workingHours: site.workingHours, bookingBlocks: site.bookingBlocks, bookingAdvanceDays: site.bookingAdvanceDays, slotIntervalMin: site.slotIntervalMin });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  let body: { workingHours?: unknown; bookingBlocks?: unknown };
+  let body: { workingHours?: unknown; bookingBlocks?: unknown; bookingAdvanceDays?: unknown; slotIntervalMin?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -32,6 +32,11 @@ export async function PATCH(request: NextRequest) {
 
   const workingHours = normalizeWorkingHours(body.workingHours);
   const bookingBlocks = normalizeBookingBlocks(body.bookingBlocks);
+  const rawAdvance = Number(body.bookingAdvanceDays);
+  const bookingAdvanceDays = Number.isFinite(rawAdvance) && rawAdvance >= 1 ? Math.round(rawAdvance) : 60;
+  const rawInterval = Number(body.slotIntervalMin);
+  const slotIntervalMin = [15, 20, 30, 45, 60].includes(rawInterval) ? rawInterval : 30;
+
   const currentRows = await sql`
     SELECT opening_hours
     FROM salons
@@ -42,7 +47,7 @@ export async function PATCH(request: NextRequest) {
     currentRows[0]?.opening_hours && typeof currentRows[0].opening_hours === 'object'
       ? (currentRows[0].opening_hours as Record<string, unknown>)
       : {};
-  const nextOpeningHours = { ...currentOpeningHours, booking_blocks: bookingBlocks };
+  const nextOpeningHours = { ...currentOpeningHours, booking_blocks: bookingBlocks, booking_advance_days: bookingAdvanceDays, slot_interval_min: slotIntervalMin };
 
   await sql`
     UPDATE salons
@@ -62,5 +67,7 @@ export async function PATCH(request: NextRequest) {
     success: true,
     workingHours,
     bookingBlocks,
+    bookingAdvanceDays,
+    slotIntervalMin,
   });
 }

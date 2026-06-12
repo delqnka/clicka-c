@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import type { CSSProperties } from 'react';
 import type { BookingRecord } from '@/lib/admin-site';
 import { formatSalonPrice } from '@/lib/salon-currency';
@@ -393,15 +394,25 @@ export function BookingsPanel({
   );
 }
 
+type EditDraft = { key: string; id: string; name: string; phone: string; email: string };
+
 export function ClientsPanel({
   clients,
   isMobile,
   T,
+  onDelete,
+  onEdit,
 }: {
   clients: ClientSummary[];
   isMobile: boolean;
   T: ThemePalette;
+  onDelete?: (key: string) => void;
+  onEdit?: (key: string, data: { name: string; phone: string; email: string }) => void;
 }) {
+  const [confirmKey, setConfirmKey] = React.useState<string | null>(null);
+  const [editDraft, setEditDraft] = React.useState<EditDraft | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
   if (clients.length === 0) {
     return (
       <div style={{ borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
@@ -411,6 +422,53 @@ export function ClientsPanel({
   }
 
   return (
+    <>
+    {/* Edit modal */}
+    {editDraft && (
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', padding: 16 }}
+        onClick={() => setEditDraft(null)}
+      >
+        <div
+          style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 12 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#000' }}>Редактирай клиент</h3>
+          {(['name', 'phone', 'email'] as const).map((field) => (
+            <input
+              key={field}
+              type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'}
+              placeholder={field === 'name' ? 'Име' : field === 'phone' ? 'Телефон' : 'Имейл'}
+              value={editDraft[field]}
+              onChange={(e) => setEditDraft((d) => d ? { ...d, [field]: e.target.value } : d)}
+              style={{ border: `1px solid ${T.border}`, borderRadius: 8, padding: '10px 12px', fontSize: 14, color: '#000' }}
+            />
+          ))}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              disabled={saving || !editDraft.name.trim()}
+              onClick={async () => {
+                setSaving(true);
+                await onEdit?.(editDraft.key, { name: editDraft.name, phone: editDraft.phone, email: editDraft.email });
+                setSaving(false);
+                setEditDraft(null);
+              }}
+              style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#e11d48,#a855f7)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
+            >
+              {saving ? 'Запазване…' : 'Запази'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditDraft(null)}
+              style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${T.border}`, background: 'transparent', fontSize: 14, cursor: 'pointer', color: T.muted }}
+            >
+              Отказ
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
       {clients.map(client => (
         <div
@@ -434,16 +492,62 @@ export function ClientsPanel({
                 Последна резервация: {client.lastVisit ? new Date(client.lastVisit).toLocaleString('bg-BG', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
               </p>
             </div>
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>Посещения</p>
-              <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>{client.visits}</p>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: T.muted }}>
-                {formatSalonPrice(client.totalSpent)}
-              </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>Посещения</p>
+                <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>{client.visits}</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: T.muted }}>
+                  {formatSalonPrice(client.totalSpent)}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                {/* Edit — only for salon_clients records */}
+                {onEdit && client.key.startsWith('sc-') && confirmKey !== client.key && (
+                  <button
+                    type="button"
+                    onClick={() => setEditDraft({ key: client.key, id: client.key.slice(3), name: client.name, phone: client.phone, email: client.email })}
+                    style={{ fontSize: 13, color: T.subtle, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}
+                    title="Редактирай"
+                  >
+                    ✏️
+                  </button>
+                )}
+                {/* Delete */}
+                {onDelete && (
+                  confirmKey === client.key ? (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => { onDelete(client.key); setConfirmKey(null); }}
+                        style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: '#ef4444', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                      >
+                        Изтрий
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmKey(null)}
+                        style={{ fontSize: 11, color: T.muted, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                      >
+                        Отказ
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmKey(client.key)}
+                      style={{ fontSize: 13, color: T.subtle, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}
+                      title="Изтрий клиент"
+                    >
+                      🗑
+                    </button>
+                  )
+                )}
+              </div>
             </div>
           </div>
         </div>
       ))}
     </div>
+    </>
   );
 }

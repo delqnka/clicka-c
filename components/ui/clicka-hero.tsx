@@ -36,8 +36,8 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
       <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 pb-16 pt-36 sm:pt-28">
 
         {/* Badge */}
-        <p className="mb-8 text-center text-[13px] font-normal" style={{ color: '#0f0f0f' }}>
-          За фризьори, маникюристи, козметици, салони и професионалистите в красотата
+        <p className="mb-8 text-center text-[11px] font-normal" style={{ color: '#9ca3af' }}>
+          За специалистите в красотата.
         </p>
 
         {/* Heading */}
@@ -53,28 +53,23 @@ export function ClickaHero({ activity: activityProp }: ClickaHeroProps) {
           Не в платформа, а на твой домейн.
         </p>
 
-        {/* Price line */}
-        <p className="mb-2 text-center text-[clamp(0.875rem,2vw,1rem)] font-semibold text-[var(--foreground)]">
-          От <span style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{formatDualEurText('0.82')}</span> на ден
-        </p>
-
-        {/* Ready now line */}
-        <p className="mb-6 text-center text-[clamp(0.8rem,2vw,0.9rem)] font-medium" style={{ color: '#9ca3af' }}>
-          Плащаш и сайтът ти е онлайн веднага
+        {/* Price + ready — last push before CTA */}
+        <p className="mb-5 text-center text-[clamp(0.75rem,1.8vw,0.85rem)] font-semibold text-[#0f0f0f]">
+          От <span style={{ background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{formatDualEurText('0.82')}</span> на ден · Плащаш и сайтът ти е онлайн веднага
         </p>
 
         {/* Buttons */}
-        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <ButtonColorful
             href="/create"
             label="Създай сайт"
-            className="h-10 rounded-full px-28 text-base font-bold"
+            className="h-14 rounded-full px-16 text-[15px] font-bold"
           />
           <ButtonColorful
             href="https://salonurban.online/"
             label="Виж готов сайт"
             variant="outline"
-            className=""
+            className="scale-[0.82] origin-center"
           />
         </div>
 

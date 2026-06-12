@@ -450,6 +450,72 @@ export function HoursTabPanel({
           ))}
         </div>
       </div>
+
+      <div style={{ marginTop: isMobile ? 10 : 14, borderTop: `1px solid ${ADMIN_T.border}`, paddingTop: isMobile ? 10 : 14 }}>
+        <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>
+          Интервал между часовете
+        </p>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.subtle }}>
+          На какъв интервал се показват свободните часове на клиентите.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {[15, 20, 30, 45, 60].map((min) => (
+            <button
+              key={min}
+              type="button"
+              onClick={() => setSite((p) => ({ ...p, slotIntervalMin: min }))}
+              style={{
+                borderRadius: 8,
+                border: (site.slotIntervalMin ?? 30) === min
+                  ? `1.5px solid ${ADMIN_T.accent}`
+                  : `1px solid ${ADMIN_T.border}`,
+                background: (site.slotIntervalMin ?? 30) === min ? ADMIN_T.accent : '#fff',
+                color: (site.slotIntervalMin ?? 30) === min ? '#fff' : ADMIN_T.text,
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {min} мин
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginTop: isMobile ? 10 : 14, borderTop: `1px solid ${ADMIN_T.border}`, paddingTop: isMobile ? 10 : 14 }}>
+        <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>
+          Прозорец за резервации
+        </p>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.subtle }}>
+          Колко дни напред могат клиентите да резервират онлайн.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {[14, 30, 60, 90, 180, 365].map((days) => (
+            <button
+              key={days}
+              type="button"
+              onClick={() => setSite((p) => ({ ...p, bookingAdvanceDays: days }))}
+              style={{
+                borderRadius: 8,
+                border: site.bookingAdvanceDays === days
+                  ? `1.5px solid ${ADMIN_T.accent}`
+                  : `1px solid ${ADMIN_T.border}`,
+                background: site.bookingAdvanceDays === days ? ADMIN_T.accent : '#fff',
+                color: site.bookingAdvanceDays === days ? '#fff' : ADMIN_T.text,
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {days === 365 ? '1 година' : days === 180 ? '6 месеца' : days === 90 ? '3 месеца' : `${days} дни`}
+            </button>
+          ))}
+        </div>
+      </div>
     </AdminSection>
   );
 }
