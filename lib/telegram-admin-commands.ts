@@ -3089,6 +3089,7 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
       : `📞 Да добавя ли телефон:\n<b>${contact}</b>`;
 
     if (clientExists) {
+      // Existing client — confirm before overwriting their phone/email
       await setState(chatId, {
         type: 'waiting_confirm_save_phone',
         clientName: resolvedName,
@@ -3097,23 +3098,21 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
         clientExists: true,
         created_at: new Date().toISOString(),
       });
+      const existingPhoneHint = allCandidateRows[0]?.existing_phone ? ` (сега: ${allCandidateRows[0].existing_phone})` : '';
       await sendTelegramMessage(
         chatId,
-        `👤 Намерих клиент:\n<b>${resolvedName}</b>\n\n${contactLabel}\n\n<i>Отговори да / не</i>`,
+        `👤 Намерих клиент:\n<b>${resolvedName}</b>${existingPhoneHint}\n\n${contactLabel}\n\n<i>Отговори да / не</i>`,
       );
     } else {
-      await setState(chatId, {
-        type: 'waiting_confirm_save_phone',
-        clientName,
-        phone: contact,
-        clientId: null,
-        clientExists: false,
-        created_at: new Date().toISOString(),
-      });
-      await sendTelegramMessage(
-        chatId,
-        `⚠️ Клиентът <b>${clientName}</b> не е в базата.\n\nДа създам ли нов клиент с:\n${contactLabel}\n\n<i>Отговори да / не</i>`,
-      );
+      // New client — save directly, no confirmation needed
+      const isEmailContact = contact.startsWith('email:');
+      const emailVal = isEmailContact ? contact.slice(6) : undefined;
+      const phoneVal = isEmailContact ? undefined : contact;
+      await upsertSalonClient(salon.salonId, clientName, { phone: phoneVal, email: emailVal });
+      await setState(chatId, { type: 'last_client', clientId: null, name: clientName, created_at: new Date().toISOString() });
+      const detail = phoneVal ? `телефон: <b>${phoneVal}</b>` : `имейл: <b>${emailVal}</b>`;
+      await sendTelegramMessage(chatId, `✅ Добавих нов клиент <b>${clientName}</b> — ${detail}`);
+      await appendHistory(chatId, 'assistant', `[save_client_contact: ${clientName}${phoneVal ? `, tel: ${phoneVal}` : ''}${emailVal ? `, email: ${emailVal}` : ''}]`);
     }
     return;
   }
