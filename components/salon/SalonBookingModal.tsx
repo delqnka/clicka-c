@@ -433,11 +433,11 @@ export function SalonBookingModal({
                               <button
                                 type="button"
                                 onClick={() => onToggleService(idx)}
-                                className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-white transition ${gradientCtaShadow}`}
-                                style={CLICKA_MARKETING_GRADIENT_STYLE}
+                                className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-black/60 transition active:bg-black/[0.04] ${cardShadow}`}
+                                aria-label="Премахни услуга"
                               >
-                                <Check className="h-3.5 w-3.5" aria-hidden />
-                                Добавена
+                                <X className="h-3.5 w-3.5" aria-hidden />
+                                Премахни
                               </button>
                             </div>
                           </div>
@@ -550,24 +550,27 @@ export function SalonBookingModal({
                               {duration} мин · {formatDualEurText(String(price))}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleCatalogService(service)}
-                            className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-white transition ${gradientCtaShadow}`}
-                            style={CLICKA_MARKETING_GRADIENT_STYLE}
-                          >
-                            {active ? (
-                              <>
-                                <Check className="h-3.5 w-3.5" aria-hidden />
-                                Добавена
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="h-3.5 w-3.5" aria-hidden />
-                                Добави
-                              </>
-                            )}
-                          </button>
+                          {active ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleCatalogService(service)}
+                              className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-black/60 transition active:bg-black/[0.04] ${cardShadow}`}
+                              aria-label="Премахни услуга"
+                            >
+                              <X className="h-3.5 w-3.5" aria-hidden />
+                              Премахни
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleCatalogService(service)}
+                              className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-white transition ${gradientCtaShadow}`}
+                              style={CLICKA_MARKETING_GRADIENT_STYLE}
+                            >
+                              <Plus className="h-3.5 w-3.5" aria-hidden />
+                              Добави
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
