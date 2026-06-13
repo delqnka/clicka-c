@@ -352,7 +352,13 @@ export async function handleAdminCommand(
       const email = bareEmail?.[1];
       // Bot explicitly asked for the phone/email — save directly without second confirmation.
       await clearState(chatId);
-      await upsertSalonClient(salon.salonId, state.name, { phone, email });
+      try {
+        await upsertSalonClient(salon.salonId, state.name, { phone, email });
+      } catch (err) {
+        console.error('[TG_CLIENT] bare phone upsert failed:', err);
+        await sendTelegramMessage(chatId, `❌ Грешка при запазване на телефона. Опитай пак.`);
+        return true;
+      }
       const detail = phone ? `телефон: <b>${phone}</b>` : `имейл: <b>${email}</b>`;
       await sendTelegramMessage(chatId, `✅ Запазих ${detail} за <b>${state.name}</b>.`);
       await appendHistory(chatId, 'user', text);
@@ -3108,7 +3114,13 @@ async function handleSaveClientContact(chatId: number, salon: SalonRef, clientNa
       const isEmailContact = contact.startsWith('email:');
       const emailVal = isEmailContact ? contact.slice(6) : undefined;
       const phoneVal = isEmailContact ? undefined : contact;
-      await upsertSalonClient(salon.salonId, clientName, { phone: phoneVal, email: emailVal });
+      try {
+        await upsertSalonClient(salon.salonId, clientName, { phone: phoneVal, email: emailVal });
+      } catch (err) {
+        console.error('[TG_CLIENT] new client upsert failed:', err);
+        await sendTelegramMessage(chatId, `❌ Грешка при запазване на клиента. Опитай пак.`);
+        return;
+      }
       await setState(chatId, { type: 'last_client', clientId: null, name: clientName, created_at: new Date().toISOString() });
       const detail = phoneVal ? `телефон: <b>${phoneVal}</b>` : `имейл: <b>${emailVal}</b>`;
       await sendTelegramMessage(chatId, `✅ Добавих нов клиент <b>${clientName}</b> — ${detail}`);
