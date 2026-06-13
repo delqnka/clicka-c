@@ -25,5 +25,18 @@ Sentry.init({
     'ResizeObserver loop completed with undelivered notifications',
     /^No error$/,
     /ChunkLoadError/,
+    // Instagram WebView native bridge errors — not our code
+    /Java object is gone/,
+    /Error invoking postMessage/,
+    /Error invoking enableButtonsClickedMetaDataLogging/,
   ],
+
+  beforeSend(event) {
+    // Drop errors originating from Instagram's injected navigation_performance_logger
+    const frames = event.exception?.values?.[0]?.stacktrace?.frames;
+    if (frames?.some((f) => f.filename?.includes('navigation_performance_logger_android'))) {
+      return null;
+    }
+    return event;
+  },
 });
