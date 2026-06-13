@@ -542,7 +542,12 @@ export function ClientsPanel({
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600 }}>{client.name}</p>
+              <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
+                {client.name}
+                {client.key.startsWith('sc-') && client.visits === 0 && (
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#db2777', background: '#fdf2f8', borderRadius: 4, padding: '2px 6px', lineHeight: 1.4, userSelect: 'none' }}>нов</span>
+                )}
+              </p>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted }}>
                 {client.phone || 'Няма телефон'}
                 {client.email ? ` · ${client.email}` : ''}

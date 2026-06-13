@@ -3351,7 +3351,11 @@ export default function AdminDashboardClient({
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
-                    {clients.filter(c => !hiddenClientKeys.has(c.key)).length + extraClients.length} уникални
+                    {(() => {
+                    const bc = clients.filter(c => !hiddenClientKeys.has(c.key));
+                    const names = new Set(bc.map(c => c.name.toLowerCase().trim()));
+                    return bc.length + extraClients.filter(c => !names.has(c.name.toLowerCase().trim())).length;
+                  })()} уникални
                   </span>
                   <button
                     type="button"
@@ -3379,7 +3383,12 @@ export default function AdminDashboardClient({
               }
             >
               <ClientsPanel
-                clients={[...clients.filter(c => !hiddenClientKeys.has(c.key)), ...extraClients]}
+                clients={(() => {
+                  const bookingClients = clients.filter(c => !hiddenClientKeys.has(c.key));
+                  const bookingNames = new Set(bookingClients.map(c => c.name.toLowerCase().trim()));
+                  const deduped = extraClients.filter(c => !bookingNames.has(c.name.toLowerCase().trim()));
+                  return [...bookingClients, ...deduped];
+                })()}
                 isMobile={isMobile}
                 T={T}
                 onEdit={async (key, data) => {
