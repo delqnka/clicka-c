@@ -246,6 +246,7 @@ type ClientSummary = {
   visits: number;
   totalSpent: number;
   lastVisit: string;
+  isNew?: boolean;
 };
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
 type GoogleReviewsStatus = {
@@ -702,8 +703,9 @@ export default function AdminDashboardClient({
     if (activeTab !== 'clients') return;
     fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null }[] } | null) => {
+      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string }[] } | null) => {
         if (!data?.clients?.length) return;
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
         setExtraClients(data.clients.map((c) => ({
           key: `sc-${c.id}`,
           name: c.name,
@@ -712,6 +714,7 @@ export default function AdminDashboardClient({
           visits: 0,
           totalSpent: 0,
           lastVisit: '',
+          isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
         })));
       })
       .catch(() => undefined);
@@ -3530,16 +3533,19 @@ export default function AdminDashboardClient({
                           body: JSON.stringify({ name, phone: newClientDraft.phone.trim() || null }),
                         });
                         if (res.ok) {
+                          const saved = (await res.json()) as { client?: { id: string } };
+                          const newKey = saved?.client?.id ? `sc-${saved.client.id}` : `sc-tmp-${Date.now()}`;
                           setExtraClients((prev) => [
                             ...prev,
                             {
-                              key: `manual-${name.toLowerCase()}`,
+                              key: newKey,
                               name,
                               phone: newClientDraft.phone.trim(),
                               email: '',
                               visits: 0,
                               totalSpent: 0,
                               lastVisit: '',
+                              isNew: true,
                             },
                           ]);
                           setClientModalOpen(false);

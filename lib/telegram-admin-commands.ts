@@ -350,8 +350,13 @@ export async function handleAdminCommand(
     if (state?.type === 'last_client') {
       const phone = barePhone?.[1]?.replace(/[\s\-]/g, '');
       const email = bareEmail?.[1];
-      await handleSaveClientContact(chatId, salon, state.name, phone, email);
+      // Bot explicitly asked for the phone/email — save directly without second confirmation.
+      await clearState(chatId);
+      await upsertSalonClient(salon.salonId, state.name, { phone, email });
+      const detail = phone ? `телефон: <b>${phone}</b>` : `имейл: <b>${email}</b>`;
+      await sendTelegramMessage(chatId, `✅ Запазих ${detail} за <b>${state.name}</b>.`);
       await appendHistory(chatId, 'user', text);
+      await appendHistory(chatId, 'assistant', `[save_client_contact: ${state.name}${phone ? `, tel: ${phone}` : ''}${email ? `, email: ${email}` : ''}]`);
       return true;
     }
   }
