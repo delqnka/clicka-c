@@ -20,7 +20,37 @@ const r2PublicNormalized = r2PublicRaw.trim().startsWith('http')
 const r2Host = hostnameFromUrl(r2PublicNormalized);
 
 /** @type {import('next').NextConfig['headers']} */
+//
+// frame-ancestors below replaces X-Frame-Options: SAMEORIGIN so external partner sites
+// (e.g. a salon's custom marketing landing page on Vercel) can iframe their own public
+// salon page on clicka.bg for an inline "Резервирай" modal. Salon public pages have no
+// destructive 1-click actions, so clickjacking risk is minimal. Admin and billing routes
+// are still locked down separately below.
+const baseCsp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://www.clarity.ms https://scripts.clarity.ms https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' blob: data: https:",
+  "font-src 'self' https://fonts.gstatic.com",
+  "frame-src https://challenges.cloudflare.com https://js.stripe.com https://www.facebook.com https://www.openstreetmap.org",
+  "connect-src 'self' https://openrouter.ai https://api.stripe.com https://o4511518502289408.ingest.sentry.io https://o4511518502289408.ingest.de.sentry.io https://sentry.io https://*.clarity.ms https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.facebook.com https://connect.facebook.net https://capig.datah04.com",
+  "worker-src 'self' blob:",
+];
+
 const securityHeaders = [
+  { key: 'X-Content-Type-Options',           value: 'nosniff' },
+  { key: 'Referrer-Policy',                 value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy',              value: 'camera=(), microphone=(), geolocation=()' },
+  { key: 'Strict-Transport-Security',       value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-DNS-Prefetch-Control',          value: 'on' },
+  {
+    key: 'Content-Security-Policy',
+    value: [...baseCsp, "frame-ancestors *"].join('; '),
+  },
+];
+
+// Stricter headers for platform admin / billing / api routes.
+const adminSecurityHeaders = [
   { key: 'X-Content-Type-Options',           value: 'nosniff' },
   { key: 'X-Frame-Options',                 value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy',                 value: 'strict-origin-when-cross-origin' },
@@ -29,24 +59,23 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control',          value: 'on' },
   {
     key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      // inline styles/scripts needed by Next.js hydration, Sentry, Stripe, and salon tracking
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://www.clarity.ms https://scripts.clarity.ms https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' blob: data: https:",
-      "font-src 'self' https://fonts.gstatic.com",
-      "frame-src https://challenges.cloudflare.com https://js.stripe.com https://www.facebook.com https://www.openstreetmap.org",
-      "connect-src 'self' https://openrouter.ai https://api.stripe.com https://o4511518502289408.ingest.sentry.io https://o4511518502289408.ingest.de.sentry.io https://sentry.io https://*.clarity.ms https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.facebook.com https://connect.facebook.net https://capig.datah04.com",
-      "worker-src 'self' blob:",
-    ].join('; '),
+    value: [...baseCsp, "frame-ancestors 'self'"].join('; '),
   },
 ];
 
 const nextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }];
+    return [
+      // Stricter set for platform routes (admin, billing, api, setup, account).
+      { source: '/admin/:path*',   headers: adminSecurityHeaders },
+      { source: '/billing/:path*', headers: adminSecurityHeaders },
+      { source: '/api/:path*',     headers: adminSecurityHeaders },
+      { source: '/setup/:path*',   headers: adminSecurityHeaders },
+      { source: '/account/:path*', headers: adminSecurityHeaders },
+      // Everything else (mostly public salon pages) allows iframe embedding.
+      { source: '/(.*)',           headers: securityHeaders },
+    ];
   },
   env: {
     NEXT_PUBLIC_R2_PUBLIC_URL: r2PublicNormalized,

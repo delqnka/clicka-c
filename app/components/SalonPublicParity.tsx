@@ -996,6 +996,19 @@ export default function SalonPublicParity({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Open booking modal with pre-selected service when URL has ?service=<id>.
+  // Allows external sites to deep-link straight into a specific service.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const sid = url.searchParams.get('service');
+    if (!sid) return;
+    openBookingModal(sid);
+    url.searchParams.delete('service');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function openBookingModal(serviceId?: string) {
     setBookingError('');
     setBookingSuccess('');
