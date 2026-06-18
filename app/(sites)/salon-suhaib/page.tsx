@@ -2,6 +2,8 @@ import './suhaib.css';
 import { SuhaibClient } from './SuhaibClient';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 
+export const dynamic = 'force-dynamic';
+
 const SLUG = process.env.SUHAIB_SALON_SLUG ?? 'salon-suhaib';
 
 export const metadata = {
