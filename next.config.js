@@ -144,6 +144,6 @@ module.exports = withSentryConfig(nextConfig, {
 
   // Automatic instrumentation на Next.js API routes
   autoInstrumentServerFunctions: true,
-  autoInstrumentMiddleware: true,
+  autoInstrumentMiddleware: false,
   autoInstrumentAppDirectory: true,
 });
