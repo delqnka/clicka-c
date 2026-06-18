@@ -1,4 +1,4 @@
-import { extractHostname, isPlatformApexHost } from '@/lib/domain-routing';
+import { extractHostname, isPlatformApexHost } from './domain-routing';
 
 const PLATFORM_RESERVED_SEGMENTS = new Set([
   'admin',
