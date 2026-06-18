@@ -2,11 +2,17 @@ import 'server-only';
 
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL не е зададена');
-}
+let rawSql: ReturnType<typeof neon> | null = null;
 
-const rawSql = neon(process.env.DATABASE_URL);
+function getDb(): ReturnType<typeof neon> {
+  if (!rawSql) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL не е зададена');
+    }
+    rawSql = neon(process.env.DATABASE_URL);
+  }
+  return rawSql;
+}
 
 const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 150;
@@ -42,7 +48,7 @@ async function withRetry<T>(run: () => Promise<T>): Promise<T> {
 
 export const sql = ((strings: TemplateStringsArray, ...values: unknown[]) =>
   withRetry(() =>
-    (rawSql as unknown as (s: TemplateStringsArray, ...v: unknown[]) => Promise<unknown[]>)(
+    (getDb() as unknown as (s: TemplateStringsArray, ...v: unknown[]) => Promise<unknown[]>)(
       strings,
       ...values,
     ),
