@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useT } from '@/lib/i18n-react';
 
 type Props = {
   serviceName: string;
@@ -17,6 +18,7 @@ export function BookingSuccessView({
   salonName,
   onClose,
 }: Props) {
+  const t = useT();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export function BookingSuccessView({
             show ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
           }`}
         >
-          Резервацията е потвърдена
+          {t('booking.success.confirmed')}
         </h3>
 
         {/* Subtitle */}
@@ -84,7 +86,7 @@ export function BookingSuccessView({
             show ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
           }`}
         >
-          Очакваме ви в <span className="font-medium text-black/60">{salonName}</span>
+          {t('booking.success.waitingAt')} <span className="font-medium text-black/60">{salonName}</span>
         </p>
 
         {/* Details card */}
@@ -102,7 +104,7 @@ export function BookingSuccessView({
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-black/30">Услуга</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-black/30">{t('booking.success.labelService')}</p>
                 <p className="mt-0.5 text-[14px] font-medium leading-snug text-[#111]">{serviceName}</p>
               </div>
             </div>
@@ -116,9 +118,9 @@ export function BookingSuccessView({
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-black/30">Кога</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-black/30">{t('booking.success.labelWhen')}</p>
                 <p className="mt-0.5 text-[14px] font-medium leading-snug text-[#111]">
-                  {dateLabel}, {time} ч.
+                  {t('booking.success.timeFormat', { date: dateLabel, time })}
                 </p>
               </div>
             </div>
@@ -133,7 +135,7 @@ export function BookingSuccessView({
             show ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
           }`}
         >
-          Готово
+          {t('booking.success.done')}
         </button>
       </div>
     </div>

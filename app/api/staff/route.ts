@@ -3,6 +3,16 @@ import { sql } from '@/lib/db';
 import { resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 import { ensureStaffSchema } from '@/lib/ensure-staff-schema';
 
+const PUBLIC_CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+} as const;
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS });
+}
+
 export type PublicStaffMember = {
   id: string;
   name: string;
@@ -23,7 +33,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!lookup) {
-    return NextResponse.json({ staff: [] });
+    return NextResponse.json({ staff: [] }, { headers: PUBLIC_CORS });
   }
 
   try {
@@ -58,9 +68,9 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ staff });
+    return NextResponse.json({ staff }, { headers: PUBLIC_CORS });
   } catch {
     // If staff table doesn't exist yet (fresh salon), return empty — SOLO flow
-    return NextResponse.json({ staff: [] });
+    return NextResponse.json({ staff: [] }, { headers: PUBLIC_CORS });
   }
 }

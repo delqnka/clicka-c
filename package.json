@@ -9,7 +9,8 @@
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "perf": "node scripts/perf-report.mjs",
-    "optimize-marketing-images": "node scripts/optimize-marketing-images.mjs"
+    "optimize-marketing-images": "node scripts/optimize-marketing-images.mjs",
+    "create-client": "node --env-file=.env.local scripts/create-client.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",

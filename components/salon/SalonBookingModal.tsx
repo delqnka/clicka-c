@@ -3,6 +3,7 @@
 import { Check, ChevronDown, Loader2, Plus, User, X } from 'lucide-react';
 import { formatDualEurText } from '@/lib/salon-currency';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useT } from '@/lib/i18n-react';
 import {
   CLICKA_MARKETING_GRADIENT_BORDER_STYLE,
   CLICKA_MARKETING_GRADIENT_STYLE,
@@ -162,6 +163,8 @@ export function SalonBookingModal({
   onStaffMemberChange,
   directStaffName,
 }: SalonBookingModalProps) {
+  const t = useT();
+
   // isTeam = TEAM salon with multiple staff members; direct = pre-selected staff link
   const isTeam = staffMembers.length > 0 && !directStaffName;
   // Steps: 1=service, 2=staff(team only), 3=datetime, 4=contact
@@ -285,20 +288,20 @@ export function SalonBookingModal({
   // Step label definitions differ between SOLO and TEAM.
   const stepLabels = isTeam
     ? [
-        { n: 1 as const, label: 'Услуга' },
-        { n: 2 as const, label: 'Специалист' },
-        { n: 3 as const, label: 'Час' },
-        { n: 4 as const, label: 'Данни' },
+        { n: 1 as const, label: t('booking.modal.stepService') },
+        { n: 2 as const, label: t('booking.modal.stepSpecialist') },
+        { n: 3 as const, label: t('booking.modal.stepTime') },
+        { n: 4 as const, label: t('booking.modal.stepDetails') },
       ]
     : [
-        { n: 1 as const, label: 'Услуга' },
-        { n: 2 as const, label: 'Час' },
-        { n: 3 as const, label: 'Данни' },
+        { n: 1 as const, label: t('booking.modal.stepService') },
+        { n: 2 as const, label: t('booking.modal.stepTime') },
+        { n: 3 as const, label: t('booking.modal.stepDetails') },
       ];
 
   function requestClose() {
     if (typeof window !== 'undefined') {
-      const shouldClose = window.confirm('Сигурни ли сте, че искате да затворите резервацията?');
+      const shouldClose = window.confirm(t('booking.modal.confirmClose'));
       if (!shouldClose) return;
     }
     onClose();
@@ -337,7 +340,7 @@ export function SalonBookingModal({
       <div
         role="dialog"
         aria-modal
-        aria-label="Резервация"
+        aria-label={t('booking.modal.ariaLabel')}
         className="absolute inset-x-0 bottom-0 z-10 mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-white sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem] sm:bg-white sm:shadow-[0_25px_60px_rgba(0,0,0,0.12)]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -346,7 +349,7 @@ export function SalonBookingModal({
         <div className="relative z-[1] flex shrink-0 items-center justify-between gap-2 bg-white px-4 pb-3 pt-3.5 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <h3 className="text-[17px] font-semibold tracking-tight text-black">
-              {directStaffName ? `при ${directStaffName}` : 'Резервация'}
+              {directStaffName ? t('booking.modal.titleWithStaff', { name: directStaffName }) : t('booking.modal.titleDefault')}
             </h3>
             <div className="flex items-center gap-1.5">
               {stepLabels.map(({ n, label }) => {
@@ -368,7 +371,7 @@ export function SalonBookingModal({
                     }`}
                     style={active || complete ? CLICKA_MARKETING_GRADIENT_STYLE : undefined}
                     title={label}
-                    aria-label={`Стъпка ${n}: ${label}`}
+                    aria-label={t('booking.modal.stepAria', { n, label })}
                   >
                     {complete && !active ? '✓' : n}
                   </button>
@@ -380,7 +383,7 @@ export function SalonBookingModal({
             type="button"
             className={`shrink-0 rounded-full bg-white p-2 text-black/40 transition active:bg-black/[0.03] ${cardShadow}`}
             onClick={requestClose}
-            aria-label="Затвори"
+            aria-label={t('booking.modal.closeAria')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -408,9 +411,9 @@ export function SalonBookingModal({
                   {hasServices && !browseAllServices ? (
                     <>
                       <div className="flex items-baseline justify-between gap-2">
-                        <p className="text-[13px] font-semibold text-black">Избрани услуги</p>
+                        <p className="text-[13px] font-semibold text-black">{t('booking.modal.selectedServices')}</p>
                         <p className="text-[12px] font-medium tabular-nums text-black/40">
-                          {selectedServices.length} {selectedServices.length === 1 ? 'услуга' : 'услуги'}
+                          {t(selectedServices.length === 1 ? 'booking.modal.serviceCountOne' : 'booking.modal.serviceCountMany', { count: selectedServices.length })}
                         </p>
                       </div>
                       {selectedServiceIdxs.map((idx) => {
@@ -427,17 +430,17 @@ export function SalonBookingModal({
                                 <p className="truncate text-[16px] font-semibold text-black">{svc.name}</p>
                                 <ServiceDescription text={svc.description} />
                                 <p className="mt-1 text-[13px] tabular-nums text-black/70">
-                                  {svc.duration} мин · {formatDualEurText(Number(svc.price ?? 0).toFixed(2))}
+                                  {svc.duration} {t('booking.modal.minSuffix')} · {formatDualEurText(Number(svc.price ?? 0).toFixed(2))}
                                 </p>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => onToggleService(idx)}
                                 className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-black/60 transition active:bg-black/[0.04] ${cardShadow}`}
-                                aria-label="Премахни услуга"
+                                aria-label={t('booking.modal.removeAria')}
                               >
                                 <X className="h-3.5 w-3.5" aria-hidden />
-                                Премахни
+                                {t('booking.modal.remove')}
                               </button>
                             </div>
                           </div>
@@ -449,15 +452,15 @@ export function SalonBookingModal({
                         className={`flex w-full items-center justify-center gap-1.5 rounded-2xl bg-white px-3.5 py-3 text-sm font-semibold text-black ${cardShadow}`}
                       >
                         <Plus className="h-4 w-4" aria-hidden />
-                        Добави още услуги
+                        {t('booking.modal.addMoreServices')}
                       </button>
                     </>
                   ) : (
                     <>
                       <div className="flex items-baseline justify-between gap-2">
-                        <p className="text-[13px] font-semibold text-black">Услуги</p>
+                        <p className="text-[13px] font-semibold text-black">{t('booking.modal.services')}</p>
                         <p className="text-[12px] font-medium tabular-nums text-black/40">
-                          {visibleCatalog.length} {visibleCatalog.length === 1 ? 'услуга' : 'услуги'}
+                          {t(visibleCatalog.length === 1 ? 'booking.modal.serviceCountOne' : 'booking.modal.serviceCountMany', { count: visibleCatalog.length })}
                         </p>
                       </div>
 
@@ -467,7 +470,7 @@ export function SalonBookingModal({
                           onClick={() => setBrowseAllServices(false)}
                           className="text-[12px] font-semibold text-black underline underline-offset-2"
                         >
-                          Скрий списъка · {selectedServices.length} избрани
+                          {t('booking.modal.hideList', { count: selectedServices.length })}
                         </button>
                       ) : null}
 
@@ -547,7 +550,7 @@ export function SalonBookingModal({
                               </div>
                             ) : null}
                             <p className="mt-1.5 text-[13px] tabular-nums text-black/45">
-                              {duration} мин · {formatDualEurText(String(price))}
+                              {duration} {t('booking.modal.minSuffix')} · {formatDualEurText(String(price))}
                             </p>
                           </div>
                           {active ? (
@@ -555,10 +558,10 @@ export function SalonBookingModal({
                               type="button"
                               onClick={() => toggleCatalogService(service)}
                               className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-black/60 transition active:bg-black/[0.04] ${cardShadow}`}
-                              aria-label="Премахни услуга"
+                              aria-label={t('booking.modal.removeAria')}
                             >
                               <X className="h-3.5 w-3.5" aria-hidden />
-                              Премахни
+                              {t('booking.modal.remove')}
                             </button>
                           ) : (
                             <button
@@ -568,7 +571,7 @@ export function SalonBookingModal({
                               style={CLICKA_MARKETING_GRADIENT_STYLE}
                             >
                               <Plus className="h-3.5 w-3.5" aria-hidden />
-                              Добави
+                              {t('booking.modal.add')}
                             </button>
                           )}
                         </div>
@@ -577,7 +580,7 @@ export function SalonBookingModal({
                   })}
                   {visibleCatalog.length === 0 ? (
                     <p className={`rounded-2xl bg-white px-3.5 py-3 text-sm text-black/40 ${cardShadow}`}>
-                      Няма услуги в избраната категория.
+                      {t('booking.modal.noServicesInCategory')}
                     </p>
                   ) : null}
                     </>
@@ -588,10 +591,10 @@ export function SalonBookingModal({
               {/* Staff selection step — TEAM only, step 2 */}
               {step === 2 && isTeam ? (
                 <div className="space-y-3">
-                  <p className="text-[13px] font-semibold text-black">Избери специалист</p>
+                  <p className="text-[13px] font-semibold text-black">{t('booking.modal.selectSpecialist')}</p>
                   {selectedServiceIds.length > 0 && (
                     <p className="text-[12px] text-black/45">
-                      Налични за&nbsp;
+                      {t('booking.modal.availableFor')}&nbsp;
                       <span className="font-medium text-black/70">
                         {selectedServiceIds
                           .map((sid) => serviceCatalog.find((s) => s.id === sid)?.name ?? sid)
@@ -602,14 +605,14 @@ export function SalonBookingModal({
                   {eligibleStaff.length === 0 ? (
                     <div className={`rounded-2xl bg-white px-4 py-5 text-center ${cardShadow}`}>
                       <p className="text-[14px] font-medium text-black/50">
-                        Тази услуга не е налична за резервация в момента.
+                        {t('booking.modal.serviceUnavailable')}
                       </p>
                       <button
                         type="button"
                         onClick={() => setStep(1)}
                         className="mt-3 text-[13px] font-semibold text-[color:var(--salon-primary)] underline underline-offset-2"
                       >
-                        Избери друга услуга
+                        {t('booking.modal.selectOtherService')}
                       </button>
                     </div>
                   ) : (
@@ -657,8 +660,8 @@ export function SalonBookingModal({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="text-[13px] font-semibold text-black">
                       {selectedStaffMemberId
-                        ? `Час при ${staffMembers.find((s) => s.id === selectedStaffMemberId)?.name ?? ''}`
-                        : 'Дата и час'}
+                        ? t('booking.modal.timeWithStaff', { name: staffMembers.find((s) => s.id === selectedStaffMemberId)?.name ?? '' })
+                        : t('booking.modal.dateTime')}
                     </p>
                     <button
                       type="button"
@@ -666,7 +669,7 @@ export function SalonBookingModal({
                       className={`inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--salon-primary)] ${cardShadow} active:bg-black/[0.03]`}
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      Добави услуга
+                      {t('booking.modal.addService')}
                     </button>
                   </div>
 
@@ -678,7 +681,7 @@ export function SalonBookingModal({
 
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
-                      Дата
+                      {t('booking.modal.date')}
                     </label>
                     <div className="-mx-1 mt-2 flex gap-2.5 overflow-x-auto px-1 pb-1.5 scrollbar-none">
                       {dateOptions.map((d) => {
@@ -707,14 +710,14 @@ export function SalonBookingModal({
 
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
-                      Час
+                      {t('booking.modal.time')}
                     </label>
                     {!selectedDate ? (
-                      <p className="mt-1.5 text-sm text-black/35">Първо изберете дата.</p>
+                      <p className="mt-1.5 text-sm text-black/35">{t('booking.modal.selectDateFirst')}</p>
                     ) : timeSlots === 'closed' ? (
-                      <p className="mt-1.5 text-sm text-black/35">В този ден салонът е затворен.</p>
+                      <p className="mt-1.5 text-sm text-black/35">{t('booking.modal.dayClosed')}</p>
                     ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
-                      <p className="mt-1.5 text-sm text-black/35">Няма свободни часове за избраните услуги.</p>
+                      <p className="mt-1.5 text-sm text-black/35">{t('booking.modal.noSlots')}</p>
                     ) : Array.isArray(timeSlots) ? (
                       <div className="mt-2 grid w-full max-w-full grid-cols-3 gap-2.5 sm:grid-cols-4">
                         {timeSlots.map((t) => {
@@ -737,7 +740,7 @@ export function SalonBookingModal({
                         })}
                       </div>
                     ) : (
-                      <p className="mt-1.5 text-sm text-black/35">Първо изберете услуга.</p>
+                      <p className="mt-1.5 text-sm text-black/35">{t('booking.modal.selectServiceFirst')}</p>
                     )}
                   </div>
                 </div>
@@ -747,11 +750,11 @@ export function SalonBookingModal({
               {((isTeam && step === 4) || (!isTeam && step === 3)) ? (
                 <div className="space-y-3.5">
                   <p className="text-[13px] font-semibold text-black">
-                    Данни за контакт
+                    {t('booking.modal.contactDetails')}
                   </p>
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
-                      Име
+                      {t('booking.modal.name')}
                     </label>
                     <input
                       className={fieldClass}
@@ -764,7 +767,7 @@ export function SalonBookingModal({
 
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
-                      Телефон
+                      {t('booking.modal.phone')}
                     </label>
                     <input
                       type="tel"
@@ -779,7 +782,7 @@ export function SalonBookingModal({
 
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
-                      Имейл
+                      {t('booking.modal.email')}
                     </label>
                     <input
                       type="email"
@@ -794,7 +797,7 @@ export function SalonBookingModal({
 
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
-                      Бележки (по желание)
+                      {t('booking.modal.notes')}
                     </label>
                     <textarea
                       className={`${fieldClass} resize-none`}
@@ -814,9 +817,9 @@ export function SalonBookingModal({
                           onChange={(e) => onSmsReminderConsentChange(e.target.checked)}
                         />
                         <span className="text-sm leading-relaxed text-black/50">
-                          Съгласявам се да получавам SMS напомняния за резервацията от{' '}
-                          <strong className="font-semibold text-black">{salonName}</strong> на посочения
-                          телефон. Прочетох{' '}
+                          {t('booking.modal.smsConsentPre')}{' '}
+                          <strong className="font-semibold text-black">{salonName}</strong>{' '}
+                          {t('booking.modal.smsConsentPost')}{' '}
                           <a
                             href={termsHref}
                             target="_blank"
@@ -824,9 +827,9 @@ export function SalonBookingModal({
                             className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            Общите условия
+                            {t('booking.modal.terms')}
                           </a>{' '}
-                          и{' '}
+                          {t('booking.modal.smsConsentAnd')}{' '}
                           <a
                             href={privacyHref}
                             target="_blank"
@@ -834,13 +837,13 @@ export function SalonBookingModal({
                             className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            Политиката за поверителност
+                            {t('booking.modal.privacy')}
                           </a>
                           .
                         </span>
                       </label>
                       <p className="text-xs leading-relaxed text-black/30">
-                        Без отметка резервацията ви остава валидна, но няма да получите SMS напомняние от салона.
+                        {t('booking.modal.smsConsentNote')}
                       </p>
                     </>
                   ) : null}
@@ -861,14 +864,14 @@ export function SalonBookingModal({
             {hasServices ? (
               <div className="mb-3 px-1">
                 <p className="text-[13px] tabular-nums text-black/50">
-                  Общо: {Math.max(0, totalDuration)} мин
+                  {t('booking.modal.totalDuration', { min: Math.max(0, totalDuration) })}
                 </p>
                 <p className="text-[17px] font-semibold tabular-nums text-black/70 leading-tight">
-                  Общо: {formatDualEurText(totalPrice.toFixed(2))}
+                  {t('booking.modal.totalPrice', { price: formatDualEurText(totalPrice.toFixed(2)) })}
                 </p>
                 {selectedTime ? (
                   <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-black">
-                    Старт {selectedTime} · Готови около {endTime}
+                    {t('booking.modal.startTime', { start: selectedTime, end: endTime })}
                   </p>
                 ) : step > 1 ? (
                   <p className="mt-0.5 truncate text-[13px] font-semibold text-black">
@@ -886,12 +889,12 @@ export function SalonBookingModal({
                     <path d="M27.5 22.5c0-1.7 1.4-2.4 3.6-2.4 3.2 0 7.3 1 10.4 2.7v-9.8c-3.5-1.4-7-2-10.4-2C23.1 11 18 15.2 18 22.9c0 12.1 16.6 10.2 16.6 15.4 0 2-1.7 2.7-4.1 2.7-3.5 0-8-1.5-11.5-3.5v9.9c3.9 1.7 7.9 2.4 11.5 2.4 8.8 0 14.8-4.3 14.8-12.2C45.3 25.4 27.5 27.6 27.5 22.5z" fill="white"/>
                   </svg>
                   {paymentType === 'deposit' && depositAmount && depositAmount > 0
-                    ? <>Изисква се депозит от <strong className="mx-0.5">{formatDualEurText(String(depositAmount))}</strong></>
-                    : <>Плащане от <strong className="mx-0.5">{formatDualEurText(totalPrice.toFixed(2))}</strong></>
+                    ? <>{t('booking.modal.depositRequired')} <strong className="mx-0.5">{formatDualEurText(String(depositAmount))}</strong></>
+                    : <>{t('booking.modal.paymentFrom')} <strong className="mx-0.5">{formatDualEurText(totalPrice.toFixed(2))}</strong></>
                   }
                 </p>
                 <p className="text-[11px] text-black/35">
-                  Защитено плащане чрез <span className="font-bold text-[#635BFF]">Stripe</span>
+                  {t('booking.modal.securePayment')} <span className="font-bold text-[#635BFF]">Stripe</span>
                 </p>
                 {cancelPolicyHours ? (
                   <p className="mx-auto max-w-[320px] text-[11px] leading-relaxed text-black/45">
@@ -920,7 +923,7 @@ export function SalonBookingModal({
                     disabled={step === 1}
                     className="rounded-full border border-black/10 bg-white py-2.5 text-[14px] font-medium text-black/60 transition disabled:opacity-25 active:scale-[0.98]"
                   >
-                    Назад
+                    {t('booking.modal.back')}
                   </button>
                   {!isLastStep ? (
                     <button
@@ -932,7 +935,7 @@ export function SalonBookingModal({
                       className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
                       style={CLICKA_MARKETING_GRADIENT_STYLE}
                     >
-                      Продължи
+                      {t('booking.modal.continue')}
                     </button>
                   ) : (
                     <button
@@ -943,21 +946,20 @@ export function SalonBookingModal({
                       style={CLICKA_MARKETING_GRADIENT_STYLE}
                     >
                       {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                      {paymentType !== 'none' ? 'Плати и резервирай' : 'Изпрати заявка'}
+                      {paymentType !== 'none' ? t('booking.modal.payAndBook') : t('booking.modal.sendRequest')}
                     </button>
                   )}
                 </div>
                 {isLastStep ? (
                   <p className="mt-2.5 text-center text-[10.5px] leading-snug text-black/35">
-                    За да завършиш резервацията са нужни име, телефон и имейл — използваме ги само за
-                    управление на резервацията, потвърждения и напомняния.
-                    {' '}С изпращането приемаш{' '}
+                    {t('booking.modal.disclaimerPre')}
+                    {' '}{t('booking.modal.disclaimerAccept')}{' '}
                     <a href={termsHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                      Общите условия
+                      {t('booking.modal.terms')}
                     </a>{' '}
-                    и{' '}
+                    {t('booking.modal.smsConsentAnd')}{' '}
                     <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                      Политиката за поверителност
+                      {t('booking.modal.privacy')}
                     </a>
                     .
                   </p>

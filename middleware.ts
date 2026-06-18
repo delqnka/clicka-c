@@ -53,6 +53,23 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const requestHeaders = new Headers(request.headers);
 
+  // ── Custom client sites ─────────────────────────────────────────────────────
+  // Maps a hostname to the Next.js route segment under app/(sites)/.
+  // Add a new entry here (or set the env var) when onboarding a client.
+  const CUSTOM_SITE_SLUG: string | undefined =
+    hostname === 'barber-jet-kappa-92.vercel.app' ||
+    (process.env.SUHAIB_DOMAIN && hostname === process.env.SUHAIB_DOMAIN)
+      ? 'salon-suhaib'
+      : undefined;
+
+  if (CUSTOM_SITE_SLUG) {
+    if (isBotPath(pathname)) return new NextResponse(null, { status: 404 });
+    requestHeaders.set('x-salon-slug', CUSTOM_SITE_SLUG);
+    const url = request.nextUrl.clone();
+    url.pathname = pathname === '/' ? `/${CUSTOM_SITE_SLUG}` : `/${CUSTOM_SITE_SLUG}${pathname}`;
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  }
+
   if (
     hostname === ROOT_DOMAIN ||
     hostname === `www.${ROOT_DOMAIN}` ||
@@ -61,12 +78,6 @@ export function middleware(request: NextRequest) {
   ) {
     if (isSalonPublicPath(hostname, pathname)) {
       requestHeaders.set('x-clicka-salon-public', '1');
-    }
-
-    if (pathname === '/') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/marketing-home';
-      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
 
     return NextResponse.next({ request: { headers: requestHeaders } });
@@ -100,9 +111,9 @@ export function middleware(request: NextRequest) {
 
   requestHeaders.set('x-clicka-salon-public', '1');
 
-  if (pathname === '/') {
+  if (pathname === '/' && !isPlatformApexHost(hostname)) {
     const url = request.nextUrl.clone();
-    url.pathname = isPlatformApexHost(hostname) ? '/marketing-home' : '/salon-home';
+    url.pathname = '/salon-home';
     return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   }
 

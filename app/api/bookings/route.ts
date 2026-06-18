@@ -31,6 +31,17 @@ import { getStaffMemberById } from '@/lib/staff-members';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
+// CORS for public endpoints — allows BookingWidget from separate client repos.
+const PUBLIC_CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+} as const;
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS });
+}
+
 function formatBgDateDMY(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
@@ -72,7 +83,7 @@ export async function GET(request: NextRequest) {
     const ip = getClientIp(request as unknown as Request);
     const rl = await checkRateLimit('bookings-public', ip, 30, 60 * 1000);
     if (rl.limited) {
-      return NextResponse.json({ error: 'Твърде много заявки.' }, { status: 429 });
+      return NextResponse.json({ error: 'Твърде много заявки.' }, { status: 429, headers: PUBLIC_CORS });
     }
 
     const resolved = await resolveSalonFromRequest(request);
@@ -120,7 +131,7 @@ export async function GET(request: NextRequest) {
       occupied.push({ time: ev.startTime, duration });
     }
 
-    return NextResponse.json({ occupied });
+    return NextResponse.json({ occupied }, { headers: PUBLIC_CORS });
   }
 
   const auth = await requireAdminRequestAccess(request, requestSearchParams.get('slug'));
@@ -478,7 +489,7 @@ export async function POST(request: NextRequest) {
     success: true,
     bookingId: insertedBooking.id,
     message: `Резервацията е потвърдена за ${formatBgDateDMY(date)} в ${time}. Очакваме ви!`,
-  });
+  }, { headers: PUBLIC_CORS });
 }
 
 export async function PATCH(request: NextRequest) {

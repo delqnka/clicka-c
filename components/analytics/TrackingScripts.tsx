@@ -7,15 +7,23 @@ const CLARITY_ID = 'x2t2g8dohk';
 const META_PIXEL_ID = '2880139309045289';
 const GA_MEASUREMENT_ID = 'G-SJW99ZTGX3';
 
+const CLICKA_DOMAINS = ['clicka.bg', 'www.clicka.bg', 'localhost'];
+
 export function TrackingScripts() {
   const [allowed, setAllowed] = useState(false);
+  const [isClickaDomain, setIsClickaDomain] = useState(false);
 
   useEffect(() => {
+    const hostname = window.location.hostname;
+    setIsClickaDomain(CLICKA_DOMAINS.includes(hostname));
+
     const check = () => setAllowed(localStorage.getItem('cookie-consent') === 'yes');
     check();
     window.addEventListener('cookie-consent-updated', check);
     return () => window.removeEventListener('cookie-consent-updated', check);
   }, []);
+
+  if (!isClickaDomain) return null;
 
   return (
     <>
