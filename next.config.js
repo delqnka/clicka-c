@@ -1,4 +1,5 @@
 // @ts-check
+const { withSentryConfig } = require('@sentry/nextjs');
 
 /** @type {import('next').NextConfig} */
 function hostnameFromUrl(maybeUrl) {
@@ -129,6 +130,20 @@ const nextConfig = {
   },
 };
 
-// DIAG: temporarily bypass Sentry's Next.js build wrapper while isolating the
-// Barber middleware runtime "__dirname" crash.
-module.exports = nextConfig;
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Source maps качени в Sentry, скрити от browser
+  silent: true,
+  hideSourceMaps: true,
+
+  // Намалява bundle size — не включва Sentry debug код в prod
+  disableLogger: true,
+
+  // Automatic instrumentation на Next.js API routes
+  autoInstrumentServerFunctions: true,
+  autoInstrumentMiddleware: false,
+  autoInstrumentAppDirectory: true,
+});
