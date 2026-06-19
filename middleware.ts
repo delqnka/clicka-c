@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSalonHomeLegalRewritePath, isPlatformApexHost, ROOT_DOMAIN } from './lib/domain-routing';
 import { isSalonPublicPath } from './lib/salon-public-request';
 
+// DIAG: remove after finding __dirname source
+console.log('[MW] module init OK — ROOT_DOMAIN=', ROOT_DOMAIN);
+
 // ─── Bot/scanner path guard ───────────────────────────────────────────────────
 const BOT_EXACT_PATHS = new Set([
   '/.env', '/.env.local', '/.env.production', '/.env.development',
@@ -26,9 +29,11 @@ function isBotPath(pathname: string): boolean {
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export function middleware(request: NextRequest) {
+  console.log('[MW] fn entered');
   const host = request.headers.get('host') ?? '';
   const hostname = host.split(':')[0];
   const pathname = request.nextUrl.pathname;
+  console.log('[MW] host=', host, 'hostname=', hostname, 'pathname=', pathname);
   const requestHeaders = new Headers(request.headers);
 
   // ── Custom client sites ──────────────────────────────────────────────────
