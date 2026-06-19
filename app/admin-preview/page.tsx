@@ -1,8 +1,12 @@
+import { notFound } from 'next/navigation';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 import { OnboardingTour } from '@/components/admin/OnboardingTour';
+import { isEngineOnlyMode } from '@/lib/engine-mode';
 
 // Временна preview страница — само за разработка
 export default function AdminPreviewPage() {
+  if (isEngineOnlyMode()) notFound();
+
   const mockSite = {
     slug: 'preview-salon',
     name: 'Моят Салон',

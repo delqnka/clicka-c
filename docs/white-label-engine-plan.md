@@ -21,12 +21,14 @@ frontend code. They use Clicka only through backend APIs.
 ## 5-Minute Client Connection
 
 1. Create the client salon record in the engine.
-2. Set the client site's environment variables:
+2. Deploy the engine with public Clicka UI disabled:
+   - `CLICKA_ENGINE_ONLY=1`
+3. Set the client site's environment variables:
    - `NEXT_PUBLIC_ENGINE_URL`
    - `NEXT_PUBLIC_SALON_SLUG`
-3. The custom site reads public salon data from `/api/public/salons/:slug`.
-4. The custom site reads staff and occupied slots from `/api/public`.
-5. The custom site creates bookings through `/api/public/bookings`.
+4. The custom site reads public salon data from `/api/public/salons/:slug`.
+5. The custom site reads staff and occupied slots from `/api/public`.
+6. The custom site creates bookings through `/api/public/bookings`.
 
 ## Public API Contract
 
@@ -50,7 +52,9 @@ These endpoints are the contract for all custom client frontends.
 - `clicka-c` still contains marketing/public salon frontend routes.
 - `public/widget.js` still opens a Clicka-hosted iframe route.
 - Some public components and legal content expose Clicka branding.
-- `middleware.ts` still contains diagnostic/client-host routing from debugging.
+- Booking payment return URLs still need a custom-site return strategy.
+- Legacy public frontend routes are hidden in engine-only deployments, but still
+  exist in the repo during migration.
 
 ## Execution Order
 
@@ -60,3 +64,16 @@ These endpoints are the contract for all custom client frontends.
 4. Remove client-site routing from `middleware.ts`.
 5. Keep admin white-label capable through client-owned admin domains.
 6. Later split marketing/internal platform UI from the engine if needed.
+
+## Engine-Only Mode
+
+Set `CLICKA_ENGINE_ONLY=1` on engine deployments that should not expose Clicka
+marketing or legacy public salon pages. This hides:
+
+- marketing/legal pages in `app/(marketing)`
+- legacy salon public routes in `app/(salon-public)`
+- in-repo custom site experiments in `app/(sites)`
+- development preview/test pages
+
+Admin, platform admin, API routes, booking management routes, and static engine
+integration files remain available.

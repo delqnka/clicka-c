@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getPublicSalonPageData } from '@/lib/public-salon';
+import { isEngineOnlyMode } from '@/lib/engine-mode';
 import { BookingTestClient } from './BookingTestClient';
 
 type Props = {
@@ -13,6 +14,8 @@ type Props = {
  * Usage: /test-booking?slug=your-salon-slug
  */
 export default async function TestBookingPage({ searchParams }: Props) {
+  if (isEngineOnlyMode()) notFound();
+
   const slug = (searchParams.slug ?? '').trim();
 
   if (!slug) {

@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation';
 import { isEngineOnlyMode } from '@/lib/engine-mode';
-import './salon.css';
 
-export default function SalonPublicLayout({ children }: { children: React.ReactNode }) {
+export default function SitesLayout({ children }: { children: React.ReactNode }) {
   if (isEngineOnlyMode()) notFound();
   return children;
 }

@@ -14,6 +14,12 @@ NEXT_PUBLIC_SALON_SLUG=client-slug
 The custom site should not render engine branding or link users to the engine
 domain.
 
+Set this in the engine deployment:
+
+```bash
+CLICKA_ENGINE_ONLY=1
+```
+
 ## Fetch Public Data
 
 ```ts
