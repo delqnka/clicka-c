@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Кокетна Beauty Place — Козметично студио Варна</title>
+  <meta name="description" content="Козметично студио в Варна от Гергана Радева. Почиствания, акне терапии, хидратация, ламиниране на мигли и вежди.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --rose:       #C2547A;
+      --rose-light: #F5E2EA;
+      --rose-dark:  #8E3557;
+      --cream:      #FAF7F8;
+      --dark:       #1A0E14;
+      --text:       #2E1C22;
+      --muted:      #8A6B74;
+      --border:     #EDD8DF;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      background: #fff;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, .serif { font-family: 'Cormorant Garamond', Georgia, serif; }
+
+    /* ── NAV ───────────────────────────────── */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 22px 0;
+      transition: background .35s, box-shadow .35s, padding .35s;
+    }
+    .nav.scrolled {
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 1px 0 var(--border);
+      padding: 14px 0;
+    }
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #fff;
+      transition: color .35s;
+    }
+    .nav.scrolled .nav-logo { color: var(--dark); }
+    .nav-logo span { color: var(--rose); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 34px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: rgba(255,255,255,.8);
+      transition: color .2s;
+    }
+    .nav.scrolled .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--rose) !important; }
+    .nav-cta {
+      padding: 11px 22px !important;
+      background: var(--rose);
+      color: #fff !important;
+      border-radius: 6px;
+      transition: background .2s !important;
+    }
+    .nav-cta:hover { background: var(--rose-dark) !important; }
+
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .hamburger span {
+      display: block;
+      width: 24px; height: 2px;
+      background: #fff;
+      border-radius: 2px;
+      transition: background .35s;
+    }
+    .nav.scrolled .hamburger span { background: var(--dark); }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      z-index: 99;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 34px;
+      font-weight: 400;
+      color: var(--text);
+      text-decoration: none;
+      transition: color .2s;
+    }
+    .mobile-menu a:hover { color: var(--rose); }
+    .m-close {
+      position: absolute;
+      top: 24px; right: 28px;
+      font-size: 30px;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    /* ── HERO ──────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(135deg, #1A0E14 0%, #3D1828 40%, #6B2540 70%, #9E3B5A 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(circle at 72% 28%, rgba(194,84,122,.4) 0%, transparent 55%),
+        radial-gradient(circle at 18% 78%, rgba(142,53,87,.25) 0%, transparent 45%);
+    }
+    .hero-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .hr1 { width: 640px; height: 640px; right: -120px; top: -120px; }
+    .hr2 { width: 420px; height: 420px; right: 60px;  top:  60px; }
+    .hr3 { width: 220px; height: 220px; right: 160px; top: 160px; border-color: rgba(194,84,122,.2); }
+
+    .hero-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 130px 32px 60px;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.5);
+      margin-bottom: 28px;
+    }
+    .hero-tag::before {
+      content: '';
+      width: 28px; height: 1px;
+      background: var(--rose);
+    }
+    .hero h1 {
+      font-size: clamp(54px, 7.5vw, 100px);
+      font-weight: 300;
+      color: #fff;
+      line-height: 1.06;
+      letter-spacing: -.01em;
+      margin-bottom: 8px;
+    }
+    .hero h1 em { font-style: italic; color: #F5B8CC; }
+    .hero-sub {
+      font-size: clamp(15px, 1.8vw, 19px);
+      font-weight: 300;
+      color: rgba(255,255,255,.6);
+      max-width: 460px;
+      line-height: 1.7;
+      margin-bottom: 44px;
+    }
+    .hero-btns { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    .btn-primary {
+      padding: 15px 34px;
+      background: var(--rose);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background .2s, transform .15s;
+      display: inline-block;
+    }
+    .btn-primary:hover { background: #D46488; transform: translateY(-1px); }
+
+    .btn-ghost {
+      padding: 15px 34px;
+      background: transparent;
+      color: rgba(255,255,255,.8);
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+      display: inline-block;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,.5); color: #fff; }
+
+    .hero-stats {
+      position: relative;
+      z-index: 2;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .hero-stats-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 32px 36px;
+      display: flex;
+      gap: 52px;
+    }
+    .stat-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 38px;
+      font-weight: 400;
+      color: #fff;
+      line-height: 1;
+      display: block;
+    }
+    .stat-lbl {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* ── SHARED SECTION ────────────────────── */
+    .section { padding: 100px 32px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    .sec-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--rose);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .sec-label::after {
+      content: '';
+      width: 36px; height: 1px;
+      background: var(--rose);
+      opacity: .5;
+    }
+    .sec-title {
+      font-size: clamp(36px, 4vw, 60px);
+      font-weight: 300;
+      color: var(--dark);
+      line-height: 1.1;
+      letter-spacing: -.01em;
+    }
+    .sec-title em { font-style: italic; color: var(--rose); }
+
+    /* ── ABOUT ─────────────────────────────── */
+    .about { background: var(--cream); }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .about-visual {
+      position: relative;
+      aspect-ratio: 4/5;
+      border-radius: 6px;
+      overflow: visible;
+    }
+    .about-visual-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(160deg, #F9C8D6 0%, #C2547A 55%, #7D2A45 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .about-visual-img::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 20px,
+        rgba(255,255,255,.03) 20px,
+        rgba(255,255,255,.03) 21px
+      );
+    }
+    .about-badge {
+      position: absolute;
+      bottom: -16px;
+      left: -20px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 18px 22px;
+      box-shadow: 0 10px 48px rgba(0,0,0,.13);
+    }
+    .about-badge strong {
+      display: block;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--rose);
+      line-height: 1;
+    }
+    .about-badge span {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .about-text {
+      font-size: 16px;
+      line-height: 1.85;
+      color: var(--muted);
+      margin: 24px 0;
+    }
+    .about-quote {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-style: italic;
+      font-weight: 400;
+      color: var(--text);
+      border-left: 3px solid var(--rose);
+      padding-left: 22px;
+      line-height: 1.55;
+      margin: 28px 0;
+    }
+    .about-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+    }
+    .chip {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      background: #fff;
+    }
+
+    /* ── SERVICES ──────────────────────────── */
+    .svc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 52px;
+      gap: 20px;
+    }
+    .svc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+    .svc-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 34px 28px;
+      background: #fff;
+      transition: transform .25s, box-shadow .25s, border-color .25s;
+    }
+    .svc-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(194,84,122,.11);
+      border-color: #dda8bb;
+    }
+    .svc-card.featured {
+      border-color: var(--rose);
+      background: linear-gradient(135deg, #fff8fb 0%, #fff 100%);
+    }
+    .svc-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: var(--rose-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 22px;
+    }
+    .svc-icon.dark { background: var(--rose); }
+    .svc-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--dark);
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+    .svc-desc {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--muted);
+      margin-bottom: 22px;
+    }
+    .svc-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+    .svc-dur {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .svc-price {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--rose);
+    }
+
+    /* ── WHY ───────────────────────────────── */
+    .why { background: var(--dark); }
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 56px;
+    }
+    .why-item {
+      padding: 44px 36px;
+      background: rgba(255,255,255,.02);
+      border-right: 1px solid rgba(255,255,255,.06);
+      transition: background .2s;
+    }
+    .why-item:last-child { border-right: none; }
+    .why-item:hover { background: rgba(194,84,122,.07); }
+    .why-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 52px;
+      font-weight: 300;
+      color: rgba(194,84,122,.28);
+      line-height: 1;
+      margin-bottom: 18px;
+    }
+    .why-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px;
+      font-weight: 400;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .why-txt {
+      font-size: 14px;
+      line-height: 1.75;
+      color: rgba(255,255,255,.42);
+    }
+
+    /* ── GALLERY ───────────────────────────── */
+    .gallery { background: var(--cream); }
+    .gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 40px;
+      gap: 20px;
+    }
+    .ig-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--rose);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: gap .2s;
+    }
+    .ig-link:hover { gap: 12px; }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .g-item {
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      cursor: pointer;
+    }
+    .g-item:first-child {
+      grid-column: 1;
+      grid-row: 1 / 3;
+      aspect-ratio: unset;
+    }
+    .g-inner {
+      width: 100%; height: 100%;
+      min-height: 160px;
+      transition: transform .4s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .g-item:hover .g-inner { transform: scale(1.05); }
+    .g1 { background: linear-gradient(135deg,#f9c5d1,#c2547a); }
+    .g2 { background: linear-gradient(135deg,#fde8f0,#e8a0b4); }
+    .g3 { background: linear-gradient(135deg,#f0c5d4,#9e3b5a); }
+    .g4 { background: linear-gradient(135deg,#ffd6e0,#c2547a 60%,#7d2a45); }
+    .g5 { background: linear-gradient(135deg,#fce8ef,#d4768a); }
+    .g6 { background: linear-gradient(135deg,#f5b8cc,#8e3557); }
+    .g7 { background: linear-gradient(135deg,#fdeef4,#c2547a 80%); }
+
+    /* ── BOOKING ───────────────────────────── */
+    .booking-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+    .booking-h2 {
+      font-size: clamp(32px, 3.5vw, 50px);
+      font-weight: 300;
+      color: var(--dark);
+      line-height: 1.1;
+      margin-bottom: 14px;
+    }
+    .booking-h2 em { font-style: italic; color: var(--rose); }
+    .booking-txt {
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+    .contact-list { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+    .c-item { display: flex; align-items: flex-start; gap: 14px; }
+    .c-icon {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      background: var(--rose-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .c-icon svg { width: 17px; height: 17px; stroke: var(--rose); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .c-detail strong { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .c-detail span, .c-detail a { font-size: 14px; color: var(--muted); text-decoration: none; }
+    .c-detail a:hover { color: var(--rose); }
+
+    .bform {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 38px 36px;
+    }
+    .bform h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--dark);
+      margin-bottom: 26px;
+    }
+    .fg { margin-bottom: 18px; }
+    .fl {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 7px;
+    }
+    .fi {
+      width: 100%;
+      padding: 13px 15px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .fi:focus {
+      border-color: var(--rose);
+      box-shadow: 0 0 0 3px rgba(194,84,122,.1);
+    }
+    .fi::placeholder { color: #C5B0B8; }
+    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .bsub {
+      width: 100%;
+      padding: 16px;
+      background: var(--rose);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background .2s, transform .15s;
+    }
+    .bsub:hover { background: var(--rose-dark); transform: translateY(-1px); }
+
+    /* ── MAP ───────────────────────────────── */
+    .map-wrap { height: 420px; overflow: hidden; }
+    .map-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+    /* ── FOOTER ────────────────────────────── */
+    footer {
+      background: var(--dark);
+      padding: 64px 32px 36px;
+    }
+    .ft-inner { max-width: 1200px; margin: 0 auto; }
+    .ft-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 40px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      margin-bottom: 28px;
+      gap: 40px;
+    }
+    .ft-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .ft-logo span { color: var(--rose); }
+    .ft-tagline { font-size: 13px; color: rgba(255,255,255,.3); line-height: 1.6; }
+    .ft-nav { display: flex; gap: 56px; }
+    .ft-col h4 {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.35);
+      margin-bottom: 14px;
+    }
+    .ft-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .ft-col a { font-size: 14px; color: rgba(255,255,255,.6); text-decoration: none; transition: color .2s; }
+    .ft-col a:hover { color: var(--rose); }
+    .ft-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .ft-copy { font-size: 12px; color: rgba(255,255,255,.22); }
+    .ft-ig {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,.45);
+      text-decoration: none;
+      transition: color .2s;
+    }
+    .ft-ig:hover { color: var(--rose); }
+
+    /* ── REVEAL ────────────────────────────── */
+    .rv {
+      opacity: 0;
+      transform: translateY(26px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+    .rv.in { opacity: 1; transform: translateY(0); }
+    .d1 { transition-delay: .1s; }
+    .d2 { transition-delay: .2s; }
+    .d3 { transition-delay: .3s; }
+
+    /* ── RESPONSIVE ────────────────────────── */
+    @media (max-width: 1024px) {
+      .about-grid { grid-template-columns: 1fr; gap: 48px; }
+      .about-visual { max-width: 500px; aspect-ratio: 16/9; }
+      .about-badge { left: 20px; bottom: -14px; }
+      .svc-grid { grid-template-columns: 1fr 1fr; }
+      .why-grid { grid-template-columns: 1fr; }
+      .why-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,.06); }
+      .why-item:last-child { border-bottom: none; }
+      .gallery-grid { grid-template-columns: repeat(3,1fr); }
+      .g-item:first-child { grid-column: auto; grid-row: auto; aspect-ratio: 1; }
+      .booking-grid { grid-template-columns: 1fr; gap: 48px; }
+      .ft-top { flex-direction: column; }
+      .ft-nav { gap: 32px; }
+    }
+    @media (max-width: 768px) {
+      .section { padding: 72px 20px; }
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .hero-body { padding: 110px 20px 48px; }
+      .hero-stats-inner { padding: 20px 20px 28px; gap: 32px; }
+      .svc-grid { grid-template-columns: 1fr; }
+      .svc-header { flex-direction: column; align-items: flex-start; }
+      .gallery-grid { grid-template-columns: 1fr 1fr; }
+      .gallery-header { flex-direction: column; align-items: flex-start; }
+      .bform { padding: 24px 20px; }
+      .frow { grid-template-columns: 1fr; }
+      .ft-bottom { flex-direction: column; text-align: center; }
+      .stat-num { font-size: 30px; }
+    }
+    @media (max-width: 480px) {
+      .hero-stats-inner { gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#home" class="nav-logo">Кокетна <span>Beauty</span></a>
+    <ul class="nav-links">
+      <li><a href="#services">Услуги</a></li>
+      <li><a href="#about">За нас</a></li>
+      <li><a href="#gallery">Галерия</a></li>
+      <li><a href="#contact">Контакти</a></li>
+      <li><a href="#booking" class="nav-cta">Запиши час</a></li>
+    </ul>
+    <div class="hamburger" id="hbg" onclick="toggleMenu()">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mmenu">
+  <button class="m-close" onclick="toggleMenu()">✕</button>
+  <a href="#services" onclick="toggleMenu()">Услуги</a>
+  <a href="#about"    onclick="toggleMenu()">За нас</a>
+  <a href="#gallery"  onclick="toggleMenu()">Галерия</a>
+  <a href="#contact"  onclick="toggleMenu()">Контакти</a>
+  <a href="#booking"  onclick="toggleMenu()" style="color:var(--rose)">Запиши час →</a>
+</div>
+
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-glow"></div>
+  <div class="hero-ring hr1"></div>
+  <div class="hero-ring hr2"></div>
+  <div class="hero-ring hr3"></div>
+
+  <div class="hero-body">
+    <div>
+      <p class="hero-tag">Козметично студио · Варна</p>
+      <h1>Здрава и<br><em>сияйна кожа</em></h1>
+      <p class="hero-sub">Индивидуален подход за всеки тип кожа — почиствания, акне терапии, хидратация и ламиниране.</p>
+      <div class="hero-btns">
+        <a href="#booking"  class="btn-primary">Запиши час</a>
+        <a href="#services" class="btn-ghost">Нашите услуги</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="hero-stats-inner">
+      <div><span class="stat-num">5★</span><span class="stat-lbl">Рейтинг</span></div>
+      <div><span class="stat-num">103+</span><span class="stat-lbl">Публикации</span></div>
+      <div><span class="stat-num">100%</span><span class="stat-lbl">Доволни клиенти</span></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ABOUT -->
+<section class="section about" id="about">
+  <div class="container">
+    <div class="about-grid">
+
+      <div class="rv">
+        <div class="about-visual">
+          <div class="about-visual-img">
+            <svg width="90" height="90" viewBox="0 0 90 90" fill="none" opacity=".2">
+              <circle cx="45" cy="32" r="20" stroke="white" stroke-width="2"/>
+              <path d="M12 82c0-18.225 14.775-33 33-33s33 14.775 33 33" stroke="white" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="about-badge">
+            <strong>Гергана</strong>
+            <span>Козметик &amp; Собственик</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rv d1">
+        <p class="sec-label">За нас</p>
+        <h2 class="sec-title">Кокетна <em>Beauty Place</em></h2>
+        <p class="about-text">
+          Кокетна Beauty Place е уютно козметично студио в Варна, създадено с любов и страст
+          от Гергана Радева. Намираме се на ул. Генерал Колев 104 — достъпно и комфортно
+          място, където всяка клиентка е специална.
+        </p>
+        <blockquote class="about-quote">
+          „Всяка кожа е различна — подхождаме с внимание, грижа и истинска страст към занаята."
+        </blockquote>
+        <p class="about-text" style="margin-top:0">
+          Специализираме се в дълбоки почиствания, акне терапии, хидратиращи процедури
+          и ламиниране на мигли и вежди. Работим само с качествени продукти и изграждаме
+          индивидуален план за всяка кожа.
+        </p>
+        <div class="about-chips">
+          <span class="chip">Индивидуален подход</span>
+          <span class="chip">Качествени продукти</span>
+          <span class="chip">Почиствания &amp; акне</span>
+          <span class="chip">Ламиниране мигли &amp; вежди</span>
+          <span class="chip">Хидратация</span>
+          <span class="chip">Уютна атмосфера</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- SERVICES -->
+<section class="section" id="services">
+  <div class="container">
+    <div class="svc-header rv">
+      <div>
+        <p class="sec-label">Какво предлагаме</p>
+        <h2 class="sec-title">Нашите <em>услуги</em></h2>
+      </div>
+      <a href="#booking" class="btn-primary" style="flex-shrink:0">Запиши час →</a>
+    </div>
+
+    <div class="svc-grid">
+      <div class="svc-card rv">
+        <div class="svc-icon">✨</div>
+        <h3 class="svc-name">Почистване на лице</h3>
+        <p class="svc-desc">Дълбоко почистване на порите, премахване на замърсявания и изравняване на тена. Подходящо за всеки тип кожа.</p>
+        <div class="svc-footer">
+          <span class="svc-dur">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            60 мин
+          </span>
+          <span class="svc-price">от 50 лв</span>
+        </div>
+      </div>
+
+      <div class="svc-card rv d1">
+        <div class="svc-icon">🌿</div>
+        <h3 class="svc-name">Акне терапия</h3>
+        <p class="svc-desc">Специализирана терапия за кожа с акне и несъвършенства. Работим с продукти, насочени към причините, а не само симптомите.</p>
+        <div class="svc-footer">
+          <span class="svc-dur">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            75 мин
+          </span>
+          <span class="svc-price">от 65 лв</span>
+        </div>
+      </div>
+
+      <div class="svc-card rv d2">
+        <div class="svc-icon">💧</div>
+        <h3 class="svc-name">Хидратираща процедура</h3>
+        <p class="svc-desc">Интензивно захранване и хидратация за суха или изтощена кожа. Ефектът е видим веднага след процедурата.</p>
+        <div class="svc-footer">
+          <span class="svc-dur">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            60 мин
+          </span>
+          <span class="svc-price">от 55 лв</span>
+        </div>
+      </div>
+
+      <div class="svc-card rv">
+        <div class="svc-icon">👁️</div>
+        <h3 class="svc-name">Ламиниране на мигли</h3>
+        <p class="svc-desc">Извиване и уплътняване на естествените мигли без изкуствени нокти. Ефект до 6–8 седмици.</p>
+        <div class="svc-footer">
+          <span class="svc-dur">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            90 мин
+          </span>
+          <span class="svc-price">от 75 лв</span>
+        </div>
+      </div>
+
+      <div class="svc-card rv d1">
+        <div class="svc-icon">⚡</div>
+        <h3 class="svc-name">Ламиниране на вежди</h3>
+        <p class="svc-desc">Оформяне и ламиниране на веждите за изразителен поглед. Включва боядисване и оформяне по форма на лицето.</p>
+        <div class="svc-footer">
+          <span class="svc-dur">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            45 мин
+          </span>
+          <span class="svc-price">от 50 лв</span>
+        </div>
+      </div>
+
+      <div class="svc-card featured rv d2">
+        <div class="svc-icon dark">💆</div>
+        <h3 class="svc-name">Комплексна процедура</h3>
+        <p class="svc-desc">Ламиниране на мигли + ламиниране на вежди в едно посещение. Завършен изразителен поглед без усилие.</p>
+        <div class="svc-footer">
+          <span class="svc-dur">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            120 мин
+          </span>
+          <span class="svc-price" style="font-size:24px">от 110 лв</span>
+        </div>
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:24px;font-size:13px;color:var(--muted)">
+      * Цените са ориентировъчни. За точна оферта свържете се с нас.
+    </p>
+  </div>
+</section>
+
+
+<!-- WHY -->
+<section class="section why">
+  <div class="container">
+    <div class="rv">
+      <p class="sec-label" style="color:rgba(194,84,122,.75)">Защо да изберете нас</p>
+      <h2 class="sec-title" style="color:#fff">Разликата е в <em>детайлите</em></h2>
+    </div>
+    <div class="why-grid">
+      <div class="why-item rv d1">
+        <div class="why-num">01</div>
+        <h3 class="why-title">Индивидуален подход</h3>
+        <p class="why-txt">Всяка процедура започва с анализ на кожата. Не прилагаме универсален протокол — работим конкретно с вашите нужди и цели.</p>
+      </div>
+      <div class="why-item rv d2">
+        <div class="why-num">02</div>
+        <h3 class="why-title">Качествени продукти</h3>
+        <p class="why-txt">Работим само с проверени козметични марки, безопасни дори за чувствителна кожа и с доказан, дълготраен ефект.</p>
+      </div>
+      <div class="why-item rv d3">
+        <div class="why-num">03</div>
+        <h3 class="why-title">Уютна атмосфера</h3>
+        <p class="why-txt">Студиото е проектирано така, че да се чувствате спокойни и грижени — от момента, в който влезете до края на процедурата.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- GALLERY -->
+<section class="section gallery" id="gallery">
+  <div class="container">
+    <div class="gallery-header rv">
+      <div>
+        <p class="sec-label">Нашата работа</p>
+        <h2 class="sec-title">Резултати, <em>за<br>които говорим</em></h2>
+      </div>
+      <a href="https://www.instagram.com/koketna_beautyplace/" target="_blank" rel="noopener" class="ig-link">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        Вижте в Instagram →
+      </a>
+    </div>
+    <div class="gallery-grid rv">
+      <div class="g-item"><div class="g-inner g1"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div></div>
+      <div class="g-item"><div class="g-inner g2"></div></div>
+      <div class="g-item"><div class="g-inner g3"></div></div>
+      <div class="g-item"><div class="g-inner g4"></div></div>
+      <div class="g-item"><div class="g-inner g5"></div></div>
+      <div class="g-item"><div class="g-inner g6"></div></div>
+      <div class="g-item"><div class="g-inner g7"></div></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- BOOKING -->
+<section class="section" id="booking">
+  <div class="container">
+    <div class="booking-grid">
+
+      <div class="rv">
+        <p class="sec-label">Запишете час</p>
+        <h2 class="booking-h2">Вашата кожа<br>заслужава <em>грижа</em></h2>
+        <p class="booking-txt">Изпратете заявка и ще се свържем с вас за потвърждение на удобно за вас време. Очакваме ви!</p>
+
+        <ul class="contact-list" id="contact">
+          <li class="c-item">
+            <div class="c-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div class="c-detail">
+              <strong>Адрес</strong>
+              <span>ул. Генерал Колев 104, Варна 9000</span>
+            </div>
+          </li>
+          <li class="c-item">
+            <div class="c-icon">
+              <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.46-.46a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 18.09z"/></svg>
+            </div>
+            <div class="c-detail">
+              <strong>Телефон</strong>
+              <!-- Попълни истинския телефон на клиентката -->
+              <a href="tel:+359XXXXXXXXX">+359 XXX XXX XXX</a>
+            </div>
+          </li>
+          <li class="c-item">
+            <div class="c-icon">
+              <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            </div>
+            <div class="c-detail">
+              <strong>Instagram</strong>
+              <a href="https://www.instagram.com/koketna_beautyplace/" target="_blank" rel="noopener">@koketna_beautyplace</a>
+            </div>
+          </li>
+          <li class="c-item">
+            <div class="c-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="c-detail">
+              <strong>Работно време</strong>
+              <span>Пон – Пет: 10:00 – 19:00<br>Събота: 10:00 – 16:00<br>Неделя: почивен ден</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="rv d1">
+        <div class="bform">
+          <h3>Заявка за час</h3>
+          <form id="bk-form" onsubmit="submitForm(event)" novalidate>
+            <div class="frow">
+              <div class="fg">
+                <label class="fl">Вашето име</label>
+                <input type="text" class="fi" placeholder="Мария Иванова" required>
+              </div>
+              <div class="fg">
+                <label class="fl">Телефон</label>
+                <input type="tel" class="fi" placeholder="+359 88 888 8888" required>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl">Услуга</label>
+              <select class="fi" required>
+                <option value="">— Изберете услуга —</option>
+                <option>Почистване на лице</option>
+                <option>Акне терапия</option>
+                <option>Хидратираща процедура</option>
+                <option>Ламиниране на мигли</option>
+                <option>Ламиниране на вежди</option>
+                <option>Комплексна процедура (мигли + вежди)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Предпочитана дата</label>
+              <input type="date" class="fi" id="dt">
+            </div>
+            <div class="fg">
+              <label class="fl">Съобщение (по желание)</label>
+              <textarea class="fi" rows="3" style="resize:vertical" placeholder="Допълнителна информация или пожелания..."></textarea>
+            </div>
+            <div id="fmsg" style="display:none;padding:13px 15px;border-radius:8px;font-size:14px;margin-bottom:12px;"></div>
+            <button type="submit" class="bsub" id="fsub">Изпрати заявка</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- MAP -->
+<div class="map-wrap">
+  <iframe
+    src="https://maps.google.com/maps?q=ул.+Генерал+Колев+104,+Варна,+България&output=embed&z=16"
+    allowfullscreen loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+    title="Кокетна Beauty Place — Варна">
+  </iframe>
+</div>
+
+
+<!-- FOOTER -->
+<footer>
+  <div class="ft-inner">
+    <div class="ft-top">
+      <div>
+        <div class="ft-logo">Кокетна <span>Beauty</span> Place</div>
+        <p class="ft-tagline">Козметично студио · Варна<br>ул. Генерал Колев 104</p>
+      </div>
+      <div class="ft-nav">
+        <div class="ft-col">
+          <h4>Навигация</h4>
+          <ul>
+            <li><a href="#home">Начало</a></li>
+            <li><a href="#about">За нас</a></li>
+            <li><a href="#services">Услуги</a></li>
+            <li><a href="#gallery">Галерия</a></li>
+            <li><a href="#booking">Запиши час</a></li>
+          </ul>
+        </div>
+        <div class="ft-col">
+          <h4>Услуги</h4>
+          <ul>
+            <li><a href="#services">Почистване на лице</a></li>
+            <li><a href="#services">Акне терапия</a></li>
+            <li><a href="#services">Хидратация</a></li>
+            <li><a href="#services">Ламиниране мигли</a></li>
+            <li><a href="#services">Ламиниране вежди</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="ft-bottom">
+      <p class="ft-copy">© 2025 Кокетна Beauty Place · Всички права запазени</p>
+      <a href="https://www.instagram.com/koketna_beautyplace/" target="_blank" rel="noopener" class="ft-ig">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        @koketna_beautyplace
+      </a>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+  /* Nav scroll */
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  }, { passive: true });
+
+  /* Mobile menu */
+  function toggleMenu() {
+    const m = document.getElementById('mmenu');
+    m.classList.toggle('open');
+    document.body.style.overflow = m.classList.contains('open') ? 'hidden' : '';
+  }
+
+  /* Scroll reveal */
+  const obs = new IntersectionObserver(
+    entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); }
+    }),
+    { threshold: 0.07, rootMargin: '0px 0px -28px 0px' }
+  );
+  document.querySelectorAll('.rv').forEach(el => obs.observe(el));
+
+  /* Date input min/max */
+  const dt = document.getElementById('dt');
+  if (dt) {
+    const today = new Date();
+    dt.min = today.toISOString().split('T')[0];
+    const max = new Date(); max.setDate(max.getDate() + 60);
+    dt.max = max.toISOString().split('T')[0];
+  }
+
+  /* Form submit */
+  function submitForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('fsub');
+    const msg = document.getElementById('fmsg');
+    btn.textContent = 'Изпращане...';
+    btn.disabled = true;
+    setTimeout(() => {
+      msg.style.display = 'block';
+      msg.style.cssText += ';background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;';
+      msg.textContent = '✓ Заявката е изпратена! Ще се свържем с вас скоро.';
+      btn.textContent = 'Изпрати заявка';
+      btn.disabled = false;
+      e.target.reset();
+    }, 1100);
+  }
+</script>
+</body>
+</html>

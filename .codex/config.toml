@@ -1,0 +1,20 @@
+[mcp_servers.magic]
+command = "npx"
+args = [
+    "-y",
+    "@21st-dev/magic@latest",
+]
+
+[mcp_servers.magic.env]
+TWENTYFIRST_API_KEY = "70730b3e07f2940f5bb59c92f8152e837dfe3b2ade8a2b4ea91b121a30e8501f"
+
+[mcp_servers.meta-ads]
+command = "python3"
+args = ["/Users/delqnka/Documents/GitHub/Templates CLicka/mcp/meta-ads/server.py"]
+
+[mcp_servers.meta-ads.env]
+META_APP_ID = "1530004145468079"
+META_APP_SECRET = "21cf0093469319799ed54cbf3d5dad5f"
+META_ACCESS_TOKEN = "EAAVvh9mYcq8BRg9FcQXNDZCftlKCRuUYaxsgubJVlMr0E9zdZBaRWNTcbVKZAhy4I3HZC2GebpSkYxryw1p4pAgQ3Wrw52na67KFGZBQhsLGxQ8cZBbPkxSIZAsHCEHjvI7BIFKlZB4PyLCdinMrSkLwhZAE8z6G7oO7BMpR79lb0gZC4KiPftuaZBpZCF6WqHLPd9GfhRQDd84tQsDpDKoZD"
+META_AD_ACCOUNT_ID = "act_501575229632826"
+META_PAGE_ID = "1073158039223402"

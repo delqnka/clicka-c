@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAIR & ART Studio — Фризьорски салон Варна</title>
+  <meta name="description" content="HAIR & ART Studio — премиум фризьорски салон във Варна. Боядисване, терапии Redken & Moroccanoil, маникюр, миглопластика, грим. ул. Неофит Рилски 14.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold:        #C9A961;
+      --gold-light:  #E8D5A0;
+      --gold-dark:   #8B7339;
+      --cream:       #F5EFE6;
+      --cream-warm:  #EFE6D6;
+      --ink:         #0A0908;
+      --ink-soft:    #1A1715;
+      --text:        #221E1A;
+      --muted:       #7A716A;
+      --border:      #E5DCC9;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      background: #fff;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, .serif { font-family: 'Playfair Display', Georgia, serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+    /* ── NAV ───────────────────────────────── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 22px 0;
+      transition: background .35s, box-shadow .35s, padding .35s;
+    }
+    .nav.scrolled {
+      background: rgba(10,9,8,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 1px 0 rgba(201,169,97,.18);
+      padding: 14px 0;
+    }
+    .nav-inner {
+      max-width: 1240px; margin: 0 auto; padding: 0 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px; font-weight: 600;
+      letter-spacing: .14em; text-transform: uppercase;
+      text-decoration: none; color: #fff;
+    }
+    .nav-logo span { color: var(--gold); font-style: italic; font-weight: 500; }
+
+    .nav-links { display: flex; align-items: center; gap: 34px; list-style: none; }
+    .nav-links a {
+      font-size: 12px; font-weight: 500;
+      letter-spacing: .12em; text-transform: uppercase;
+      text-decoration: none;
+      color: rgba(255,255,255,.78);
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+    .nav-cta {
+      padding: 11px 22px !important;
+      background: var(--gold);
+      color: var(--ink) !important;
+      border-radius: 2px;
+      transition: background .2s, color .2s !important;
+      letter-spacing: .14em !important;
+    }
+    .nav-cta:hover { background: var(--gold-light); }
+
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; }
+    .hamburger span { display: block; width: 24px; height: 1.5px; background: #fff; border-radius: 2px; }
+
+    .mobile-menu {
+      display: none; position: fixed; inset: 0;
+      background: var(--ink); z-index: 99;
+      flex-direction: column; align-items: center; justify-content: center; gap: 30px;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px; font-weight: 400; color: #fff; text-decoration: none;
+    }
+    .mobile-menu a:hover { color: var(--gold); }
+    .m-close {
+      position: absolute; top: 24px; right: 28px;
+      font-size: 30px; color: var(--gold);
+      background: none; border: none; cursor: pointer; line-height: 1;
+    }
+
+    /* ── HERO ──────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      background: radial-gradient(ellipse at top right, #2A1F12 0%, #0A0908 55%);
+      position: relative; overflow: hidden;
+    }
+    .hero-photo {
+      position: absolute; inset: 0;
+      background-image: url('assets/hair-art/studio.png');
+      background-size: cover;
+      background-position: center 35%;
+      opacity: .45;
+      filter: grayscale(.2) contrast(1.05) brightness(.9);
+      pointer-events: none;
+    }
+    .hero-photo::after {
+      content: ''; position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(10,9,8,.45) 0%, rgba(10,9,8,.55) 55%, rgba(10,9,8,.9) 100%),
+        linear-gradient(90deg, rgba(10,9,8,.7) 0%, rgba(10,9,8,.2) 55%, transparent 100%);
+    }
+    .hero-glow {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(circle at 78% 22%, rgba(201,169,97,.22) 0%, transparent 50%),
+        radial-gradient(circle at 12% 82%, rgba(139,115,57,.18) 0%, transparent 45%);
+    }
+    .hero-grain {
+      position: absolute; inset: 0; pointer-events: none; opacity: .04; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .hero-ornament {
+      position: absolute; right: -180px; top: -180px;
+      width: 720px; height: 720px; border-radius: 50%;
+      border: 1px solid rgba(201,169,97,.12);
+      pointer-events: none;
+    }
+    .hero-ornament::before {
+      content: ''; position: absolute; inset: 80px; border-radius: 50%;
+      border: 1px solid rgba(201,169,97,.08);
+    }
+    .hero-ornament::after {
+      content: ''; position: absolute; inset: 200px; border-radius: 50%;
+      border: 1px solid rgba(201,169,97,.18);
+    }
+
+    .hero-body {
+      flex: 1; display: flex; align-items: center;
+      position: relative; z-index: 2;
+      max-width: 1240px; width: 100%; margin: 0 auto;
+      padding: 140px 32px 80px;
+    }
+    .hero-inner { max-width: 880px; }
+
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 14px;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: rgba(255,255,255,.55);
+      margin-bottom: 36px;
+    }
+    .hero-tag::before { content: ''; width: 36px; height: 1px; background: var(--gold); }
+
+    .hero h1 {
+      font-size: clamp(56px, 8.4vw, 124px);
+      font-weight: 400; color: #fff;
+      line-height: .98; letter-spacing: -.02em;
+      margin-bottom: 14px;
+    }
+    .hero h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+    .hero h1 .amp {
+      font-style: italic; color: var(--gold);
+      font-weight: 300;
+    }
+
+    .hero-sub {
+      font-size: clamp(15px, 1.5vw, 18px);
+      font-weight: 300;
+      color: rgba(255,255,255,.62);
+      max-width: 520px;
+      line-height: 1.75;
+      margin: 32px 0 44px;
+    }
+    .hero-btns { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    .btn-primary {
+      padding: 16px 36px;
+      background: var(--gold);
+      color: var(--ink);
+      border: none; border-radius: 2px;
+      font-size: 12px; font-family: 'Inter', sans-serif;
+      font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+      text-decoration: none; cursor: pointer; display: inline-block;
+      transition: background .2s, transform .15s, box-shadow .2s;
+    }
+    .btn-primary:hover {
+      background: var(--gold-light); transform: translateY(-1px);
+      box-shadow: 0 12px 30px -8px rgba(201,169,97,.45);
+    }
+
+    .btn-ghost {
+      padding: 16px 36px;
+      background: transparent;
+      color: rgba(255,255,255,.85);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 2px;
+      font-size: 12px; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
+      text-decoration: none; cursor: pointer; display: inline-block;
+      transition: border-color .2s, color .2s, background .2s;
+    }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+    .hero-stats {
+      position: relative; z-index: 2;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .hero-stats-inner {
+      max-width: 1240px; margin: 0 auto;
+      padding: 32px 32px 40px;
+      display: flex; gap: 64px; flex-wrap: wrap;
+    }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 40px; font-weight: 400; color: #fff;
+      line-height: 1; display: block;
+      letter-spacing: -.01em;
+    }
+    .stat-num em { font-style: italic; color: var(--gold); }
+    .stat-lbl {
+      font-size: 10px; font-weight: 500;
+      letter-spacing: .16em; text-transform: uppercase;
+      color: rgba(255,255,255,.4);
+      display: block; margin-top: 8px;
+    }
+
+    /* ── SHARED SECTION ────────────────────── */
+    .section { padding: 120px 32px; }
+    .container { max-width: 1240px; margin: 0 auto; }
+
+    .sec-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: var(--gold-dark);
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 18px;
+    }
+    .sec-label::after {
+      content: ''; width: 44px; height: 1px;
+      background: var(--gold); opacity: .6;
+    }
+    .sec-title {
+      font-size: clamp(38px, 4.2vw, 64px);
+      font-weight: 400; color: var(--ink);
+      line-height: 1.05; letter-spacing: -.02em;
+    }
+    .sec-title em { font-style: italic; color: var(--gold-dark); }
+
+    .sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; margin-bottom: 72px; }
+    .sec-head .sec-intro { max-width: 420px; color: var(--muted); line-height: 1.7; font-weight: 300; font-size: 16px; }
+
+    /* ── ABOUT ─────────────────────────────── */
+    .about { background: var(--cream); position: relative; }
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .about-text p {
+      font-size: 17px; line-height: 1.85; color: var(--text);
+      font-weight: 300; margin-bottom: 22px;
+    }
+    .about-text p:first-of-type::first-letter {
+      font-family: 'Playfair Display', serif;
+      font-size: 64px; font-weight: 500;
+      float: left; line-height: .9; padding: 6px 14px 0 0;
+      color: var(--gold-dark);
+    }
+    .about-quote {
+      margin-top: 28px; padding-left: 22px;
+      border-left: 2px solid var(--gold);
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-size: 19px;
+      color: var(--ink); line-height: 1.5;
+    }
+
+    .about-visual {
+      position: relative; aspect-ratio: 4/5;
+      background: #0A0908;
+      border-radius: 4px; overflow: hidden;
+      box-shadow: 0 30px 80px -30px rgba(10,9,8,.45);
+    }
+    .about-visual img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      filter: contrast(1.02) saturate(.95);
+    }
+    .about-visual::after {
+      content: ''; position: absolute; inset: 16px;
+      border: 1px solid rgba(201,169,97,.35);
+      pointer-events: none;
+    }
+    .about-visual::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 50%, rgba(10,9,8,.45) 100%);
+      pointer-events: none; z-index: 1;
+    }
+    .about-caption {
+      position: absolute; left: 32px; bottom: 28px; z-index: 2;
+      color: #fff;
+    }
+    .about-caption-key {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 6px;
+    }
+    .about-caption-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-style: italic; font-weight: 500;
+    }
+
+    /* ── SERVICES ──────────────────────────── */
+    .services { background: #fff; }
+    .svc-tabs {
+      display: flex; gap: 4px; flex-wrap: wrap;
+      margin-bottom: 56px; padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .svc-tab {
+      padding: 14px 24px; background: none; border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted); cursor: pointer;
+      position: relative; transition: color .2s;
+    }
+    .svc-tab::after {
+      content: ''; position: absolute; left: 24px; right: 24px; bottom: -1px;
+      height: 2px; background: var(--gold); opacity: 0;
+      transition: opacity .25s;
+    }
+    .svc-tab:hover { color: var(--ink); }
+    .svc-tab.active { color: var(--ink); }
+    .svc-tab.active::after { opacity: 1; }
+
+    .svc-group { display: none; }
+    .svc-group.active { display: block; animation: fadeIn .4s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .svc-cat {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px; font-weight: 500; font-style: italic;
+      color: var(--gold-dark);
+      margin: 56px 0 24px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: baseline; justify-content: space-between;
+    }
+    .svc-cat:first-of-type { margin-top: 0; }
+    .svc-cat-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--muted);
+      font-style: normal; letter-spacing: .14em;
+    }
+
+    .svc-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 32px; align-items: center;
+      padding: 22px 0;
+      border-bottom: 1px solid rgba(229,220,201,.6);
+      transition: padding .2s;
+    }
+    .svc-row:hover { padding-left: 8px; }
+    .svc-row:last-child { border-bottom: none; }
+    .svc-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 500;
+      color: var(--ink); line-height: 1.35;
+    }
+    .svc-meta {
+      font-size: 12px; color: var(--muted);
+      letter-spacing: .04em; margin-top: 6px;
+      font-weight: 300;
+    }
+    .svc-meta::before { content: '⏱  '; opacity: .5; }
+    .svc-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px; font-weight: 500;
+      color: var(--ink); white-space: nowrap;
+    }
+    .svc-price-from { font-size: 10px; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 2px; }
+    .svc-pick {
+      padding: 9px 18px;
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--ink);
+      border-radius: 2px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .14em; text-transform: uppercase;
+      text-decoration: none; cursor: pointer;
+      transition: background .2s, color .2s;
+      white-space: nowrap;
+    }
+    .svc-pick:hover { background: var(--ink); color: var(--gold); }
+
+    /* ── TEAM ──────────────────────────────── */
+    .team { background: var(--cream); }
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+    }
+    .team-card {
+      background: #fff;
+      padding: 36px 24px 28px;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: transform .3s, box-shadow .3s, border-color .3s;
+    }
+    .team-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 40px -20px rgba(10,9,8,.18);
+      border-color: var(--gold);
+    }
+    .team-avatar {
+      width: 96px; height: 96px; border-radius: 50%;
+      background: linear-gradient(135deg, #2A1F12 0%, #0A0908 100%);
+      color: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 32px; font-style: italic; font-weight: 500;
+      margin: 0 auto 18px;
+      position: relative;
+    }
+    .team-avatar::after {
+      content: ''; position: absolute; inset: -6px;
+      border: 1px solid rgba(201,169,97,.35); border-radius: 50%;
+    }
+    .team-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 19px; font-weight: 500;
+      color: var(--ink); margin-bottom: 4px;
+    }
+    .team-role {
+      font-size: 11px; color: var(--gold-dark);
+      letter-spacing: .2em; text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* ── BRANDS ────────────────────────────── */
+    .brands { background: #fff; }
+    .brand-wall {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      border-top: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+    }
+    .brand-cell {
+      aspect-ratio: 1.6/1;
+      display: flex; align-items: center; justify-content: center;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      font-family: 'Playfair Display', serif;
+      font-size: 17px; font-weight: 400; font-style: italic;
+      color: var(--ink); letter-spacing: -.01em;
+      transition: background .25s, color .25s;
+      padding: 12px; text-align: center;
+    }
+    .brand-cell:hover { background: var(--ink); color: var(--gold); }
+
+    /* ── REVIEWS ───────────────────────────── */
+    .reviews { background: var(--ink); color: #fff; }
+    .reviews .sec-label { color: var(--gold); }
+    .reviews .sec-title { color: #fff; }
+    .reviews .sec-title em { color: var(--gold); }
+    .reviews .sec-head .sec-intro { color: rgba(255,255,255,.55); }
+
+    .review-stats {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 28px; margin-bottom: 64px;
+      padding: 32px 0; border-top: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .rs-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 44px; font-weight: 400; color: var(--gold);
+      line-height: 1; letter-spacing: -.02em;
+    }
+    .rs-lbl {
+      font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+      color: rgba(255,255,255,.5); margin-top: 12px;
+    }
+
+    .review-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    }
+    .review-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 32px 28px;
+      border-radius: 4px;
+      transition: border-color .25s, background .25s;
+    }
+    .review-card:hover { border-color: rgba(201,169,97,.4); background: rgba(255,255,255,.05); }
+    .review-stars { color: var(--gold); letter-spacing: .12em; font-size: 14px; margin-bottom: 14px; }
+    .review-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px; line-height: 1.55; font-weight: 400;
+      color: rgba(255,255,255,.92);
+      font-style: italic;
+      margin-bottom: 22px;
+    }
+    .review-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .review-author {
+      font-size: 13px; color: #fff; font-weight: 500;
+    }
+    .review-author span {
+      display: block;
+      font-size: 10px; color: rgba(255,255,255,.4);
+      letter-spacing: .14em; text-transform: uppercase;
+      margin-top: 4px;
+    }
+    .review-source {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: .12em;
+      color: var(--gold); text-transform: uppercase;
+    }
+
+    /* ── CONTACT ───────────────────────────── */
+    .contact { background: var(--cream); }
+    .contact-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: stretch;
+    }
+    .hours-list { display: flex; flex-direction: column; gap: 0; margin-top: 36px; }
+    .hours-row {
+      display: flex; justify-content: space-between;
+      padding: 16px 0; border-bottom: 1px solid var(--border);
+    }
+    .hours-row:last-child { border-bottom: none; }
+    .hours-day { font-size: 14px; color: var(--text); font-weight: 400; }
+    .hours-time { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink); font-weight: 500; }
+
+    .contact-info {
+      background: #fff;
+      padding: 48px 44px;
+      border: 1px solid var(--border);
+    }
+    .contact-info h3 {
+      font-size: 28px; font-weight: 500; font-style: italic;
+      color: var(--ink); margin-bottom: 32px;
+    }
+    .contact-row {
+      display: flex; align-items: flex-start; gap: 16px;
+      padding: 20px 0; border-bottom: 1px solid var(--border);
+    }
+    .contact-row:last-of-type { border-bottom: none; }
+    .contact-icon {
+      width: 38px; height: 38px; flex-shrink: 0;
+      border: 1px solid var(--gold);
+      color: var(--gold-dark);
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; font-size: 14px;
+    }
+    .contact-key {
+      font-size: 10px; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .contact-val { font-size: 15px; color: var(--ink); font-weight: 400; line-height: 1.5; }
+    .contact-val a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--gold); }
+    .contact-val a:hover { color: var(--gold-dark); }
+
+    /* ── FOOTER CTA ────────────────────────── */
+    .cta-final {
+      background: var(--ink); color: #fff;
+      padding: 140px 32px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .cta-final::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(201,169,97,.18) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .cta-final .container { position: relative; z-index: 2; }
+    .cta-final h2 {
+      font-size: clamp(42px, 5.5vw, 80px);
+      font-weight: 400; line-height: 1.05;
+      letter-spacing: -.02em;
+      max-width: 880px; margin: 0 auto 24px;
+    }
+    .cta-final h2 em { font-style: italic; color: var(--gold); }
+    .cta-final p {
+      font-size: 17px; color: rgba(255,255,255,.55);
+      max-width: 480px; margin: 0 auto 48px;
+      line-height: 1.7; font-weight: 300;
+    }
+
+    /* ── FOOTER ────────────────────────────── */
+    footer {
+      background: #050403; color: rgba(255,255,255,.5);
+      padding: 56px 32px 36px;
+      border-top: 1px solid rgba(255,255,255,.05);
+    }
+    .footer-inner {
+      max-width: 1240px; margin: 0 auto;
+      display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap; gap: 18px;
+    }
+    .footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 600;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: #fff;
+    }
+    .footer-logo span { color: var(--gold); font-style: italic; }
+    .footer-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; letter-spacing: .1em; color: rgba(255,255,255,.3);
+    }
+
+    /* ── RESPONSIVE ────────────────────────── */
+    @media (max-width: 960px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .nav-cta { display: none; }
+
+      .about-grid, .contact-grid { grid-template-columns: 1fr; gap: 56px; }
+      .about-visual { aspect-ratio: 3/4; max-width: 420px; margin: 0 auto; }
+
+      .team-grid { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+      .review-grid { grid-template-columns: 1fr; }
+      .review-stats { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      .brand-wall { grid-template-columns: repeat(4, 1fr); }
+
+      .svc-row { grid-template-columns: 1fr auto; row-gap: 14px; }
+      .svc-pick { grid-column: 1 / -1; justify-self: end; }
+
+      .sec-head { flex-direction: column; align-items: flex-start; gap: 24px; }
+
+      .hero-stats-inner { gap: 36px; }
+      .stat-num { font-size: 32px; }
+      .section { padding: 90px 24px; }
+      .cta-final { padding: 100px 24px; }
+    }
+
+    @media (max-width: 520px) {
+      .nav-inner, .hero-body, .hero-stats-inner { padding-left: 22px; padding-right: 22px; }
+      .hero h1 { font-size: 56px; }
+      .review-stats { grid-template-columns: 1fr 1fr; }
+      .brand-wall { grid-template-columns: repeat(3, 1fr); }
+      .contact-info { padding: 36px 28px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">HAIR <span>&</span> ART</a>
+    <ul class="nav-links">
+      <li><a href="#about">Студиото</a></li>
+      <li><a href="#services">Услуги</a></li>
+      <li><a href="#team">Екип</a></li>
+      <li><a href="#brands">Марки</a></li>
+      <li><a href="#reviews">Отзиви</a></li>
+      <li><a href="#contact">Контакт</a></li>
+      <li><a href="#book" class="nav-cta">Запази час</a></li>
+    </ul>
+    <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <button class="m-close" id="mClose">×</button>
+  <a href="#about">Студиото</a>
+  <a href="#services">Услуги</a>
+  <a href="#team">Екип</a>
+  <a href="#brands">Марки</a>
+  <a href="#reviews">Отзиви</a>
+  <a href="#contact">Контакт</a>
+  <a href="#book" style="color: var(--gold);">Запази час</a>
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-photo"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-grain"></div>
+  <div class="hero-ornament"></div>
+
+  <div class="hero-body">
+    <div class="hero-inner">
+      <div class="hero-tag">Варна · ул. Неофит Рилски 14</div>
+      <h1>
+        Hair <span class="amp">&</span> Art<br>
+        <em>Studio.</em>
+      </h1>
+      <p class="hero-sub">
+        Място, създадено за жени, които искат повече от салон.
+        Терапии Redken и Moroccanoil, авторски прически, маникюр и
+        миглопластика — с внимание към всеки детайл.
+      </p>
+      <div class="hero-btns">
+        <a href="#book" class="btn-primary">Запази час</a>
+        <a href="#services" class="btn-ghost">Виж услугите</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="hero-stats-inner">
+      <div>
+        <span class="stat-num">4<em>.9</em></span>
+        <span class="stat-lbl">Средна оценка</span>
+      </div>
+      <div>
+        <span class="stat-num">548<em>+</em></span>
+        <span class="stat-lbl">Отзива</span>
+      </div>
+      <div>
+        <span class="stat-num">7</span>
+        <span class="stat-lbl">Майстори в екипа</span>
+      </div>
+      <div>
+        <span class="stat-num">16</span>
+        <span class="stat-lbl">Премиум марки</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ABOUT -->
+<section class="section about" id="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="about-text">
+        <div class="sec-label">За студиото</div>
+        <h2 class="sec-title" style="margin-bottom: 36px;">Грижа за <em>женската</em><br>красота.</h2>
+
+        <p>
+          HAIR & ART Studio е място, специално създадено за всички жени —
+          уютна атмосфера, разнообразие от фризьорски услуги, маникюр и
+          миглопластика. Като екип, отдаваме изключително внимание и
+          индивидуално отношение към всеки клиент.
+        </p>
+        <p>
+          Подбираме внимателно продуктите, с които работим, и държим да
+          предоставим качествена услуга. Нашата мисия е да удовлетворим
+          максимално Вашите желания и да накараме всяка жена да се чувства
+          красива в кожата си.
+        </p>
+
+        <div class="about-quote">
+          „Подарете си време за Вас и ни се доверете. Очакваме Ви.“
+        </div>
+      </div>
+
+      <div class="about-visual">
+        <img src="assets/hair-art/studio.png" alt="Интериор на HAIR & ART Studio — рецепция и работно място">
+        <div class="about-caption">
+          <div class="about-caption-key">Studio · Varna</div>
+          <div class="about-caption-val">ул. Неофит Рилски 14</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="section services" id="services">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Услуги</div>
+        <h2 class="sec-title">Премиум <em>фризьорски</em><br>услуги и грижа.</h2>
+      </div>
+      <p class="sec-intro">
+        Подстригване, авторски сешоар, висок клас терапии за коса и
+        стайлинг с продукти на Redken, Moroccanoil, Biolage, Matrix и Joico.
+      </p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="svc-tabs" role="tablist">
+      <button class="svc-tab active" data-tab="hair">Коса</button>
+      <button class="svc-tab" data-tab="nails">Нокти</button>
+      <button class="svc-tab" data-tab="face">Лице</button>
+    </div>
+
+    <!-- HAIR -->
+    <div class="svc-group active" id="tab-hair">
+      <div class="svc-cat">
+        Терапии за коса
+        <span class="svc-cat-count">/ 09</span>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">PAPAYA HAIRCUT — терапия с папая и хиалурон, подстригване и сешоар</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">78 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Пакет LUXURY MOROCCANOIL CUT — подстригване + терапия и прав сешоар</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">108 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Пакет Redken BONDING treatment & CUT — възстановяване и прав стайлинг</div>
+          <div class="svc-meta">1 ч. 15 мин.</div>
+        </div>
+        <div class="svc-price">125 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">INSTA CURE & Cut — заздравяваща грижа, подстригване и сешоар</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">72 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Пакет FILLER THERAPY & CUT — филър терапия, подстригване и сешоар</div>
+          <div class="svc-meta">1 ч. 15 мин.</div>
+        </div>
+        <div class="svc-price">138 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Пакет INSTA GLOSS HAIRCUT — подстригване + терапия за моментален блясък</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">78 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">REDKEN COLOR GLASS GLOSS & CUT — активатор за блясък и сешоар</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">78 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Пакет PERFECT SHINY CUT — подстригване + ампула за възстановяване</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">78 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Пакет BOTOX THERMO REPAIR & CUT — ботокс терапия за коса и сешоар</div>
+          <div class="svc-meta">1 ч. 15 мин.</div>
+        </div>
+        <div class="svc-price">138 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+
+      <div class="svc-cat">
+        Подстригване и прически
+        <span class="svc-cat-count">/ 06</span>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Дамско подстригване — средно дълга / дълга коса</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>35 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Прав сешоар</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>39 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Къдрав сешоар</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>45 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Официална прическа</div>
+          <div class="svc-meta">1 ч. 15 мин. – 1 ч. 30 мин.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>118 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Плитки без допълнителна коса</div>
+          <div class="svc-meta">30 мин. – 2 ч.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>20 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Плитки с канекалон</div>
+          <div class="svc-meta">30 мин. – 2 ч. 30 мин.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>20 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+
+      <div class="svc-cat">
+        Боядисване и кичури
+        <span class="svc-cat-count">/ 08</span>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Боядисване на цяла дължина — Redken / Matrix</div>
+          <div class="svc-meta">1 ч. 30 мин. – 2 ч.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>80 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Кичури / балеаж / ефекти</div>
+          <div class="svc-meta">2 ч. – 3 ч. 30 мин.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>120 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Боядисване на корен</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>55 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+    </div>
+
+    <!-- NAILS -->
+    <div class="svc-group" id="tab-nails">
+      <div class="svc-cat">
+        Маникюр и педикюр
+        <span class="svc-cat-count">/ 05</span>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Класически маникюр с лак — Semilac</div>
+          <div class="svc-meta">45 мин.</div>
+        </div>
+        <div class="svc-price">35 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Гел лак — пълно покритие</div>
+          <div class="svc-meta">1 ч. 15 мин.</div>
+        </div>
+        <div class="svc-price">55 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Изграждане с гел / акрил</div>
+          <div class="svc-meta">1 ч. 30 мин. – 2 ч.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>75 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Френска декорация / дизайн</div>
+          <div class="svc-meta">+ 30 мин.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>15 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Педикюр с гел лак — Kodi Professional</div>
+          <div class="svc-meta">1 ч. 30 мин.</div>
+        </div>
+        <div class="svc-price">70 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+    </div>
+
+    <!-- FACE -->
+    <div class="svc-group" id="tab-face">
+      <div class="svc-cat">
+        Миглопластика
+        <span class="svc-cat-count">/ 04</span>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Поставяне на мигли — класика 1:1</div>
+          <div class="svc-meta">2 ч.</div>
+        </div>
+        <div class="svc-price">80 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Поставяне на мигли — обем 3D / 5D</div>
+          <div class="svc-meta">2 ч. 30 мин.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>100 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Ламиниране на мигли</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">55 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Поддръжка / попълване</div>
+          <div class="svc-meta">1 ч. 30 мин.</div>
+        </div>
+        <div class="svc-price"><div class="svc-price-from">от</div>55 лв</div>
+        <a href="#book" class="svc-pick">Опции</a>
+      </div>
+
+      <div class="svc-cat">
+        Грим
+        <span class="svc-cat-count">/ 03</span>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Дневен грим — Chanel / Dior / Charlotte Tilbury</div>
+          <div class="svc-meta">1 ч.</div>
+        </div>
+        <div class="svc-price">75 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Официален грим</div>
+          <div class="svc-meta">1 ч. 15 мин.</div>
+        </div>
+        <div class="svc-price">95 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+      <div class="svc-row">
+        <div>
+          <div class="svc-name">Булчински грим + проба</div>
+          <div class="svc-meta">2 ч. + 1 ч.</div>
+        </div>
+        <div class="svc-price">180 лв</div>
+        <a href="#book" class="svc-pick">Избери</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="section team" id="team">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Нашият екип</div>
+        <h2 class="sec-title">Майстори с <em>почерк.</em></h2>
+      </div>
+      <p class="sec-intro">
+        Седем специалисти, посветени на грижата за вашата визия — от подстригване
+        до миглопластика и грим за специалния повод.
+      </p>
+    </div>
+
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-avatar">И</div>
+        <div class="team-name">Ива Маринова</div>
+        <div class="team-role">Фризьор</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">И</div>
+        <div class="team-name">Ивайла Ивайлова</div>
+        <div class="team-role">Фризьор</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">М</div>
+        <div class="team-name">Мария Димитрова</div>
+        <div class="team-role">Миглостилист</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">Г</div>
+        <div class="team-name">Габриела Ивайлова</div>
+        <div class="team-role">Маникюрист</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">Д</div>
+        <div class="team-name">Дияна Димитрова</div>
+        <div class="team-role">Маникюрист</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">Б</div>
+        <div class="team-name">Борислава Маринова</div>
+        <div class="team-role">Гримьор</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">В</div>
+        <div class="team-name">Вероника Стефанова</div>
+        <div class="team-role">Козметик</div>
+      </div>
+      <div class="team-card" style="display: flex; flex-direction: column; justify-content: center; background: var(--ink); color: #fff; border-color: var(--ink);">
+        <div style="font-family: 'Playfair Display', serif; font-size: 42px; font-style: italic; color: var(--gold); line-height: 1;">+</div>
+        <div class="team-name" style="color: #fff; margin-top: 14px;">Запази час</div>
+        <div class="team-role" style="color: rgba(255,255,255,.5);">с твоя любим майстор</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BRANDS -->
+<section class="section brands" id="brands">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Марки, с които работим</div>
+        <h2 class="sec-title">Само <em>премиум</em> продукти.</h2>
+      </div>
+      <p class="sec-intro">
+        Подбрани професионални марки за коса, нокти и грим — от Redken и Moroccanoil
+        до Chanel, Dior и Charlotte Tilbury.
+      </p>
+    </div>
+
+    <div class="brand-wall">
+      <div class="brand-cell">Biolage</div>
+      <div class="brand-cell">Chanel</div>
+      <div class="brand-cell">Charlotte Tilbury</div>
+      <div class="brand-cell">cuccio</div>
+      <div class="brand-cell">Dior</div>
+      <div class="brand-cell">Elchim</div>
+      <div class="brand-cell">Hi Hybrid</div>
+      <div class="brand-cell">Jean Paul Mynè</div>
+      <div class="brand-cell">joico</div>
+      <div class="brand-cell">Kodi Professional</div>
+      <div class="brand-cell">Matrix</div>
+      <div class="brand-cell">milk_shake</div>
+      <div class="brand-cell">Moroccanoil</div>
+      <div class="brand-cell">Nikk Mole</div>
+      <div class="brand-cell">Redken</div>
+      <div class="brand-cell">Semilac</div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="section reviews" id="reviews">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Отзиви и оценки</div>
+        <h2 class="sec-title">548 жени <em>препоръчват</em><br>студиото.</h2>
+      </div>
+      <p class="sec-intro">
+        Средна оценка 4.9 от 548 отзива — за качество, обслужване,
+        чистота и атмосфера.
+      </p>
+    </div>
+
+    <div class="review-stats">
+      <div>
+        <div class="rs-num">4.9</div>
+        <div class="rs-lbl">Качество</div>
+      </div>
+      <div>
+        <div class="rs-num">4.9</div>
+        <div class="rs-lbl">Обслужване</div>
+      </div>
+      <div>
+        <div class="rs-num">5.0</div>
+        <div class="rs-lbl">Чистота</div>
+      </div>
+      <div>
+        <div class="rs-num">4.9</div>
+        <div class="rs-lbl">Атмосфера</div>
+      </div>
+    </div>
+
+    <div class="review-grid">
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">
+          „Не знам дали има подходящи думи, с които да изразя възхищението си
+          от направения ми балеаж. Ива Маринова е повече от НЕВЕРОЯТНА — дори
+          ми беше нереално да повярвам на резултата.“
+        </p>
+        <div class="review-meta">
+          <div class="review-author">
+            Габриела Насева
+            <span>Преди 2 години</span>
+          </div>
+          <div class="review-source">Google</div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">
+          „Редовен клиент съм на маникюристката Дияна и съм изключително
+          доволна от техниката, бързината и чистотата. Атмосферата и кафето
+          са страхотни, локацията е удобна.“
+        </p>
+        <div class="review-meta">
+          <div class="review-author">
+            Пламена Жекова
+            <span>Преди 8 месеца</span>
+          </div>
+          <div class="review-source">Google</div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">
+          „Момичетата във този салон ме спасиха на сватбения ми ден!
+          Получи се точно така, както исках — професионално, бързо и с
+          много усмивка.“
+        </p>
+        <div class="review-meta">
+          <div class="review-author">
+            Вероника Симеонова
+            <span>Преди 1 година</span>
+          </div>
+          <div class="review-source">Google</div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">
+          „Редовно си ходя при Ива и съм много доволна! Прави чудесна
+          подстрижка, терапии, сешоар. Златни ръце!“
+        </p>
+        <div class="review-meta">
+          <div class="review-author">
+            Ямур Ревайдин
+            <span>Преди 2 години</span>
+          </div>
+          <div class="review-source">Google</div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">
+          „I had a botox therapy and I am super happy and satisfied with
+          the result. My hair is extremely soft and shiny. Thanks a lot!“
+        </p>
+        <div class="review-meta">
+          <div class="review-author">
+            Carolina Pino
+            <span>Преди 2 години</span>
+          </div>
+          <div class="review-source">Google</div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">
+          „Много съм доволна от отношението на Ива и от услугата измиване,
+          подстригване и сешоар. Хареса ми, че си спазва часовете и не
+          вкарва други хора между клиентите.“
+        </p>
+        <div class="review-meta">
+          <div class="review-author">
+            Мадлен Иванова
+            <span>Преди 2 години</span>
+          </div>
+          <div class="review-source">Google</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="section contact" id="contact">
+  <div class="container">
+    <div class="contact-grid">
+      <div>
+        <div class="sec-label">Работно време</div>
+        <h2 class="sec-title">Всеки ден.<br><em>За теб.</em></h2>
+
+        <div class="hours-list">
+          <div class="hours-row"><span class="hours-day">Понеделник</span><span class="hours-time">10:00 — 19:00</span></div>
+          <div class="hours-row"><span class="hours-day">Вторник</span><span class="hours-time">10:00 — 19:00</span></div>
+          <div class="hours-row"><span class="hours-day">Сряда</span><span class="hours-time">10:00 — 19:00</span></div>
+          <div class="hours-row"><span class="hours-day">Четвъртък</span><span class="hours-time">10:00 — 19:00</span></div>
+          <div class="hours-row"><span class="hours-day">Петък</span><span class="hours-time">10:00 — 19:00</span></div>
+          <div class="hours-row"><span class="hours-day">Събота</span><span class="hours-time">10:00 — 19:00</span></div>
+          <div class="hours-row"><span class="hours-day">Неделя</span><span class="hours-time">10:00 — 19:00</span></div>
+        </div>
+      </div>
+
+      <div class="contact-info" id="book">
+        <h3>Намери ни</h3>
+
+        <div class="contact-row">
+          <div class="contact-icon">⌖</div>
+          <div>
+            <div class="contact-key">Адрес</div>
+            <div class="contact-val">ул. Неофит Рилски 14<br>Варна 9000, България</div>
+          </div>
+        </div>
+
+        <div class="contact-row">
+          <div class="contact-icon">☎</div>
+          <div>
+            <div class="contact-key">Телефон</div>
+            <div class="contact-val"><a href="tel:+359">+359 ··· ··· ···</a></div>
+          </div>
+        </div>
+
+        <div class="contact-row">
+          <div class="contact-icon">⌘</div>
+          <div>
+            <div class="contact-key">Запази онлайн</div>
+            <div class="contact-val"><a href="#book">Резервирай час за избрана услуга</a></div>
+          </div>
+        </div>
+
+        <a href="#book" class="btn-primary" style="margin-top: 32px; width: 100%; text-align: center; background: var(--ink); color: var(--gold);">Запази час сега</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="cta-final" id="book-final">
+  <div class="container">
+    <h2>Подарете си <em>време</em><br>за себе си.</h2>
+    <p>Очакваме Ви в студиото. Всички услуги са специално ориентирани в грижа към женската красота.</p>
+    <a href="#book" class="btn-primary" style="font-size: 13px; padding: 18px 44px;">Запази час</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">HAIR <span>&</span> ART <span style="color: rgba(255,255,255,.3); font-style: normal;">STUDIO</span></div>
+    <div class="footer-meta">© 2026 · Варна · ул. Неофит Рилски 14</div>
+  </div>
+</footer>
+
+<script>
+  // Sticky nav
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+
+  // Mobile menu
+  const ham = document.getElementById('hamburger');
+  const mm = document.getElementById('mobileMenu');
+  const mc = document.getElementById('mClose');
+  ham?.addEventListener('click', () => mm.classList.add('open'));
+  mc?.addEventListener('click', () => mm.classList.remove('open'));
+  mm.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mm.classList.remove('open')));
+
+  // Service tabs
+  const tabs = document.querySelectorAll('.svc-tab');
+  const groups = document.querySelectorAll('.svc-group');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      tabs.forEach(t => t.classList.toggle('active', t === tab));
+      groups.forEach(g => g.classList.toggle('active', g.id === 'tab-' + target));
+    });
+  });
+</script>
+
+</body>
+</html>

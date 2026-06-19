@@ -2,10 +2,30 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "static",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", ".", "-p", "4321"],
+      "port": 4321
+    },
+    {
       "name": "next-dev",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["next", "dev"],
       "port": 3000,
+      "autoPort": true
+    }
+    ,{
+      "name": "ye-brows",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd /Users/delqnka/Documents/GitHub/salon-sites/ye-brows && npx serve . -p 4323"],
+      "port": 4323,
+      "autoPort": true
+    }
+    ,{
+      "name": "salon-paradise",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd /Users/delqnka/Documents/GitHub/salon-paradise && npm run dev"],
+      "port": 3002,
       "autoPort": true
     }
   ]
