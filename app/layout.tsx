@@ -2,17 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/next';
 import { TrackingScripts } from '@/components/analytics/TrackingScripts';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Manrope } from 'next/font/google';
+import '@fontsource/manrope/400.css';
+import '@fontsource/manrope/600.css';
+import '@fontsource/manrope/700.css';
 import './globals.base.css';
-
-const manrope = Manrope({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-client-manrope',
-  display: 'swap',
-  weight: ['400', '600', '700'],
-  preload: true,
-  adjustFontFallback: true,
-});
 
 export const viewport: Viewport = {
   themeColor: '#ffffff',
@@ -48,7 +41,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="bg" className={manrope.variable} suppressHydrationWarning>
+    <html lang="bg" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://o4511518502289408.ingest.de.sentry.io" />
       </head>

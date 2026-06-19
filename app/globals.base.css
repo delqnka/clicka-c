@@ -2,6 +2,8 @@
 
 /* ── Design Tokens ─────────────────────────────────────── */
 :root {
+  --font-client-manrope: 'Manrope';
+
   --ink:    #1C1917;
   --paper:  #FAF8F5;
   --brass:  #B07D2E;
