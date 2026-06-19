@@ -36,6 +36,7 @@ frontend code. They use Clicka only through backend APIs.
 - `GET /api/public/salons/:slug/staff`
 - `GET /api/public/salons/:slug/slots?date=YYYY-MM-DD&staffMemberId=...`
 - `POST /api/public/bookings`
+- `POST /api/public/booking-checkout`
 
 These endpoints are the contract for all custom client frontends.
 
@@ -52,7 +53,6 @@ These endpoints are the contract for all custom client frontends.
 - `clicka-c` still contains marketing/public salon frontend routes.
 - `public/widget.js` still opens a Clicka-hosted iframe route.
 - Some public components and legal content expose Clicka branding.
-- Booking payment return URLs still need a custom-site return strategy.
 - Legacy public frontend routes are hidden in engine-only deployments, but still
   exist in the repo during migration.
 

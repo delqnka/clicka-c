@@ -65,6 +65,29 @@ await fetch(`${engineUrl}/api/public/bookings`, {
 });
 ```
 
+## Start Payment Checkout
+
+For paid bookings, pass the custom site's origin as `returnUrl`. Stripe will
+send the customer back to the custom domain, not the engine domain.
+
+```ts
+const checkoutRes = await fetch(`${engineUrl}/api/public/booking-checkout`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    salonSlug: slug,
+    bookingId,
+    serviceName: 'Haircut',
+    amountEuros: 20,
+    paymentType: 'deposit',
+    returnUrl: window.location.origin,
+  }),
+});
+
+const { checkoutUrl } = await checkoutRes.json();
+window.location.href = checkoutUrl;
+```
+
 ## Browser Helper
 
 For non-Next/custom static sites:
@@ -89,6 +112,13 @@ await engine.createBooking({
   serviceDuration: 45,
   date: '2026-06-20',
   time: '10:30',
+});
+
+const { checkoutUrl } = await engine.createCheckout({
+  bookingId: 'booking-id',
+  serviceName: 'Haircut',
+  amountEuros: 20,
+  paymentType: 'deposit',
 });
 ```
 

@@ -9,6 +9,9 @@ export async function POST(request: NextRequest) {
     serviceName?: string;
     amountEuros?: number;   // full price or deposit in euros
     paymentType?: 'deposit' | 'full';
+    returnUrl?: string;
+    successUrl?: string;
+    cancelUrl?: string;
   };
 
   const { bookingId, salonSlug, serviceName, amountEuros, paymentType } = body;
@@ -31,6 +34,17 @@ export async function POST(request: NextRequest) {
   const host = request.headers.get('host') ?? '';
   const proto = host.includes('localhost') ? 'http' : 'https';
   const origin = `${proto}://${host}`;
+  const returnOrigin = normalizeReturnOrigin(body.returnUrl);
+  const successUrl =
+    normalizeAbsoluteHttpUrl(body.successUrl) ??
+    (returnOrigin
+      ? `${returnOrigin}/booking/success?booking_id=${encodeURIComponent(bookingId)}`
+      : `${origin}/booking/success?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`);
+  const cancelUrl =
+    normalizeAbsoluteHttpUrl(body.cancelUrl) ??
+    (returnOrigin
+      ? `${returnOrigin}/booking/cancel?booking_id=${encodeURIComponent(bookingId)}`
+      : `${origin}/booking/cancel?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`);
 
   const amountCents = Math.round(amountEuros * 100);
   const label = paymentType === 'deposit' ? `Депозит: ${serviceName}` : serviceName ?? 'Услуга';
@@ -57,8 +71,8 @@ export async function POST(request: NextRequest) {
         salonSlug,
         paymentType: paymentType ?? 'full',
       },
-      success_url: `${origin}/booking/success?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`,
-      cancel_url:  `${origin}/booking/cancel?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     },
     {
       // Make the checkout session on behalf of the connected account
@@ -75,4 +89,26 @@ export async function POST(request: NextRequest) {
   `;
 
   return NextResponse.json({ checkoutUrl: session.url });
+}
+
+function normalizeReturnOrigin(raw: string | undefined) {
+  const url = normalizeAbsoluteHttpUrl(raw);
+  if (!url) return null;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAbsoluteHttpUrl(raw: string | undefined) {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    const isLocalhost = url.hostname === 'localhost' || url.hostname.endsWith('.localhost');
+    if (url.protocol !== 'https:' && !(isLocalhost && url.protocol === 'http:')) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }

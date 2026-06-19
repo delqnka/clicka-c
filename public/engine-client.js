@@ -84,6 +84,17 @@
           }),
         });
       },
+
+      createCheckout: function (checkout) {
+        return request('/api/public/booking-checkout', {
+          method: 'POST',
+          body: JSON.stringify({
+            ...checkout,
+            salonSlug: requireSlug(checkout && (checkout.salonSlug || checkout.slug)),
+            returnUrl: checkout && checkout.returnUrl ? checkout.returnUrl : window.location.origin,
+          }),
+        });
+      },
     };
   }
 
