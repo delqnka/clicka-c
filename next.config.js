@@ -20,12 +20,6 @@ const r2PublicNormalized = r2PublicRaw.trim().startsWith('http')
 const r2Host = hostnameFromUrl(r2PublicNormalized);
 
 /** @type {import('next').NextConfig['headers']} */
-//
-// frame-ancestors below replaces X-Frame-Options: SAMEORIGIN so external partner sites
-// (e.g. a salon's custom marketing landing page on Vercel) can iframe their own public
-// salon page on clicka.bg for an inline "Резервирай" modal. Salon public pages have no
-// destructive 1-click actions, so clickjacking risk is minimal. Admin and billing routes
-// are still locked down separately below.
 const baseCsp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://www.clarity.ms https://scripts.clarity.ms https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net",
@@ -45,7 +39,7 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control',          value: 'on' },
   {
     key: 'Content-Security-Policy',
-    value: [...baseCsp, "frame-ancestors *"].join('; '),
+    value: [...baseCsp, "frame-ancestors 'none'"].join('; '),
   },
 ];
 
@@ -73,7 +67,8 @@ const nextConfig = {
       { source: '/api/:path*',     headers: adminSecurityHeaders },
       { source: '/setup/:path*',   headers: adminSecurityHeaders },
       { source: '/account/:path*', headers: adminSecurityHeaders },
-      // Everything else (mostly public salon pages) allows iframe embedding.
+      // Everything else should not be embedded. Custom client sites use /api/public
+      // and the drop-in widget instead of iframeing engine pages.
       { source: '/(.*)',           headers: securityHeaders },
     ];
   },

@@ -54,6 +54,12 @@ These endpoints are the contract for all custom client frontends.
 - Some public components and legal content expose Clicka branding.
 - Legacy public frontend routes are hidden in engine-only deployments, but still
   exist in the repo during migration.
+- Admin and notification copy still contains Clicka references in several
+  places. This is acceptable only for internal/testing deployments until the
+  admin brand layer is made configurable.
+- Legacy booking management pages remain on the engine domain for old email
+  links. New custom sites should use `returnUrl` and client-owned confirmation
+  pages.
 
 ## Execution Order
 
@@ -76,3 +82,28 @@ marketing or legacy public salon pages. This hides:
 
 Admin, platform admin, API routes, booking management routes, and static engine
 integration files remain available.
+
+## Guardrail Check
+
+Run this before deploys that are meant to behave as the invisible engine:
+
+```bash
+npm run audit:white-label
+```
+
+The check fails if the old middleware returns, if the drop-in widget starts
+using iframe-based engine pages again, or if the neutral public helper regresses
+to old Clicka-specific attributes.
+
+## Next White-Label Phase
+
+1. Add configurable engine/admin display identity:
+   - product name
+   - support email
+   - sender name
+   - Telegram bot name
+2. Replace Clicka-specific text in admin-facing emails and admin UI with that
+   configurable identity.
+3. Move legacy marketing/legal/public salon pages out of the engine repo, or
+   keep them permanently hidden behind `CLICKA_ENGINE_ONLY=1`.
+4. Add a tiny custom-site starter that consumes only `/api/public`.

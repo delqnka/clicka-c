@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
+    "audit:white-label": "node scripts/audit-white-label.mjs",
     "perf": "node scripts/perf-report.mjs",
     "optimize-marketing-images": "node scripts/optimize-marketing-images.mjs",
     "create-client": "node --env-file=.env.local scripts/create-client.mjs"
