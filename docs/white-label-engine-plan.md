@@ -51,7 +51,6 @@ These endpoints are the contract for all custom client frontends.
 ## Current Gaps
 
 - `clicka-c` still contains marketing/public salon frontend routes.
-- `public/widget.js` still opens a Clicka-hosted iframe route.
 - Some public components and legal content expose Clicka branding.
 - Legacy public frontend routes are hidden in engine-only deployments, but still
   exist in the repo during migration.

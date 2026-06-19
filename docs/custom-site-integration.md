@@ -122,6 +122,28 @@ const { checkoutUrl } = await engine.createCheckout({
 });
 ```
 
+## Drop-In Booking Widget
+
+For a fast no-code style install, add this script and mark any button with
+`data-book`. The modal is rendered on the client site and talks only to
+`/api/public`; it does not iframe engine pages.
+
+```html
+<script
+  src="https://your-engine-domain.com/widget.js"
+  data-engine-url="https://your-engine-domain.com"
+  data-salon="client-slug"
+></script>
+
+<button data-book>Book online</button>
+```
+
+Optional service preselect:
+
+```html
+<button data-book data-service="service-id">Book haircut</button>
+```
+
 ## Rules
 
 - The custom site controls all public design and copy.
