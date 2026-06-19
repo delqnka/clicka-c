@@ -8,6 +8,7 @@ import {
   isPlatformApexHost,
 } from '@/lib/domain-routing';
 import { buildSalonSitemapEntries } from '@/lib/salon-sitemap';
+import { isEngineOnlyMode } from '@/lib/engine-mode';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
@@ -27,6 +28,8 @@ const PLATFORM_PAGES: MetadataRoute.Sitemap = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (isEngineOnlyMode()) return [];
+
   const host = headers().get('host');
   const hostname = extractHostname(host);
 
