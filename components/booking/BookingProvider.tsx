@@ -124,7 +124,10 @@ function resolveEngine(prop?: string): string {
     readMeta('clicka:engine') ||
     readEnv('NEXT_PUBLIC_CLICKA_ENGINE') ||
     readEnv('NEXT_PUBLIC_CLICKA_API_URL') ||
-    'https://clicka.bg'
+    // Canonical host (with www). The bare clicka.bg returns a 308 redirect
+    // which kills cross-origin fetches because the redirect response itself
+    // carries no CORS headers — browsers reject the whole chain.
+    'https://www.clicka.bg'
   );
 }
 
