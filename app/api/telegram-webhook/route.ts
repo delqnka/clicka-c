@@ -246,7 +246,7 @@ async function handleOnboardingAvatar(chatId: number, imageUrl: string, state: R
 async function handleBlockMessage(chatId: number, text: string): Promise<void> {
   const salon = await findSalonByChatId(chatId);
   if (!salon) {
-    await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+    await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
     return;
   }
 
@@ -360,7 +360,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     }
   }
 
-  // ── Handle Clicka owner reply to support chat (clicka.bg marketing chat) ──
+  // ── Handle owner reply to support chat ──
   const isOwnerMessage = OWNER_CHAT_ID && String(chatId) === OWNER_CHAT_ID;
   const ownerHasText = isOwnerMessage && text && !text.startsWith('/');
   const ownerHasPhoto = isOwnerMessage && message.photo && message.photo.length > 0;
@@ -498,7 +498,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     if (!code) {
       await sendTelegramMessage(
         chatId,
-        'Изпрати <b>/start КОД</b>, за да свържеш акаунта си.\n\nКода намираш в раздел Известия в Clicka.',
+        'Изпрати <b>/start КОД</b>, за да свържеш акаунта си.\n\nКода намираш в раздел Известия.',
       );
       return NextResponse.json({ ok: true });
     }
@@ -653,7 +653,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text.startsWith('/reserve') || text.startsWith('/резервирай') || text.startsWith('/запиши')) {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
       return NextResponse.json({ ok: true });
     }
     const args = text.replace(/^\/(reserve|резервирай|запиши)\s*/i, '').trim();
@@ -670,7 +670,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text.startsWith('/unblock') || text.startsWith('/деблокирай')) {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
       return NextResponse.json({ ok: true });
     }
 
@@ -718,7 +718,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text === '/bio') {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
       return NextResponse.json({ ok: true });
     }
     await setConvState(salon.salonId, { type: 'onboarding', step: 'bio', staff_member_id: salon.staffMemberId ?? null, single_step: true });
@@ -730,7 +730,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text === '/чат' || text === '/chat') {
     const salonForChat = await findSalonByChatId(chatId);
     if (!salonForChat) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
       return NextResponse.json({ ok: true });
     }
     const sessRows = await sql`
@@ -756,7 +756,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (message.photo && message.photo.length > 0) {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram с Clicka салона си чрез /start КОД.');
+      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
       return NextResponse.json({ ok: true });
     }
 

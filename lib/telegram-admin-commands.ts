@@ -3,7 +3,6 @@
  * Called from the Telegram webhook when the message is from the salon owner.
  */
 import crypto from 'crypto';
-import { BRAND } from '@/lib/brand';
 import { sql } from '@/lib/db';
 import { revalidateTag } from 'next/cache';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -3525,7 +3524,7 @@ async function handleBrandsCommand(chatId: number, text: string, salon: SalonRef
     await sendTelegramMessage(
       chatId,
       `⚠️ Не разпознах тези брандове: <b>${notFound.join(', ')}</b>\n\n` +
-      `Провери изписването или пиши на ${BRAND.supportEmail} за добавяне на нов бранд.`,
+      `Провери изписването. Ако марката още не е добавена, свържи се с твоя администратор.`,
     );
     return;
   }

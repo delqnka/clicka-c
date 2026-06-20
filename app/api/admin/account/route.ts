@@ -4,13 +4,14 @@ import { sql } from '@/lib/db';
 import {
   ADMIN_COOKIE_NAME,
   destroyAllOtherOwnerSessions,
+  getActiveCustomDomain,
   hashPassword,
   normalizeEmail,
   requireAdminRequestAccess,
   sha256,
   verifyPassword,
 } from '@/lib/admin-auth';
-import { getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
 import {
   sendEmailChangeRequestNotification,
   sendEmailVerificationRequest,
@@ -31,6 +32,10 @@ function validatePasswordStrength(password: string): string | null {
   return null;
 }
 
+function normalizeDisplayName(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
 async function getOwnerPasswordHash(ownerId: string): Promise<string> {
   const rows = await sql`
     SELECT password_hash FROM site_owners WHERE id = ${ownerId} LIMIT 1
@@ -46,11 +51,13 @@ export async function GET(request: NextRequest) {
   const passwordHash = await getOwnerPasswordHash(auth.session.ownerId);
 
   const rows = await sql`
-    SELECT pending_email FROM site_owners WHERE id = ${auth.session.ownerId} LIMIT 1
+    SELECT pending_email, display_name FROM site_owners WHERE id = ${auth.session.ownerId} LIMIT 1
   `;
   const pendingEmail = String((rows[0] as Record<string, unknown> | undefined)?.pending_email ?? '') || null;
+  const displayName = String((rows[0] as Record<string, unknown> | undefined)?.display_name ?? '').trim() || null;
 
   return NextResponse.json({
+    displayName,
     loginEmail: auth.session.ownerEmail,
     hasPassword: Boolean(passwordHash),
     pendingEmail,
@@ -72,9 +79,50 @@ export async function PATCH(request: NextRequest) {
   const action = String(body.action ?? '').trim();
   const currentPassword = String(body.currentPassword ?? '');
 
+  if (action === 'profile') {
+    const displayName = normalizeDisplayName(String(body.displayName ?? ''));
+    if (displayName.length < 2) {
+      return NextResponse.json({ error: 'Името трябва да е поне 2 символа' }, { status: 400 });
+    }
+    if (displayName.length > 80) {
+      return NextResponse.json({ error: 'Името е твърде дълго' }, { status: 400 });
+    }
+
+    await sql`
+      UPDATE site_owners
+      SET display_name = ${displayName}, updated_at = now()
+      WHERE id = ${auth.session.ownerId}
+    `;
+
+    void writeAuditLog({
+      salonId: auth.session.salonId,
+      ownerId: auth.session.ownerId,
+      action: 'profile_updated',
+      detail: { displayName },
+      ip: getClientIp(request as unknown as Request),
+    });
+
+    return NextResponse.json({
+      success: true,
+      displayName,
+      message: 'Името е обновено.',
+    });
+  }
+
   if (action === 'password') {
     const newPassword = String(body.newPassword ?? '');
     const confirmPassword = String(body.confirmPassword ?? '');
+    const passwordHash = await getOwnerPasswordHash(auth.session.ownerId);
+
+    if (passwordHash) {
+      if (!currentPassword) {
+        return NextResponse.json({ error: 'Въведете текущата парола' }, { status: 400 });
+      }
+      const validCurrent = await verifyPassword(currentPassword, passwordHash);
+      if (!validCurrent) {
+        return NextResponse.json({ error: 'Грешна текуща парола' }, { status: 401 });
+      }
+    }
 
     const pwErr = validatePasswordStrength(newPassword);
     if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 });
@@ -96,7 +144,10 @@ export async function PATCH(request: NextRequest) {
 
     // Notify owner that password was changed
     try {
-      await sendPasswordChangedNotification(auth.session.ownerEmail);
+      await sendPasswordChangedNotification(auth.session.ownerEmail, {
+        salonId: auth.session.salonId,
+        salonName: auth.session.salonName,
+      });
     } catch {
       // non-fatal — password is already changed
     }
@@ -169,15 +220,22 @@ export async function PATCH(request: NextRequest) {
       WHERE id = ${auth.session.ownerId}
     `;
 
-    const salonSlug = slug ?? auth.session.ownerId;
-    const base = getPlatformSiteOrigin(salonSlug);
+    const salonSlug = slug ?? auth.session.salonSlug;
+    const customDomain = await getActiveCustomDomain(auth.session.salonId).catch(() => null);
+    const base = customDomain ? getCustomDomainAdminUrl(customDomain) : getPlatformSiteOrigin(salonSlug);
     const verifyUrl = `${base}/api/admin/verify-email?token=${encodeURIComponent(token)}&owner=${encodeURIComponent(auth.session.ownerId)}`;
 
     // Send verification link to new email + notification to old email
     try {
       await Promise.all([
-        sendEmailVerificationRequest(newEmail, verifyUrl),
-        sendEmailChangeRequestNotification(auth.session.ownerEmail, newEmail),
+        sendEmailVerificationRequest(newEmail, verifyUrl, {
+          salonId: auth.session.salonId,
+          salonName: auth.session.salonName,
+        }),
+        sendEmailChangeRequestNotification(auth.session.ownerEmail, newEmail, {
+          salonId: auth.session.salonId,
+          salonName: auth.session.salonName,
+        }),
       ]);
     } catch {
       // non-fatal — pending email is saved, user can retry

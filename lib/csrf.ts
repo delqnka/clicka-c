@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { ROOT_DOMAIN } from '@/lib/domain-routing';
+import { ROOT_DOMAIN, isAdminSubdomainHost, stripAdminSubdomain } from '@/lib/domain-routing';
 import { sql } from '@/lib/db';
 
 /**
@@ -56,13 +56,23 @@ async function isVerifiedCustomDomain(origin: string): Promise<boolean> {
   try {
     const hostname = new URL(origin).hostname;
     if (!hostname) return false;
+    const candidateHostname = isAdminSubdomainHost(hostname)
+      ? stripAdminSubdomain(hostname)
+      : hostname;
     const rows = await sql`
       SELECT 1 FROM salons
       WHERE lower(custom_domain) = lower(${hostname})
         AND domain_status = 'active'
       LIMIT 1
     `;
-    return rows.length > 0;
+    if (rows.length > 0) return true;
+    const adminRows = await sql`
+      SELECT 1 FROM salons
+      WHERE lower(custom_domain) = lower(${candidateHostname})
+        AND domain_status = 'active'
+      LIMIT 1
+    `;
+    return adminRows.length > 0;
   } catch {
     return false;
   }

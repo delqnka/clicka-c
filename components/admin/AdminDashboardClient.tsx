@@ -215,7 +215,7 @@ type Props = {
   ownerEmail: string;
   initialSite: AdminSitePayload;
   initialOffers?: AdminSalonOffer[];
-  initialAccount?: { loginEmail: string; hasPassword: boolean; pendingEmail?: string | null };
+  initialAccount?: { displayName?: string | null; loginEmail: string; hasPassword: boolean; pendingEmail?: string | null };
 };
 
 type BookingStatus = BookingRecord['status'];
@@ -357,6 +357,7 @@ export default function AdminDashboardClient({
   const [site, setSite]           = useState(initialSite);
   const siteRef = useRef(site);
   siteRef.current = site;
+  const [displayName, setDisplayName] = useState<string | null>(initialAccount?.displayName ?? null);
   const [bookings, setBookings]   = useState<BookingRecord[]>([]);
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
@@ -2118,7 +2119,7 @@ export default function AdminDashboardClient({
               {site.plan === 'team' ? 'TEAM' : 'SOLO'}
             </span>
             {!isMobile && (
-              <span style={{ fontSize: 12, color: T.subtle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{ownerEmail}</span>
+              <span style={{ fontSize: 12, color: T.subtle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{displayName || ownerEmail}</span>
             )}
           </div>
 
@@ -3408,7 +3409,7 @@ export default function AdminDashboardClient({
           ) : null}
 
           {activeTab === 'account' && initialAccount ? (
-            <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} />
+            <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} onDisplayNameChange={setDisplayName} />
           ) : null}
 
           {activeTab === 'payments' ? (
@@ -4472,4 +4473,3 @@ function QrModal({ url, salonName, onClose }: { url: string; salonName: string; 
     </div>
   );
 }
-

@@ -77,6 +77,27 @@ export function getCustomDomainOrigin(domain: string) {
   return getOriginForHost(domain);
 }
 
+export function getAdminSubdomainHost(domain: string) {
+  const safeDomain = extractHostname(domain);
+  if (!safeDomain) return '';
+  return `admin.${safeDomain}`;
+}
+
+export function isAdminSubdomainHost(hostname: string) {
+  const normalized = extractHostname(hostname);
+  return normalized.startsWith('admin.') && normalized.split('.').length >= 3;
+}
+
+export function stripAdminSubdomain(hostname: string) {
+  const normalized = extractHostname(hostname);
+  if (!isAdminSubdomainHost(normalized)) return normalized;
+  return normalized.slice('admin.'.length);
+}
+
+export function getCustomDomainAdminUrl(domain: string) {
+  return getOriginForHost(getAdminSubdomainHost(domain));
+}
+
 export function getHostAwareSalonPath({
   host,
   slug,

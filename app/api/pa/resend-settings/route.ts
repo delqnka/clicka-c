@@ -1,6 +1,17 @@
+/**
+ * Platform-admin endpoint for managing per-salon Resend sender settings.
+ *
+ *   GET    /api/pa/resend-settings?salonId=<id>  → load current settings
+ *   POST   /api/pa/resend-settings?salonId=<id>  → verify + save sender
+ *   DELETE /api/pa/resend-settings?salonId=<id>  → clear sender
+ *
+ * Default flow: domain is verified against the central Resend account.
+ * Escape hatch: if `apiKey` is provided in POST body, verification runs
+ * against the salon's own Resend account and the key is stored encrypted.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { requireAdminRequestAccess } from '@/lib/admin-auth';
+import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
 import { invalidateSalonResend } from '@/lib/resend';
 import { encryptSecret } from '@/lib/encryption';
@@ -8,6 +19,8 @@ import { encryptSecret } from '@/lib/encryption';
 export const dynamic = 'force-dynamic';
 
 type Row = {
+  salon_id: string;
+  salon_name: string | null;
   email_from: string | null;
   email_from_name: string | null;
   resend_domain: string | null;
@@ -16,7 +29,7 @@ type Row = {
   has_global_key: boolean;
 };
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const centralResend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 function extractDomainFromEmail(email: string) {
   const normalized = email.trim().toLowerCase();
@@ -32,46 +45,50 @@ function normalizeDomain(value: string) {
     .replace(/\/.*$/, '');
 }
 
-async function loadSettings(salonId: string): Promise<Row> {
+async function loadSettings(salonId: string): Promise<Row | null> {
   const rows = (await sql`
     SELECT
+      CAST(id AS text) AS salon_id,
+      name AS salon_name,
       email_from,
       email_from_name,
       resend_domain,
       resend_verified_at,
       (resend_api_key_encrypted IS NOT NULL) AS uses_own_key,
-      ${Boolean(resend)} AS has_global_key
+      ${Boolean(centralResend)} AS has_global_key
     FROM salons WHERE id = ${salonId} LIMIT 1
   `) as Row[];
-  return rows[0] ?? {
-    email_from: null,
-    email_from_name: null,
-    resend_domain: null,
-    resend_verified_at: null,
-    uses_own_key: false,
-    has_global_key: Boolean(resend),
-  };
+  return rows[0] ?? null;
 }
 
 export async function GET(request: NextRequest) {
-  const slug = request.nextUrl.searchParams.get('slug');
-  const auth = await requireAdminRequestAccess(request, slug);
-  if (!auth.ok) return auth.response;
-  const settings = await loadSettings(auth.salon.salonId);
+  if (!(await isPlatformAdminRequest(request))) {
+    return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
+  }
+  const salonId = new URL(request.url).searchParams.get('salonId')?.trim();
+  if (!salonId) {
+    return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
+  }
+  const settings = await loadSettings(salonId);
+  if (!settings) {
+    return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });
+  }
   return NextResponse.json(settings);
 }
 
 export async function POST(request: NextRequest) {
-  const slug = request.nextUrl.searchParams.get('slug');
-  const auth = await requireAdminRequestAccess(request, slug);
-  if (!auth.ok) return auth.response;
+  if (!(await isPlatformAdminRequest(request))) {
+    return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
+  }
+  const salonId = new URL(request.url).searchParams.get('salonId')?.trim();
+  if (!salonId) {
+    return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
+  }
 
   const body = (await request.json().catch(() => ({}))) as {
     emailFrom?: string | null;
     emailFromName?: string | null;
     resendDomain?: string | null;
-    /** Optional: salon brings their own Resend account. If provided, verification
-     *  runs against THEIR account and the key is stored encrypted. */
     apiKey?: string | null;
   };
 
@@ -80,7 +97,7 @@ export async function POST(request: NextRequest) {
   const resendDomain = normalizeDomain(body.resendDomain ?? extractDomainFromEmail(emailFrom));
   const ownApiKey = (body.apiKey ?? '').trim();
 
-  if (!ownApiKey && !resend) {
+  if (!ownApiKey && !centralResend) {
     return NextResponse.json({ error: 'Липсва централен Resend API ключ.' }, { status: 503 });
   }
   if (!emailFrom) {
@@ -99,8 +116,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const verifyClient = ownApiKey ? new Resend(ownApiKey) : resend!;
-  const accountLabel = ownApiKey ? 'твоя Resend акаунт' : 'централния Resend акаунт';
+  const verifyClient = ownApiKey ? new Resend(ownApiKey) : centralResend!;
+  const accountLabel = ownApiKey ? 'акаунта на клиента' : 'централния Resend акаунт';
 
   try {
     const res = await verifyClient.domains.list();
@@ -142,18 +159,22 @@ export async function POST(request: NextRequest) {
       email_from_name = ${emailFromName || null},
       resend_domain = ${resendDomain},
       resend_verified_at = now()
-    WHERE id = ${auth.salon.salonId}
+    WHERE id = ${salonId}
   `;
-  invalidateSalonResend(auth.salon.salonId);
+  invalidateSalonResend(salonId);
 
-  const settings = await loadSettings(auth.salon.salonId);
+  const settings = await loadSettings(salonId);
   return NextResponse.json({ ok: true, settings });
 }
 
 export async function DELETE(request: NextRequest) {
-  const slug = request.nextUrl.searchParams.get('slug');
-  const auth = await requireAdminRequestAccess(request, slug);
-  if (!auth.ok) return auth.response;
+  if (!(await isPlatformAdminRequest(request))) {
+    return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
+  }
+  const salonId = new URL(request.url).searchParams.get('salonId')?.trim();
+  if (!salonId) {
+    return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
+  }
 
   await sql`
     UPDATE salons SET
@@ -162,9 +183,9 @@ export async function DELETE(request: NextRequest) {
       email_from_name = NULL,
       resend_domain = NULL,
       resend_verified_at = NULL
-    WHERE id = ${auth.salon.salonId}
+    WHERE id = ${salonId}
   `;
-  invalidateSalonResend(auth.salon.salonId);
+  invalidateSalonResend(salonId);
 
   return NextResponse.json({ ok: true });
 }

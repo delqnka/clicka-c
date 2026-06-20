@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
-import { Resend } from 'resend';
-import { brandSender } from '@/lib/brand';
 import {
   ensureAdminAuthSchema,
   getPrimaryOwnerForSalon,
@@ -10,11 +8,10 @@ import {
   resolveSalonBySlugOrHost,
   sha256,
 } from '@/lib/admin-auth';
-import { getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { checkCsrfOrigin } from '@/lib/csrf';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { getSalonResend } from '@/lib/resend';
 
 // 5 password-reset emails per hour per IP
 const RESET_MAX = 5;
@@ -72,16 +69,17 @@ export async function POST(request: NextRequest) {
   `;
 
   const base = salon.customDomain
-    ? `https://${salon.customDomain}`
+    ? getCustomDomainAdminUrl(salon.customDomain)
     : getPlatformSiteOrigin(salon.slug);
   const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}&mode=reset`;
 
-  if (!resend) {
+  const { client, from } = await getSalonResend(salon.salonId, salon.name);
+  if (!client) {
     return NextResponse.json({ error: 'Имейл услугата не е конфигурирана.' }, { status: 503 });
   }
 
-  await resend.emails.send({
-    from: brandSender(),
+  await client.emails.send({
+    from,
     to: allowedEmail,
     subject: `Задай нова парола`,
     html: `
@@ -102,4 +100,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
-

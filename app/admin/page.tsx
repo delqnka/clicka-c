@@ -71,6 +71,7 @@ export default async function AdminEntryPage() {
       initialSite={site}
       initialOffers={initialOffers}
       initialAccount={{
+        displayName: initialAccount.displayName,
         loginEmail: gate.session.ownerEmail,
         hasPassword: initialAccount.hasPassword,
         pendingEmail: initialAccount.pendingEmail,

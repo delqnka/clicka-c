@@ -7,7 +7,10 @@ import {
   getPlatformSubdomain,
   getPlatformSiteOrigin,
   getHostAwareSalonPath,
+  getCustomDomainAdminUrl,
   isPlatformApexHost,
+  isAdminSubdomainHost,
+  stripAdminSubdomain,
 } from '@/lib/domain-routing';
 import { BRAND } from '@/lib/brand';
 
@@ -34,6 +37,7 @@ export type SalonLookupRow = {
 export type OwnerRow = {
   ownerId: string;
   email: string;
+  displayName?: string | null;
 };
 
 export type AdminSessionRow = {
@@ -143,8 +147,10 @@ export async function ensureAdminAuthSchema() {
       `;
       await sql`CREATE UNIQUE INDEX IF NOT EXISTS owner_sessions_session_hash_uniq ON owner_sessions(session_hash)`;
       await sql`CREATE INDEX IF NOT EXISTS owner_sessions_owner_id_idx ON owner_sessions(owner_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS owner_sessions_expires_at_idx ON owner_sessions(expires_at)`;
       await sql`ALTER TABLE admin_login_tokens ADD COLUMN IF NOT EXISTS email_norm text`;
       await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS password_hash text`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS display_name text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS category text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_name text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_role text`;
@@ -234,6 +240,10 @@ export async function resolveSalonBySlugOrHost({
   }
   if (!hostname || isPlatformHost(hostname)) return null;
 
+  const candidateHostname = isAdminSubdomainHost(hostname)
+    ? stripAdminSubdomain(hostname)
+    : hostname;
+
   // Only route custom domains that have been verified (domain_status = 'active').
   // This prevents an unverified/squatted domain from intercepting traffic.
   const customRows = includeInactive
@@ -247,7 +257,7 @@ export async function resolveSalonBySlugOrHost({
           custom_domain,
           domain_status
         FROM salons
-        WHERE lower(custom_domain) = lower(${hostname})
+        WHERE lower(custom_domain) = lower(${candidateHostname})
           AND domain_status = 'active'
         LIMIT 1
       `
@@ -261,15 +271,15 @@ export async function resolveSalonBySlugOrHost({
           custom_domain,
           domain_status
         FROM salons
-        WHERE lower(custom_domain) = lower(${hostname})
+        WHERE lower(custom_domain) = lower(${candidateHostname})
           AND is_active = true
           AND domain_status = 'active'
         LIMIT 1
       `;
 
-  if (customRows.length === 0 && hostname.startsWith('www.')) {
+  if (customRows.length === 0 && candidateHostname.startsWith('www.')) {
     return resolveSalonBySlugOrHost({
-      host: hostname.slice(4),
+      host: candidateHostname.slice(4),
       includeInactive,
     });
   }
@@ -290,7 +300,7 @@ export async function resolveSalonBySlugOrHost({
 export async function getPrimaryOwnerForSalon(salonId: string): Promise<OwnerRow | null> {
   await ensureAdminAuthSchema();
   const rows = await sql`
-    SELECT o.id AS owner_id, o.email
+    SELECT o.id AS owner_id, o.email, o.display_name
     FROM salon_owner_memberships m
     JOIN site_owners o ON o.id = m.owner_id
     WHERE m.salon_id = ${salonId}
@@ -302,6 +312,7 @@ export async function getPrimaryOwnerForSalon(salonId: string): Promise<OwnerRow
   return {
     ownerId: String(row.owner_id ?? ''),
     email: String(row.email ?? ''),
+    displayName: row.display_name ? String(row.display_name) : null,
   };
 }
 
@@ -532,7 +543,7 @@ export async function generateAdminMagicLink({
 
   const cleanCustom = (customDomain ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   const base = cleanCustom
-    ? `https://${cleanCustom}`
+    ? getCustomDomainAdminUrl(cleanCustom)
     : getPlatformSiteOrigin(slug);
 
   // If the owner already has a password, send them to sign-in instead of

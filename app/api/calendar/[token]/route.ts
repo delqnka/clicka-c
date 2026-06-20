@@ -47,6 +47,7 @@ export async function GET(
         notes: row.notes ? String(row.notes) : null,
       };
     }),
+    salon.resendDomain,
   );
 
   return new NextResponse(ics, {

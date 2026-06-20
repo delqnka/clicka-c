@@ -1,7 +1,7 @@
 import '@/app/admin/admin-tailwind.css';
 
 export const metadata = {
-  title: 'Platform Admin — Clicka.bg',
+  title: 'Agency Admin',
   robots: 'noindex, nofollow',
 };
 

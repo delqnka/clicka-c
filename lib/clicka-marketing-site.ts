@@ -21,12 +21,12 @@ export const CLICKA_MARKETING_GRADIENT_BORDER_STYLE = {
 } as const;
 
 export const clickaMarketingSite = {
-  name: 'clicka.bg',
+  name: 'Booking Platform',
   logoSrc: CLICKA_LOGO_PATH,
-  legal: 'Clicka',
-  title: 'clicka.bg | Собствен сайт с резервации за фризьори и салони',
+  legal: 'Booking Platform',
+  title: 'Booking Platform',
   description:
-    'За фризьори, маникюристи и козметици. Готов веднага след плащане. 0% комисионна. Собствен домейн, AI рецепционист, Google ревюта.',
+    'Private booking platform assets shared by the salon UI.',
   hero: {
     webm: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_HERO_VIDEO_WEBM) || '',
     mp4: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_HERO_VIDEO_MP4) || '',

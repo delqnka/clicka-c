@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { BRAND } from '@/lib/brand';
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 const VISION_MODEL = 'anthropic/claude-3.5-sonnet';
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'application/json',
       // OpenRouter recommends these headers (helpful for debugging/quotas).
       'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
-      'X-Title': 'Clicka.bg',
+      'X-Title': BRAND.name,
     },
     body: JSON.stringify(payload),
   });

@@ -1,152 +1,469 @@
-# Custom Site Integration
+# Custom Site Integration Playbook
 
-Use this checklist for every new client site.
+Use this as the repeatable setup for every new salon client.
 
-## Environment
+## Goal
 
-Set these in the custom frontend project:
+The client gets:
 
-```bash
-NEXT_PUBLIC_ENGINE_URL=https://your-engine-domain.com
-NEXT_PUBLIC_SALON_SLUG=client-slug
+- their own repository
+- their own public domain
+- their own design and content
+- their own booking flow inside their site
+
+The engine stays invisible and provides:
+
+- bookings
+- availability
+- staff
+- payments
+- notifications
+- admin data
+
+Target shape:
+
+```text
+client-site repo
+  -> @clicka/booking SDK
+  -> engine public API
+
+admin domain
+  -> engine admin
 ```
 
-The custom site should not render engine branding or link users to the engine
-domain.
+Example:
 
-Set this in the engine deployment:
+```text
+paradise.bg         -> custom salon website repo
+admin.paradise.bg   -> engine admin
+```
+
+## Current State
+
+As of 2026-06-20, the public custom-site setup is working and the engine now
+supports a dedicated admin subdomain for verified client custom domains.
+
+Confirmed working target:
+
+- custom public site on its own repo and own domain
+- booking widget or custom booking UI talking to engine public API
+- booking confirmation emails from salon-owned sender settings
+- admin login and password-reset flows on `admin.<client-domain>`
+
+Example:
+
+```text
+paradise.bg       -> custom salon site repo
+admin.paradise.bg -> engine admin
+```
+
+Platform-domain admin still remains available as fallback:
+
+- `slug.<engine-root-domain>/admin`
+
+## Architecture Rules
+
+For every new client:
+
+- public website lives in its own repo
+- public website deploys to its own Vercel project
+- public domain points to that public site project
+- booking UI lives inside the public site
+- admin lives in the engine project
+- customers never need to see the engine brand or engine domain
+
+Do not:
+
+- point the client public domain at the engine project
+- iframe engine public pages
+- send customers to engine-hosted public booking pages
+- build the whole salon site inside the engine repo
+
+## The Slug
+
+Every salon still needs a slug.
+
+That does not make the product "SaaS-facing". The slug is just the internal
+tenant key the engine uses to know which salon record to load.
+
+Example:
+
+- domain: `paradise.bg`
+- internal slug: `paradise`
+
+The slug can stay completely invisible to the customer.
+
+## What Goes In The Client Repo
+
+Every new salon repo should contain:
+
+- homepage and service pages
+- booking trigger buttons
+- booking success page
+- booking cancel page
+- optional legal pages
+- optional analytics hooks
+
+It should not contain:
+
+- admin database logic
+- admin auth logic
+- booking storage logic
+- payment orchestration logic
+- notification sending logic
+
+Those stay in the engine.
+
+## Environment Variables For The Client Site
+
+Set these in the custom salon repo:
+
+```bash
+NEXT_PUBLIC_ENGINE_URL=https://engine.example.com
+NEXT_PUBLIC_SALON_SLUG=paradise
+```
+
+Optional:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://paradise.bg
+```
+
+Use `NEXT_PUBLIC_SITE_URL` when you want Stripe success or cancel redirects to
+return the customer to the exact client site domain after checkout.
+
+If the salon does not use paid deposits or full online payment yet, this value
+is optional.
+
+## Environment Variables For The Engine
+
+Set this in the engine deployment that should behave as backend plus admin only:
 
 ```bash
 CLICKA_ENGINE_ONLY=1
 ```
 
-## Fetch Public Data
+This keeps the engine out of the role of public marketing site.
+
+## Booking Integration Options
+
+There are two valid ways to connect a new salon site.
+
+### Option A: Use `@clicka/booking`
+
+Best for:
+
+- fastest delivery
+- repeatable integration
+- modal booking inside the salon site
+
+Install:
+
+```bash
+npm install @clicka/booking
+```
+
+Use:
+
+```tsx
+'use client';
+
+import { BookingWidget, type BookingWidgetHandle } from '@clicka/booking';
+import '@clicka/booking/styles.css';
+import { useRef } from 'react';
+
+type SalonData = Record<string, unknown>;
+
+export function BookingButton({ salon }: { salon: SalonData }) {
+  const widgetRef = useRef<BookingWidgetHandle>(null);
+
+  return (
+    <>
+      <button onClick={() => widgetRef.current?.open()}>
+        Резервирай
+      </button>
+
+      <BookingWidget
+        ref={widgetRef}
+        slug={process.env.NEXT_PUBLIC_SALON_SLUG!}
+        salon={salon}
+        engineUrl={process.env.NEXT_PUBLIC_ENGINE_URL!}
+        successUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/success`}
+        cancelUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/cancel`}
+      />
+    </>
+  );
+}
+```
+
+### Option B: Build Custom UI On Top Of The Public API
+
+Best for:
+
+- highly custom booking UX
+- unusual flows
+- fully tailored UI beyond the default widget behavior
+
+Use the engine only through the public endpoints.
+
+## Public API Contract
+
+The custom site should talk only to public engine endpoints:
+
+- `GET /api/public/v1/salons/:slug/staff`
+- `GET /api/public/v1/salons/:slug/slots?date=YYYY-MM-DD&staffMemberId=...`
+- `POST /api/public/v1/salons/:slug/bookings`
+- `POST /api/public/v1/salons/:slug/booking-checkout`
+
+The old unversioned public routes should not be the long-term contract for new
+client sites.
+
+## Minimal Data Fetch Example
 
 ```ts
 const engineUrl = process.env.NEXT_PUBLIC_ENGINE_URL!;
 const slug = process.env.NEXT_PUBLIC_SALON_SLUG!;
 
-const salonRes = await fetch(`${engineUrl}/api/public/salons/${slug}`);
-const { salon } = await salonRes.json();
-
-const staffRes = await fetch(`${engineUrl}/api/public/salons/${slug}/staff`);
-const { staff } = await staffRes.json();
-```
-
-## Check Occupied Slots
-
-```ts
-const res = await fetch(
-  `${engineUrl}/api/public/salons/${slug}/slots?date=2026-06-20`
+const staffRes = await fetch(
+  `${engineUrl}/api/public/v1/salons/${slug}/staff`,
+  { cache: 'no-store' }
 );
-const { occupied } = await res.json();
+
+const staffData = await staffRes.json();
 ```
 
-The custom frontend owns the design and can compute visible slot buttons from
-working hours, services, staff, and occupied ranges.
+## Minimal Checkout Example
 
-## Create Booking
-
-```ts
-await fetch(`${engineUrl}/api/public/bookings`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    salonSlug: slug,
-    clientName: 'Client Name',
-    clientPhone: '+359...',
-    clientEmail: 'client@example.com',
-    serviceName: 'Haircut',
-    servicePrice: 40,
-    serviceDuration: 45,
-    date: '2026-06-20',
-    time: '10:30',
-  }),
-});
-```
-
-## Start Payment Checkout
-
-For paid bookings, pass the custom site's origin as `returnUrl`. Stripe will
-send the customer back to the custom domain, not the engine domain.
+Use this only when the salon takes deposits or full payment online.
 
 ```ts
-const checkoutRes = await fetch(`${engineUrl}/api/public/booking-checkout`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    salonSlug: slug,
-    bookingId,
-    serviceName: 'Haircut',
-    amountEuros: 20,
-    paymentType: 'deposit',
-    returnUrl: window.location.origin,
-  }),
-});
+const checkoutRes = await fetch(
+  `${engineUrl}/api/public/v1/salons/${slug}/booking-checkout`,
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bookingId,
+      serviceName: 'Haircut',
+      amountEuros: 20,
+      paymentType: 'deposit',
+      returnUrl: process.env.NEXT_PUBLIC_SITE_URL,
+    }),
+  }
+);
 
 const { checkoutUrl } = await checkoutRes.json();
 window.location.href = checkoutUrl;
 ```
 
-## Browser Helper
+## Required Pages In The Client Site
 
-For non-Next/custom static sites:
+At minimum, add:
 
-```html
-<script
-  src="https://your-engine-domain.com/engine-client.js"
-  data-engine-url="https://your-engine-domain.com"
-  data-salon="client-slug"
-></script>
+- `/booking/success`
+- `/booking/cancel`
+
+These pages belong to the salon repo, not the engine repo.
+
+That keeps the customer on the salon brand even after Stripe checkout.
+
+## Public Domain Setup
+
+For each client:
+
+1. Create the custom salon repo.
+2. Deploy it as its own Vercel project.
+3. Point the public domain to that project.
+
+Example:
+
+```text
+paradise.bg -> Vercel project: salon-paradise
 ```
 
-```js
-const engine = window.BookingEngine.client;
-const { salon } = await engine.getSalon();
-await engine.createBooking({
-  clientName: 'Client Name',
-  clientPhone: '+359...',
-  clientEmail: 'client@example.com',
-  serviceName: 'Haircut',
-  servicePrice: 40,
-  serviceDuration: 45,
-  date: '2026-06-20',
-  time: '10:30',
-});
+Do not point:
 
-const { checkoutUrl } = await engine.createCheckout({
-  bookingId: 'booking-id',
-  serviceName: 'Haircut',
-  amountEuros: 20,
-  paymentType: 'deposit',
-});
+```text
+paradise.bg -> engine project
 ```
 
-## Drop-In Booking Widget
+That is exactly how you end up with a green deploy and the wrong site or a 404.
 
-For a fast no-code style install, add this script and mark any button with
-`data-book`. The modal is rendered on the client site and talks only to
-`/api/public`; it does not iframe engine pages.
+## Admin Setup
 
-```html
-<script
-  src="https://your-engine-domain.com/widget.js"
-  data-engine-url="https://your-engine-domain.com"
-  data-salon="client-slug"
-></script>
+## Recommended Target
 
-<button data-book>Book online</button>
+The clean long-term architecture is:
+
+```text
+paradise.bg       -> salon repo
+admin.paradise.bg -> engine
 ```
 
-Optional service preselect:
+This is the best model for an agency setup because:
 
-```html
-<button data-book data-service="service-id">Book haircut</button>
+- the public site stays isolated
+- the admin can evolve separately
+- you never mix public rendering with admin rendering
+- every client keeps their own branded domain structure
+
+## Current Supported Reality
+
+The current engine code still resolves admin access primarily from:
+
+- the salon custom domain itself
+- or the engine root-domain salon subdomain
+
+So today the safest working admin path is:
+
+```text
+https://paradise.bg/admin
 ```
 
-## Rules
+or, if using the engine platform domain:
 
-- The custom site controls all public design and copy.
-- Do not iframe engine pages for production client sites.
-- Do not send public users to engine-hosted salon pages.
-- Keep the engine domain out of visible navigation and page content.
+```text
+https://paradise.<engine-root-domain>/admin
+```
+
+If you want:
+
+```text
+https://admin.paradise.bg
+```
+
+you should treat that as a dedicated admin-host feature and finish these pieces
+in the engine:
+
+- resolve `admin.<custom-domain>` to the salon record
+- generate password-reset and auth links with the admin host
+- generate domain-connected emails with the admin host
+- ensure admin cookies and redirects stay on the admin host
+
+## Login Flow
+
+The admin login flow should be:
+
+1. salon owner opens the admin URL
+2. if owner account exists, they see sign-in
+3. if no password exists yet, they receive a set-password link by email
+4. after setting password, they enter the admin dashboard
+
+Current routes already present in the engine:
+
+- `/admin`
+- `/admin/sign-in`
+- `/admin/set-password`
+
+## Email Setup Per Client
+
+Use one Resend account with many verified domains.
+
+Example:
+
+```text
+Resend account
+  - paradise.bg
+  - koketna.bg
+  - bella.bg
+```
+
+Per salon record, store:
+
+- `email_from_name`
+- `email_from`
+- `resend_domain`
+
+Example:
+
+```text
+email_from_name = "Paradise Salon"
+email_from = "noreply@paradise.bg"
+resend_domain = "paradise.bg"
+```
+
+This lets each client send white-label confirmations from their own domain
+without creating a separate Resend account for every client.
+
+## New Client Creation Checklist
+
+Use this exact order.
+
+1. Create a new salon record in the engine.
+2. Assign internal slug.
+3. Set salon email sender fields.
+4. Verify the client domain in Resend.
+5. Create the custom site repo.
+6. Deploy the custom site to its own Vercel project.
+7. Add `NEXT_PUBLIC_ENGINE_URL`.
+8. Add `NEXT_PUBLIC_SALON_SLUG`.
+9. Add `NEXT_PUBLIC_SITE_URL` if checkout redirects are needed.
+10. Integrate `@clicka/booking` or custom public API calls.
+11. Add `/booking/success`.
+12. Add `/booking/cancel`.
+13. Point the public domain to the custom site project.
+14. Set engine deployment to `CLICKA_ENGINE_ONLY=1`.
+15. Decide the admin URL model:
+16. if using current safe model, use `paradise.bg/admin`
+17. if using target clean model, complete `admin.paradise.bg -> engine` support
+18. test booking end to end
+19. test confirmation email
+20. test admin sign-in
+
+## Five-Minute Repeatable Delivery Template
+
+For each new salon, the repeatable package is:
+
+```text
+1. Duplicate site starter repo
+2. Change branding, content, images, services
+3. Set 2 to 3 env vars
+4. Set salon slug in engine
+5. Connect domain
+6. Verify sender domain in Resend
+7. Test booking
+8. Hand off admin URL
+```
+
+## What To Hand Off To The Client
+
+At handoff, the client should receive:
+
+- their public website URL
+- their admin URL
+- their login email
+- instructions for password setup or reset
+
+They should not need:
+
+- Vercel access
+- database access
+- engine project knowledge
+- separate Resend account
+
+unless you explicitly want to give that to them.
+
+## QA Before Every Launch
+
+Check all of this before go-live:
+
+- public site opens on the right domain
+- no engine branding is visible
+- booking modal opens inside the site
+- booking is created successfully
+- confirmation email arrives from the salon domain
+- payment redirect returns to the salon domain
+- admin entry path works
+- password reset email works
+- legal links stay on the salon domain
+
+## Short Rule To Remember
+
+For every client:
+
+```text
+public website = client repo
+booking flow = SDK + engine API
+admin = engine
+branding = client only
+```

@@ -49,12 +49,12 @@ export default function PlatformAdminSignIn() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clicka-logo.svg"
-            alt="Clicka"
+            alt="Agency Admin"
             width={64}
             height={64}
             style={{ width: 64, height: 64, marginBottom: 16, filter: 'drop-shadow(0 4px 12px rgba(124,58,237,0.35))' }}
           />
-          <h1 className="text-xl font-bold text-gray-900">Platform Admin</h1>
+          <h1 className="text-xl font-bold text-gray-900">Agency Admin</h1>
           <p className="text-sm text-gray-500 mt-1">Влез с твоите данни</p>
         </div>
 

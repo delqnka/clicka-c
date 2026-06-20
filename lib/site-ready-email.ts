@@ -1,22 +1,24 @@
-import { Resend } from 'resend';
-import { BRAND } from '@/lib/brand';
-import { getPlatformAdminUrl, getPlatformPublicUrl } from '@/lib/domain-routing';
+import {
+  getCustomDomainAdminUrl,
+  getPlatformAdminUrl,
+  getPlatformPublicUrl,
+} from '@/lib/domain-routing';
 import { generateAdminMagicLink, getActiveCustomDomain } from '@/lib/admin-auth';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { getSalonResend } from '@/lib/resend';
 
 export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; email: string; name: string; ownerName?: string; planType: string }) {
-  if (!resend) return;
   const { salonId, slug, email, name, ownerName, planType } = opts;
+  const { client, from } = await getSalonResend(salonId, name);
+  if (!client) return;
   const greeting = ownerName && ownerName.trim() ? `Здравей, ${ownerName.trim()}!` : 'Здравей!';
-  const publicUrl = getPlatformPublicUrl(slug);
-  const adminUrl = getPlatformAdminUrl(slug);
   const customDomain = await getActiveCustomDomain(salonId).catch(() => null);
+  const publicUrl = customDomain ? `https://${customDomain}` : getPlatformPublicUrl(slug);
+  const adminUrl = customDomain ? `${getCustomDomainAdminUrl(customDomain)}/admin` : getPlatformAdminUrl(slug);
   const magicLink = await generateAdminMagicLink({ salonId, slug, email, customDomain, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl);
   const displayName = name && name.trim() ? name.trim() : 'твоят салон';
 
-  await resend.emails.send({
-    from: `${displayName} <${BRAND.senderEmail}>`,
+  await client.emails.send({
+    from,
     to: email,
     subject: `Твоят сайт е готов! ✅`,
     html: `
@@ -38,7 +40,7 @@ export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; 
           </a>
         </p>
         <p style="line-height: 1.7; color: #6b7280; font-size: 13px;">
-          Запомни адреса на твоя контролен панел: <strong>${publicUrl}/admin</strong>
+          Запомни адреса на твоя контролен панел: <strong>${adminUrl.replace(/^https?:\/\//, '')}</strong>
         </p>
         ${planType === 'custom_domain' ? '<p style="line-height: 1.7;">Собственият домейн може да се свърже от таба „Домейн" в панела.</p>' : ''}
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">

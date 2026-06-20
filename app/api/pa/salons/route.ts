@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
 import { generateAdminMagicLink, normalizeEmail } from '@/lib/admin-auth';
-import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
+import { ensurePlatformSubdomain, syncDomainWithVercel } from '@/lib/vercel-domains';
+import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 
 const TRANSLIT: Record<string, string> = {
   а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',
@@ -87,6 +88,8 @@ export async function POST(request: NextRequest) {
     ownerName?: string;
     slug?: string;
     customDomain?: string;
+    /** When true (default), sends an onboarding email with the magic link to the owner. */
+    autoSendInvite?: boolean;
   };
 
   const name = (body.name ?? '').trim().slice(0, 64);
@@ -94,6 +97,7 @@ export async function POST(request: NextRequest) {
   const ownerName = (body.ownerName ?? '').trim().slice(0, 64);
   const desiredSlug = toSlug((body.slug ?? '').trim());
   const customDomainRaw = (body.customDomain ?? '').trim().toLowerCase().slice(0, 64);
+  const autoSendInvite = body.autoSendInvite !== false;
   // Basic hostname validation: labels separated by dots, no scheme/path/spaces.
   // Rejects bogus input like "https://x.com/", "foo bar", "x", "." etc.
   const DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
@@ -145,14 +149,65 @@ export async function POST(request: NextRequest) {
     console.error('[pa/salons POST] ensurePlatformSubdomain failed:', e),
   );
 
+  // If a custom domain was provided, register it with Vercel and persist the
+  // verification state so the salon's admin URL becomes admin.<domain> as soon
+  // as DNS propagates. Failures are non-fatal — agency can retry later.
+  let domainStatus: string | null = customDomain ? 'requested' : null;
+  if (customDomain) {
+    try {
+      const provider = await syncDomainWithVercel(customDomain);
+      const configJson = JSON.stringify({
+        provider: provider.provider,
+        dnsInstructions: provider.dnsInstructions,
+        verificationInstructions: provider.verificationInstructions,
+        configuredBy: provider.configuredBy,
+        misconfigured: provider.misconfigured,
+        verified: provider.verified,
+        providerDetails: provider.details,
+        checkedAt: new Date().toISOString(),
+      });
+      const isActive = provider.status === 'active';
+      await sql`
+        UPDATE salons SET
+          domain_status = ${provider.status},
+          domain_last_checked_at = now(),
+          domain_verified_at = CASE WHEN ${isActive} THEN now() ELSE NULL END,
+          domain_config = ${configJson}::jsonb,
+          updated_at = now()
+        WHERE id = ${salonId}
+      `;
+      domainStatus = provider.status;
+    } catch (err) {
+      console.error('[pa/salons POST] syncDomainWithVercel failed:', err);
+    }
+  }
+
   const magicLink = await generateAdminMagicLink({
     salonId,
     slug,
     email,
+    customDomain,
     expiresMs: 72 * 60 * 60 * 1000,
   }).catch(() => null);
 
-  return NextResponse.json({ ok: true, salonId, slug, magicLink });
+  let inviteSent = false;
+  if (autoSendInvite) {
+    try {
+      await sendSiteReadyEmail({
+        salonId,
+        slug,
+        email,
+        name,
+        ownerName,
+        planType: '',
+      });
+      inviteSent = true;
+    } catch (err) {
+      console.error('[pa/salons POST] sendSiteReadyEmail failed:', err);
+    }
+  }
+
+  return NextResponse.json({ ok: true, salonId, slug, magicLink, domainStatus, inviteSent });
 }
 
 export async function PATCH(request: NextRequest) {

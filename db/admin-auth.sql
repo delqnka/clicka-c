@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS site_owners (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email       text NOT NULL,
   email_norm  text NOT NULL,
+  display_name text,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -61,4 +62,6 @@ CREATE TABLE IF NOT EXISTS owner_sessions (
 
 CREATE INDEX IF NOT EXISTS owner_sessions_owner_id_idx ON owner_sessions(owner_id);
 CREATE UNIQUE INDEX IF NOT EXISTS owner_sessions_session_hash_uniq ON owner_sessions(session_hash);
+CREATE INDEX IF NOT EXISTS owner_sessions_expires_at_idx ON owner_sessions(expires_at);
 
+ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS display_name text;

@@ -288,7 +288,7 @@ export function ParticleHero() {
               animation: "ph-blink 2s infinite",
             }}
           />
-          clicka.bg
+          booking platform
         </div>
 
         {/* Main headline */}

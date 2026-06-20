@@ -4,6 +4,7 @@ export type AuditAction =
   | 'sign_in'
   | 'sign_in_failed'
   | 'sign_out'
+  | 'profile_updated'
   | 'password_changed'
   | 'email_change_requested'
   | 'email_changed'

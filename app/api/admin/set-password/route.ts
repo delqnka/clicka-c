@@ -8,6 +8,10 @@ function validatePasswordStrength(password: string): string | null {
   return null;
 }
 
+function normalizeDisplayName(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
 import { sql } from '@/lib/db';
 import {
   createOwnerSession,
@@ -24,7 +28,7 @@ import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 export async function POST(request: NextRequest): Promise<NextResponse> {
   await ensureAdminAuthSchema();
 
-  let body: { token?: string; slug?: string; password?: string; confirmPassword?: string };
+  let body: { token?: string; slug?: string; password?: string; confirmPassword?: string; displayName?: string };
   try {
     body = await request.json();
   } catch {
@@ -37,6 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     (request.headers.get('x-salon-slug') ?? '');
   const password = String(body.password ?? '');
   const confirmPassword = String(body.confirmPassword ?? '');
+  const displayName = normalizeDisplayName(String(body.displayName ?? ''));
 
   if (!token || !slug) {
     return NextResponse.json({ error: 'Невалиден линк' }, { status: 400 });
@@ -48,7 +53,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (password !== confirmPassword) {
     return NextResponse.json({ error: 'Паролите не съвпадат' }, { status: 400 });
   }
-
   // Validate token
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, slug, email, name, owner_name, plan_type
@@ -91,14 +95,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     (await ensureOwnerForSalon({ salonId, email: tokenEmail || salonEmail }));
 
   const existingHashRows = await sql`
-    SELECT password_hash FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1
+    SELECT password_hash, display_name FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1
   `;
   const isFirstTimeSetup = !String((existingHashRows[0] as Record<string, unknown>)?.password_hash ?? '');
+  const existingDisplayName = String((existingHashRows[0] as Record<string, unknown>)?.display_name ?? '').trim();
+  const nextDisplayName = displayName || existingDisplayName;
+
+  if (!nextDisplayName || nextDisplayName.length < 2) {
+    return NextResponse.json({ error: 'Въведете име от поне 2 символа' }, { status: 400 });
+  }
+  if (nextDisplayName.length > 80) {
+    return NextResponse.json({ error: 'Името е твърде дълго' }, { status: 400 });
+  }
 
   // Save hashed password
   const hashed = await hashPassword(password);
   await sql`
-    UPDATE site_owners SET password_hash = ${hashed}, updated_at = now()
+    UPDATE site_owners
+    SET password_hash = ${hashed}, display_name = ${nextDisplayName}, updated_at = now()
     WHERE id = ${owner.ownerId}
   `;
 

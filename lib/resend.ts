@@ -3,6 +3,8 @@ import { buildBookingCalendarLinks, type CalendarBookingRow } from '@/lib/calend
 import { formatSalonPrice } from '@/lib/salon-currency';
 import { sleep } from '@/lib/http-retry';
 import { sql } from '@/lib/db';
+import { BRAND } from '@/lib/brand';
+import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { tryDecryptSecret } from '@/lib/encryption';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -18,10 +20,26 @@ export interface SalonResendConfig {
 const salonResendCache = new Map<string, { client: Resend | null; from: string; isCustom: boolean; expiresAt: number }>();
 const SALON_RESEND_TTL_MS = 60_000;
 
+function senderFromSalonName(salonName?: string | null) {
+  const cleanName = String(salonName || BRAND.shortName).trim().replaceAll(/\s+/g, ' ');
+  return `${cleanName} <${BRAND.senderEmail}>`;
+}
+
+function extractSenderDomain(email?: string | null): string | null {
+  const normalized = String(email ?? '').trim().toLowerCase();
+  const atIndex = normalized.lastIndexOf('@');
+  if (atIndex === -1) return null;
+  return normalized.slice(atIndex + 1) || null;
+}
+
+function emailTimestamp() {
+  return new Date().toLocaleString('bg-BG');
+}
+
 /**
- * Per-salon Resend resolver. Returns the salon's own Resend client if configured
- * and the encrypted API key decrypts successfully; otherwise falls back to the
- * platform `RESEND_API_KEY` and brand sender. Cached for 60s.
+ * Per-salon sender resolver. Default: platform RESEND_API_KEY with the salon's
+ * verified-from address. Escape hatch: if the salon has stored an encrypted
+ * `resend_api_key_encrypted`, send from THEIR Resend account instead.
  */
 export async function getSalonResend(
   salonId: string | null | undefined,
@@ -40,22 +58,22 @@ export async function getSalonResend(
   }
   try {
     const rows = (await sql`
-      SELECT name, resend_api_key_encrypted, email_from, email_from_name
+      SELECT name, email_from, email_from_name, resend_api_key_encrypted
       FROM salons WHERE id = ${salonId} LIMIT 1
     `) as Array<{
       name: string | null;
-      resend_api_key_encrypted: string | null;
       email_from: string | null;
       email_from_name: string | null;
+      resend_api_key_encrypted: string | null;
     }>;
     const row = rows[0];
-    const apiKey = tryDecryptSecret(row?.resend_api_key_encrypted);
     const salonName = row?.name ?? fallbackSalonName ?? null;
+    const ownKey = tryDecryptSecret(row?.resend_api_key_encrypted);
     let result: SalonResendConfig;
-    if (apiKey && row?.email_from) {
+    if (row?.email_from) {
       const fromName = (row.email_from_name ?? salonName ?? BRAND.shortName).trim() || BRAND.shortName;
       result = {
-        client: new Resend(apiKey),
+        client: ownKey ? new Resend(ownKey) : resend,
         from: `${fromName} <${row.email_from}>`,
         isCustom: true,
       };
@@ -154,9 +172,6 @@ export async function sendRescheduleNotification(
         <p style="margin-top: 20px; line-height: 1.7; color: #555;">
           Ако имате въпроси, свържете се директно със салона.
         </p>
-        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Изпратено автоматично от <a href="${BRAND.siteUrl}" style="color: #999;">${BRAND.name}</a>.
-        </p>
       </div>
     `,
   }, 4, client);
@@ -164,6 +179,9 @@ export async function sendRescheduleNotification(
 
 export interface BookingDetails {
   salonId?: string;
+  salonSlug?: string;
+  salonCustomDomain?: string | null;
+  salonDomainStatus?: string | null;
   bookingId?: string;
   manageToken?: string;
   clientName: string;
@@ -194,13 +212,6 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#39;');
 }
 
-import { BRAND, brandSender } from '@/lib/brand';
-
-function senderFromSalonName(salonName: string) {
-  const cleanName = String(salonName || BRAND.shortName).trim().replaceAll(/\s+/g, ' ');
-  return `${cleanName} <${BRAND.senderEmail}>`;
-}
-
 function renderRow(label: string, value: string) {
   return `
     <tr>
@@ -210,42 +221,52 @@ function renderRow(label: string, value: string) {
   `;
 }
 
-export async function sendPasswordChangedNotification(email: string): Promise<void> {
+export async function sendPasswordChangedNotification(
+  email: string,
+  context?: SalonEmailContext,
+): Promise<void> {
+  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
   await sendResendWithRetry({
-    from: brandSender(),
+    from,
     to: email,
-    subject: `Паролата ви беше сменена — ${BRAND.name}`,
+    subject: 'Паролата ви беше сменена',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Паролата ви беше сменена</h2>
         <p style="line-height: 1.7;">
-          Паролата за вашия акаунт в <strong>${BRAND.name}</strong> беше успешно сменена.
+          Паролата за вашия админ акаунт беше успешно сменена.
         </p>
         <p style="line-height: 1.7;">
-          Ако <strong>не сте направили тази промяна</strong>, незабавно се свържете с нас на
-          <a href="mailto:${BRAND.supportEmail}">${BRAND.supportEmail}</a>.
+          Ако <strong>не сте направили тази промяна</strong>, сменете паролата си отново възможно най-скоро.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
+          ${emailTimestamp()}
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
+
+type SalonEmailContext = {
+  salonId?: string | null;
+  salonName?: string | null;
+};
 
 export async function sendEmailChangeRequestNotification(
   oldEmail: string,
   newEmail: string,
+  context?: SalonEmailContext,
 ): Promise<void> {
+  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
   await sendResendWithRetry({
-    from: brandSender(),
+    from,
     to: oldEmail,
-    subject: `Заявка за смяна на имейл — ${BRAND.name}`,
+    subject: 'Заявка за смяна на имейл',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Заявена смяна на имейл за вход</h2>
         <p style="line-height: 1.7;">
-          Получихме заявка за смяна на имейла за вход към акаунта ви в <strong>${BRAND.name}</strong>.
+          Получихме заявка за смяна на имейла за вход към админ панела ви.
         </p>
         <p style="line-height: 1.7;">
           Новият имейл е: <strong>${escapeHtml(newEmail)}</strong>
@@ -255,31 +276,31 @@ export async function sendEmailChangeRequestNotification(
           <strong>Имейлът ви няма да се смени, докато не потвърдите от новия адрес.</strong>
         </p>
         <p style="line-height: 1.7;">
-          Ако <strong>не сте направили тази заявка</strong>, незабавно се свържете с нас на
-          <a href="mailto:${BRAND.supportEmail}">${BRAND.supportEmail}</a>.
+          Ако <strong>не сте направили тази заявка</strong>, сменете паролата си възможно най-скоро.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
+          ${emailTimestamp()}
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
 
 export async function sendEmailVerificationRequest(
   newEmail: string,
   verifyUrl: string,
+  context?: SalonEmailContext,
 ): Promise<void> {
+  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
   await sendResendWithRetry({
-    from: brandSender(),
+    from,
     to: newEmail,
-    subject: `Потвърдете новия си имейл — ${BRAND.name}`,
+    subject: 'Потвърдете новия си имейл',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Потвърдете новия си имейл</h2>
         <p style="line-height: 1.7;">
-          Натиснете бутона по-долу, за да потвърдите този имейл като нов адрес за вход в
-          <strong>${BRAND.name}</strong>.
+          Натиснете бутона по-долу, за да потвърдите този имейл като нов адрес за вход.
         </p>
         <p style="margin: 24px 0;">
           <a href="${verifyUrl}"
@@ -293,34 +314,37 @@ export async function sendEmailVerificationRequest(
           Ако не сте поискали тази смяна, игнорирайте имейла — текущият ви имейл остава непроменен.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
+          ${emailTimestamp()}
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
 
-export async function sendEmailChangedConfirmation(newEmail: string): Promise<void> {
+export async function sendEmailChangedConfirmation(
+  newEmail: string,
+  context?: SalonEmailContext,
+): Promise<void> {
+  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
   await sendResendWithRetry({
-    from: brandSender(),
+    from,
     to: newEmail,
-    subject: `Имейлът ви беше сменен — ${BRAND.name}`,
+    subject: 'Имейлът ви беше сменен',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Имейлът ви беше успешно сменен</h2>
         <p style="line-height: 1.7;">
-          Имейлът за вход в <strong>${BRAND.name}</strong> беше сменен на <strong>${escapeHtml(newEmail)}</strong>.
+          Имейлът за вход беше сменен на <strong>${escapeHtml(newEmail)}</strong>.
         </p>
         <p style="line-height: 1.7;">
-          Ако <strong>не сте направили тази промяна</strong>, незабавно се свържете с нас на
-          <a href="mailto:${BRAND.supportEmail}">${BRAND.supportEmail}</a>.
+          Ако <strong>не сте направили тази промяна</strong>, сменете паролата си възможно най-скоро.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
+          ${emailTimestamp()}
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
 
 export async function sendStaffInviteEmail(
@@ -336,7 +360,7 @@ export async function sendStaffInviteEmail(
   await sendResendWithRetry({
     from,
     to: staffEmail,
-    subject: `Добавени сте като служител в ${salonName} — ${BRAND.name}`,
+    subject: `Добавени сте като служител в ${salonName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="margin: 0 0 16px; color: #000;">Добре дошли в екипа!</h2>
@@ -348,13 +372,10 @@ export async function sendStaffInviteEmail(
           За да получавате известия за резервации в Telegram, натиснете бутона по-долу — ботът ще отвори директно с вашия код:
         </p>
         <p style="margin: 20px 0; text-align: center;">
-          <a href="https://t.me/clicka_booking_bot?start=${encodeURIComponent(onboardingCode)}" style="display:inline-block;background:#229ED9;color:#fff;font-weight:700;font-size:15px;
+          <a href="https://t.me/${BRAND.telegramBotUsername}?start=${encodeURIComponent(onboardingCode)}" style="display:inline-block;background:#229ED9;color:#fff;font-weight:700;font-size:15px;
                        padding:14px 28px;border-radius:12px;text-decoration:none;">
-            Отвори бота в Telegram
+            Отвори Telegram асистента
           </a>
-        </p>
-        <p style="margin: -12px 0 16px; text-align: center; font-size: 13px; color: #229ED9;">
-          Ботът се казва <strong>@clicka_booking_bot</strong>
         </p>
         <p style="font-size: 12px; line-height: 1.6; color: #999; text-align: center;">
           Ако бутонът не отвори бота автоматично, изпратете ръчно този код:
@@ -390,11 +411,7 @@ export async function sendStaffInviteEmail(
           <li>променяте биото и снимката на профила си.</li>
         </ul>
         <p style="font-size: 13px; line-height: 1.7; color: #666;">
-          Пълният списък с команди е достъпен по всяко време с <code>/help</code> в бота.
-          Ако имате въпроси, свържете се с нас на <a href="https://t.me/clickabg_support" style="color:#666;">@clickabg_support</a>.
-        </p>
-        <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Изпратено автоматично от <a href="${BRAND.siteUrl}" style="color: #999;">${BRAND.name}</a>.
+          Пълният списък с команди е достъпен по всяко време с <code>/help</code> в Telegram асистента.
         </p>
       </div>
     `,
@@ -437,9 +454,6 @@ export async function sendBookingNotification(
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
           ${salonRows}
         </table>
-        <p style="margin-top: 24px; font-size: 14px; line-height: 1.7;">
-          Това съобщение е изпратено автоматично от <a href="${BRAND.siteUrl}">${BRAND.name}</a>.
-        </p>
       </div>
     `,
   }, 4, client);
@@ -491,9 +505,6 @@ export async function sendGoogleReviewInvitation(
           <br />
           <a href="${mapsPlaceUrl}" style="color: #000;">${mapsPlaceUrl}</a>
         </p>
-        <p style="margin-top: 24px; font-size: 13px; line-height: 1.7; color: #999;">
-          Изпратено автоматично от <a href="${BRAND.siteUrl}" style="color: #999;">${BRAND.name}</a>.
-        </p>
       </div>
     `,
   }, 4, client);
@@ -503,8 +514,15 @@ export async function sendBookingConfirmation(
   clientEmail: string,
   booking: BookingDetails
 ): Promise<void> {
-  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
+  const appBaseUrl = booking.salonSlug
+    ? getPrimaryPublicUrl({
+        slug: booking.salonSlug,
+        customDomain: booking.salonCustomDomain,
+        domainStatus: booking.salonDomainStatus,
+      }).replace(/\/+$/, '')
+    : (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
   const formattedDate = formatBgDateDMY(booking.date);
+  const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
   const calendarRow: CalendarBookingRow = {
     id: booking.bookingId || `${booking.date}-${booking.time}-${booking.clientEmail || booking.clientPhone}`,
     client_name: booking.clientName,
@@ -521,6 +539,7 @@ export async function sendBookingConfirmation(
     calendarRow,
     booking.salonName,
     booking.salonAddress,
+    extractSenderDomain(from),
   );
 
   const depositPaid = booking.paymentType === 'deposit' && booking.amountPaid != null ? booking.amountPaid : null;
@@ -539,8 +558,6 @@ export async function sendBookingConfirmation(
     booking.salonAddress ? renderRow('Адрес', booking.salonAddress) : '',
     booking.notes ? renderRow('Бележка', booking.notes) : '',
   ].join('');
-
-  const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
   await sendResendWithRetry({
     from,
     to: clientEmail,
@@ -550,7 +567,7 @@ export async function sendBookingConfirmation(
       : `Заявка за резервация в ${booking.salonName} – ${formattedDate} ${booking.time}`,
     attachments: [
       {
-        filename: 'reservacia-clicka.ics',
+        filename: `${(booking.salonName || 'reservation').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'reservation'}-reservation.ics`,
         content: Buffer.from(icsContent).toString('base64'),
       },
     ],
@@ -583,9 +600,6 @@ export async function sendBookingConfirmation(
         <p style="margin-top: 16px; line-height: 1.7;">
           При нужда от промяна, отговорете директно на този имейл или се свържете със салона.
         </p>`}
-        <p style="margin-top: 24px; font-size: 14px; line-height: 1.7;">
-          Това съобщение е изпратено автоматично от <a href="${BRAND.siteUrl}">${BRAND.name}</a>.
-        </p>
       </div>
     `,
   }, 4, client);

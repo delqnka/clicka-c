@@ -12,7 +12,12 @@ import {
   resolveSalonBySlugOrHost,
   setAdminSessionCookie,
 } from '@/lib/admin-auth';
-import { getPlatformAdminUrl, isPlatformApexHost, extractHostname } from '@/lib/domain-routing';
+import {
+  extractHostname,
+  getCustomDomainAdminUrl,
+  getPlatformAdminUrl,
+  isPlatformApexHost,
+} from '@/lib/domain-routing';
 
 export async function POST(request: NextRequest) {
   await ensureAdminAuthSchema();
@@ -118,7 +123,9 @@ export async function POST(request: NextRequest) {
   const host = request.headers.get('host') ?? '';
   // /[slug]/admin on the apex host always 404s — admin only lives on the salon's own subdomain/custom domain.
   const redirectTo = isPlatformApexHost(extractHostname(host))
-    ? getPlatformAdminUrl(salon.slug)
+    ? salon.customDomain
+      ? `${getCustomDomainAdminUrl(salon.customDomain)}/admin`
+      : getPlatformAdminUrl(salon.slug)
     : '/admin';
 
   const response = NextResponse.json({ success: true, redirectTo });

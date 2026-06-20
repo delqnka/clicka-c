@@ -30,6 +30,10 @@ export async function ensureAdminSiteSchema() {
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS ga4_id text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS meta_pixel_id text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS clarity_id text;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS email_from text;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS email_from_name text;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_domain text;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_verified_at timestamptz;
         END $$
       `;
     })().catch((err) => {

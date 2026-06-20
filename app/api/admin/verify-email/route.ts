@@ -17,9 +17,16 @@ export async function GET(request: NextRequest) {
   const tokenHash = sha256(token);
 
   const rows = await sql`
-    SELECT pending_email, pending_email_token_hash, pending_email_expires_at
-    FROM site_owners
-    WHERE id = ${ownerId}
+    SELECT
+      so.pending_email,
+      so.pending_email_token_hash,
+      so.pending_email_expires_at,
+      CAST(som.salon_id AS text) AS salon_id,
+      s.name AS salon_name
+    FROM site_owners so
+    LEFT JOIN salon_owner_memberships som ON som.owner_id = so.id
+    LEFT JOIN salons s ON CAST(s.id AS text) = CAST(som.salon_id AS text)
+    WHERE so.id = ${ownerId}
     LIMIT 1
   `;
 
@@ -41,6 +48,8 @@ export async function GET(request: NextRequest) {
   }
 
   const newEmail = String(row.pending_email);
+  const salonId = row.salon_id ? String(row.salon_id) : null;
+  const salonName = row.salon_name ? String(row.salon_name) : null;
 
   // Check not taken by someone else in the meantime
   const taken = await sql`
@@ -71,7 +80,7 @@ export async function GET(request: NextRequest) {
   `;
 
   try {
-    await sendEmailChangedConfirmation(newEmail);
+    await sendEmailChangedConfirmation(newEmail, { salonId, salonName });
   } catch {
     // non-fatal
   }
@@ -88,7 +97,7 @@ function successPage(email: string) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Имейлът е потвърден — Clicka.bg</title>
+  <title>Имейлът е потвърден</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f9f9f9; display: flex; align-items: center;
            justify-content: center; min-height: 100vh; margin: 0; }
@@ -116,7 +125,7 @@ function errorPage(message: string) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Грешка — Clicka.bg</title>
+  <title>Грешка</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f9f9f9; display: flex; align-items: center;
            justify-content: center; min-height: 100vh; margin: 0; }

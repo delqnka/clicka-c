@@ -6,7 +6,7 @@ import PlatformAdminDashboard from '@/components/platform-admin/PlatformAdminDas
 
 export const dynamic = 'force-dynamic';
 export const metadata = {
-  title: 'Platform Admin — Clicka.bg',
+  title: 'Agency Admin',
   robots: 'noindex, nofollow',
 };
 

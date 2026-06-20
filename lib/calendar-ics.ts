@@ -1,5 +1,4 @@
 import { parseSofiaAppointment } from '@/lib/sofia-time';
-import { BRAND } from '@/lib/brand';
 
 export type CalendarBookingRow = {
   id: string;
@@ -15,6 +14,7 @@ export type CalendarBookingRow = {
 };
 
 const SOFIA_TZ = 'Europe/Sofia';
+const DEFAULT_ICS_DOMAIN = 'reservations.local';
 
 function escapeIcsText(value: string): string {
   return String(value ?? '')
@@ -58,9 +58,22 @@ export function bookingDescription(booking: CalendarBookingRow, salonName?: stri
   return lines.join('\n');
 }
 
-export function buildBookingIcsEvent(booking: CalendarBookingRow, salonName: string): string {
+function normalizeIcsDomain(domain?: string | null): string {
+  const clean = String(domain ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '');
+  return clean || DEFAULT_ICS_DOMAIN;
+}
+
+export function buildBookingIcsEvent(
+  booking: CalendarBookingRow,
+  salonName: string,
+  senderDomain?: string | null,
+): string {
   const { start, end } = bookingWindow(booking);
-  const uid = `booking-${booking.id}@${BRAND.domain}`;
+  const uid = `booking-${booking.id}@${normalizeIcsDomain(senderDomain)}`;
   const now = formatIcsLocal(new Date());
   const statusLabel =
     booking.status === 'confirmed'
@@ -106,12 +119,15 @@ const VTIMEZONE_SOFIA = [
 export function buildSalonCalendarFeed(
   salonName: string,
   bookings: CalendarBookingRow[],
+  senderDomain?: string | null,
 ): string {
-  const events = bookings.map((booking) => buildBookingIcsEvent(booking, salonName)).join('\r\n');
+  const events = bookings
+    .map((booking) => buildBookingIcsEvent(booking, salonName, senderDomain))
+    .join('\r\n');
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    `PRODID:-//${BRAND.name}//Salon Calendar//BG`,
+    'PRODID:-//Salon Reservations//Calendar//BG',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'X-WR-CALNAME:' + escapeIcsText(`${salonName} – резервации`),
@@ -147,6 +163,7 @@ export function buildBookingCalendarLinks(
   booking: CalendarBookingRow,
   salonName: string,
   salonAddress?: string,
+  senderDomain?: string | null,
 ): { googleUrl: string; icsContent: string } {
   const { start, end } = bookingWindow(booking);
   const title = `${booking.service_name} – ${salonName}`;
@@ -157,6 +174,6 @@ export function buildBookingCalendarLinks(
     details: bookingDescription(booking, salonName),
     location: salonAddress,
   });
-  const icsContent = buildSalonCalendarFeed(salonName, [booking]);
+  const icsContent = buildSalonCalendarFeed(salonName, [booking], senderDomain);
   return { googleUrl, icsContent };
 }

@@ -36,6 +36,10 @@ export const BRAND = {
 
   /** Cookie name for the admin session. */
   adminCookieName: env('BRAND_ADMIN_COOKIE') ?? 'clicka_admin_session',
+
+  /** Shared Telegram bot username used for staff onboarding and the owner assistant.
+   *  Single bot today; future per-deployment override allows multiple shards. */
+  telegramBotUsername: env('BRAND_TELEGRAM_BOT') ?? 'clicka_booking_bot',
 } as const;
 
 /** "Brand Name <email@brand.tld>" header string for Resend / nodemailer. */

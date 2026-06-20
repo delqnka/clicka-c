@@ -58,7 +58,8 @@ async function resolveSalonFromRequest(request: NextRequest) {
 
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address,
-           owner_name, telegram_chat_id, google_place_id, opening_hours
+           owner_name, telegram_chat_id, google_place_id, opening_hours,
+           custom_domain, domain_status
     FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
   `;
@@ -420,6 +421,8 @@ export async function POST(request: NextRequest) {
   const bookingDetails = {
     bookingId: insertedBooking.id,
     manageToken: insertedBooking.manageToken,
+    salonId,
+    salonSlug: resolved.salonSlug,
     clientName,
     clientPhone,
     clientEmail: normalizedClientEmail,
@@ -431,6 +434,8 @@ export async function POST(request: NextRequest) {
     notes: normalizedNotes || undefined,
     bookingStatus: bookingStatus as 'pending' | 'confirmed',
     salonName: resolved.salon.name,
+    salonCustomDomain: resolved.salon.custom_domain ? String(resolved.salon.custom_domain) : null,
+    salonDomainStatus: resolved.salon.domain_status ? String(resolved.salon.domain_status) : null,
     salonOwnerName: resolved.salon.owner_name ? String(resolved.salon.owner_name) : undefined,
     salonEmail: resolved.salon.email || undefined,
     salonPhone: resolved.salon.phone || undefined,

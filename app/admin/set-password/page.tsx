@@ -79,6 +79,7 @@ function SetPasswordForm() {
   const isReset = params.get('mode') === 'reset';
 
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -112,7 +113,14 @@ function SetPasswordForm() {
       const res = await fetch('/api/admin/set-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, slug, password, confirmPassword: confirm, email: email.trim() }),
+        body: JSON.stringify({
+          token,
+          slug,
+          password,
+          confirmPassword: confirm,
+          email: email.trim(),
+          displayName: displayName.trim(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Грешка');
@@ -200,7 +208,7 @@ function SetPasswordForm() {
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
         }}>
-          clicka.bg
+          admin
         </span>
       </div>
 
@@ -208,26 +216,43 @@ function SetPasswordForm() {
         {isReset ? 'Нова парола' : 'Задай парола'}
       </h1>
       <p style={{ margin: '0 0 28px', color: 'rgba(0,0,0,0.45)', fontSize: 14, lineHeight: 1.6 }}>
-        {isReset ? 'Въведи нова парола за твоя панел.' : 'Избери парола за достъп до твоя панел.'}
+        {isReset ? 'Въведи нова парола за твоя панел.' : 'Въведи името си и избери парола за достъп до панела.'}
       </p>
 
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {!isReset && (
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#111' }}>
-              Имейл
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(stripCyrillic(e.target.value))}
-              onKeyDown={blockCyrillic}
-              required
-              autoComplete="email"
-              placeholder="ime@example.com"
-              style={inputStyle}
-            />
-          </div>
+          <>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#111' }}>
+                Име
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                required
+                autoComplete="name"
+                placeholder="Вашето име"
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#111' }}>
+                Имейл
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(stripCyrillic(e.target.value))}
+                onKeyDown={blockCyrillic}
+                required
+                autoComplete="email"
+                placeholder="ime@example.com"
+                style={inputStyle}
+              />
+            </div>
+          </>
         )}
 
         <div>

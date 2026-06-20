@@ -25,17 +25,22 @@ export async function ensureCalendarFeedToken(salonId: string): Promise<string> 
 export async function resolveSalonByFeedToken(token: string): Promise<{
   salonId: string;
   salonName: string;
+  resendDomain: string | null;
 } | null> {
   await ensureCalendarSchema();
   const rows = await sql`
-    SELECT CAST(id AS text) AS salon_id, name
+    SELECT CAST(id AS text) AS salon_id, name, resend_domain
     FROM salons
     WHERE calendar_feed_token = ${token}
     LIMIT 1
   `;
   if (rows.length === 0) return null;
-  const row = rows[0] as { salon_id: string; name: string };
-  return { salonId: row.salon_id, salonName: String(row.name ?? '') };
+  const row = rows[0] as { salon_id: string; name: string; resend_domain?: string | null };
+  return {
+    salonId: row.salon_id,
+    salonName: String(row.name ?? ''),
+    resendDomain: row.resend_domain ? String(row.resend_domain) : null,
+  };
 }
 
 export async function loadSalonExternalIcsUrl(salonId: string): Promise<string> {

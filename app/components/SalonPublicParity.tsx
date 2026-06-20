@@ -2091,14 +2091,6 @@ export default function SalonPublicParity({
                 Бисквитки
               </a>
             </nav>
-            <a
-              href="https://clicka.bg"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-white/40 transition-colors hover:text-white/65"
-            >
-              Clicka.bg
-            </a>
           </div>
         </div>
       </footer>

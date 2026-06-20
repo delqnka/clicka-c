@@ -5,12 +5,13 @@ import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme'
 import { AdminField } from '@/components/admin/admin-ui';
 
 type AccountInfo = {
+  displayName?: string | null;
   loginEmail: string;
   hasPassword: boolean;
   pendingEmail?: string | null;
 };
 
-type SubTab = 'email' | 'password';
+type SubTab = 'profile' | 'email' | 'password';
 
 const compactInp = (inp: CSSProperties): CSSProperties => ({
   ...inp,
@@ -23,25 +24,58 @@ export function AccountTabPanel({
   slug,
   inp,
   initialAccount,
+  onDisplayNameChange,
 }: {
   slug: string;
   inp: CSSProperties;
   initialAccount: AccountInfo;
+  onDisplayNameChange?: (name: string | null) => void;
 }) {
   const [info, setInfo] = useState<AccountInfo>(initialAccount);
-  const [subTab, setSubTab] = useState<SubTab>('email');
+  const [subTab, setSubTab] = useState<SubTab>('profile');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
+  const [profileForm, setProfileForm] = useState({
+    displayName: initialAccount.displayName ?? '',
+  });
   const [emailForm, setEmailForm] = useState({ newEmail: '', currentPassword: '' });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
-  const [busy, setBusy] = useState<'email' | 'password' | 'reset' | null>(null);
+  const [busy, setBusy] = useState<'profile' | 'email' | 'password' | 'reset' | null>(null);
 
   const fieldInp = compactInp(inp);
+
+  async function submitProfile(e: FormEvent) {
+    e.preventDefault();
+    setNotice('');
+    setError('');
+    setBusy('profile');
+    try {
+      const res = await fetch(`/api/admin/account?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'profile',
+          displayName: profileForm.displayName,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; displayName?: string };
+      if (!res.ok) throw new Error(data.error || 'Грешка при запазване на името');
+      const nextDisplayName = data.displayName ?? profileForm.displayName.trim();
+      setInfo((p) => ({ ...p, displayName: nextDisplayName }));
+      setProfileForm({ displayName: nextDisplayName });
+      onDisplayNameChange?.(nextDisplayName || null);
+      setNotice(data.message ?? 'Името е обновено.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Грешка');
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function submitEmail(e: FormEvent) {
     e.preventDefault();
@@ -87,6 +121,7 @@ export function AccountTabPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'password',
+          currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
           confirmPassword: passwordForm.confirmPassword,
         }),
@@ -143,9 +178,9 @@ export function AccountTabPanel({
       ) : null}
 
       <div style={{ display: 'flex', gap: 6 }}>
-        {(['email', 'password'] as const).map((tab) => {
+        {(['profile', 'email', 'password'] as const).map((tab) => {
           const active = subTab === tab;
-          const label = tab === 'email' ? 'Имейл' : 'Парола';
+          const label = tab === 'profile' ? 'Име' : tab === 'email' ? 'Имейл' : 'Парола';
           return (
             <button
               key={tab}
@@ -169,7 +204,35 @@ export function AccountTabPanel({
         })}
       </div>
 
-      {subTab === 'email' ? (
+      {subTab === 'profile' ? (
+        <form onSubmit={(e) => void submitProfile(e)} style={{ display: 'grid', gap: 8 }}>
+          <AdminField label="Име" compact>
+            <input
+              type="text"
+              autoComplete="name"
+              value={profileForm.displayName}
+              onChange={(e) => setProfileForm({ displayName: e.target.value })}
+              style={fieldInp}
+              placeholder="Вашето име"
+              minLength={2}
+              maxLength={80}
+              required
+            />
+          </AdminField>
+          <button
+            type="submit"
+            disabled={busy === 'profile'}
+            style={{
+              ...ADMIN_COMPACT_SAVE_BTN,
+              justifySelf: 'start',
+              opacity: busy === 'profile' ? 0.7 : 1,
+              cursor: busy === 'profile' ? 'wait' : 'pointer',
+            }}
+          >
+            {busy === 'profile' ? 'Запазване…' : 'Запази името'}
+          </button>
+        </form>
+      ) : subTab === 'email' ? (
         <form onSubmit={(e) => void submitEmail(e)} style={{ display: 'grid', gap: 8 }}>
           <AdminField label="Текущ имейл" compact>
             <input
@@ -236,6 +299,18 @@ export function AccountTabPanel({
                 Изпрати линк
               </button>
             </p>
+          ) : null}
+          {info.hasPassword ? (
+            <AdminField label="Текуща парола" compact>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={passwordForm.currentPassword}
+                onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
+                style={fieldInp}
+                required
+              />
+            </AdminField>
           ) : null}
           <AdminField label="Нова парола" compact>
             <input

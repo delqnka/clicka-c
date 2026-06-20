@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import { BRAND } from '@/lib/brand';
 import { sql } from '@/lib/db';
 import {
   isValidDomain,
@@ -8,28 +6,31 @@ import {
   requireAdminRequestAccess,
 } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
-import { ROOT_DOMAIN } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl, ROOT_DOMAIN } from '@/lib/domain-routing';
 import { syncDomainWithVercel, removeProjectDomain } from '@/lib/vercel-domains';
 import { writeAuditLog } from '@/lib/audit-log';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { getSalonResend } from '@/lib/resend';
 
 async function notifyDomainActive({
   email,
   name,
   ownerName,
   domain,
+  salonId,
 }: {
   email: string;
   name: string;
   ownerName?: string;
   domain: string;
+  salonId: string;
 }) {
-  if (!resend || !email) return;
-  const adminUrl = `https://${domain}/admin`;
+  if (!email) return;
+  const { client, from } = await getSalonResend(salonId, name);
+  if (!client) return;
+  const adminUrl = `${getCustomDomainAdminUrl(domain)}/admin`;
   const greeting = ownerName && ownerName.trim() ? `Здравей, ${ownerName.trim()}!` : 'Здравей!';
-  await resend.emails.send({
-    from: `${name || BRAND.name} <${BRAND.senderEmail}>`,
+  await client.emails.send({
+    from,
     to: email,
     subject: `Домейнът ти е свързан успешно! ✅`,
     html: `
@@ -47,11 +48,11 @@ async function notifyDomainActive({
           <a href="${adminUrl}"
              style="display:inline-block;background:#000;color:#fff;text-decoration:none;
                     padding:14px 24px;border-radius:999px;font-weight:700;font-size:15px;">
-            ${domain}/admin →
+            ${adminUrl.replace(/^https?:\/\//, '')} →
           </a>
         </p>
         <p style="line-height: 1.7; color: #6b7280; font-size: 13px;">
-          Запомни адреса на твоя контролен панел: <strong>${domain}/admin</strong>
+          Запомни адреса на твоя контролен панел: <strong>${adminUrl.replace(/^https?:\/\//, '')}</strong>
         </p>
       </div>
     `,
@@ -69,7 +70,7 @@ async function persistDomainState({
   domain: string;
   provider: Awaited<ReturnType<typeof syncDomainWithVercel>>;
   previousStatus?: string | null;
-  notify?: { email: string; name: string; ownerName?: string };
+  notify?: { email: string; name: string; ownerName?: string; salonId: string };
 }) {
   const configJson = JSON.stringify({
     provider: provider.provider,
@@ -97,7 +98,13 @@ async function persistDomainState({
   `;
 
   if (isActive && previousStatus !== 'active' && notify?.email) {
-    await notifyDomainActive({ email: notify.email, name: notify.name, ownerName: notify.ownerName, domain });
+    await notifyDomainActive({
+      email: notify.email,
+      name: notify.name,
+      ownerName: notify.ownerName,
+      domain,
+      salonId: notify.salonId,
+    });
   }
 }
 
@@ -141,7 +148,12 @@ export async function PATCH(request: NextRequest) {
     domain: site.customDomain,
     provider,
     previousStatus: site.domainStatus,
-    notify: { email: site.email, name: site.name, ownerName: site.ownerName },
+    notify: {
+      email: site.email,
+      name: site.name,
+      ownerName: site.ownerName,
+      salonId: auth.salon.salonId,
+    },
   });
 
   return NextResponse.json({
@@ -244,7 +256,12 @@ export async function POST(request: NextRequest) {
     domain,
     provider,
     previousStatus: site.customDomain === domain ? site.domainStatus : null,
-    notify: { email: site.email, name: site.name, ownerName: site.ownerName },
+    notify: {
+      email: site.email,
+      name: site.name,
+      ownerName: site.ownerName,
+      salonId: auth.salon.salonId,
+    },
   });
 
   void writeAuditLog({
@@ -268,4 +285,3 @@ export async function POST(request: NextRequest) {
     verified: provider.verified,
   });
 }
-

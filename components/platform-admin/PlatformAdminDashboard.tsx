@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SalonRow } from '@/app/pa/page';
 import { ApiKeysPanel } from './ApiKeysPanel';
+import { ResendSettingsPanel } from './ResendSettingsPanel';
+import { NewSalonForm } from './NewSalonForm';
 
 type Stats = {
   totalSalons: number;
@@ -290,7 +292,7 @@ export default function PlatformAdminDashboard({
             <span
               className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold"
               style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-              aria-label="Clicka"
+              aria-label="Agency"
             >
               C
             </span>
@@ -372,6 +374,9 @@ export default function PlatformAdminDashboard({
           {/* ── TAB: Салони ────────────────────────────────── */}
           {tab === 'salons' && (
             <div className="p-4 space-y-3">
+              {/* New salon */}
+              <NewSalonForm onCreated={() => window.location.reload()} />
+
               {/* Search + filter */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -450,8 +455,7 @@ export default function PlatformAdminDashboard({
                             )}
                           </div>
                           <div className="text-xs text-gray-400 truncate mt-0.5">
-                            {salon.slug}.clicka.bg
-                            {salon.custom_domain ? ` · ${salon.custom_domain}` : ''}
+                            {salon.custom_domain || `${salon.slug}.site`}
                           </div>
                         </div>
 
@@ -528,6 +532,9 @@ export default function PlatformAdminDashboard({
 
                           {/* API Keys */}
                           <ApiKeysPanel salonId={salon.salon_id} />
+
+                          {/* Resend email sender */}
+                          <ResendSettingsPanel salonId={salon.salon_id} />
 
                           {/* Actions */}
                           <div className="flex gap-2 pt-1">

@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/next';
-import { TrackingScripts } from '@/components/analytics/TrackingScripts';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import '@fontsource/manrope/400.css';
 import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
+import { BRAND } from '@/lib/brand';
 import { isEngineOnlyMode } from '@/lib/engine-mode';
 import './globals.base.css';
 
@@ -18,35 +18,14 @@ export const viewport: Viewport = {
 
 const engineOnly = isEngineOnlyMode();
 
-export const metadata: Metadata = engineOnly
-  ? {
-      title: 'Booking Engine',
-      description: 'Private booking and administration engine.',
-      robots: { index: false, follow: false },
-    }
-  : {
-      metadataBase: new URL('https://clicka.bg'),
-      title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
-      description:
-        'Собствен сайт с онлайн резервации за твоя бранд, готов за по-малко от 15 минути. 0% комисионна.',
-      openGraph: {
-        title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
-        description: 'Готов за под 15 минути. 0% комисионна. От 0,82 € на ден.',
-        url: 'https://clicka.bg',
-        siteName: 'clicka.bg',
-        locale: 'bg_BG',
-        type: 'website',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: 'clicka.bg | Собствен сайт с резервации за твоя салон',
-        description: 'Готов за под 15 минути. 0% комисионна. От 0,82 € на ден.',
-      },
-      other: {
-        'impact-site-verification': '4885e315-7bef-4133-b3c5-fd82b1aa0c3f',
-        'facebook-domain-verification': '1qdogbm0t61e2aujns3bt7rtpnlgqy',
-      },
-    };
+export const metadata: Metadata = {
+  metadataBase: new URL(BRAND.siteUrl),
+  title: engineOnly ? 'Booking Engine' : 'Booking Platform',
+  description: engineOnly
+    ? 'Private booking and administration engine.'
+    : 'Private booking platform and administration workspace.',
+  robots: { index: false, follow: false },
+};
 
 /**
  * Extracts the Sentry ingest host from NEXT_PUBLIC_SENTRY_DSN so the preconnect
@@ -71,7 +50,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         {children}
-        <TrackingScripts />
         <Analytics />
         <SpeedInsights />
       </body>

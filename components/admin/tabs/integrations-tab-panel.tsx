@@ -8,6 +8,9 @@ import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
 import { ResendIntegrationCard } from '@/components/admin/ResendIntegrationCard';
 import type { AdminSitePayload } from '@/lib/admin-site';
 
+const TELEGRAM_BOT_USERNAME =
+  process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.trim() || 'clicka_booking_bot';
+
 type CalendarStatus = {
   loading: boolean;
   feedUrl: string;
@@ -137,7 +140,7 @@ export function IntegrationsTabPanel({
                     setBusyKey('copied-tg');
                     setTimeout(() => setBusyKey((k) => (k === 'copied-tg' ? '' : k)), 2000);
                   }
-                  window.open('https://t.me/clicka_booking_bot', '_blank');
+                  window.open(`https://t.me/${TELEGRAM_BOT_USERNAME}`, '_blank');
                 }}
                 style={{
                   flexShrink: 0,
@@ -161,7 +164,7 @@ export function IntegrationsTabPanel({
               {site.onboardingCode
                 ? <>
                     Бутонът копира кода и отваря {' '}
-                    <a href="https://t.me/clicka_booking_bot" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.text, fontWeight: 600 }}>@clicka_booking_bot</a>
+                    <a href={`https://t.me/${TELEGRAM_BOT_USERNAME}`} target="_blank" rel="noreferrer" style={{ color: ADMIN_T.text, fontWeight: 600 }}>@{TELEGRAM_BOT_USERNAME}</a>
                     {' '}— просто го постави в чата.
                     <span style={{
                       display: 'inline-flex',

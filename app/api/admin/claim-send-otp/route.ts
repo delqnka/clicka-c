@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { sql } from '@/lib/db';
-import { BRAND, brandSender } from '@/lib/brand';
 import {
   ensureAdminAuthSchema,
   generateOtpCode,
@@ -11,8 +9,7 @@ import {
   resolveSalonBySlugOrHost,
 } from '@/lib/admin-auth';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { getSalonResend } from '@/lib/resend';
 
 // 5 OTP sends per hour per IP
 const OTP_MAX = 5;
@@ -103,14 +100,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  if (!resend) {
+  const { client, from } = await getSalonResend(salon.salonId, salon.name);
+  if (!client) {
     return NextResponse.json({ error: 'Имейл услугата не е конфигурирана.' }, { status: 503 });
   }
 
-  const sendResult = await resend.emails.send({
-    from: brandSender(),
+  const sendResult = await client.emails.send({
+    from,
     to: allowedEmail,
-    subject: `🔑 Код за достъп / ${BRAND.name}`,
+    subject: '🔑 Код за достъп',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
         <p style="font-size: 15px; line-height: 1.6; color: #444; margin: 0 0 24px;">
