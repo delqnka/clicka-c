@@ -31,9 +31,14 @@ export function useBookingFlow({
   bookingAdvanceDays,
   bookingServices,
   engineUrl = '',
+  successUrl,
+  cancelUrl,
+  locale = 'bg-BG',
+  onEvent,
 }: UseBookingFlowOptions): UseBookingFlowReturn {
   const t = useT();
   const api = engineUrl.replace(/\/$/, '');
+  const slugPath = `/api/public/v1/salons/${encodeURIComponent(slug)}`;
 
   // ── Modal visibility ─────────────────────────────────────────────────
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -78,7 +83,7 @@ export function useBookingFlow({
   useEffect(() => {
     if (!bookingOpen || staffFetchedRef.current) return;
     staffFetchedRef.current = true;
-    fetch(`${api}/api/staff?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+    fetch(`${api}${slugPath}/staff`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((d: { staff?: PublicStaffMember[] }) => {
         if (Array.isArray(d.staff)) setStaffMembers(d.staff);
@@ -94,7 +99,7 @@ export function useBookingFlow({
       ? `&staffMemberId=${encodeURIComponent(selectedStaffMemberId)}`
       : '';
     fetch(
-      `${api}/api/bookings?public=1&slug=${encodeURIComponent(slug)}&date=${encodeURIComponent(selectedDate)}${staffParam}`,
+      `${api}${slugPath}/slots?date=${encodeURIComponent(selectedDate)}${staffParam}`,
       { cache: 'no-store' },
     )
       .then((r) => r.json())
@@ -199,8 +204,9 @@ export function useBookingFlow({
     setClientEmail('');
     setNotes('');
     setBookingOpen(true);
-    trackBookingStarted();
-  }, [bookingServices]);
+    if (onEvent) onEvent('booking_started');
+    else trackBookingStarted();
+  }, [bookingServices, onEvent]);
 
   const close = useCallback(() => {
     setBookingOpen(false);
@@ -263,7 +269,7 @@ export function useBookingFlow({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${api}/api/bookings?slug=${encodeURIComponent(slug)}`, {
+      const res = await fetch(`${api}${slugPath}/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -296,10 +302,18 @@ export function useBookingFlow({
       // Stripe Checkout redirect for paid bookings
       const bookingId = json.bookingId ?? json.id;
       if (requiresPayment && bookingId) {
-        const payRes = await fetch(`${api}/api/stripe/booking-checkout`, {
+        const payRes = await fetch(`${api}${slugPath}/booking-checkout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingId, salonSlug: slug, serviceName, amountEuros, paymentType }),
+          body: JSON.stringify({
+            bookingId,
+            salonSlug: slug,
+            serviceName,
+            amountEuros,
+            paymentType,
+            successUrl,
+            cancelUrl,
+          }),
         });
         const payJson = (await payRes.json().catch(() => ({}))) as {
           checkoutUrl?: string; error?: string;
@@ -311,16 +325,19 @@ export function useBookingFlow({
         return;
       }
 
-      const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString('bg-BG', {
+      const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(locale, {
         weekday: 'long', day: 'numeric', month: 'long',
       });
       markSlotOccupied(selectedDate, selectedTime, duration);
       setBookingSuccessDetails({ serviceName, dateLabel, time: selectedTime });
-      setBookingSuccess(`${serviceName} — ${dateLabel} в ${selectedTime} ч.`);
-      trackBookingCompleted({
+      setBookingSuccess(`${serviceName} — ${dateLabel} ${selectedTime}`);
+      const eventPayload = {
         serviceName,
         value: totalPrice > 0 ? totalPrice : undefined,
-      });
+        currency: 'EUR',
+      };
+      if (onEvent) onEvent('booking_completed', eventPayload);
+      else trackBookingCompleted(eventPayload);
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : t('booking.errors.generic'));
     } finally {
@@ -330,6 +347,7 @@ export function useBookingFlow({
     slug, selectedServices, clientName, clientPhone, clientEmail,
     selectedDate, selectedTime, notes,
     totalDuration, totalPrice, selectedStaffMemberId, markSlotOccupied,
+    successUrl, cancelUrl, locale, onEvent,
   ]);
 
   return {

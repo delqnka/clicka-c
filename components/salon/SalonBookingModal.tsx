@@ -1,13 +1,8 @@
 'use client';
 
 import { Check, ChevronDown, Loader2, Plus, User, X } from 'lucide-react';
-import { formatDualEurText } from '@/lib/salon-currency';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n-react';
-import {
-  CLICKA_MARKETING_GRADIENT_BORDER_STYLE,
-  CLICKA_MARKETING_GRADIENT_STYLE,
-} from '@/lib/clicka-marketing-site';
 import {
   getBookingRowIndex,
   getCatalogDisplayPriceDuration,
@@ -41,6 +36,22 @@ export type BookingServiceOption = {
 type SalonBookingModalProps = {
   open: boolean;
   primaryColor: string;
+  /**
+   * Optional CSS gradient string for accent fills (CTAs, step indicators, borders).
+   * Defaults to a solid-color gradient derived from `primaryColor`.
+   * Example: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)'
+   */
+  accentGradient?: string;
+  /**
+   * BCP-47 locale for date label rendering (e.g. 'bg-BG', 'en-US', 'el-GR').
+   * Default: 'bg-BG'.
+   */
+  locale?: string;
+  /**
+   * Pluggable price formatter. Receives a number in the salon's currency.
+   * Default: `${amount} €` (no BGN/dual-currency).
+   */
+  formatPrice?: (amount: number) => string;
   /** One row per service (same as public site). */
   serviceCatalog: BookingCatalogService[];
   /** Expanded rows for booking API (includes variant rows). */
@@ -90,8 +101,8 @@ const cardShadow =
   'shadow-[0_2px_6px_rgba(0,0,0,0.14),0_10px_32px_rgba(0,0,0,0.18),0_1px_2px_rgba(0,0,0,0.1)]';
 const backButtonShadow =
   'shadow-[0_4px_14px_rgba(0,0,0,0.22),0_14px_40px_rgba(0,0,0,0.16),0_1px_0_rgba(0,0,0,0.06)]';
-const gradientCtaShadow = 'shadow-[0_8px_28px_rgba(225,29,72,0.32)]';
-const gradientRingShadow = 'shadow-[0_2px_10px_rgba(219,39,119,0.1)]';
+const gradientCtaShadow = 'shadow-[0_8px_28px_rgba(0,0,0,0.18)]';
+const gradientRingShadow = 'shadow-[0_2px_10px_rgba(0,0,0,0.08)]';
 const blackCtaShadow = 'shadow-[0_4px_14px_rgba(0,0,0,0.15)]';
 
 const fieldClass =
@@ -117,6 +128,9 @@ function ServiceDescription({ text }: { text?: string }) {
 export function SalonBookingModal({
   open,
   primaryColor,
+  accentGradient,
+  locale = 'bg-BG',
+  formatPrice,
   serviceCatalog,
   services,
   categoryTabs,
@@ -158,6 +172,32 @@ export function SalonBookingModal({
   directStaffName,
 }: SalonBookingModalProps) {
   const t = useT();
+
+  // Derive accent fill + gradient-border styles from props. White-label: the
+  // consumer controls colors via `primaryColor` (single solid) or
+  // `accentGradient` (full CSS gradient string).
+  const accentFill = useMemo(
+    () => accentGradient ?? `linear-gradient(135deg, ${primaryColor}, ${primaryColor})`,
+    [accentGradient, primaryColor],
+  );
+  const accentFillStyle = useMemo(
+    () => ({ backgroundImage: accentFill }),
+    [accentFill],
+  );
+  const accentBorderStyle = useMemo(
+    () => ({
+      border: '1px solid transparent',
+      backgroundImage: `linear-gradient(#ffffff, #ffffff), ${accentFill}`,
+      backgroundOrigin: 'border-box' as const,
+      backgroundClip: 'padding-box, border-box',
+    }),
+    [accentFill],
+  );
+
+  const fmtPrice = useMemo<(n: number) => string>(
+    () => formatPrice ?? ((n) => `${Number.isInteger(n) ? n : n.toFixed(2)} €`),
+    [formatPrice],
+  );
 
   // isTeam = TEAM salon with multiple staff members; direct = pre-selected staff link
   const isTeam = staffMembers.length > 0 && !directStaffName;
@@ -259,13 +299,13 @@ export function SalonBookingModal({
       const iso = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
       out.push({
         iso,
-        weekday: cursor.toLocaleDateString('bg-BG', { weekday: 'short' }),
-        day: cursor.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' }),
+        weekday: cursor.toLocaleDateString(locale, { weekday: 'short' }),
+        day: cursor.toLocaleDateString(locale, { day: 'numeric', month: 'short' }),
       });
       cursor.setDate(cursor.getDate() + 1);
     }
     return out;
-  }, [minDate, maxDate]);
+  }, [minDate, maxDate, locale]);
 
   function goToStep(target: 1 | 2 | 3 | 4) {
     if (isTeam) {
@@ -363,7 +403,7 @@ export function SalonBookingModal({
                         ? `text-white ${gradientCtaShadow}`
                         : `bg-white text-black/50 ${cardShadow}`
                     }`}
-                    style={active || complete ? CLICKA_MARKETING_GRADIENT_STYLE : undefined}
+                    style={active || complete ? accentFillStyle : undefined}
                     title={label}
                     aria-label={t('booking.modal.stepAria', { n, label })}
                   >
@@ -417,14 +457,14 @@ export function SalonBookingModal({
                           <div
                             key={`selected-${svc.id}-${idx}`}
                             className={`rounded-2xl p-px transition ${gradientRingShadow}`}
-                            style={CLICKA_MARKETING_GRADIENT_BORDER_STYLE}
+                            style={accentBorderStyle}
                           >
                             <div className="flex items-start justify-between gap-3 rounded-[15px] bg-white px-3.5 py-3.5">
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-[16px] font-semibold text-black">{svc.name}</p>
                                 <ServiceDescription text={svc.description} />
                                 <p className="mt-1 text-[13px] tabular-nums text-black/70">
-                                  {svc.duration} {t('booking.modal.minSuffix')} · {formatDualEurText(Number(svc.price ?? 0).toFixed(2))}
+                                  {svc.duration} {t('booking.modal.minSuffix')} · {fmtPrice(Number(svc.price ?? 0))}
                                 </p>
                               </div>
                               <button
@@ -474,6 +514,7 @@ export function SalonBookingModal({
                         onSelect={setSelectedCategory}
                         size="sm"
                         className="-mx-1 px-1"
+                        accentFill={accentFill}
                       />
 
                       {visibleCatalog.map((service) => {
@@ -495,7 +536,7 @@ export function SalonBookingModal({
                         className={`rounded-2xl transition ${
                           active ? `p-px ${gradientRingShadow}` : `bg-white ${cardShadow}`
                         }`}
-                        style={active ? CLICKA_MARKETING_GRADIENT_BORDER_STYLE : undefined}
+                        style={active ? accentBorderStyle : undefined}
                       >
                         <div
                           className={`flex items-start justify-between gap-3 ${
@@ -536,7 +577,7 @@ export function SalonBookingModal({
                                           variantLabel === variant.label ? 'font-semibold text-black' : 'text-black/70'
                                         }`}
                                       >
-                                        {variant.label} · {formatDualEurText(String(variant.price))}
+                                        {variant.label} · {fmtPrice(Number(variant.price) || 0)}
                                       </button>
                                     ))}
                                   </div>
@@ -544,7 +585,7 @@ export function SalonBookingModal({
                               </div>
                             ) : null}
                             <p className="mt-1.5 text-[13px] tabular-nums text-black/45">
-                              {duration} {t('booking.modal.minSuffix')} · {formatDualEurText(String(price))}
+                              {duration} {t('booking.modal.minSuffix')} · {fmtPrice(Number(price) || 0)}
                             </p>
                           </div>
                           {active ? (
@@ -562,7 +603,7 @@ export function SalonBookingModal({
                               type="button"
                               onClick={() => toggleCatalogService(service)}
                               className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-white transition ${gradientCtaShadow}`}
-                              style={CLICKA_MARKETING_GRADIENT_STYLE}
+                              style={accentFillStyle}
                             >
                               <Plus className="h-3.5 w-3.5" aria-hidden />
                               {t('booking.modal.add')}
@@ -623,10 +664,10 @@ export function SalonBookingModal({
                                 ? `p-px ${gradientRingShadow}`
                                 : `bg-white ${cardShadow}`
                             }`}
-                            style={selected ? CLICKA_MARKETING_GRADIENT_BORDER_STYLE : undefined}
+                            style={selected ? accentBorderStyle : undefined}
                           >
                             {selected ? (
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white" style={CLICKA_MARKETING_GRADIENT_STYLE}>
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white" style={accentFillStyle}>
                                 <Check className="h-4 w-4" aria-hidden />
                               </div>
                             ) : (
@@ -821,7 +862,7 @@ export function SalonBookingModal({
                   {t('booking.modal.totalDuration', { min: Math.max(0, totalDuration) })}
                 </p>
                 <p className="text-[17px] font-semibold tabular-nums text-black/70 leading-tight">
-                  {t('booking.modal.totalPrice', { price: formatDualEurText(totalPrice.toFixed(2)) })}
+                  {t('booking.modal.totalPrice', { price: fmtPrice(totalPrice) })}
                 </p>
                 {selectedTime ? (
                   <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-black">
@@ -843,8 +884,8 @@ export function SalonBookingModal({
                     <path d="M27.5 22.5c0-1.7 1.4-2.4 3.6-2.4 3.2 0 7.3 1 10.4 2.7v-9.8c-3.5-1.4-7-2-10.4-2C23.1 11 18 15.2 18 22.9c0 12.1 16.6 10.2 16.6 15.4 0 2-1.7 2.7-4.1 2.7-3.5 0-8-1.5-11.5-3.5v9.9c3.9 1.7 7.9 2.4 11.5 2.4 8.8 0 14.8-4.3 14.8-12.2C45.3 25.4 27.5 27.6 27.5 22.5z" fill="white"/>
                   </svg>
                   {paymentType === 'deposit' && depositAmount && depositAmount > 0
-                    ? <>{t('booking.modal.depositRequired')} <strong className="mx-0.5">{formatDualEurText(String(depositAmount))}</strong></>
-                    : <>{t('booking.modal.paymentFrom')} <strong className="mx-0.5">{formatDualEurText(totalPrice.toFixed(2))}</strong></>
+                    ? <>{t('booking.modal.depositRequired')} <strong className="mx-0.5">{fmtPrice(Number(depositAmount) || 0)}</strong></>
+                    : <>{t('booking.modal.paymentFrom')} <strong className="mx-0.5">{fmtPrice(totalPrice)}</strong></>
                   }
                 </p>
                 <p className="text-[11px] text-black/35">
@@ -887,7 +928,7 @@ export function SalonBookingModal({
                       }}
                       disabled={nextDisabled}
                       className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                      style={CLICKA_MARKETING_GRADIENT_STYLE}
+                      style={accentFillStyle}
                     >
                       {t('booking.modal.continue')}
                     </button>
@@ -897,7 +938,7 @@ export function SalonBookingModal({
                       form="salon-booking-form"
                       disabled={isSubmitting || !selectedTime || !hasServices}
                       className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
-                      style={CLICKA_MARKETING_GRADIENT_STYLE}
+                      style={accentFillStyle}
                     >
                       {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
                       {paymentType !== 'none' ? t('booking.modal.payAndBook') : t('booking.modal.sendRequest')}

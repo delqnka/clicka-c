@@ -1,12 +1,6 @@
 function randomHex(bytes: number): string {
   const buf = new Uint8Array(bytes);
-  if (typeof globalThis.crypto?.getRandomValues === 'function') {
-    globalThis.crypto.getRandomValues(buf);
-  } else {
-    // Node.js fallback (should not reach in modern runtimes)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('crypto').randomFillSync(buf);
-  }
+  globalThis.crypto.getRandomValues(buf);
   return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
 }
 

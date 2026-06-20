@@ -1,8 +1,9 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import {
   forwardRef,
+  lazy,
+  Suspense,
   useImperativeHandle,
   useMemo,
 } from 'react';
@@ -19,9 +20,8 @@ import type { BookingServiceItem, BookingWidgetHandle, BookingWidgetProps } from
 import { I18nProvider } from '@/lib/i18n-react';
 import type { Locale } from '@/lib/i18n';
 
-const SalonBookingModal = dynamic(
-  () => import('@/components/salon/SalonBookingModal').then((m) => m.SalonBookingModal),
-  { ssr: false },
+const SalonBookingModal = lazy(() =>
+  import('@/components/salon/SalonBookingModal').then((m) => ({ default: m.SalonBookingModal })),
 );
 
 // ── Inner component ────────────────────────────────────────────────────────────
@@ -41,6 +41,15 @@ type InnerProps = {
   categoryTabs: ReturnType<typeof buildServiceCategoryTabs>;
   engineUrl: string;
   primaryColor: string;
+  accentGradient?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  locale: string;
+  formatPrice?: (amount: number) => string;
+  onEvent?: (
+    name: 'booking_started' | 'booking_completed',
+    payload?: { serviceName?: string; value?: number; currency?: string },
+  ) => void;
   salonName: string;
   basePath: string;
 };
@@ -57,6 +66,12 @@ function BookingWidgetInner({
   categoryTabs,
   engineUrl,
   primaryColor,
+  accentGradient,
+  successUrl,
+  cancelUrl,
+  locale,
+  formatPrice,
+  onEvent,
   salonName,
   basePath,
 }: InnerProps) {
@@ -68,6 +83,10 @@ function BookingWidgetInner({
     bookingAdvanceDays,
     bookingServices,
     engineUrl,
+    successUrl,
+    cancelUrl,
+    locale,
+    onEvent,
   });
 
   useImperativeHandle(forwardedRef, () => ({
@@ -78,9 +97,13 @@ function BookingWidgetInner({
   const firstSelected = flow.selectedServices[0];
 
   return (
+    <Suspense fallback={null}>
     <SalonBookingModal
       open={flow.bookingOpen}
       primaryColor={primaryColor}
+      accentGradient={accentGradient}
+      locale={locale}
+      formatPrice={formatPrice}
       serviceCatalog={serviceCatalog}
       categoryTabs={categoryTabs}
       services={bookingServices}
@@ -120,13 +143,14 @@ function BookingWidgetInner({
       onStaffMemberChange={flow.setStaffMemberId}
       onSubmit={flow.submit}
     />
+    </Suspense>
   );
 }
 
 // ── Public component ───────────────────────────────────────────────────────────
 
 export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>(
-  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, basePath = '', engineUrl = '' }, ref) {
+  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, basePath = '', engineUrl = '', accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
 
     // ── Opening hours ──────────────────────────────────────────────────
     const openingHours = useMemo(
@@ -198,6 +222,7 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
 
     // ── Locale ────────────────────────────────────────────────────────
     const lang = (typeof salon.language === 'string' ? salon.language : 'bg') as Locale;
+    const resolvedLocale = localeProp ?? (lang === 'en' ? 'en-US' : 'bg-BG');
 
     // ── Derived display props ─────────────────────────────────────────
     const primaryColor = typeof salon.primary_color === 'string' && salon.primary_color
@@ -218,6 +243,12 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
           categoryTabs={categoryTabs}
           engineUrl={engineUrl}
           primaryColor={primaryColor}
+          accentGradient={accentGradient}
+          successUrl={successUrl}
+          cancelUrl={cancelUrl}
+          locale={resolvedLocale}
+          formatPrice={formatPrice}
+          onEvent={onEvent}
           salonName={String(salon.name ?? '')}
           basePath={basePath}
         />

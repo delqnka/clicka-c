@@ -1,6 +1,5 @@
 'use client';
 
-import { CLICKA_MARKETING_GRADIENT } from '@/lib/clicka-marketing-site';
 import type { ServiceCategoryTab } from '@/lib/salon-service-categories';
 
 type SalonServiceCategoryTabsProps = {
@@ -9,6 +8,8 @@ type SalonServiceCategoryTabsProps = {
   onSelect: (id: string | null) => void;
   size?: 'sm' | 'md';
   className?: string;
+  /** CSS gradient or solid color used for the active-tab underline. */
+  accentFill?: string;
 };
 
 /** Text category filter — horizontal scroll, all labels in black. */
@@ -18,6 +19,7 @@ export function SalonServiceCategoryTabs({
   onSelect,
   size = 'md',
   className = '',
+  accentFill = '#111111',
 }: SalonServiceCategoryTabsProps) {
   const named = categories.filter((c) => c.id != null);
   if (named.length === 0) return null;
@@ -56,7 +58,7 @@ export function SalonServiceCategoryTabs({
               style={{
                 width: active ? '100%' : '0%',
                 opacity: active ? 1 : 0,
-                backgroundImage: CLICKA_MARKETING_GRADIENT,
+                backgroundImage: accentFill,
               }}
             />
           </span>

@@ -1,0 +1,6 @@
+/* SDK CSS bundle entry — Tailwind directives only.
+   The Tailwind CLI in this package resolves utilities from the booking widget
+   source tree (see ../tailwind.config.cjs `content`). */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

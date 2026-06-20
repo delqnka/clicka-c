@@ -50,6 +50,23 @@ export type UseBookingFlowOptions = {
   bookingServices: BookingServiceItem[];
   /** Engine origin for cross-domain API calls (Variant B separate repos). */
   engineUrl?: string;
+  /**
+   * Absolute URL Stripe should redirect to after a successful payment.
+   * Default: engine origin `/booking/success` (do NOT rely on this in a white-label client site).
+   */
+  successUrl?: string;
+  /** Absolute URL Stripe should redirect to if the user cancels checkout. */
+  cancelUrl?: string;
+  /** BCP-47 locale used for the success-message date label. Default 'bg-BG'. */
+  locale?: string;
+  /**
+   * Optional analytics callback. If provided, the SDK fires `booking_started`
+   * and `booking_completed` here instead of touching window.fbq / gtag.
+   */
+  onEvent?: (
+    name: 'booking_started' | 'booking_completed',
+    payload?: { serviceName?: string; value?: number; currency?: string },
+  ) => void;
 };
 
 export type UseBookingFlowReturn = {
@@ -120,5 +137,23 @@ export type BookingWidgetProps = {
    * Leave empty (default) when the site runs inside the engine repo.
    */
   engineUrl?: string;
+  /** CSS gradient string for accent fills. Defaults to a solid gradient from primaryColor. */
+  accentGradient?: string;
+  /**
+   * Stripe success redirect URL (white-label: keep users on the salon's own domain).
+   * Should land on a page that reads `?booking_id=` from the query string.
+   */
+  successUrl?: string;
+  /** Stripe cancel redirect URL. */
+  cancelUrl?: string;
+  /** BCP-47 locale for date/label formatting. If omitted, falls back to `salon.language`. */
+  locale?: string;
+  /** Pluggable price formatter. Default: `${n} €`. */
+  formatPrice?: (amount: number) => string;
+  /** Analytics callback. If provided, replaces direct window.fbq / gtag calls. */
+  onEvent?: (
+    name: 'booking_started' | 'booking_completed',
+    payload?: { serviceName?: string; value?: number; currency?: string },
+  ) => void;
 };
 

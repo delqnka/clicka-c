@@ -11,7 +11,8 @@
     "audit:white-label": "node scripts/audit-white-label.mjs",
     "perf": "node scripts/perf-report.mjs",
     "optimize-marketing-images": "node scripts/optimize-marketing-images.mjs",
-    "create-client": "node --env-file=.env.local scripts/create-client.mjs"
+    "create-client": "node --env-file=.env.local scripts/create-client.mjs",
+    "sdk:build": "cd sdk/booking && npm run clean && tsup && tailwindcss -c ./tailwind.config.cjs -i ./src/styles.css -o ./dist/booking.css --minify"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
@@ -56,8 +57,10 @@
     "autoprefixer": "^10.4.19",
     "critters": "^0.0.23",
     "dotenv": "^17.4.2",
+    "esbuild-plugin-preserve-directives": "^0.0.11",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
+    "tsup": "^8.5.1",
     "typescript": "^5.5.3",
     "vitest": "^4.1.8"
   }
