@@ -243,16 +243,25 @@ export function BookingProvider({
     }
   }, [salon]);
 
-  // ── Document-level click delegation for [data-clicka-book] ─────────────
+  // ── Document-level click delegation ────────────────────────────────────
+  // Listens to multiple attribute names so existing sites can keep their
+  // markup. Primary: [data-clicka-book]. Legacy: [data-book-service],
+  // [data-book]. The attribute *value* (when not empty / 'true') is passed
+  // as the service id; otherwise the modal opens without preselect.
   useEffect(() => {
     if (!autoTriggers || typeof document === 'undefined') return;
+    const SELECTOR = '[data-clicka-book],[data-book-service],[data-book]';
     const handler = (ev: Event) => {
       const t = ev.target as Element | null;
       if (!t) return;
-      const trigger = t.closest<HTMLElement>('[data-clicka-book]');
+      const trigger = t.closest<HTMLElement>(SELECTOR);
       if (!trigger) return;
       ev.preventDefault();
-      const raw = trigger.getAttribute('data-clicka-book') || '';
+      const raw =
+        trigger.getAttribute('data-clicka-book') ??
+        trigger.getAttribute('data-book-service') ??
+        trigger.getAttribute('data-book') ??
+        '';
       const service = raw && raw !== 'true' ? raw : undefined;
       open(service);
     };
