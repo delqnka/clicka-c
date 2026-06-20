@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       b.id, b.client_name, b.client_phone, b.client_email,
       b.service_name, b.service_price, b.service_duration,
       b.date, b.time, b.notes, b.manage_token, b.staff_member_id,
+      CAST(s.id AS text) AS salon_id,
       s.name AS salon_name, s.owner_name AS salon_owner_name, s.email AS salon_email, s.phone AS salon_phone,
       s.address AS salon_address, s.city AS salon_city,
       s.telegram_chat_id
@@ -134,6 +135,7 @@ export async function POST(request: NextRequest) {
   const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
 
   await dispatchBookingNotifications({
+    salonId: String(row.salon_id ?? '') || undefined,
     salonEmail,
     clientEmail,
     telegramChatId,

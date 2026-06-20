@@ -5,6 +5,7 @@ import {
   ensureAdminAuthSchema,
   ensureOwnerForSalon,
   generateAdminMagicLink,
+  getActiveCustomDomain,
   getPrimaryOwnerForSalon,
   hashOtpCode,
   normalizeEmail,
@@ -97,10 +98,12 @@ export async function POST(request: NextRequest) {
 
   if (!hasPassword) {
     // Нов потребител — прати magic link за задаване на парола
+    const customDomain = await getActiveCustomDomain(salon.salonId);
     const magicLink = await generateAdminMagicLink({
       salonId: salon.salonId,
       slug: salon.slug,
       email: emailNorm,
+      customDomain,
       expiresMs: 60 * 60 * 1000, // 1 час
     });
     return NextResponse.json({ success: true, redirectTo: magicLink, isNewUser: true });

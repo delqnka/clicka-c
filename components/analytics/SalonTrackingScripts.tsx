@@ -23,7 +23,7 @@ export function SalonTrackingScripts({ ga4Id, metaPixelId, clarityId }: Props) {
     return () => window.removeEventListener('cookie-consent-updated', onUpdate);
   }, []);
 
-  // Fire ClickaTest when admin opens public site with ?pixelTest=1
+  // Fire EngineTest when admin opens public site with ?pixelTest=1
   // Runs only after consent + pixel load — waits for the pixel script to initialize.
   useEffect(() => {
     if (!metaPixelId) return;
@@ -33,7 +33,7 @@ export function SalonTrackingScripts({ ga4Id, metaPixelId, clarityId }: Props) {
     let tries = 0;
     const interval = setInterval(() => {
       if (typeof window.fbq === 'function') {
-        window.fbq('trackCustom', 'ClickaTest', { source: 'admin_test' });
+        window.fbq('trackCustom', 'EngineTest', { source: 'admin_test' });
         clearInterval(interval);
         // Clean up URL so refreshing doesn't re-fire
         const url = new URL(window.location.href);

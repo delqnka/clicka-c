@@ -83,8 +83,6 @@ export type UseBookingFlowReturn = {
   setClientEmail: (v: string) => void;
   notes: string;
   setNotes: (v: string) => void;
-  smsReminderConsent: boolean;
-  setSmsReminderConsent: (v: boolean) => void;
 
   // Staff (TEAM plan)
   staffMembers: PublicStaffMember[];

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { telegramPost } from '@/lib/telegram';
+import { BRAND } from '@/lib/brand';
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'clicka.bg';
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? BRAND.domain;
 
 // POST — create session + send first message, or continue existing session
 export async function POST(req: NextRequest) {

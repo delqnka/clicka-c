@@ -35,14 +35,6 @@ export async function ensureBookingsSchema() {
       `;
       await sql`
         ALTER TABLE bookings
-        ADD COLUMN IF NOT EXISTS sms_reminder_consent boolean NOT NULL DEFAULT false
-      `;
-      await sql`
-        ALTER TABLE bookings
-        ADD COLUMN IF NOT EXISTS sms_reminder_consent_at timestamptz
-      `;
-      await sql`
-        ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS offer_id uuid
       `;
       await sql`

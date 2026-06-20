@@ -211,7 +211,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
           <button
             onClick={handleMetaTest}
             style={{ ...testBtnStyle, display: 'flex', alignItems: 'center', gap: 6, borderColor: '#1877f2', color: '#1877f2' }}
-            title="Изпраща ClickaTest събитие — провери го в Meta Events Manager"
+            title="Изпраща EngineTest събитие — провери го в Meta Events Manager"
           >
             <Zap size={13} />
             Изпрати тест към Meta
@@ -231,11 +231,11 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
             <strong>Публичният сайт е отворен с тестово събитие.</strong>
             <ol style={{ margin: '6px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <li>В новия таб — <strong>приеми маркетинговите бисквитки</strong> в cookie banner-а.</li>
-              <li>Събитието <code>ClickaTest</code> ще се изпрати от <strong>домейна на твоя сайт</strong>.</li>
-              <li>Отвори <strong>Meta Events Manager → твоят пиксел → Test Events</strong> и провери дали виждаш <code>ClickaTest</code>.</li>
+              <li>Събитието <code>EngineTest</code> ще се изпрати от <strong>домейна на твоя сайт</strong>.</li>
+              <li>Отвори <strong>Meta Events Manager → твоят пиксел → Test Events</strong> и провери дали виждаш <code>EngineTest</code>.</li>
             </ol>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: '#3b82f6' }}>
-              Защо от публичния сайт? Meta отчита събитията по домейн — ако тестът тръгне от admin.clicka.bg,
+              Защо от публичния сайт? Meta отчита събитията по домейн — ако тестът тръгне от админ панела,
               Meta ще види грешен домейн и рекламните кампании ще са некоректно атрибутирани.
             </p>
           </div>

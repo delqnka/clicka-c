@@ -53,7 +53,6 @@ export function useBookingFlow({
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [smsReminderConsent, setSmsReminderConsent] = useState(false);
 
   // ── Staff (TEAM plan) ────────────────────────────────────────────────
   const [staffMembers, setStaffMembers] = useState<PublicStaffMember[]>([]);
@@ -199,7 +198,6 @@ export function useBookingFlow({
     setClientPhone('');
     setClientEmail('');
     setNotes('');
-    setSmsReminderConsent(false);
     setBookingOpen(true);
     trackBookingStarted();
   }, [bookingServices]);
@@ -278,7 +276,6 @@ export function useBookingFlow({
           date:               selectedDate,
           time:               selectedTime,
           notes:              notes.trim() || undefined,
-          smsReminderConsent,
           requiresPayment,
           staffMemberId:      selectedStaffMemberId ?? undefined,
         }),
@@ -331,7 +328,7 @@ export function useBookingFlow({
     }
   }, [
     slug, selectedServices, clientName, clientPhone, clientEmail,
-    selectedDate, selectedTime, notes, smsReminderConsent,
+    selectedDate, selectedTime, notes,
     totalDuration, totalPrice, selectedStaffMemberId, markSlotOccupied,
   ]);
 
@@ -345,7 +342,6 @@ export function useBookingFlow({
     clientPhone, setClientPhone,
     clientEmail, setClientEmail,
     notes, setNotes,
-    smsReminderConsent, setSmsReminderConsent,
     staffMembers, selectedStaffMemberId, setStaffMemberId,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,
     submit,

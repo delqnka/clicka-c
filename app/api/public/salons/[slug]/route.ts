@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { verifyApiKey } from '@/lib/public-api-auth';
 
 const PUBLIC_CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
 } as const;
 
 export async function OPTIONS() {
@@ -12,13 +13,16 @@ export async function OPTIONS() {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { slug: string } },
 ) {
   const slug = String(params.slug ?? '').trim();
   if (!slug) {
     return NextResponse.json({ error: 'Missing salon slug' }, { status: 400, headers: PUBLIC_CORS });
   }
+
+  const auth = await verifyApiKey(request, { slug, requiredScope: 'read', corsHeaders: PUBLIC_CORS });
+  if (!auth.ok) return auth.response;
 
   const rows = await sql`
     SELECT
@@ -29,7 +33,7 @@ export async function GET(
       instagram_username, facebook_username, google_maps_url,
       working_hours, opening_hours, services, team,
       template_id, primary_color, primary_color_light,
-      plan_type, sms_enabled
+      plan_type
     FROM salons
     WHERE slug = ${slug} AND is_active = true
     LIMIT 1

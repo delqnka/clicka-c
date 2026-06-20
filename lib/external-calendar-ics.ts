@@ -1,4 +1,4 @@
-import { parseSofiaAppointment } from '@/lib/sms-shared';
+import { parseSofiaAppointment } from '@/lib/sofia-time';
 
 export type ExternalCalendarEvent = {
   id: string;

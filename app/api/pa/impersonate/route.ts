@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
-import { generateAdminMagicLink } from '@/lib/admin-auth';
+import { generateAdminMagicLink, getActiveCustomDomain } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
   if (!(await isPlatformAdminRequest(request))) {
@@ -30,10 +30,12 @@ export async function POST(request: NextRequest) {
   const slug = String(salon.slug ?? '');
   const email = String(salon.email ?? '');
 
+  const customDomain = await getActiveCustomDomain(salonId);
   const magicLink = await generateAdminMagicLink({
     salonId,
     slug,
     email,
+    customDomain,
     expiresMs: 2 * 60 * 60 * 1000, // 2 hours
   });
 

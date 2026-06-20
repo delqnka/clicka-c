@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     WHERE id = ${bookingId}
   `;
 
-  return NextResponse.json({ checkoutUrl: session.url });
+  return NextResponse.json({ checkoutUrl: session.url, sessionId: session.id });
 }
 
 function normalizeReturnOrigin(raw: string | undefined) {

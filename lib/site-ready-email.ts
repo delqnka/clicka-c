@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
+import { BRAND } from '@/lib/brand';
 import { getPlatformAdminUrl, getPlatformPublicUrl } from '@/lib/domain-routing';
-import { generateAdminMagicLink } from '@/lib/admin-auth';
+import { generateAdminMagicLink, getActiveCustomDomain } from '@/lib/admin-auth';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -10,11 +11,12 @@ export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; 
   const greeting = ownerName && ownerName.trim() ? `Здравей, ${ownerName.trim()}!` : 'Здравей!';
   const publicUrl = getPlatformPublicUrl(slug);
   const adminUrl = getPlatformAdminUrl(slug);
-  const magicLink = await generateAdminMagicLink({ salonId, slug, email, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl);
+  const customDomain = await getActiveCustomDomain(salonId).catch(() => null);
+  const magicLink = await generateAdminMagicLink({ salonId, slug, email, customDomain, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl);
   const displayName = name && name.trim() ? name.trim() : 'твоят салон';
 
   await resend.emails.send({
-    from: `${displayName} <noreply@clicka.bg>`,
+    from: `${displayName} <${BRAND.senderEmail}>`,
     to: email,
     subject: `Твоят сайт е готов! ✅`,
     html: `

@@ -9,7 +9,7 @@
       "schedule": "0 7 * * *"
     },
     {
-      "path": "/api/cron/domain-purchase-delay-notice",
+      "path": "/api/cron/google-review-invites",
       "schedule": "0 16 * * *"
     }
   ],

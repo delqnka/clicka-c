@@ -26,7 +26,6 @@ export type SalonRow = {
   updated_at: string | null;
   owner_email: string | null;
   booking_count: number;
-  sms_credits: number;
 };
 
 async function loadSalons(): Promise<SalonRow[]> {
@@ -74,7 +73,6 @@ async function loadSalons(): Promise<SalonRow[]> {
       updated_at: (r as Record<string, unknown>).updated_at as string | null,
       owner_email: (r as Record<string, unknown>).owner_email as string | null,
       booking_count: Number((r as Record<string, unknown>).booking_count ?? 0),
-      sms_credits: 0,
     }));
   } catch {
     return [];

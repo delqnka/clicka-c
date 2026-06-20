@@ -3,6 +3,7 @@ import { sendBookingConfirmation, sendBookingNotification } from '@/lib/resend';
 import { sendBookingTelegram, type BookingTelegramDetails } from '@/lib/telegram';
 
 export async function dispatchBookingNotifications({
+  salonId,
   salonEmail,
   clientEmail,
   telegramChatId,
@@ -14,6 +15,7 @@ export async function dispatchBookingNotifications({
   staffTelegramChatId,
   staffName,
 }: {
+  salonId?: string | null;
   salonEmail?: string | null;
   clientEmail: string;
   telegramChatId?: string | null;
@@ -23,6 +25,11 @@ export async function dispatchBookingNotifications({
   staffTelegramChatId?: string | null;
   staffName?: string | null;
 }) {
+  // Resolve per-salon Resend creds via bookingDetails.salonId. Callers may
+  // pass salonId at the top level for convenience; merge it in if missing.
+  if (salonId && !bookingDetails.salonId) {
+    bookingDetails = { ...bookingDetails, salonId };
+  }
   // Normalize empty strings to null so ?? correctly falls back to salon-level values.
   const notifyEmail = (staffEmail || null) ?? salonEmail;
   const notifyTelegram = (staffTelegramChatId || null) ?? telegramChatId;

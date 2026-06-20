@@ -55,8 +55,6 @@ type SalonBookingModalProps = {
   clientPhone: string;
   clientEmail: string;
   notes: string;
-  smsReminderConsent: boolean;
-  smsEnabled?: boolean;
   salonName: string;
   termsHref: string;
   privacyHref: string;
@@ -79,7 +77,6 @@ type SalonBookingModalProps = {
   onClientPhoneChange: (v: string) => void;
   onClientEmailChange: (v: string) => void;
   onNotesChange: (v: string) => void;
-  onSmsReminderConsentChange: (v: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   /** TEAM plan: pass all non-owner staff members. Empty = SOLO flow (no staff step). */
   staffMembers?: PublicStaffMember[];
@@ -132,8 +129,6 @@ export function SalonBookingModal({
   clientPhone,
   clientEmail,
   notes,
-  smsReminderConsent,
-  smsEnabled,
   salonName,
   termsHref,
   privacyHref,
@@ -156,7 +151,6 @@ export function SalonBookingModal({
   onClientPhoneChange,
   onClientEmailChange,
   onNotesChange,
-  onSmsReminderConsentChange,
   onSubmit,
   staffMembers = [],
   selectedStaffMemberId,
@@ -807,46 +801,6 @@ export function SalonBookingModal({
                     />
                   </div>
 
-                  {smsEnabled ? (
-                    <>
-                      <label className={`flex cursor-pointer gap-3 rounded-2xl bg-white px-3.5 py-3 ${cardShadow}`}>
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--salon-primary)]"
-                          checked={smsReminderConsent}
-                          onChange={(e) => onSmsReminderConsentChange(e.target.checked)}
-                        />
-                        <span className="text-sm leading-relaxed text-black/50">
-                          {t('booking.modal.smsConsentPre')}{' '}
-                          <strong className="font-semibold text-black">{salonName}</strong>{' '}
-                          {t('booking.modal.smsConsentPost')}{' '}
-                          <a
-                            href={termsHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {t('booking.modal.terms')}
-                          </a>{' '}
-                          {t('booking.modal.smsConsentAnd')}{' '}
-                          <a
-                            href={privacyHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {t('booking.modal.privacy')}
-                          </a>
-                          .
-                        </span>
-                      </label>
-                      <p className="text-xs leading-relaxed text-black/30">
-                        {t('booking.modal.smsConsentNote')}
-                      </p>
-                    </>
-                  ) : null}
                 </div>
               ) : null}
 

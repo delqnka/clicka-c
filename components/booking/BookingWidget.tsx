@@ -42,7 +42,6 @@ type InnerProps = {
   engineUrl: string;
   primaryColor: string;
   salonName: string;
-  smsEnabled: boolean;
   basePath: string;
 };
 
@@ -59,7 +58,6 @@ function BookingWidgetInner({
   engineUrl,
   primaryColor,
   salonName,
-  smsEnabled,
   basePath,
 }: InnerProps) {
   const flow = useBookingFlow({
@@ -95,8 +93,6 @@ function BookingWidgetInner({
       clientPhone={flow.clientPhone}
       clientEmail={flow.clientEmail}
       notes={flow.notes}
-      smsReminderConsent={flow.smsReminderConsent}
-      smsEnabled={smsEnabled}
       salonName={salonName}
       termsHref={`${basePath}/terms`}
       privacyHref={`${basePath}/privacy`}
@@ -121,7 +117,6 @@ function BookingWidgetInner({
       onClientPhoneChange={flow.setClientPhone}
       onClientEmailChange={flow.setClientEmail}
       onNotesChange={flow.setNotes}
-      onSmsReminderConsentChange={flow.setSmsReminderConsent}
       onStaffMemberChange={flow.setStaffMemberId}
       onSubmit={flow.submit}
     />
@@ -224,7 +219,6 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
           engineUrl={engineUrl}
           primaryColor={primaryColor}
           salonName={String(salon.name ?? '')}
-          smsEnabled={salon.sms_enabled === true}
           basePath={basePath}
         />
       </I18nProvider>

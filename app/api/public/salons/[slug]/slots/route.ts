@@ -1,7 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GET as getBookings, OPTIONS } from '@/app/api/bookings/route';
+import { verifyApiKey } from '@/lib/public-api-auth';
 
 export { OPTIONS };
+
+const PUBLIC_CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+} as const;
+
+type OccupiedEntry = { time: string; duration: number };
+type PublicSlot = { start: string; end: string; available: boolean };
+
+function toIsoSlot(date: string, time: string, durationMin: number): PublicSlot | null {
+  // `date` is YYYY-MM-DD (Sofia local), `time` is HH:MM. We emit slots in
+  // Sofia local time (no TZ suffix) so the SDK consumer can render the salon's
+  // local hours regardless of where the caller runs.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{1,2}:\d{2}/.test(time)) return null;
+  const [hh, mm] = time.split(':').map((n) => parseInt(n, 10));
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  const startMin = hh * 60 + mm;
+  const endMin = startMin + (durationMin > 0 ? durationMin : 60);
+  const fmt = (totalMin: number) => {
+    const h = Math.floor(totalMin / 60) % 24;
+    const m = totalMin % 60;
+    return `${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+  };
+  return { start: fmt(startMin), end: fmt(endMin), available: false };
+}
 
 export async function GET(
   request: NextRequest,
@@ -11,8 +38,11 @@ export async function GET(
   const date = sourceUrl.searchParams.get('date');
 
   if (!date) {
-    return NextResponse.json({ error: 'Missing date' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing date' }, { status: 400, headers: PUBLIC_CORS });
   }
+
+  const auth = await verifyApiKey(request, { slug: params.slug, requiredScope: 'read', corsHeaders: PUBLIC_CORS });
+  if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
   url.pathname = '/api/bookings';
@@ -28,5 +58,23 @@ export async function GET(
     headers: request.headers,
   }) as NextRequest;
 
-  return getBookings(forwarded);
+  const upstream = await getBookings(forwarded);
+  if (!upstream) {
+    return NextResponse.json({ error: 'Bookings service unavailable' }, { status: 502, headers: PUBLIC_CORS });
+  }
+  if (!upstream.ok) {
+    // Pass through error responses verbatim (status + body).
+    const body = await upstream.text();
+    return new NextResponse(body, {
+      status: upstream.status,
+      headers: { ...PUBLIC_CORS, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const data = await upstream.json().catch(() => ({})) as { occupied?: OccupiedEntry[] };
+  const slots = (data.occupied ?? [])
+    .map((entry) => toIsoSlot(date, entry.time, Number(entry.duration) || 0))
+    .filter((s): s is PublicSlot => s !== null);
+
+  return NextResponse.json({ slots, date }, { headers: PUBLIC_CORS });
 }

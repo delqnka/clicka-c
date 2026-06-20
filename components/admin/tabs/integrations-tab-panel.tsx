@@ -5,6 +5,7 @@ import { type CSSProperties, type Dispatch, type ReactNode, type SetStateAction 
 import { GOOGLE_PLACE_ID_FINDER_URL } from '@/components/admin/admin-constants';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
+import { ResendIntegrationCard } from '@/components/admin/ResendIntegrationCard';
 import type { AdminSitePayload } from '@/lib/admin-site';
 
 type CalendarStatus = {
@@ -339,6 +340,8 @@ export function IntegrationsTabPanel({
             ) : null}
           </div>
         </AdminInfoCard>
+
+        <ResendIntegrationCard slug={site.slug} inp={inp} btn={btn} setNotice={setNotice} />
       </div>
     </AdminSection>
   );

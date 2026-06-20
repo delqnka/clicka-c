@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
+import { BRAND } from '@/lib/brand';
 import {
   ensureCalendarFeedToken,
   loadSalonExternalIcsUrl,
@@ -9,7 +10,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 function appBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || 'https://clicka.bg').replace(/\/+$/, '');
+  return (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
 }
 
 export async function GET(request: NextRequest) {

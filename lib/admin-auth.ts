@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
 import {
   ROOT_DOMAIN,
   extractHostname,
@@ -10,8 +9,9 @@ import {
   getHostAwareSalonPath,
   isPlatformApexHost,
 } from '@/lib/domain-routing';
+import { BRAND } from '@/lib/brand';
 
-export const ADMIN_COOKIE_NAME = 'clicka_admin_session';
+export const ADMIN_COOKIE_NAME = BRAND.adminCookieName;
 
 type MaybeHost = string | null | undefined;
 
@@ -166,7 +166,6 @@ export async function ensureAdminAuthSchema() {
       await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email text`;
       await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_token_hash text`;
       await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_expires_at timestamptz`;
-      await ensureSmsSchema();
     })();
   }
 
@@ -492,20 +491,49 @@ export function setAdminSessionCookie(response: NextResponse, request: NextReque
   });
 }
 
+/**
+ * Returns the salon's custom domain only if it's marked active. Use as the
+ * `customDomain` hint for generateAdminMagicLink so login links land on the
+ * branded host whenever possible.
+ */
+export async function getActiveCustomDomain(salonId: string): Promise<string | null> {
+  const rows = await sql`
+    SELECT custom_domain, domain_status
+    FROM salons
+    WHERE CAST(id AS text) = ${salonId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const row = rows[0] as { custom_domain: string | null; domain_status: string | null };
+  if (row.domain_status !== 'active' || !row.custom_domain) return null;
+  return row.custom_domain;
+}
+
 export async function generateAdminMagicLink({
   salonId,
   slug,
   email,
+  customDomain,
   expiresMs = 72 * 60 * 60 * 1000,
 }: {
   salonId: string;
   slug: string;
   email: string;
+  /**
+   * Optional. When set to the salon's verified custom domain, the magic link
+   * points to https://<customDomain>/admin/... instead of the platform
+   * subdomain. Lets the salon owner click an email that lands on their own
+   * branded host — the engine apex never appears.
+   */
+  customDomain?: string | null;
   expiresMs?: number;
 }): Promise<string> {
   await ensureAdminAuthSchema();
 
-  const base = getPlatformSiteOrigin(slug);
+  const cleanCustom = (customDomain ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const base = cleanCustom
+    ? `https://${cleanCustom}`
+    : getPlatformSiteOrigin(slug);
 
   // If the owner already has a password, send them to sign-in instead of
   // making them set a new one — a login token would be wasted on them anyway.

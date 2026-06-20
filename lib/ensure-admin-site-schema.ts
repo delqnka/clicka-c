@@ -1,5 +1,4 @@
 import { sql } from '@/lib/db';
-import { ensureSmsSchema } from '@/lib/ensure-sms-schema';
 
 let ensurePromise: Promise<void> | null = null;
 
@@ -7,8 +6,6 @@ let ensurePromise: Promise<void> | null = null;
 export async function ensureAdminSiteSchema() {
   if (!ensurePromise) {
     ensurePromise = (async () => {
-      await ensureSmsSchema();
-
       await sql`
         DO $$ BEGIN
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS onboarding_tour_done boolean DEFAULT false;
@@ -28,11 +25,6 @@ export async function ensureAdminSiteSchema() {
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS visitor_additional_info text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS brand_domains jsonb NOT NULL DEFAULT '[]'::jsonb;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'solo';
-          ALTER TABLE salons ADD COLUMN IF NOT EXISTS billing_period text;
-          ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan_started_at timestamptz;
-          ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan_expires_at timestamptz;
-          ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan_paid_amount integer;
-          ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan_paid_currency text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS stripe_account_id text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS stripe_charges_enabled boolean NOT NULL DEFAULT false;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS ga4_id text;

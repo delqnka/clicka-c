@@ -20,10 +20,6 @@ import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin
 import { normalizeServices } from '@/lib/salon-services';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { runAfterResponse } from '@/lib/run-after-response';
-import {
-  cancelBookingSmsReminders,
-  scheduleBookingSmsReminders,
-} from '@/lib/sms-reminders';
 import { sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
@@ -62,8 +58,7 @@ async function resolveSalonFromRequest(request: NextRequest) {
 
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address,
-           owner_name, telegram_chat_id, google_place_id, opening_hours,
-           sms_enabled, sms_reminder_mode
+           owner_name, telegram_chat_id, google_place_id, opening_hours
     FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
   `;
@@ -222,7 +217,6 @@ export async function POST(request: NextRequest) {
     date: string;
     time: string;
     notes?: string;
-    smsReminderConsent?: boolean;
     offerId?: string;
     requiresPayment?: boolean;
     staffMemberId?: string;
@@ -244,14 +238,12 @@ export async function POST(request: NextRequest) {
     date,
     time,
     notes,
-    smsReminderConsent,
     offerId,
     requiresPayment,
     staffMemberId: rawStaffMemberId,
   } = body;
   const staffMemberId = rawStaffMemberId?.trim() || null;
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
-  const hasSmsReminderConsent = smsReminderConsent === true;
   const normalizedOfferId = typeof offerId === 'string' ? offerId.trim() : '';
   const skipNotifications = requiresPayment === true;
 
@@ -371,7 +363,6 @@ export async function POST(request: NextRequest) {
       date,
       time,
       notes: normalizedNotes,
-      smsReminderConsent: hasSmsReminderConsent,
       offerId: bookingOfferId,
       status: bookingStatus,
     });
@@ -458,6 +449,7 @@ export async function POST(request: NextRequest) {
 
     runAfterResponse(
       dispatchBookingNotifications({
+        salonId,
         salonEmail: resolved.salon.email ? String(resolved.salon.email) : null,
         clientEmail: normalizedClientEmail,
         telegramChatId,
@@ -472,18 +464,6 @@ export async function POST(request: NextRequest) {
       }),
     );
   }
-
-  runAfterResponse(
-    scheduleBookingSmsReminders({
-      salonId,
-      bookingId: insertedBooking.id,
-      date,
-      time,
-      smsEnabled: (resolved.salon as Record<string, unknown>).sms_enabled === true,
-      smsReminderMode: (resolved.salon as Record<string, unknown>).sms_reminder_mode,
-      smsReminderConsent: hasSmsReminderConsent,
-    }),
-  );
 
   return NextResponse.json({
     success: true,
@@ -542,12 +522,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Резервацията не е намерена' }, { status: 404 });
   }
 
-  if (status === 'cancelled') {
-    void cancelBookingSmsReminders(bookingId).catch((err) =>
-      console.error('[bookings PATCH] cancel SMS', err),
-    );
-  }
-
   const reviewInvite = {
     attempted: false,
     sent: false,
@@ -583,7 +557,8 @@ export async function PATCH(request: NextRequest) {
           String(booking.client_name ?? ''),
           resolved.salon.name,
           googlePlaceId,
-          resolved.salon.slug
+          resolved.salon.slug,
+          salonId,
         );
         reviewInvite.sent = true;
       } catch (err) {

@@ -2,17 +2,95 @@ import { Resend } from 'resend';
 import { buildBookingCalendarLinks, type CalendarBookingRow } from '@/lib/calendar-ics';
 import { formatSalonPrice } from '@/lib/salon-currency';
 import { sleep } from '@/lib/http-retry';
+import { sql } from '@/lib/db';
+import { tryDecryptSecret } from '@/lib/encryption';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+export interface SalonResendConfig {
+  client: Resend | null;
+  /** "Display Name <email@domain>" — ready for Resend `from` field. */
+  from: string;
+  /** Whether per-salon credentials were used (vs platform fallback). */
+  isCustom: boolean;
+}
+
+const salonResendCache = new Map<string, { client: Resend | null; from: string; isCustom: boolean; expiresAt: number }>();
+const SALON_RESEND_TTL_MS = 60_000;
+
+/**
+ * Per-salon Resend resolver. Returns the salon's own Resend client if configured
+ * and the encrypted API key decrypts successfully; otherwise falls back to the
+ * platform `RESEND_API_KEY` and brand sender. Cached for 60s.
+ */
+export async function getSalonResend(
+  salonId: string | null | undefined,
+  fallbackSalonName?: string | null,
+): Promise<SalonResendConfig> {
+  if (!salonId) {
+    return {
+      client: resend,
+      from: senderFromSalonName(fallbackSalonName ?? ''),
+      isCustom: false,
+    };
+  }
+  const cached = salonResendCache.get(salonId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { client: cached.client, from: cached.from, isCustom: cached.isCustom };
+  }
+  try {
+    const rows = (await sql`
+      SELECT name, resend_api_key_encrypted, email_from, email_from_name
+      FROM salons WHERE id = ${salonId} LIMIT 1
+    `) as Array<{
+      name: string | null;
+      resend_api_key_encrypted: string | null;
+      email_from: string | null;
+      email_from_name: string | null;
+    }>;
+    const row = rows[0];
+    const apiKey = tryDecryptSecret(row?.resend_api_key_encrypted);
+    const salonName = row?.name ?? fallbackSalonName ?? null;
+    let result: SalonResendConfig;
+    if (apiKey && row?.email_from) {
+      const fromName = (row.email_from_name ?? salonName ?? BRAND.shortName).trim() || BRAND.shortName;
+      result = {
+        client: new Resend(apiKey),
+        from: `${fromName} <${row.email_from}>`,
+        isCustom: true,
+      };
+    } else {
+      result = {
+        client: resend,
+        from: senderFromSalonName(salonName ?? ''),
+        isCustom: false,
+      };
+    }
+    salonResendCache.set(salonId, { ...result, expiresAt: Date.now() + SALON_RESEND_TTL_MS });
+    return result;
+  } catch {
+    return {
+      client: resend,
+      from: senderFromSalonName(fallbackSalonName ?? ''),
+      isCustom: false,
+    };
+  }
+}
+
+/** Invalidate cached Resend config for a salon (call after settings change). */
+export function invalidateSalonResend(salonId: string): void {
+  salonResendCache.delete(salonId);
+}
 
 async function sendResendWithRetry(
   payload: Parameters<Resend['emails']['send']>[0],
   attempts = 4,
+  client: Resend | null = resend,
 ) {
-  if (!resend) return;
+  if (!client) return;
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const { error } = await resend.emails.send(payload);
+    const { error } = await client.emails.send(payload);
     if (!error) return;
     lastError = error;
     const message = String((error as { message?: string }).message ?? error).toLowerCase();
@@ -44,6 +122,7 @@ export interface RescheduleDetails {
   newTime: string;
   salonName: string;
   salonPhone?: string;
+  salonId?: string;
 }
 
 export async function sendRescheduleNotification(
@@ -53,9 +132,10 @@ export async function sendRescheduleNotification(
   const oldDateFmt = formatBgDateDMY(details.oldDate);
   const newDateFmt = formatBgDateDMY(details.newDate);
   const firstName = details.clientName.split(' ')[0] ?? details.clientName;
+  const { client, from } = await getSalonResend(details.salonId, details.salonName);
 
   await sendResendWithRetry({
-    from: senderFromSalonName(details.salonName),
+    from,
     to: clientEmail,
     subject: `Вашият час беше променен — ${details.salonName}`,
     html: `
@@ -75,14 +155,15 @@ export async function sendRescheduleNotification(
           Ако имате въпроси, свържете се директно със салона.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
+          Изпратено автоматично от <a href="${BRAND.siteUrl}" style="color: #999;">${BRAND.name}</a>.
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
 
 export interface BookingDetails {
+  salonId?: string;
   bookingId?: string;
   manageToken?: string;
   clientName: string;
@@ -113,9 +194,11 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#39;');
 }
 
+import { BRAND, brandSender } from '@/lib/brand';
+
 function senderFromSalonName(salonName: string) {
-  const cleanName = String(salonName || 'Clicka').trim().replaceAll(/\s+/g, ' ');
-  return `${cleanName} <bookings@clicka.bg>`;
+  const cleanName = String(salonName || BRAND.shortName).trim().replaceAll(/\s+/g, ' ');
+  return `${cleanName} <${BRAND.senderEmail}>`;
 }
 
 function renderRow(label: string, value: string) {
@@ -129,21 +212,21 @@ function renderRow(label: string, value: string) {
 
 export async function sendPasswordChangedNotification(email: string): Promise<void> {
   await sendResendWithRetry({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: brandSender(),
     to: email,
-    subject: 'Паролата ви беше сменена — Clicka.bg',
+    subject: `Паролата ви беше сменена — ${BRAND.name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Паролата ви беше сменена</h2>
         <p style="line-height: 1.7;">
-          Паролата за вашия акаунт в <strong>Clicka.bg</strong> беше успешно сменена.
+          Паролата за вашия акаунт в <strong>${BRAND.name}</strong> беше успешно сменена.
         </p>
         <p style="line-height: 1.7;">
           Ако <strong>не сте направили тази промяна</strong>, незабавно се свържете с нас на
-          <a href="mailto:support@clicka.bg">support@clicka.bg</a>.
+          <a href="mailto:${BRAND.supportEmail}">${BRAND.supportEmail}</a>.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
         </p>
       </div>
     `,
@@ -155,14 +238,14 @@ export async function sendEmailChangeRequestNotification(
   newEmail: string,
 ): Promise<void> {
   await sendResendWithRetry({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: brandSender(),
     to: oldEmail,
-    subject: 'Заявка за смяна на имейл — Clicka.bg',
+    subject: `Заявка за смяна на имейл — ${BRAND.name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Заявена смяна на имейл за вход</h2>
         <p style="line-height: 1.7;">
-          Получихме заявка за смяна на имейла за вход към акаунта ви в <strong>Clicka.bg</strong>.
+          Получихме заявка за смяна на имейла за вход към акаунта ви в <strong>${BRAND.name}</strong>.
         </p>
         <p style="line-height: 1.7;">
           Новият имейл е: <strong>${escapeHtml(newEmail)}</strong>
@@ -173,10 +256,10 @@ export async function sendEmailChangeRequestNotification(
         </p>
         <p style="line-height: 1.7;">
           Ако <strong>не сте направили тази заявка</strong>, незабавно се свържете с нас на
-          <a href="mailto:support@clicka.bg">support@clicka.bg</a>.
+          <a href="mailto:${BRAND.supportEmail}">${BRAND.supportEmail}</a>.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
         </p>
       </div>
     `,
@@ -188,15 +271,15 @@ export async function sendEmailVerificationRequest(
   verifyUrl: string,
 ): Promise<void> {
   await sendResendWithRetry({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: brandSender(),
     to: newEmail,
-    subject: 'Потвърдете новия си имейл — Clicka.bg',
+    subject: `Потвърдете новия си имейл — ${BRAND.name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Потвърдете новия си имейл</h2>
         <p style="line-height: 1.7;">
           Натиснете бутона по-долу, за да потвърдите този имейл като нов адрес за вход в
-          <strong>Clicka.bg</strong>.
+          <strong>${BRAND.name}</strong>.
         </p>
         <p style="margin: 24px 0;">
           <a href="${verifyUrl}"
@@ -210,7 +293,7 @@ export async function sendEmailVerificationRequest(
           Ако не сте поискали тази смяна, игнорирайте имейла — текущият ви имейл остава непроменен.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
         </p>
       </div>
     `,
@@ -219,21 +302,21 @@ export async function sendEmailVerificationRequest(
 
 export async function sendEmailChangedConfirmation(newEmail: string): Promise<void> {
   await sendResendWithRetry({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: brandSender(),
     to: newEmail,
-    subject: 'Имейлът ви беше сменен — Clicka.bg',
+    subject: `Имейлът ви беше сменен — ${BRAND.name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">Имейлът ви беше успешно сменен</h2>
         <p style="line-height: 1.7;">
-          Имейлът за вход в <strong>Clicka.bg</strong> беше сменен на <strong>${escapeHtml(newEmail)}</strong>.
+          Имейлът за вход в <strong>${BRAND.name}</strong> беше сменен на <strong>${escapeHtml(newEmail)}</strong>.
         </p>
         <p style="line-height: 1.7;">
           Ако <strong>не сте направили тази промяна</strong>, незабавно се свържете с нас на
-          <a href="mailto:support@clicka.bg">support@clicka.bg</a>.
+          <a href="mailto:${BRAND.supportEmail}">${BRAND.supportEmail}</a>.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Clicka.bg — ${new Date().toLocaleString('bg-BG')}
+          ${BRAND.name} — ${new Date().toLocaleString('bg-BG')}
         </p>
       </div>
     `,
@@ -246,12 +329,14 @@ export async function sendStaffInviteEmail(
   salonName: string,
   onboardingCode: string,
   portalUrl: string | null,
+  salonId?: string,
 ): Promise<void> {
   const firstName = staffName.split(' ')[0] ?? staffName;
+  const { client, from } = await getSalonResend(salonId, salonName);
   await sendResendWithRetry({
-    from: senderFromSalonName(salonName),
+    from,
     to: staffEmail,
-    subject: `Добавени сте като служител в ${salonName} — Clicka.bg`,
+    subject: `Добавени сте като служител в ${salonName} — ${BRAND.name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="margin: 0 0 16px; color: #000;">Добре дошли в екипа!</h2>
@@ -309,11 +394,11 @@ export async function sendStaffInviteEmail(
           Ако имате въпроси, свържете се с нас на <a href="https://t.me/clickabg_support" style="color:#666;">@clickabg_support</a>.
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
+          Изпратено автоматично от <a href="${BRAND.siteUrl}" style="color: #999;">${BRAND.name}</a>.
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
 
 export async function sendBookingNotification(
@@ -336,8 +421,9 @@ export async function sendBookingNotification(
     booking.notes ? renderRow('Бележка', booking.notes) : '',
   ].join('');
 
+  const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
   await sendResendWithRetry({
-    from: senderFromSalonName(booking.salonName),
+    from,
     to: salonEmail,
     reply_to: booking.clientEmail || undefined,
     subject: `Нова резервация от ${booking.clientName}`,
@@ -352,11 +438,11 @@ export async function sendBookingNotification(
           ${salonRows}
         </table>
         <p style="margin-top: 24px; font-size: 14px; line-height: 1.7;">
-          Това съобщение е изпратено автоматично от <a href="https://clicka.bg">Clicka.bg</a>.
+          Това съобщение е изпратено автоматично от <a href="${BRAND.siteUrl}">${BRAND.name}</a>.
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
 
 export async function sendGoogleReviewInvitation(
@@ -364,15 +450,17 @@ export async function sendGoogleReviewInvitation(
   clientName: string,
   salonName: string,
   googlePlaceId: string,
-  salonSlug?: string
+  salonSlug?: string,
+  salonId?: string,
 ): Promise<void> {
-  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://clicka.bg').replace(/\/+$/, '');
+  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
   const mapsPlaceUrl = `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(googlePlaceId)}`;
   const directReviewUrl = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(googlePlaceId)}`;
   const reviewHubUrl = `${appBaseUrl}/review/google?placeid=${encodeURIComponent(googlePlaceId)}&salon=${encodeURIComponent(salonName)}${salonSlug ? `&slug=${encodeURIComponent(salonSlug)}` : ''}`;
 
+  const { client, from } = await getSalonResend(salonId, salonName);
   await sendResendWithRetry({
-    from: senderFromSalonName(salonName),
+    from,
     to: clientEmail,
     subject: `Как беше при ${escapeHtml(salonName)}? Остави ни отзив`,
     html: `
@@ -404,18 +492,18 @@ export async function sendGoogleReviewInvitation(
           <a href="${mapsPlaceUrl}" style="color: #000;">${mapsPlaceUrl}</a>
         </p>
         <p style="margin-top: 24px; font-size: 13px; line-height: 1.7; color: #999;">
-          Изпратено автоматично от <a href="https://clicka.bg" style="color: #999;">Clicka.bg</a>.
+          Изпратено автоматично от <a href="${BRAND.siteUrl}" style="color: #999;">${BRAND.name}</a>.
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }
 
 export async function sendBookingConfirmation(
   clientEmail: string,
   booking: BookingDetails
 ): Promise<void> {
-  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://clicka.bg').replace(/\/+$/, '');
+  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
   const formattedDate = formatBgDateDMY(booking.date);
   const calendarRow: CalendarBookingRow = {
     id: booking.bookingId || `${booking.date}-${booking.time}-${booking.clientEmail || booking.clientPhone}`,
@@ -452,8 +540,9 @@ export async function sendBookingConfirmation(
     booking.notes ? renderRow('Бележка', booking.notes) : '',
   ].join('');
 
+  const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
   await sendResendWithRetry({
-    from: senderFromSalonName(booking.salonName),
+    from,
     to: clientEmail,
     reply_to: booking.salonEmail || undefined,
     subject: (booking.bookingStatus ?? 'confirmed') === 'confirmed'
@@ -495,9 +584,9 @@ export async function sendBookingConfirmation(
           При нужда от промяна, отговорете директно на този имейл или се свържете със салона.
         </p>`}
         <p style="margin-top: 24px; font-size: 14px; line-height: 1.7;">
-          Това съобщение е изпратено автоматично от <a href="https://clicka.bg">Clicka.bg</a>.
+          Това съобщение е изпратено автоматично от <a href="${BRAND.siteUrl}">${BRAND.name}</a>.
         </p>
       </div>
     `,
-  });
+  }, 4, client);
 }

@@ -22,8 +22,6 @@ type Props = {
   clientPhone: string;
   clientEmail: string;
   notes: string;
-  smsReminderConsent: boolean;
-  smsEnabled?: boolean;
   termsHref: string;
   privacyHref: string;
   minDate: string;
@@ -40,7 +38,6 @@ type Props = {
   onClientPhoneChange: (v: string) => void;
   onClientEmailChange: (v: string) => void;
   onNotesChange: (v: string) => void;
-  onSmsReminderConsentChange: (v: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
 };
 
@@ -82,8 +79,6 @@ export function SalonOfferBookingModal({
   clientPhone,
   clientEmail,
   notes,
-  smsReminderConsent,
-  smsEnabled,
   termsHref,
   privacyHref,
   minDate,
@@ -100,7 +95,6 @@ export function SalonOfferBookingModal({
   onClientPhoneChange,
   onClientEmailChange,
   onNotesChange,
-  onSmsReminderConsentChange,
   onSubmit,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -457,46 +451,6 @@ export function SalonOfferBookingModal({
                     />
                   </div>
 
-                  {smsEnabled ? (
-                    <>
-                      <label className={`flex cursor-pointer gap-3 rounded-2xl bg-white px-3.5 py-3 ${cardShadow}`}>
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--salon-primary)]"
-                          checked={smsReminderConsent}
-                          onChange={(e) => onSmsReminderConsentChange(e.target.checked)}
-                        />
-                        <span className="text-sm leading-relaxed text-black/50">
-                          Съгласявам се да получавам SMS напомняния за резервацията от{' '}
-                          <strong className="font-semibold text-black">{salonName}</strong> на посочения
-                          телефон. Прочетох{' '}
-                          <a
-                            href={termsHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Общите условия
-                          </a>{' '}
-                          и{' '}
-                          <a
-                            href={privacyHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-[color:var(--salon-primary)] underline underline-offset-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Политиката за поверителност
-                          </a>
-                          .
-                        </span>
-                      </label>
-                      <p className="text-xs leading-relaxed text-black/30">
-                        Без отметка резервацията ви остава валидна, но няма да получите SMS напомняние от салона.
-                      </p>
-                    </>
-                  ) : null}
                 </div>
               ) : null}
 

@@ -7,8 +7,8 @@ import { sql } from '@/lib/db';
  * Returns null when the origin is allowed, or an error string to return 403.
  *
  * Allowed origins:
- *   - https://*.clicka.bg  (production subdomains + apex)
- *   - http://localhost:*   (local dev)
+ *   - https://*.<ROOT_DOMAIN>  (BRAND apex + subdomains)
+ *   - http://localhost:*       (local dev)
  *   - http://*.localhost   (local dev with subdomains)
  *   - verified custom domains (domain_status = 'active' in DB)
  *

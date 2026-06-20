@@ -1,0 +1,23 @@
+{
+  "name": "@clicka/booking-sdk",
+  "version": "0.1.0",
+  "description": "Typed client for the Clicka booking engine — call /api/public/* from a custom Next.js / React site with your salon API key.",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/api-client.ts",
+    "./types": "./src/types.ts"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

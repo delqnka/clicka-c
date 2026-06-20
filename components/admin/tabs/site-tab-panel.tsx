@@ -92,7 +92,7 @@ export function SiteTabPanel({
   currentSlug: string;
   rootDomain: string;
   onSlugSaved: (newSlug: string) => void;
-  onNavigateToDomain?: (intent: 'connect' | 'buy') => void;
+  onNavigateToDomain?: () => void;
   initialSection?: SiteSectionId;
   siteNavVersion?: number;
 }) {
@@ -252,7 +252,7 @@ export function SiteTabPanel({
               {onNavigateToDomain && (
                 <button
                   type="button"
-                  onClick={() => onNavigateToDomain('connect')}
+                  onClick={() => onNavigateToDomain()}
                   style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: 12, color: '#047857', fontWeight: 600, cursor: 'pointer', flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
                 >
                   Управлявай
@@ -262,59 +262,39 @@ export function SiteTabPanel({
           )}
           {onNavigateToDomain && !site.customDomain && (
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}` }}>
-              <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
-                Собствен домейн
-              </p>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {([
-                  { intent: 'connect' as const, label: 'Имам домейн', desc: 'Свържи съществуващ домейн към сайта си.', icon: '🔗' },
-                  { intent: 'buy' as const,     label: 'Нямам домейн', desc: 'Ние ще го регистрираме и свържем вместо теб.', icon: '🛒' },
-                ] as const).map(({ intent, label, desc, icon }) => (
-                  <button
-                    key={intent}
-                    type="button"
-                    onClick={() => onNavigateToDomain(intent)}
-                    onMouseEnter={e => {
-                      const el = e.currentTarget as HTMLButtonElement;
-                      el.style.background = 'linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#e11d48,#db2777,#a855f7) border-box';
-                      el.style.borderColor = 'transparent';
-                      el.style.boxShadow = '0 2px 10px rgba(219,39,119,0.12)';
-                    }}
-                    onMouseLeave={e => {
-                      const el = e.currentTarget as HTMLButtonElement;
-                      el.style.background = '#fff';
-                      el.style.borderColor = ADMIN_T.border;
-                      el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-                    }}
-                    style={{
-                      textAlign: 'left', width: '100%', padding: '13px 15px',
-                      border: `1px solid ${ADMIN_T.border}`, borderRadius: 12, cursor: 'pointer',
-                      background: '#fff',
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                      transition: 'box-shadow 150ms',
-                    }}
-                  >
-                    <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{icon}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>{label}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.45 }}>{desc}</p>
-                    </div>
-                    <span style={{ color: ADMIN_T.subtle, fontSize: 16, flexShrink: 0 }}>›</span>
-                  </button>
-                ))}
-                <div style={{ paddingLeft: 2 }}>
-                  <a
-                    href="https://namecheap.pxf.io/c/7383967/1632743/5618"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
-                  >
-                    Купи сам от Namecheap ↗
-                  </a>
-                  <p style={{ margin: '3px 0 0', fontSize: 11, color: ADMIN_T.subtle, lineHeight: 1.4 }}>Важи за .com, .net и др. — не поддържа .bg домейни.</p>
+              <button
+                type="button"
+                onClick={() => onNavigateToDomain()}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.background = 'linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#e11d48,#db2777,#a855f7) border-box';
+                  el.style.borderColor = 'transparent';
+                  el.style.boxShadow = '0 2px 10px rgba(219,39,119,0.12)';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.background = '#fff';
+                  el.style.borderColor = ADMIN_T.border;
+                  el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+                style={{
+                  textAlign: 'left', width: '100%', padding: '13px 15px',
+                  border: `1px solid ${ADMIN_T.border}`, borderRadius: 12, cursor: 'pointer',
+                  background: '#fff',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  transition: 'box-shadow 150ms',
+                }}
+              >
+                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>🔗</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>Свържи собствен домейн</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.45 }}>
+                    Въведи домейн, който вече си купил, и го насочи към сайта.
+                  </p>
                 </div>
-              </div>
+                <span style={{ color: ADMIN_T.subtle, fontSize: 16, flexShrink: 0 }}>›</span>
+              </button>
             </div>
           )}
         </>

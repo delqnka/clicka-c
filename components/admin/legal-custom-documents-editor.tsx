@@ -33,7 +33,7 @@ export function LegalCustomDocumentsEditor({ value, inputStyle, onChange }: Prop
           Собствени правни текстове (по желание)
         </h3>
         <p style={{ margin: 0, fontSize: 13, color: '#71717A', lineHeight: 1.55 }}>
-          По подразбиране Clicka генерира документите от попълнените фирмени данни. Можеш да включиш
+          По подразбиране документите се генерират от попълнените фирмени данни. Можеш да включиш
           собствен текст за всеки документ — препоръчително е да го прегледа адвокат.
         </p>
       </div>
@@ -74,7 +74,7 @@ export function LegalCustomDocumentsEditor({ value, inputStyle, onChange }: Prop
                 style={{ marginTop: 3, accentColor: '#18181B' }}
               />
               <span>
-                Използвай <strong>собствен текст</strong> (иначе — автоматичен шаблон от Clicka)
+                Използвай <strong>собствен текст</strong> (иначе — автоматичен шаблон)
               </span>
             </label>
             {entry.useCustom ? (

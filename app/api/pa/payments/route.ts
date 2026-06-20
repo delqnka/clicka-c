@@ -25,10 +25,8 @@ export async function GET(request: NextRequest) {
         currency: s.currency ?? 'eur',
         customerEmail: s.customer_details?.email ?? null,
         created: s.created,
-        flow: s.metadata?.flow ?? 'plan',
-        planType: s.metadata?.planType ?? null,
+        flow: s.metadata?.flow ?? 'booking',
         salonSlug: s.metadata?.salonSlug ?? null,
-        domainPurchaseRequestId: s.metadata?.domainPurchaseRequestId ?? null,
       }));
 
     const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);

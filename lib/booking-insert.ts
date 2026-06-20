@@ -16,7 +16,6 @@ export type InsertBookingRow = {
   date: string;
   time: string;
   notes: string;
-  smsReminderConsent: boolean;
   offerId: string | null;
   status?: 'pending' | 'confirmed';
 };
@@ -29,7 +28,6 @@ export async function insertBookingIfNoOverlap(
   const requestedDurationMinutes = Math.max(5, row.serviceDuration || 30);
   const requestedEndMinutes = requestedStartMinutes + requestedDurationMinutes;
   const legacyDate = formatLegacyDateDMY(row.date) ?? row.date;
-  const consentAt = row.smsReminderConsent ? new Date().toISOString() : null;
   // Generate a random token; store only its SHA-256 hash in the DB so that
   // a database dump cannot be used to forge manage links.
   const manageToken = crypto.randomBytes(32).toString('hex');
@@ -56,7 +54,6 @@ export async function insertBookingIfNoOverlap(
       id, salon_id, staff_member_id, client_name, client_phone, client_email,
       service_name, service_price, service_duration,
       date, time, status, notes,
-      sms_reminder_consent, sms_reminder_consent_at,
       offer_id, manage_token
     )
     SELECT
@@ -73,8 +70,6 @@ export async function insertBookingIfNoOverlap(
       ${row.time},
       ${row.status ?? 'pending'},
       ${row.notes || ''},
-      ${row.smsReminderConsent},
-      ${consentAt},
       ${row.offerId},
       ${manageTokenHash}
     WHERE NOT EXISTS (

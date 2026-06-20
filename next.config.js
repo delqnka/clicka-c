@@ -27,7 +27,9 @@ const baseCsp = [
   "img-src 'self' blob: data: https:",
   "font-src 'self' https://fonts.gstatic.com",
   "frame-src https://challenges.cloudflare.com https://js.stripe.com https://www.facebook.com https://www.openstreetmap.org",
-  "connect-src 'self' https://openrouter.ai https://api.stripe.com https://o4511518502289408.ingest.sentry.io https://o4511518502289408.ingest.de.sentry.io https://sentry.io https://*.clarity.ms https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.facebook.com https://connect.facebook.net https://capig.datah04.com",
+  // Sentry ingest endpoints are wildcarded so any project (Clicka.bg or a
+  // rebranded engine deploy) can report to its own Sentry without us editing CSP.
+  "connect-src 'self' https://openrouter.ai https://api.stripe.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io https://sentry.io https://*.clarity.ms https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.facebook.com https://connect.facebook.net https://capig.datah04.com",
   "worker-src 'self' blob:",
 ];
 

@@ -5,7 +5,6 @@ import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 import { isCancelledStatus, bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { runAfterResponse } from '@/lib/run-after-response';
-import { cancelBookingSmsReminders } from '@/lib/sms-reminders';
 import { stripe } from '@/lib/stripe';
 import { parseSalonServices } from '@/lib/salon-services';
 import {
@@ -225,10 +224,6 @@ export async function PATCH(request: NextRequest) {
       UPDATE bookings SET status = 'cancelled' WHERE id = ${id}
     `;
 
-    void cancelBookingSmsReminders(id).catch((err) =>
-      console.error('[manage] cancel SMS', err),
-    );
-
     if (telegramChatId) {
       runAfterResponse(
         sendTelegramMessage(
@@ -304,10 +299,6 @@ export async function PATCH(request: NextRequest) {
     if (updated.length === 0) {
       return NextResponse.json({ error: 'Избраният час вече е зает. Моля, изберете друг.' }, { status: 409 });
     }
-
-    void cancelBookingSmsReminders(id).catch((err) =>
-      console.error('[manage] reschedule cancel SMS', err),
-    );
 
     const { onBookingRescheduled } = await import('@/lib/booking-reschedule');
     runAfterResponse(

@@ -9,6 +9,7 @@ import type { ServiceItem } from '@/lib/salon-services';
 
 type Props = {
   salonSlug: string;
+  sitePublicUrl: string;
   initialStaff: StaffMember[];
   planLimit: number;
   salonServices?: ServiceItem[];
@@ -298,8 +299,8 @@ function PortalLinkInfo({ member, salonSlug }: { member: StaffMember; salonSlug:
   );
 }
 
-function OnboardingInfo({ member, salonSlug }: { member: StaffMember; salonSlug: string }) {
-  const bookingUrl = `https://${salonSlug}.clicka.bg/book/${member.slug}`;
+function OnboardingInfo({ member, sitePublicUrl }: { member: StaffMember; sitePublicUrl: string }) {
+  const bookingUrl = `${sitePublicUrl.replace(/\/$/, '')}/book/${member.slug}`;
   return (
     <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
       <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Онбординг</p>
@@ -326,7 +327,7 @@ function OnboardingInfo({ member, salonSlug }: { member: StaffMember; salonSlug:
   );
 }
 
-export function StaffTabPanel({ salonSlug, initialStaff, planLimit, salonServices = [] }: Props) {
+export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimit, salonServices = [] }: Props) {
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -652,7 +653,7 @@ export function StaffTabPanel({ salonSlug, initialStaff, planLimit, salonService
                         salonSlug={salonSlug}
                         onUpdate={(ids) => updateMemberServices(member.id, ids)}
                       />
-                      <OnboardingInfo member={member} salonSlug={salonSlug} />
+                      <OnboardingInfo member={member} sitePublicUrl={sitePublicUrl} />
                       {!member.isOwner ? <PortalLinkInfo member={member} salonSlug={salonSlug} /> : null}
                     </div>
                   ) : null}

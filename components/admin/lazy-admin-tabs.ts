@@ -33,10 +33,6 @@ export const LazyIntegrationsTabPanel = dynamic(
   () => import('@/components/admin/tabs/integrations-tab-panel').then((m) => m.IntegrationsTabPanel),
   { ssr: false }
 );
-export const LazySmsTabPanel = dynamic(
-  () => import('@/components/admin/tabs/sms-tab-panel').then((m) => m.SmsTabPanel),
-  { ssr: false }
-);
 export const LazyLegalTabPanel = dynamic(
   () => import('@/components/admin/tabs/legal-tab-panel').then((m) => m.LegalTabPanel),
   { ssr: false }

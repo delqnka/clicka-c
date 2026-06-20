@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { BRAND } from '@/lib/brand';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { normalizeServices } from '@/lib/salon-services';
 import { normalizeSalonFaqItems } from '@/lib/salon-visitor-info';
@@ -435,7 +436,7 @@ export async function POST(req: NextRequest) {
           headers: {
             'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://clicka.bg',
+            'HTTP-Referer': BRAND.siteUrl,
           },
           body: JSON.stringify({
             model,

@@ -616,7 +616,6 @@ export default function SalonPublicParity({
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [smsReminderConsent, setSmsReminderConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
@@ -1024,7 +1023,6 @@ export default function SalonPublicParity({
     setClientPhone('');
     setClientEmail('');
     setNotes('');
-    setSmsReminderConsent(false);
     setBookingOpen(true);
     trackBookingStarted();
   }
@@ -1049,7 +1047,6 @@ export default function SalonPublicParity({
     setClientPhone('');
     setClientEmail('');
     setNotes('');
-    setSmsReminderConsent(false);
     setOfferBookingOpen(true);
   }
 
@@ -1256,7 +1253,6 @@ export default function SalonPublicParity({
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
-          smsReminderConsent,
           requiresPayment,
           staffMemberId: selectedStaffMemberId ?? undefined,
         }),
@@ -1337,7 +1333,6 @@ export default function SalonPublicParity({
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
-          smsReminderConsent,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
@@ -2209,8 +2204,6 @@ export default function SalonPublicParity({
         clientPhone={clientPhone}
         clientEmail={clientEmail}
         notes={notes}
-        smsReminderConsent={smsReminderConsent}
-        smsEnabled={rawSalon.sms_enabled === true}
         salonName={name}
         termsHref={`${basePath}/terms`}
         privacyHref={`${basePath}/privacy`}
@@ -2243,7 +2236,6 @@ export default function SalonPublicParity({
         onClientPhoneChange={setClientPhone}
         onClientEmailChange={setClientEmail}
         onNotesChange={setNotes}
-        onSmsReminderConsentChange={setSmsReminderConsent}
         onSubmit={submitBooking}
         staffMembers={staffMembers}
         selectedStaffMemberId={selectedStaffMemberId}
@@ -2267,8 +2259,6 @@ export default function SalonPublicParity({
         clientPhone={clientPhone}
         clientEmail={clientEmail}
         notes={notes}
-        smsReminderConsent={smsReminderConsent}
-        smsEnabled={rawSalon.sms_enabled === true}
         termsHref={`${basePath}/terms`}
         privacyHref={`${basePath}/privacy`}
         minDate={minDate}
@@ -2288,7 +2278,6 @@ export default function SalonPublicParity({
         onClientPhoneChange={setClientPhone}
         onClientEmailChange={setClientEmail}
         onNotesChange={setNotes}
-        onSmsReminderConsentChange={setSmsReminderConsent}
         onSubmit={submitOfferBooking}
       />
 

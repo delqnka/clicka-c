@@ -91,7 +91,6 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [smsConsent, setSmsConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
@@ -201,7 +200,6 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
-          smsReminderConsent: smsConsent,
           staffMemberId: staff.id,
         }),
       });
@@ -248,8 +246,6 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
         clientPhone={clientPhone}
         clientEmail={clientEmail}
         notes={notes}
-        smsReminderConsent={smsConsent}
-        smsEnabled={(salonRecord.sms_enabled as boolean | undefined) === true}
         salonName={salonName}
         termsHref={`/${salonSlug}/terms`}
         privacyHref={`/${salonSlug}/privacy`}
@@ -275,7 +271,6 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
         onClientPhoneChange={setClientPhone}
         onClientEmailChange={setClientEmail}
         onNotesChange={setNotes}
-        onSmsReminderConsentChange={setSmsConsent}
         onSubmit={handleSubmit}
         directStaffName={staff.name}
       />

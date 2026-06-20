@@ -1,4 +1,5 @@
-import { parseSofiaAppointment } from '@/lib/sms-shared';
+import { parseSofiaAppointment } from '@/lib/sofia-time';
+import { BRAND } from '@/lib/brand';
 
 export type CalendarBookingRow = {
   id: string;
@@ -59,7 +60,7 @@ export function bookingDescription(booking: CalendarBookingRow, salonName?: stri
 
 export function buildBookingIcsEvent(booking: CalendarBookingRow, salonName: string): string {
   const { start, end } = bookingWindow(booking);
-  const uid = `clicka-booking-${booking.id}@clicka.bg`;
+  const uid = `booking-${booking.id}@${BRAND.domain}`;
   const now = formatIcsLocal(new Date());
   const statusLabel =
     booking.status === 'confirmed'
@@ -110,7 +111,7 @@ export function buildSalonCalendarFeed(
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Clicka.bg//Salon Calendar//BG',
+    `PRODID:-//${BRAND.name}//Salon Calendar//BG`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'X-WR-CALNAME:' + escapeIcsText(`${salonName} – резервации`),

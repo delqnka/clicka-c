@@ -1,4 +1,4 @@
-import '@/app/(marketing)/marketing-tailwind.css';
+import '@/app/admin/admin-tailwind.css';
 
 export const metadata = {
   title: 'Platform Admin — Clicka.bg',

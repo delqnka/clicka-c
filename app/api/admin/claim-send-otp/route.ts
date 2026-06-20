@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { sql } from '@/lib/db';
+import { BRAND, brandSender } from '@/lib/brand';
 import {
   ensureAdminAuthSchema,
   generateOtpCode,
@@ -107,9 +108,9 @@ export async function POST(request: NextRequest) {
   }
 
   const sendResult = await resend.emails.send({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: brandSender(),
     to: allowedEmail,
-    subject: `🔑 Код за достъп / Clicka.bg`,
+    subject: `🔑 Код за достъп / ${BRAND.name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
         <p style="font-size: 15px; line-height: 1.6; color: #444; margin: 0 0 24px;">

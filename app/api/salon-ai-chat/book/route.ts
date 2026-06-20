@@ -109,7 +109,6 @@ export async function POST(req: NextRequest) {
       date: normalizedDate,
       time,
       notes: 'Записан през AI чат',
-      smsReminderConsent: false,
       offerId: null,
       status: 'confirmed',
     });
@@ -126,6 +125,7 @@ export async function POST(req: NextRequest) {
     const notesLine = staff ? `Майстор: ${staff.name} | Записан през AI чат` : 'Записан през AI чат';
 
     runAfterResponse(dispatchBookingNotifications({
+      salonId,
       salonEmail: String(salon.email ?? ''),
       clientEmail: clientEmail ?? '',
       telegramChatId: String(salon.telegram_chat_id ?? ''),

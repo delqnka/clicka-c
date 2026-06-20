@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SalonRow } from '@/app/pa/page';
+import { ApiKeysPanel } from './ApiKeysPanel';
 
 type Stats = {
   totalSalons: number;
@@ -35,47 +36,7 @@ type PaymentRow = {
   salonSlug: string | null;
 };
 
-type Tab = 'salons' | 'bookings' | 'payments' | 'grants' | 'domain-requests';
-
-type DomainRequestRow = {
-  id: string;
-  full_domain: string;
-  requested_label: string;
-  tld: string;
-  registrant_type: 'individual' | 'company';
-  registrant_name: string;
-  company_name: string;
-  company_id: string;
-  registrant_email: string;
-  registrant_phone: string;
-  address_line1: string;
-  city: string;
-  postal_code: string;
-  country_code: string;
-  notes: string;
-  setup_fee_cents: number;
-  domain_fee_cents: number;
-  total_fee_cents: number;
-  currency: string;
-  status: string;
-  consent_at: string | null;
-  consent_ip: string;
-  terms_version: string;
-  privacy_version: string;
-  cookies_version: string;
-  paid_at: string | null;
-  created_at: string;
-  salon_slug: string;
-  salon_name: string;
-  is_delayed: boolean;
-};
-
-type DomainRequestSummary = {
-  new: number;
-  processing: number;
-  delayed: number;
-  completed: number;
-};
+type Tab = 'salons' | 'bookings' | 'payments';
 
 type ReconcileIssue = {
   sessionId: string;
@@ -91,51 +52,6 @@ type ReconcileResult = {
   checked: number;
   total: number;
   issues: ReconcileIssue[];
-};
-
-function domainRequestStatusLabel(status: string) {
-  switch (status) {
-    case 'requested': return 'Нова';
-    case 'paid': return 'Платена';
-    case 'processing': return 'Обработва се';
-    case 'purchased': return 'Домейн регистриран';
-    case 'connected': return 'Свързан';
-    case 'rejected': return 'Отказана';
-    default: return status;
-  }
-}
-
-function domainRequestStatusClass(status: string) {
-  switch (status) {
-    case 'purchased':
-    case 'connected':
-      return 'bg-emerald-100 text-emerald-700';
-    case 'processing':
-      return 'bg-amber-100 text-amber-700';
-    case 'rejected':
-      return 'bg-red-100 text-red-600';
-    default:
-      return 'bg-gray-100 text-gray-600';
-  }
-}
-
-/** 🟢 нова · 🟡 обработва се · 🔴 забавена · ✅ завършена */
-function domainRequestStatusIcon(r: { status: string; is_delayed: boolean }) {
-  if (r.is_delayed) return '🔴';
-  if (r.status === 'purchased' || r.status === 'connected') return '✅';
-  if (r.status === 'processing') return '🟡';
-  if (r.status === 'requested' || r.status === 'paid') return '🟢';
-  return '';
-}
-
-type GrantRow = {
-  id: string;
-  email: string;
-  plan_type: string;
-  token: string;
-  created_at: string;
-  used_at: string | null;
-  salon_id: string | null;
 };
 
 /* ── SVG Icons ─────────────────────────────────────────────── */
@@ -202,14 +118,6 @@ function IconExternalLink({ className = '' }: { className?: string }) {
     </svg>
   );
 }
-function IconGift({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
-    </svg>
-  );
-}
-
 /* ── Helpers ────────────────────────────────────────────────── */
 function formatDate(iso: string) {
   if (!iso) return '—';
@@ -259,19 +167,6 @@ export default function PlatformAdminDashboard({
   const [loggingOut, setLoggingOut] = useState(false);
   const [expandedSalon, setExpandedSalon] = useState<string | null>(null);
   const [settingPlan, setSettingPlan] = useState<string | null>(null);
-  const [grants, setGrants] = useState<GrantRow[] | null>(null);
-  const [grantsLoading, setGrantsLoading] = useState(false);
-  const [grantEmail, setGrantEmail] = useState('');
-  const [grantPlan, setGrantPlan] = useState('solo_bonus_12m');
-  const [grantSaving, setGrantSaving] = useState(false);
-  const [grantLink, setGrantLink] = useState<string | null>(null);
-  const [domainRequests, setDomainRequests] = useState<DomainRequestRow[] | null>(null);
-  const [domainRequestsLoading, setDomainRequestsLoading] = useState(false);
-  const [expandedDomainRequest, setExpandedDomainRequest] = useState<string | null>(null);
-  const [updatingDomainRequest, setUpdatingDomainRequest] = useState<string | null>(null);
-  const [updatedDomainRequest, setUpdatedDomainRequest] = useState<string | null>(null);
-  const [copiedDomainRequest, setCopiedDomainRequest] = useState<string | null>(null);
-  const [domainRequestSummary, setDomainRequestSummary] = useState<DomainRequestSummary | null>(null);
   const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null);
   const [reconcileLoading, setReconcileLoading] = useState(false);
 
@@ -368,102 +263,6 @@ export default function PlatformAdminDashboard({
     }
   }
 
-  async function handleLoadGrants() {
-    if (grants !== null) return;
-    setGrantsLoading(true);
-    try {
-      const res = await fetch('/api/pa/grants');
-      const data = await res.json();
-      setGrants(data.grants ?? []);
-    } finally {
-      setGrantsLoading(false);
-    }
-  }
-
-  async function handleCreateGrant() {
-    if (!grantEmail.trim()) return;
-    setGrantSaving(true);
-    setGrantLink(null);
-    try {
-      const res = await fetch('/api/pa/grants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: grantEmail.trim(), planType: grantPlan }),
-      });
-      const data = await res.json();
-      if (data.ok && data.token) {
-        const link = `${window.location.origin}/create?grant=${data.token}`;
-        setGrantLink(link);
-        setGrantEmail('');
-        setGrants(null); // refresh list next time
-      }
-    } finally {
-      setGrantSaving(false);
-    }
-  }
-
-  async function handleDeleteGrant(id: string) {
-    await fetch('/api/pa/grants', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    setGrants((prev) => prev ? prev.filter((g) => g.id !== id) : null);
-  }
-
-  async function handleLoadDomainRequests() {
-    if (domainRequests !== null) return;
-    setDomainRequestsLoading(true);
-    try {
-      const res = await fetch('/api/pa/domain-requests');
-      const data = await res.json();
-      setDomainRequests(data.requests ?? []);
-      setDomainRequestSummary(data.summary ?? null);
-    } finally {
-      setDomainRequestsLoading(false);
-    }
-  }
-
-  async function handleSetDomainRequestStatus(id: string, status: string) {
-    setUpdatingDomainRequest(id);
-    try {
-      const res = await fetch('/api/pa/domain-requests', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
-      });
-      if (res.ok) {
-        setDomainRequests((prev) =>
-          prev ? prev.map((r) => (r.id === id ? { ...r, status } : r)) : prev
-        );
-        setUpdatedDomainRequest(id);
-        setTimeout(() => setUpdatedDomainRequest((cur) => (cur === id ? null : cur)), 2500);
-      }
-    } finally {
-      setUpdatingDomainRequest(null);
-    }
-  }
-
-  function handleCopyDomainRequest(r: DomainRequestRow) {
-    const lines = [
-      `Домейн: ${r.full_domain}`,
-      `Салон: ${r.salon_name} (${r.salon_slug})`,
-      `Тип: ${r.registrant_type === 'company' ? 'Фирма' : 'Физическо лице'}`,
-      r.company_name ? `Фирма: ${r.company_name}` : null,
-      r.company_id ? `ЕИК: ${r.company_id}` : null,
-      `Име: ${r.registrant_name}`,
-      `Имейл: ${r.registrant_email}`,
-      `Телефон: ${r.registrant_phone}`,
-      `Адрес: ${r.address_line1}, ${r.city}, ${r.postal_code}, ${r.country_code}`,
-      `Сума: ${formatAmount(r.total_fee_cents, r.currency)}`,
-      `Статус: ${domainRequestStatusLabel(r.status)}`,
-    ].filter(Boolean).join('\n');
-
-    navigator.clipboard.writeText(lines);
-    setCopiedDomainRequest(r.id);
-    setTimeout(() => setCopiedDomainRequest((cur) => (cur === r.id ? null : cur)), 2000);
-  }
-
   async function handleLogout() {
     setLoggingOut(true);
     await fetch('/api/pa/auth', {
@@ -478,8 +277,6 @@ export default function PlatformAdminDashboard({
     { id: 'salons',   label: 'Салони',      icon: <IconBuilding className="w-4 h-4" /> },
     { id: 'bookings', label: 'Резервации',  icon: <IconCalendar className="w-4 h-4" /> },
     { id: 'payments', label: 'Плащания',    icon: <IconCreditCard className="w-4 h-4" /> },
-    { id: 'grants',   label: 'Подаръци',    icon: <IconGift className="w-4 h-4" /> },
-    { id: 'domain-requests', label: 'Домейн заявки', icon: <IconGlobe className="w-4 h-4" /> },
   ];
 
   return (
@@ -557,8 +354,6 @@ export default function PlatformAdminDashboard({
                   onClick={() => {
                     setTab(t.id);
                     if (t.id === 'payments') handleLoadPayments();
-                    if (t.id === 'grants') handleLoadGrants();
-                    if (t.id === 'domain-requests') handleLoadDomainRequests();
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-base font-medium
                                transition-colors duration-150 cursor-pointer min-h-[48px]
@@ -731,6 +526,9 @@ export default function PlatformAdminDashboard({
                             </div>
                           </div>
 
+                          {/* API Keys */}
+                          <ApiKeysPanel salonId={salon.salon_id} />
+
                           {/* Actions */}
                           <div className="flex gap-2 pt-1">
                             {/* Impersonate */}
@@ -863,346 +661,6 @@ export default function PlatformAdminDashboard({
                 </>
               )}
 
-              {/* ── Stripe Reconciliation ──────────────────── */}
-              <div className="mt-6 rounded-2xl border border-gray-100 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900">Съответствие Stripe ↔ БД</p>
-                  <span className="text-xs text-gray-400">последните 30 дни</span>
-                </div>
-
-                <button
-                  onClick={handleReconcile}
-                  disabled={reconcileLoading}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white
-                             transition-opacity cursor-pointer disabled:opacity-40 min-h-[44px]
-                             flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                >
-                  {reconcileLoading && (
-                    <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                  )}
-                  {reconcileLoading ? 'Проверява…' : 'Провери съответствие'}
-                </button>
-
-                {reconcileResult && (
-                  <div className={`rounded-xl p-3 space-y-2 ${reconcileResult.ok ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
-                    <p className={`text-xs font-semibold ${reconcileResult.ok ? 'text-emerald-700' : 'text-amber-700'}`}>
-                      {reconcileResult.ok
-                        ? `✓ Всичко съвпада — ${reconcileResult.checked} платени сесии проверени`
-                        : `⚠ ${reconcileResult.issues.length} несъответствия от ${reconcileResult.checked} платени сесии`}
-                    </p>
-
-                    {reconcileResult.issues.map((issue) => (
-                      <div key={issue.sessionId} className="rounded-lg bg-white/70 p-2.5 space-y-0.5">
-                        <p className="text-xs font-semibold text-gray-800">{issue.reason}</p>
-                        <p className="text-[11px] text-gray-500">
-                          {issue.flow} · {formatAmount(issue.amountTotal, issue.currency)} · {formatDate(new Date(issue.createdAt * 1000).toISOString())}
-                        </p>
-                        <p className="text-[11px] font-mono text-gray-400 break-all">{issue.sessionId}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          {/* ── TAB: Подаръци ──────────────────────────────── */}
-          {tab === 'grants' && (
-            <div className="p-4 space-y-4">
-
-              {/* Create grant form */}
-              <div className="rounded-2xl border border-gray-100 p-4 space-y-3">
-                <p className="text-sm font-semibold text-gray-900">Нов подарен абонамент</p>
-
-                <input
-                  type="email"
-                  placeholder="имейл на получателя"
-                  value={grantEmail}
-                  onChange={(e) => { setGrantEmail(e.target.value); setGrantLink(null); }}
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl
-                             focus:outline-none focus:ring-2 focus:border-transparent"
-                  style={{ '--tw-ring-color': '#6366f1' } as React.CSSProperties}
-                />
-
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    { value: 'solo_bonus_12m', label: 'Solo · 1 год' },
-                    { value: 'solo_bonus_6m',  label: 'Solo · 6 мес' },
-                    { value: 'team_bonus_12m', label: 'Екип · 1 год' },
-                    { value: 'team_bonus_6m',  label: 'Екип · 6 мес' },
-                  ] as { value: string; label: string }[]).map((p) => (
-                    <button
-                      key={p.value}
-                      onClick={() => setGrantPlan(p.value)}
-                      className={`py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer min-h-[36px]
-                        ${grantPlan === p.value
-                          ? 'text-white border-transparent'
-                          : 'text-gray-500 border-gray-200 bg-white hover:border-indigo-300 hover:text-indigo-600'}`}
-                      style={grantPlan === p.value ? { background: 'linear-gradient(135deg,#6366f1,#ec4899)' } : {}}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleCreateGrant}
-                  disabled={grantSaving || !grantEmail.trim()}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white
-                             transition-opacity cursor-pointer disabled:opacity-40 min-h-[44px]"
-                  style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                >
-                  {grantSaving ? 'Генерира…' : 'Генерирай линк'}
-                </button>
-
-                {grantLink && (
-                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
-                    <p className="text-xs font-semibold text-emerald-700">Линк за активиране:</p>
-                    <p className="text-xs text-emerald-800 break-all font-mono">{grantLink}</p>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(grantLink)}
-                      className="text-xs font-semibold text-emerald-700 underline cursor-pointer"
-                    >
-                      Копирай
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Grants list */}
-              {grantsLoading && (
-                <div className="flex items-center justify-center py-8 gap-2 text-gray-400 text-sm">
-                  <span className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-indigo-500 animate-spin" />
-                  Зарежда…
-                </div>
-              )}
-
-              {grants && grants.length === 0 && (
-                <p className="text-center py-8 text-sm text-gray-400">Няма гrantове</p>
-              )}
-
-              {grants && grants.map((g) => (
-                <div key={g.id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
-                    style={{ background: g.used_at ? 'linear-gradient(135deg,#10b981,#34d399)' : 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                    aria-hidden="true"
-                  >
-                    <IconGift className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{g.email}</p>
-                    <p className="text-xs text-gray-400">{planLabel(g.plan_type)} · {formatDate(g.created_at)}</p>
-                  </div>
-                  {g.used_at
-                    ? <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 shrink-0">Използван</span>
-                    : <button
-                        onClick={() => handleDeleteGrant(g.id)}
-                        className="text-xs text-red-400 hover:text-red-600 cursor-pointer shrink-0"
-                      >
-                        Изтрий
-                      </button>
-                  }
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── TAB: Домейн заявки ─────────────────────────── */}
-          {tab === 'domain-requests' && (
-            <div className="p-4 space-y-2">
-              {domainRequestsLoading && (
-                <div className="flex items-center justify-center py-12 gap-2 text-gray-400 text-sm">
-                  <span className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-indigo-500 animate-spin" />
-                  Зарежда…
-                </div>
-              )}
-
-              {!domainRequestsLoading && domainRequests && domainRequests.length === 0 && (
-                <div className="text-center py-12 text-sm text-gray-400">Няма заявки за домейни</div>
-              )}
-
-              {!domainRequestsLoading && domainRequests && domainRequests.length > 0 && (
-                <>
-                  <div className="flex items-center justify-between px-1 flex-wrap gap-2">
-                    <p className="text-xs text-gray-400">{domainRequests.length} заявки</p>
-                    {domainRequestSummary && (
-                      <p className="text-xs text-gray-500 flex items-center gap-3 flex-wrap">
-                        <span>🟢 {domainRequestSummary.new} нови</span>
-                        <span>🟡 {domainRequestSummary.processing} обработват се</span>
-                        <span>🔴 {domainRequestSummary.delayed} забавени</span>
-                        <span>✅ {domainRequestSummary.completed} завършени</span>
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {domainRequests.map((r) => {
-                      const isExpanded = expandedDomainRequest === r.id;
-                      const paid = r.status !== 'requested';
-                      return (
-                        <div key={r.id} className="border border-gray-100 rounded-2xl overflow-hidden">
-                          <button
-                            onClick={() => setExpandedDomainRequest(isExpanded ? null : r.id)}
-                            className="w-full flex items-center gap-3 px-4 py-3.5 text-left
-                                       hover:bg-white transition-colors duration-150 cursor-pointer"
-                            aria-expanded={isExpanded}
-                          >
-                            <div
-                              className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
-                              style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                              aria-hidden="true"
-                            >
-                              <IconGlobe className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span aria-hidden="true">{domainRequestStatusIcon(r)}</span>
-                                <span className="font-semibold text-sm text-gray-900 truncate">{r.full_domain}</span>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${domainRequestStatusClass(r.status)}`}>
-                                  {domainRequestStatusLabel(r.status)}
-                                </span>
-                                {r.is_delayed && (
-                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-red-100 text-red-600">
-                                    Забавена
-                                  </span>
-                                )}
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${paid ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                                  {paid ? 'Платено: Да' : 'Платено: Не'}
-                                </span>
-                              </div>
-                              <div className="text-xs text-gray-400 truncate mt-0.5">
-                                {r.registrant_name} · {r.registrant_email} · {formatDateTime(r.created_at)}
-                              </div>
-                            </div>
-                            <IconChevronRight
-                              className={`w-4 h-4 text-gray-300 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
-                            />
-                          </button>
-
-                          {isExpanded && (
-                            <div className="border-t border-gray-100 px-4 py-4 space-y-4">
-                              {/* Данни за домейна */}
-                              <div>
-                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Данни за домейна</p>
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Домейн</p><p className="text-gray-800 break-all">{r.full_domain}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Разширение</p><p className="text-gray-800">.{r.tld}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Цена на домейна</p><p className="text-gray-800">{formatAmount(r.domain_fee_cents, r.currency)}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Такса за настройка</p><p className="text-gray-800">{formatAmount(r.setup_fee_cents, r.currency)}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Обща сума</p><p className="text-gray-900 font-semibold">{formatAmount(r.total_fee_cents, r.currency)}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Салон</p><p className="text-gray-800 truncate">{r.salon_name} ({r.salon_slug})</p></div>
-                                </div>
-                              </div>
-
-                              {/* Данни за регистрация */}
-                              <div>
-                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Данни за регистрация</p>
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Тип</p><p className="text-gray-800">{r.registrant_type === 'company' ? 'Фирма' : 'Физическо лице'}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Име</p><p className="text-gray-800">{r.registrant_name}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Имейл</p><p className="text-gray-800 break-all">{r.registrant_email}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Телефон</p><p className="text-gray-800">{r.registrant_phone}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Адрес</p><p className="text-gray-800">{r.address_line1}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Град</p><p className="text-gray-800">{r.city}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Пощенски код</p><p className="text-gray-800">{r.postal_code}</p></div>
-                                  {r.registrant_type === 'company' && (
-                                    <>
-                                      <div><p className="text-xs text-gray-400 mb-0.5">Име на фирма</p><p className="text-gray-800">{r.company_name}</p></div>
-                                      <div><p className="text-xs text-gray-400 mb-0.5">ЕИК / VAT</p><p className="text-gray-800">{r.company_id}</p></div>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Правни данни (GDPR) */}
-                              <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Правни данни</p>
-                                <div className="space-y-1 text-sm">
-                                  <p className="text-emerald-700 text-xs font-medium">✓ Приел Общите условия</p>
-                                  <p className="text-emerald-700 text-xs font-medium">✓ Приел Политиката за поверителност</p>
-                                  <p className="text-emerald-700 text-xs font-medium">✓ Приел Политиката за бисквитки</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 text-sm mt-3">
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Дата</p><p className="text-gray-800">{r.consent_at ? formatDate(r.consent_at) : '—'}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">IP</p><p className="text-gray-800 font-mono text-xs">{r.consent_ip || '—'}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Terms version</p><p className="text-gray-800">{r.terms_version || '—'}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Privacy version</p><p className="text-gray-800">{r.privacy_version || '—'}</p></div>
-                                  <div><p className="text-xs text-gray-400 mb-0.5">Cookies version</p><p className="text-gray-800">{r.cookies_version || '—'}</p></div>
-                                </div>
-                              </div>
-
-                              {/* Бързи действия */}
-                              <div className="flex flex-wrap gap-2 items-center">
-                                <button
-                                  onClick={() => handleSetDomainRequestStatus(r.id, 'processing')}
-                                  disabled={updatingDomainRequest === r.id}
-                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
-                                             text-gray-600 hover:border-indigo-300 hover:text-indigo-600
-                                             active:scale-95 active:bg-indigo-50
-                                             transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px] inline-flex items-center gap-1.5"
-                                >
-                                  {updatingDomainRequest === r.id && (
-                                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
-                                  )}
-                                  Маркирай като „Обработва се"
-                                </button>
-                                <button
-                                  onClick={() => handleSetDomainRequestStatus(r.id, 'purchased')}
-                                  disabled={updatingDomainRequest === r.id}
-                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
-                                             text-gray-600 hover:border-emerald-300 hover:text-emerald-600
-                                             active:scale-95 active:bg-emerald-50
-                                             transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px] inline-flex items-center gap-1.5"
-                                >
-                                  {updatingDomainRequest === r.id && (
-                                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
-                                  )}
-                                  Маркирай като „Домейн регистриран"
-                                </button>
-                                <button
-                                  onClick={() => handleSetDomainRequestStatus(r.id, 'connected')}
-                                  disabled={updatingDomainRequest === r.id}
-                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-emerald-200
-                                             bg-emerald-50 text-emerald-700 hover:bg-emerald-100
-                                             active:scale-95 active:bg-emerald-200
-                                             transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px] inline-flex items-center gap-1.5"
-                                  title="Изпраща имейл до клиента, че домейнът е активен"
-                                >
-                                  {updatingDomainRequest === r.id && (
-                                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
-                                  )}
-                                  ✅ Маркирай като „Завършена" (изпраща имейл)
-                                </button>
-                                <button
-                                  onClick={() => handleCopyDomainRequest(r)}
-                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
-                                             text-gray-600 hover:border-gray-300 active:scale-95 active:bg-gray-50
-                                             transition-all cursor-pointer min-h-[36px] inline-flex items-center gap-1.5"
-                                >
-                                  {copiedDomainRequest === r.id ? '✓ Копирано' : 'Копирай всички данни'}
-                                </button>
-                                <a
-                                  href={`mailto:${r.registrant_email}?subject=${encodeURIComponent(`Относно домейн ${r.full_domain}`)}`}
-                                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200
-                                             text-gray-600 hover:border-gray-300 active:scale-95 active:bg-gray-50
-                                             transition-all cursor-pointer min-h-[36px] inline-flex items-center"
-                                >
-                                  Отвори имейл към клиента
-                                </a>
-                                {updatedDomainRequest === r.id && (
-                                  <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1 animate-pulse">
-                                    ✓ Статусът е обновен
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
             </div>
           )}
 

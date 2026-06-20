@@ -1,13 +1,17 @@
+import { BRAND } from '@/lib/brand';
+
 type MaybeHost = string | null | undefined;
 
-const DEFAULT_ROOT_DOMAIN = 'clicka.bg';
-
+// Root domain is derived from BRAND config (which itself reads BRAND_DOMAIN env).
+// NEXT_PUBLIC_ROOT_DOMAIN takes precedence so the value is available client-side
+// in middleware/edge code without the BRAND import. Falls back to BRAND.domain
+// (which falls back to 'clicka.bg' only on the canonical deploy).
 export const ROOT_DOMAIN =
-  String(process.env.NEXT_PUBLIC_ROOT_DOMAIN || process.env.CLICKA_ROOT_DOMAIN || DEFAULT_ROOT_DOMAIN)
+  String(process.env.NEXT_PUBLIC_ROOT_DOMAIN || process.env.CLICKA_ROOT_DOMAIN || BRAND.domain)
     .trim()
     .toLowerCase()
     .replace(/^https?:\/\//, '')
-    .replace(/\/.*$/, '') || DEFAULT_ROOT_DOMAIN;
+    .replace(/\/.*$/, '') || BRAND.domain;
 
 export const VERCEL_SHARED_CNAME = 'cname.vercel-dns.com';
 

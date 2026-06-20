@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { BRAND } from '@/lib/brand';
 import { sql } from '@/lib/db';
 import {
   isValidDomain,
@@ -8,7 +9,6 @@ import {
 } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
 import { ROOT_DOMAIN } from '@/lib/domain-routing';
-import { ensureDomainPurchaseSchema } from '@/lib/domain-purchase';
 import { syncDomainWithVercel, removeProjectDomain } from '@/lib/vercel-domains';
 import { writeAuditLog } from '@/lib/audit-log';
 
@@ -29,7 +29,7 @@ async function notifyDomainActive({
   const adminUrl = `https://${domain}/admin`;
   const greeting = ownerName && ownerName.trim() ? `Здравей, ${ownerName.trim()}!` : 'Здравей!';
   await resend.emails.send({
-    from: `${name || 'Clicka.bg'} <noreply@clicka.bg>`,
+    from: `${name || BRAND.name} <${BRAND.senderEmail}>`,
     to: email,
     subject: `Домейнът ти е свързан успешно! ✅`,
     html: `
@@ -94,22 +94,6 @@ async function persistDomainState({
       domain_config = ${configJson},
       updated_at = now()
     WHERE slug = ${slug}
-  `;
-
-  await ensureDomainPurchaseSchema();
-  const statusForPurchase = provider.status;
-  await sql`
-    UPDATE domain_purchase_requests
-    SET
-      status = CASE
-        WHEN ${statusForPurchase} = 'active' THEN 'connected'
-        WHEN status IN ('paid', 'requested') THEN 'processing'
-        ELSE status
-      END,
-      updated_at = now()
-    WHERE lower(full_domain) = lower(${domain})
-      AND salon_id IN (SELECT id::text FROM salons WHERE slug = ${slug} LIMIT 1)
-      AND status <> 'rejected'
   `;
 
   if (isActive && previousStatus !== 'active' && notify?.email) {

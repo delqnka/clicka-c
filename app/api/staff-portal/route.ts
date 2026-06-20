@@ -169,7 +169,6 @@ export async function POST(request: NextRequest) {
       date,
       time,
       notes,
-      smsReminderConsent: false,
       offerId: null,
       status: 'confirmed',
     });
@@ -209,6 +208,7 @@ export async function POST(request: NextRequest) {
 
   runAfterResponse(
     dispatchBookingNotifications({
+      salonId: staff.salonId,
       salonEmail: salon.email ? String(salon.email) : null,
       clientEmail,
       telegramChatId,

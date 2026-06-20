@@ -84,7 +84,6 @@ export function SalonEmbedBookingView({ pageData }: Props) {
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [smsConsent, setSmsConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
@@ -188,7 +187,6 @@ export function SalonEmbedBookingView({ pageData }: Props) {
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
-          smsReminderConsent: smsConsent,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -222,8 +220,6 @@ export function SalonEmbedBookingView({ pageData }: Props) {
       clientPhone={clientPhone}
       clientEmail={clientEmail}
       notes={notes}
-      smsReminderConsent={smsConsent}
-      smsEnabled={(salonRecord.sms_enabled as boolean | undefined) === true}
       salonName={salonName}
       termsHref={`/${salonSlug}/terms`}
       privacyHref={`/${salonSlug}/privacy`}
@@ -249,7 +245,6 @@ export function SalonEmbedBookingView({ pageData }: Props) {
       onClientPhoneChange={setClientPhone}
       onClientEmailChange={setClientEmail}
       onNotesChange={setNotes}
-      onSmsReminderConsentChange={setSmsConsent}
       onSubmit={handleSubmit}
     />
   );

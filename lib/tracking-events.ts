@@ -80,6 +80,6 @@ export function trackBookingCompleted({ serviceName, value, currency = 'EUR' }: 
  */
 export function trackMetaTest() {
   if (!window.fbq) return false;
-  window.fbq('trackCustom', 'ClickaTest', { source: 'admin_test' });
+  window.fbq('trackCustom', 'EngineTest', { source: 'admin_test' });
   return true;
 }

@@ -2,10 +2,6 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-const ChatWidget = dynamic(
-  () => import('@/components/marketing/chat-widget').then((m) => m.ChatWidget),
-  { ssr: false }
-);
 import {
   BriefcaseBusiness,
   MessageSquare,
@@ -53,7 +49,6 @@ import {
   LazyLegalTabPanel,
   LazyPaymentsTabPanel,
   LazySiteTabPanel,
-  LazySmsTabPanel,
   LazySpecialistTabPanel,
   LazyStaffTabPanel,
   LazyMarketingTabPanel,
@@ -83,7 +78,6 @@ import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 import { ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
-import { formatDomainPurchaseStatus, type DomainPurchaseRequest } from '@/lib/domain-purchase-shared';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
@@ -100,17 +94,6 @@ import {
 import { defaultLegalInfoStored, type LegalInfoStored } from '@/lib/legal-custom-documents';
 import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
 import { formatSalonPrice } from '@/lib/salon-currency';
-import {
-  SMS_PACK_CREDITS,
-  SMS_PACK_PRICE_EUR,
-  smsCreditsPerBooking,
-  type SmsReminderMode,
-} from '@/lib/sms-shared';
-
-const DomainPurchaseSection = dynamic(
-  () => import('@/components/admin/DomainPurchaseSection'),
-  { ssr: false }
-);
 const BookingsPanel = dynamic(
   () => import('@/components/admin/dashboard-panels').then((m) => m.BookingsPanel),
   { ssr: false }
@@ -154,7 +137,6 @@ const TABS = [
   { id: 'domain',        label: 'Домейн',         Icon: Globe },
   { id: 'payments',     label: 'Плащания',       Icon: CreditCard },
   { id: 'integrations', label: 'Интеграции',     Icon: Plug },
-  { id: 'sms',          label: 'SMS',            Icon: MessageSquare },
   { id: 'marketing',    label: 'Маркетинг',      Icon: BarChart3 },
   { id: 'legal',         label: 'Правни',         Icon: FileText },
   { id: 'account',       label: 'Профил',         Icon: KeyRound },
@@ -167,7 +149,7 @@ const TAB_BAR_TABS = TAB_BAR_ORDER.map(id => TABS.find(t => t.id === id)!);
 const SHEET_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Съдържание', ids: ['offers', 'brands', 'blog'] },
   { label: 'Екип',      ids: ['specialist', 'staff'] },
-  { label: 'Настройки',  ids: ['hours', 'domain', 'payments', 'sms', 'integrations', 'marketing', 'legal', 'account'] },
+  { label: 'Настройки',  ids: ['hours', 'domain', 'payments', 'integrations', 'marketing', 'legal', 'account'] },
 ];
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 
@@ -175,7 +157,7 @@ const SIDEBAR_GROUPS: { label?: string; ids: TabId[] }[] = [
   { ids: ['bookings', 'clients'] },
   { label: 'Сайт', ids: ['site', 'images', 'services', 'offers', 'brands', 'blog'] },
   { label: 'Екип', ids: ['specialist', 'staff'] },
-  { label: 'Настройки', ids: ['hours', 'sms', 'integrations', 'marketing', 'domain', 'payments', 'legal', 'account'] },
+  { label: 'Настройки', ids: ['hours', 'integrations', 'marketing', 'domain', 'payments', 'legal', 'account'] },
 ];
 
 const ICON_GRADIENT = 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)';
@@ -419,7 +401,6 @@ export default function AdminDashboardClient({
     [allExternalEvents, selectedCalendarDate],
   );
   const [domainInput, setDomainInput] = useState(initialSite.customDomain ?? '');
-  const [domainIntent, setDomainIntent] = useState<null | 'connect' | 'buy'>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
   const [pwaOnHomeScreen, setPwaOnHomeScreen] = useState(false);
@@ -460,21 +441,6 @@ export default function AdminDashboardClient({
   const blogSaveAgainRef = useRef(false);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
-  const [smsDraftEnabled, setSmsDraftEnabled] = useState(initialSite.smsEnabled);
-  const [smsDraftMode, setSmsDraftMode] = useState<SmsReminderMode>(initialSite.smsReminderMode);
-  const [smsTransactions, setSmsTransactions] = useState<
-    {
-      id: string;
-      kind: string;
-      delta: number;
-      balance_after: number | null;
-      note: string | null;
-      client_phone: string | null;
-      created_at: string;
-    }[]
-  >([]);
-  const [smsPanelLoading, setSmsPanelLoading] = useState(false);
-  const [smsPendingReminders, setSmsPendingReminders] = useState(0);
   const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
   const [portfolioPending, setPortfolioPending] = useState<Set<string>>(() => new Set());
   const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
@@ -653,7 +619,7 @@ export default function AdminDashboardClient({
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     let t = p.get('tab');
-    if (t === 'notifications') t = p.get('smsPurchase') ? 'sms' : 'integrations';
+    if (t === 'notifications') t = 'integrations';
     if (t && TABS.some(tab => tab.id === t)) {
       setActiveTab(t as TabId);
       return;
@@ -1075,20 +1041,10 @@ export default function AdminDashboardClient({
   }, [googleBizQuery, slug]);
 
   useEffect(() => {
-    setSmsDraftEnabled(site.smsEnabled);
-    setSmsDraftMode(site.smsReminderMode);
-  }, [site.smsEnabled, site.smsReminderMode]);
-
-  useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') === 'notifications') {
-      setActiveTab(params.get('smsPurchase') ? 'sms' : 'integrations');
-    }
-    if (params.get('smsPurchase') === 'success') {
-      setActiveTab('sms');
-      setNotice(`Добавени са ${SMS_PACK_CREDITS} SMS. Балансът е обновен.`);
-      window.history.replaceState({}, '', window.location.pathname);
+      setActiveTab('integrations');
     }
   }, []);
 
@@ -1103,45 +1059,6 @@ export default function AdminDashboardClient({
       document.documentElement.style.overflow = prevHtmlOverflow;
     };
   }, [serviceModalOpen]);
-
-  useEffect(() => {
-    if (activeTab !== 'sms') return;
-    let cancelled = false;
-    const run = async () => {
-      setSmsPanelLoading(true);
-      try {
-        const res = await fetch(`/api/admin/sms?slug=${encodeURIComponent(slug)}`);
-        const data = await readJson(res);
-        if (!res.ok) throw new Error((data as { error?: string }).error || 'Грешка');
-        if (cancelled) return;
-        const payload = data as {
-          balance: number;
-          enabled: boolean;
-          reminderMode: SmsReminderMode;
-          pendingReminders: number;
-          transactions: typeof smsTransactions;
-        };
-        setSite((p) => ({
-          ...p,
-          smsBalance: payload.balance,
-          smsEnabled: payload.enabled,
-          smsReminderMode: payload.reminderMode,
-        }));
-        setSmsDraftEnabled(payload.enabled);
-        setSmsDraftMode(payload.reminderMode);
-        setSmsPendingReminders(payload.pendingReminders);
-        setSmsTransactions(Array.isArray(payload.transactions) ? payload.transactions : []);
-      } catch (e) {
-        if (!cancelled) handleErr(e);
-      } finally {
-        if (!cancelled) setSmsPanelLoading(false);
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab, slug]);
 
   /* ── Handlers ── */
   async function guardResponse(res: Response) {
@@ -2043,55 +1960,6 @@ export default function AdminDashboardClient({
     }
   }
 
-  async function saveSmsSettings() {
-    setError('');
-    setNotice('');
-    setBusyKey('sms-settings');
-    try {
-      const res = await fetch(`/api/admin/sms?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enabled: smsDraftEnabled,
-          reminderMode: smsDraftMode,
-        }),
-      });
-      const data = await guardResponse(res) as {
-        enabled: boolean;
-        reminderMode: SmsReminderMode;
-      };
-      setSite((p) => ({
-        ...p,
-        smsEnabled: data.enabled,
-        smsReminderMode: data.reminderMode,
-      }));
-      setSmsDraftEnabled(data.enabled);
-      setSmsDraftMode(data.reminderMode);
-      setNotice('SMS настройките са запазени.');
-    } catch (e) {
-      handleErr(e);
-    } finally {
-      setBusyKey('');
-    }
-  }
-
-  async function buySmsPack() {
-    setError('');
-    setBusyKey('sms-checkout');
-    try {
-      const res = await fetch(`/api/admin/sms-checkout?slug=${encodeURIComponent(slug)}`, {
-        method: 'POST',
-      });
-      const data = await guardResponse(res) as { checkoutUrl?: string };
-      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-      else throw new Error('Липсва линк за плащане.');
-    } catch (e) {
-      handleErr(e);
-    } finally {
-      setBusyKey('');
-    }
-  }
-
   function addManualService() {
     const normalizedVariants = newServiceDraft.variants
       .map((variant) => ({
@@ -2899,77 +2767,6 @@ export default function AdminDashboardClient({
           {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
           {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
 
-          {/* ── Plan renewal banner ── */}
-          {(() => {
-            const expiresAt = site.planExpiresAt ? new Date(site.planExpiresAt) : null;
-            if (!expiresAt || isNaN(expiresAt.getTime())) return null;
-            const now = new Date();
-            const msLeft = expiresAt.getTime() - now.getTime();
-            const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-            const expired = msLeft <= 0;
-            const nearExpiry = !expired && daysLeft <= 30;
-            if (!expired && !nearExpiry) return null;
-
-            const planLabel = site.plan === 'team' ? 'TEAM' : 'SOLO';
-            const periodLabel = site.billingPeriod === '6m' ? '6 месеца' : '12 месеца';
-
-            return (
-              <div
-                style={{
-                  marginBottom: 20,
-                  padding: '14px 18px',
-                  borderRadius: 14,
-                  border: `1.5px solid ${expired ? '#fca5a5' : '#fcd34d'}`,
-                  background: expired ? '#fff5f5' : '#fffbeb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <CreditCard size={18} style={{ color: expired ? '#ef4444' : '#d97706', flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: expired ? '#b91c1c' : '#92400e', margin: 0 }}>
-                      {expired
-                        ? `Планът ${planLabel} е изтекъл`
-                        : `Планът ${planLabel} изтича след ${daysLeft} ${daysLeft === 1 ? 'ден' : 'дни'}`}
-                    </p>
-                    <p style={{ fontSize: 12, color: expired ? '#dc2626' : '#b45309', margin: '2px 0 0' }}>
-                      {expired
-                        ? 'Подновете, за да запазите достъпа до всички функции.'
-                        : `Текущ период: ${periodLabel}. Подновете навреме, за да нямате прекъсване.`}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => switchTab('payments')}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '8px 16px',
-                    borderRadius: 999,
-                    border: 'none',
-                    background: expired
-                      ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-                      : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                    color: '#fff',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <RefreshCw size={14} />
-                  Поднови абонамента
-                </button>
-              </div>
-            );
-          })()}
-
           {/* ── Onboarding checklist ── */}
           {activeTab === 'site' && (
             <OnboardingChecklist site={site} onGoToTab={(tab, subtab) => { if (subtab) setSiteNav(prev => ({ section: subtab, v: (prev?.v ?? 0) + 1 })); switchTab(tab as TabId); }} />
@@ -3044,7 +2841,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={(intent) => { setDomainIntent(intent); setActiveTab('domain'); }} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => { setActiveTab('domain'); }} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} />
             </>
           )}
 
@@ -3081,6 +2878,7 @@ export default function AdminDashboardClient({
           {activeTab === 'staff' && staffLoaded ? (
             <LazyStaffTabPanel
               salonSlug={slug}
+              sitePublicUrl={sitePublicUrl}
               initialStaff={staffMembers}
               planLimit={site.plan === 'team' ? 2 : 1}
               salonServices={site.services}
@@ -3576,7 +3374,6 @@ export default function AdminDashboardClient({
           {/* ── Домейн ── */}
           {activeTab === 'domain' && (
             <DomainTab
-              slug={slug}
               site={site}
               isMobile={isMobile}
               domainInput={domainInput}
@@ -3588,10 +3385,7 @@ export default function AdminDashboardClient({
               removeDomain={removeDomain}
               inp={inp}
               btn={btn}
-              domainIntent={domainIntent}
-              setDomainIntent={setDomainIntent}
               onBack={() => {
-                setDomainIntent(null);
                 setSiteNav(prev => ({ section: 'address', v: (prev?.v ?? 0) + 1 }));
                 setActiveTab('site');
               }}
@@ -3618,7 +3412,7 @@ export default function AdminDashboardClient({
           ) : null}
 
           {activeTab === 'payments' ? (
-            <LazyPaymentsTabPanel slug={slug} btn={btn} site={site} onPlanChanged={() => window.location.reload()} />
+            <LazyPaymentsTabPanel slug={slug} btn={btn} />
           ) : null}
 
           {activeTab === 'integrations' ? (
@@ -3649,23 +3443,6 @@ export default function AdminDashboardClient({
 
           {activeTab === 'marketing' ? (
             <LazyMarketingTabPanel site={site} setSite={setSite} slug={slug} inp={inp} sitePublicUrl={sitePublicUrl} />
-          ) : null}
-
-          {activeTab === 'sms' ? (
-            <LazySmsTabPanel
-              site={site}
-              smsDraftEnabled={smsDraftEnabled}
-              setSmsDraftEnabled={setSmsDraftEnabled}
-              smsDraftMode={smsDraftMode}
-              setSmsDraftMode={setSmsDraftMode}
-              smsPanelLoading={smsPanelLoading}
-              smsPendingReminders={smsPendingReminders}
-              smsTransactions={smsTransactions}
-              btn={btn}
-              busyKey={busyKey}
-              saveSmsSettings={saveSmsSettings}
-              buySmsPack={buySmsPack}
-            />
           ) : null}
 
         </main>
@@ -3793,7 +3570,6 @@ export default function AdminDashboardClient({
           }
         }
       `}</style>
-      <ChatWidget mobileBottomOffset={0} hideBubble={isMobile} />
     </div>
   );
 }
@@ -4303,100 +4079,10 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
   );
 }
 
-const DOMAIN_PURCHASE_BLUE = '#007AFF';
-const DOMAIN_PURCHASE_STATUS_GREEN = '#16A34A';
-const domainPurchaseFont: CSSProperties = {
-  fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
-  lineHeight: 1.6,
-};
-
-function formatDomainPurchaseTimestamp(raw: string): string | null {
-  if (!raw) return null;
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString('bg-BG', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function domainPurchaseStatusColor(status: DomainPurchaseRequest['status']) {
-  if (status === 'connected') return DOMAIN_PURCHASE_STATUS_GREEN;
-  if (status === 'rejected') return '#DC2626';
-  return DOMAIN_PURCHASE_BLUE;
-}
-
-function DomainPurchaseProcessingNotice({
-  purchaseRequest,
-  freeSiteUrl,
-  compact = false,
-}: {
-  purchaseRequest: DomainPurchaseRequest;
-  freeSiteUrl: string;
-  compact?: boolean;
-}) {
-  const status = formatDomainPurchaseStatus(purchaseRequest.status);
-  const statusColor = domainPurchaseStatusColor(purchaseRequest.status);
-  const paidAtRaw = purchaseRequest.paidAt || purchaseRequest.createdAt;
-  const paidAtLabel = formatDomainPurchaseTimestamp(paidAtRaw);
-  const paidAtPrefix = purchaseRequest.paidAt ? 'Платена на' : 'Заявка от';
-  const metaSize = compact ? 13 : 14;
-  const bodySize = compact ? 13 : 14;
-  const domainSize = compact ? 14 : 15;
-
-  return (
-    <div style={{ display: 'grid', gap: compact ? 8 : 10 }}>
-      <p style={{ ...domainPurchaseFont, margin: 0, fontSize: domainSize, fontWeight: 600, color: DOMAIN_PURCHASE_BLUE }}>
-        {purchaseRequest.fullDomain}
-      </p>
-
-      {paidAtLabel ? (
-        <p style={{ ...domainPurchaseFont, margin: 0, fontSize: metaSize, color: '#6B7280' }}>
-          {paidAtPrefix} {paidAtLabel}
-        </p>
-      ) : null}
-
-      <p
-        style={{
-          ...domainPurchaseFont,
-          margin: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: metaSize,
-          fontWeight: 600,
-          color: statusColor,
-        }}
-      >
-        <span
-          aria-hidden
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: statusColor,
-            flexShrink: 0,
-          }}
-        />
-        <span>Статус: {status}</span>
-      </p>
-
-      <p style={{ ...domainPurchaseFont, margin: 0, fontSize: bodySize, fontWeight: 400, color: '#18181B' }}>
-        Обработваме регистрацията и свързването. Ще получиш известие, щом домейнът е активен.
-        Не е нужно да правиш нищо междувременно. Сайтът ти работи на безплатния адрес{' '}
-        <strong style={{ fontWeight: 700 }}>{freeSiteUrl.replace(/^https?:\/\//, '')}</strong>.
-      </p>
-    </div>
-  );
-}
-
 function DomainTab({
   site, isMobile, domainInput, setDomainInput, domainMeta,
-  busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn, slug,
-  domainIntent, setDomainIntent, onBack,
+  busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn,
+  onBack,
 }: {
   site: AdminSitePayload;
   isMobile: boolean;
@@ -4409,39 +4095,9 @@ function DomainTab({
   removeDomain: () => Promise<void>;
   inp: CSSProperties;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
-  slug: string;
-  domainIntent: null | 'connect' | 'buy';
-  setDomainIntent: (v: null | 'connect' | 'buy') => void;
   onBack: () => void;
 }) {
   const [copied, setCopied] = useState('');
-  const [purchaseRequest, setPurchaseRequest] = useState<DomainPurchaseRequest | null>(null);
-  const [purchaseLoaded, setPurchaseLoaded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/admin/domain-purchase-request?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) setPurchaseRequest((data.request as DomainPurchaseRequest | null) ?? null);
-      } catch {
-        /* ignore */
-      } finally {
-        if (!cancelled) setPurchaseLoaded(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [slug]);
-
-  // 'requested' = created but not yet paid — show resume-payment UI, not processing notice
-  const activePurchaseStatuses = ['paid', 'processing', 'pending', 'registered'];
-  const hasActivePurchaseRequest = Boolean(
-    purchaseRequest &&
-    activePurchaseStatuses.includes(purchaseRequest.status) &&
-    (!site.customDomain || purchaseRequest.fullDomain.toLowerCase() === site.customDomain.toLowerCase())
-  );
 
   function copyVal(value: string, key: string) {
     navigator.clipboard.writeText(value).catch(() => null);
@@ -4453,119 +4109,33 @@ function DomainTab({
   const isActive = site.domainStatus === 'active';
   const maxW: CSSProperties = { maxWidth: isMobile ? '100%' : 560 };
 
-  /* ── No domain yet ── */
+  /* ── No domain yet ── connect-only flow ── */
   if (!hasDomain) {
-    /* Choice screen */
-    if (!domainIntent) {
-      const cards: { intent: 'connect' | 'buy'; icon: string; label: string; desc: string }[] = [
-        { intent: 'connect', icon: '🔗', label: 'Имам домейн',  desc: 'Свържи съществуващ домейн към сайта си.' },
-        { intent: 'buy',     icon: '🛒', label: 'Нямам домейн', desc: 'Ние ще го регистрираме и свържем вместо теб.' },
-      ];
-      return (
-        <Section title="Собствен домейн" desc="Как искаш да продължим?">
-          <div style={{ ...maxW, display: 'grid', gap: 8 }}>
-            {cards.map(({ intent, icon, label, desc }) => (
-              <button
-                key={intent}
-                type="button"
-                onClick={() => setDomainIntent(intent)}
-                onMouseEnter={e => {
-                  const el = e.currentTarget;
-                  el.style.background = 'linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#e11d48,#db2777,#a855f7) border-box';
-                  el.style.borderColor = 'transparent';
-                  el.style.boxShadow = '0 2px 10px rgba(219,39,119,0.12)';
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget;
-                  el.style.background = '#fff';
-                  el.style.borderColor = T.border;
-                  el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-                }}
-                style={{
-                  textAlign: 'left', width: '100%', padding: '13px 15px',
-                  border: `1px solid ${T.border}`, borderRadius: 12, cursor: 'pointer',
-                  background: '#fff', display: 'flex', alignItems: 'center', gap: 12,
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'box-shadow 150ms',
-                }}
-              >
-                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: T.text }}>{label}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: T.muted, lineHeight: 1.45 }}>{desc}</p>
-                </div>
-                <span style={{ color: T.subtle, fontSize: 16, flexShrink: 0 }}>›</span>
-              </button>
-            ))}
-            <div style={{ paddingLeft: 2 }}>
-              <a
-                href="https://namecheap.pxf.io/c/7383967/1632743/5618"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
-              >
-                Купи сам от Namecheap ↗
-              </a>
-              <p style={{ margin: '3px 0 0', fontSize: 11, color: T.subtle, lineHeight: 1.4 }}>Важи за .com, .net и др. — не поддържа .bg домейни.</p>
-            </div>
-          </div>
-        </Section>
-      );
-    }
-
-    /* Connect existing domain */
-    if (domainIntent === 'connect') {
-      return (
-        <Section title="Собствен домейн" desc="Въведи домейна и ще те преведем стъпка по стъпка как да го свържеш.">
-          <div style={{ ...maxW, display: 'grid', gap: 14 }}>
-            <Field label="Твоят домейн">
-              <input
-                value={domainInput}
-                onChange={e => setDomainInput(e.target.value)}
-                placeholder="moisalon.com"
-                style={{ ...inp, width: '100%' }}
-                onKeyDown={e => { if (e.key === 'Enter' && domainInput.trim()) void connectDomain(); }}
-              />
-            </Field>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button type="button" onClick={onBack} style={{ ...btn('ghost'), flex: '0 0 auto' }}>
-                ← Назад
-              </button>
-              <button
-                type="button"
-                style={{ ...btn('primary'), flex: 1, background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
-                disabled={busyKey === 'domain' || !domainInput.trim()}
-                onClick={() => void connectDomain()}
-              >
-                {busyKey === 'domain' ? 'Проверяваме…' : 'Напред →'}
-              </button>
-            </div>
-          </div>
-        </Section>
-      );
-    }
-
-    /* Buy domain */
     return (
-      <Section title="" desc={undefined}>
-        <div style={{ ...maxW }}>
-          {hasActivePurchaseRequest && purchaseRequest ? (
-            <DomainPurchaseProcessingNotice
-              purchaseRequest={purchaseRequest}
-              freeSiteUrl={getPlatformPublicUrl(slug)}
-              compact
+      <Section title="Собствен домейн" desc="Въведи домейна, който вече си купил, и ще те преведем стъпка по стъпка как да го свържеш.">
+        <div style={{ ...maxW, display: 'grid', gap: 14 }}>
+          <Field label="Твоят домейн">
+            <input
+              value={domainInput}
+              onChange={e => setDomainInput(e.target.value)}
+              placeholder="moisalon.com"
+              style={{ ...inp, width: '100%' }}
+              onKeyDown={e => { if (e.key === 'Enter' && domainInput.trim()) void connectDomain(); }}
             />
-          ) : (
-            <DomainPurchaseSection
-              slug={slug}
-              siteName={site.name || ''}
-              ownerName={site.ownerName || ''}
-              siteEmail={site.email || ''}
-              sitePhone={site.phone || ''}
-              siteAddress={site.address || ''}
-              siteCity={site.city || ''}
-              onBack={onBack}
-            />
-          )}
+          </Field>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" onClick={onBack} style={{ ...btn('ghost'), flex: '0 0 auto' }}>
+              ← Назад
+            </button>
+            <button
+              type="button"
+              style={{ ...btn('primary'), flex: 1, background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
+              disabled={busyKey === 'domain' || !domainInput.trim()}
+              onClick={() => void connectDomain()}
+            >
+              {busyKey === 'domain' ? 'Проверяваме…' : 'Напред →'}
+            </button>
+          </div>
         </div>
       </Section>
     );
@@ -4611,29 +4181,6 @@ function DomainTab({
   const instructions = Array.from(instructionsByType.values());
   const verifications = domainMeta.verificationInstructions;
   const isPending = isPendingDomainStatus(site.domainStatus ?? '');
-
-  if (!purchaseLoaded) {
-    return (
-      <Section title="Собствен домейн" desc="Зареждаме статуса на заявката…">
-        <div style={{ ...maxW }}>
-          <p style={{ ...domainPurchaseFont, margin: 0, fontSize: 14, color: DOMAIN_PURCHASE_BLUE }}>Моля, изчакай секунда.</p>
-        </div>
-      </Section>
-    );
-  }
-
-  if (hasActivePurchaseRequest && purchaseRequest) {
-    return (
-      <Section title="Купуваме домейна вместо теб" desc={`Заявката ти за ${purchaseRequest.fullDomain} се обработва.`}>
-        <div style={{ ...maxW }}>
-          <DomainPurchaseProcessingNotice
-            purchaseRequest={purchaseRequest}
-            freeSiteUrl={getPlatformPublicUrl(slug)}
-          />
-        </div>
-      </Section>
-    );
-  }
 
   return (
     <Section
@@ -4840,11 +4387,6 @@ function QrModal({ url, salonName, onClose }: { url: string; salonName: string; 
     ctx.beginPath();
     ctx.moveTo(80, 850); ctx.lineTo(W - 80, 850);
     ctx.stroke();
-
-    // Small footer
-    ctx.fillStyle = '#a1a1aa';
-    ctx.font = '20px system-ui, -apple-system, sans-serif';
-    ctx.fillText('clicka.bg', W / 2, 920);
 
     // Download
     const link = document.createElement('a');

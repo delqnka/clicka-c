@@ -7,7 +7,12 @@ const CLARITY_ID = 'x2t2g8dohk';
 const META_PIXEL_ID = '2880139309045289';
 const GA_MEASUREMENT_ID = 'G-SJW99ZTGX3';
 
-const CLICKA_DOMAINS = ['clicka.bg', 'www.clicka.bg', 'localhost'];
+// Hosts where the Clicka.bg *marketing* pixels should fire. Public-NEXT vars are
+// readable client-side. Defaults match the canonical Clicka.bg deploy; a
+// rebranded engine deploy sets NEXT_PUBLIC_ROOT_DOMAIN and these tags become
+// inert on that host.
+const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'clicka.bg').toLowerCase();
+const MARKETING_DOMAINS = [ROOT_DOMAIN, `www.${ROOT_DOMAIN}`, 'localhost'];
 
 export function TrackingScripts() {
   const [allowed, setAllowed] = useState(false);
@@ -15,7 +20,7 @@ export function TrackingScripts() {
 
   useEffect(() => {
     const hostname = window.location.hostname;
-    setIsClickaDomain(CLICKA_DOMAINS.includes(hostname));
+    setIsClickaDomain(MARKETING_DOMAINS.includes(hostname));
 
     const check = () => setAllowed(localStorage.getItem('cookie-consent') === 'yes');
     check();

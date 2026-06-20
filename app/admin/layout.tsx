@@ -1,4 +1,4 @@
-import '@/app/(marketing)/marketing-tailwind.css';
+import '@/app/admin/admin-tailwind.css';
 import '@/app/admin/admin-mobile.css';
 import { AdminErrorBoundary } from '@/components/admin/admin-error-boundary';
 

@@ -3,6 +3,7 @@
  * Called from the Telegram webhook when the message is from the salon owner.
  */
 import crypto from 'crypto';
+import { BRAND } from '@/lib/brand';
 import { sql } from '@/lib/db';
 import { revalidateTag } from 'next/cache';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -10,7 +11,6 @@ import { normalizeServices, type ServiceItem } from '@/lib/salon-services';
 import { normalizeImageList } from '@/lib/admin-site';
 import { uploadToR2 } from '@/lib/r2';
 import sharp from 'sharp';
-import { sendSmsReminder } from '@/lib/smsapi';
 import {
   getOpenRouterApiKey,
   OPENROUTER_BASE,
@@ -873,9 +873,6 @@ type AIIntent =
   | { action: 'update_email'; email: string }
   | { action: 'update_bio'; bio: string }
   | { action: 'update_owner_bio'; bio: string }
-  | { action: 'sms_balance' }
-  | { action: 'toggle_sms'; enabled: boolean }
-  | { action: 'send_sms_to_client'; client_name: string; message?: string }
   | { action: 'confirm_booking'; client_name: string }
   | { action: 'cancel_booking'; date: string; time: string }
   | { action: 'remind_tomorrow' }
@@ -1114,9 +1111,6 @@ const CTX_PHONES_ALL_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?(?:ном
 // "имейлите им" / "имейл адресите им"
 const CTX_EMAILS_ALL_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?имейл\w*\s*(?:им|на\s+(?:всичк\w+|тях))?$/i;
 
-// "изпрати им SMS" / "напомни им" / "прати им съобщение"
-const CTX_SMS_ALL_RE = /^(?:изпрати|прати|напомни)\s+(?:им|на\s+всичк\w+|тях)/i;
-
 // "дай телефона на 2" / "номера на 3"
 const CTX_PHONE_NTH_RE = /^(?:(?:дай|покажи)\s+)?(?:ми\s+)?(?:номер[а]?|телефон[а]?)\s+(?:на\s+)?(\d+|първ\w+|втор\w+|трет\w+|четвърт\w+|пет\w+)$/i;
 
@@ -1212,28 +1206,6 @@ async function handleContextReference(
     } catch {
       await sendTelegramMessage(chatId, 'ℹ️ Не намерих имейл адреси за тези клиенти.');
     }
-    return true;
-  }
-
-  // ── SMS to all ─────────────────────────────────────────────────────────────
-  if (CTX_SMS_ALL_RE.test(text)) {
-    const date = entities[0]?.date;
-    if (!date) {
-      await sendTelegramMessage(chatId, 'ℹ️ Не мога да изпратя SMS без дата на резервациите.');
-      return true;
-    }
-    // Delegate to the standard remind handler for this date
-    const salonRows = await sql`SELECT name, phone FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1` as { name: string; phone: string }[];
-    const salonInfo = salonRows[0] ?? { name: salon.name, phone: '' };
-    let sent = 0;
-    let skipped = 0;
-    for (const e of entities) {
-      if (!e.phone) { skipped++; continue; }
-      const { sendSmsReminder } = await import('@/lib/smsapi');
-      const result = await sendSmsReminder(e.phone, e.name, salonInfo.name, salonInfo.phone, e.service_name ?? '', date, e.time ?? '');
-      if (result.success) sent++; else skipped++;
-    }
-    await sendTelegramMessage(chatId, `📲 SMS до списъка:\n✅ Изпратени: ${sent}\n⏭ Пропуснати: ${skipped}`);
     return true;
   }
 
@@ -1590,10 +1562,6 @@ async function handleWithAI(chatId: number, text: string, salon: SalonRef): Prom
   // Load salon context for conversational answers
   const salonContext = await loadSalonContext(salon.salonId);
   _ms('salon_ctx');
-  const smsRows = await sql`SELECT sms_enabled FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1` as { sms_enabled: boolean }[];
-  const smsEnabled = smsRows[0]?.sms_enabled ?? false;
-  _ms('sms_check');
-
   const currentServices = await getSalonServices(salon.salonId);
   const servicesJson = JSON.stringify(currentServices.map((s, i) => ({ id: String(i + 1), name: s.name, price: s.price, duration_min: s.duration_min, category: s.category ?? null })), null, 2);
 
@@ -1658,7 +1626,7 @@ ${servicesJson}
 
 КРИТИЧНО ВАЖНО: Никога не измисляй ограничения на системата. Не казвай "системата не може", "нямам функция", "не мога да изчисля" — ако не знаеш нещо, кажи "Не знам" или поискай повторна команда. Никога не лъжи потребителя за възможностите на системата.
 
-ИМЕЙЛ УВЕДОМЛЕНИЯ: Системата автоматично изпраща имейли при: (1) нова резервация — на клиента и на собственика; (2) преместване на резервация — на клиента с новия час; (3) напомняния преди час. Имейлите се изпращат само ако клиентът има записан имейл адрес. Не казвай никога, че системата не може да изпраща имейли.${smsEnabled ? '' : '\n\nSMS НАПОМНЯНИЯ: В момента SMS услугата е деактивирана. Не предлагай SMS опции на потребителя.'}
+ИМЕЙЛ УВЕДОМЛЕНИЯ: Системата автоматично изпраща имейли при: (1) нова резервация — на клиента и на собственика; (2) преместване на резервация — на клиента с новия час; (3) напомняния преди час. Имейлите се изпращат само ако клиентът има записан имейл адрес. Не казвай никога, че системата не може да изпраща имейли.
 
 ═══ НАЙ-ВАЖНО ПРАВИЛО ЗА УСЛУГИ ═══
 
@@ -1848,8 +1816,6 @@ ${servicesJson}
 - { "action": "top_services" }
 - { "action": "list_services" }
 - { "action": "pending_bookings" }
-${smsEnabled ? `- { "action": "sms_balance" }
-- { "action": "send_sms_to_client", "client_name": "Диана" }  ← изпраща SMS напомняне до конкретен клиент за предстоящата му резервация` : ''}
 - { "action": "complete_booking", "client_name": "..." }
 - { "action": "confirm_booking", "client_name": "..." }
 - { "action": "cancel_booking", "date": "YYYY-MM-DD", "time": "HH:mm" }
@@ -1883,7 +1849,6 @@ ${smsEnabled ? `- { "action": "sms_balance" }
 - { "action": "update_email", "email": "..." }
 - { "action": "update_bio", "bio": "..." }
 - { "action": "update_owner_bio", "bio": "..." }
-${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
 - { "action": "chat", "reply": "естествен отговор на български" }
 
 Само JSON, без обяснения извън полето reply.`;
@@ -2261,16 +2226,6 @@ ${smsEnabled ? `- { "action": "toggle_sms", "enabled": true }` : ''}
       await sql`UPDATE salons SET owner_public_bio = ${intent.bio}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
       revalidateTag(`salon-public-${salon.slug}`);
       await sendTelegramMessage(chatId, `✅ Личното ви bio е обновено.`);
-      return true;
-    case 'sms_balance':
-      await handleSmsBalance(chatId, salon);
-      return true;
-    case 'toggle_sms':
-      await sql`UPDATE salons SET sms_enabled = ${intent.enabled}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
-      await sendTelegramMessage(chatId, intent.enabled ? '✅ SMS напомнянията са <b>включени</b>.' : '🔕 SMS напомнянията са <b>изключени</b>.');
-      return true;
-    case 'send_sms_to_client':
-      await handleSendSmsToClient(chatId, salon, intent.client_name, intent.message);
       return true;
     case 'confirm_booking':
       await handleConfirmBooking(chatId, salon, intent.client_name);
@@ -2895,10 +2850,6 @@ async function handleRescheduleBooking(
     lines.push(`⚠️ Имейлът не беше изпратен поради техническа грешка.`);
   }
 
-  if (rescheduleResult.remindersUpdated) {
-    lines.push(`⏰ Обнових автоматичните напомняния.`);
-  }
-
   await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
@@ -3218,43 +3169,10 @@ async function handleClientBookings(chatId: number, salon: SalonRef, clientName:
   await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
-async function handleRemindTomorrow(chatId: number, salon: SalonRef): Promise<void> {
-  const tomorrow = offsetDayISO(1);
-
-  const salonRows = await sql`
-    SELECT name, phone FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1
-  ` as { name: string; phone: string }[];
-  const salonInfo = salonRows[0] ?? { name: salon.name, phone: '' };
-
-  const rows = await sql`
-    SELECT client_name, client_phone, time, service_name, sms_reminder_consent
-    FROM bookings
-    WHERE CAST(salon_id AS text) = ${salon.salonId}
-      AND date = ${tomorrow}
-      AND status NOT IN ('cancelled', 'completed')
-      AND (${salon.staffMemberId ?? null}::uuid IS NULL OR staff_member_id = ${salon.staffMemberId ?? null}::uuid)
-    ORDER BY time ASC
-  ` as { client_name: string; client_phone: string; time: string; service_name: string; sms_reminder_consent: boolean }[];
-
-  if (rows.length === 0) {
-    await sendTelegramMessage(chatId, `ℹ️ Няма резервации за утре.`);
-    return;
-  }
-
-  let sent = 0;
-  let skipped = 0;
-  for (const r of rows) {
-    if (!r.sms_reminder_consent || !r.client_phone) { skipped++; continue; }
-    const result = await sendSmsReminder(
-      r.client_phone, r.client_name, salonInfo.name,
-      salonInfo.phone, r.service_name, tomorrow, r.time,
-    );
-    if (result.success) sent++; else skipped++;
-  }
-
+async function handleRemindTomorrow(chatId: number, _salon: SalonRef): Promise<void> {
   await sendTelegramMessage(
     chatId,
-    `📲 Напомняния за утре:\n✅ Изпратени: ${sent}\n⏭ Пропуснати (без съгласие/телефон): ${skipped}`,
+    'ℹ️ SMS напомнянията са премахнати. Клиентите получават напомняния по имейл, ако имат записан адрес.',
   );
 }
 
@@ -3607,7 +3525,7 @@ async function handleBrandsCommand(chatId: number, text: string, salon: SalonRef
     await sendTelegramMessage(
       chatId,
       `⚠️ Не разпознах тези брандове: <b>${notFound.join(', ')}</b>\n\n` +
-      'Провери изписването или пиши на support@clicka.bg за добавяне на нов бранд.',
+      `Провери изписването или пиши на ${BRAND.supportEmail} за добавяне на нов бранд.`,
     );
     return;
   }
@@ -3847,84 +3765,6 @@ async function handleInactiveClients(chatId: number, salon: SalonRef, months: nu
     lines.push(`• ${r.client_name} — последно: ${formatDateBg(r.last_visit, { day: 'numeric', month: 'short', year: 'numeric' })}`);
   }
   await sendTelegramMessage(chatId, lines.join('\n'));
-}
-
-async function handleSmsBalance(chatId: number, salon: SalonRef): Promise<void> {
-  const rows = await sql`
-    SELECT sms_balance, sms_enabled, sms_reminder_mode
-    FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1
-  ` as { sms_balance: number; sms_enabled: boolean; sms_reminder_mode: string }[];
-
-  const r = rows[0]!;
-  await sendTelegramMessage(chatId, [
-    `📲 <b>SMS статус:</b>`,
-    '',
-    `💰 Кредити: <b>${Number(r.sms_balance ?? 0).toFixed(2)} лв</b>`,
-    `🔔 Автоматични напомняния: ${r.sms_enabled ? '✅ включени' : '🔕 изключени'}`,
-    `⚙️ Режим: ${r.sms_reminder_mode ?? 'off'}`,
-  ].join('\n'));
-}
-
-async function handleSendSmsToClient(chatId: number, salon: SalonRef, clientName: string, customMessage?: string): Promise<void> {
-  // Find upcoming booking for this client
-  const today = new Date().toISOString().slice(0, 10);
-  const rows = await sql`
-    SELECT b.id, b.client_name, b.client_phone, b.date, b.time, b.service_name,
-           s.sms_balance, s.name AS salon_name, s.phone AS salon_phone
-    FROM bookings b
-    JOIN salons s ON s.id::text = b.salon_id
-    WHERE b.salon_id = ${salon.salonId}
-      AND LOWER(b.client_name) ILIKE ${`%${clientName.toLowerCase()}%`}
-      AND b.date >= ${today}
-      AND b.status NOT IN ('cancelled', 'completed')
-    ORDER BY b.date ASC, b.time ASC
-    LIMIT 1
-  ` as { id: string; client_name: string; client_phone: string | null; date: string; time: string; service_name: string | null; sms_balance: number; salon_name: string; salon_phone: string }[];
-
-  if (rows.length === 0) {
-    await sendTelegramMessage(chatId, `⚠️ Не намерих предстояща резервация за <b>${clientName}</b>.`);
-    return;
-  }
-
-  const row = rows[0]!;
-
-  if (!row.client_phone) {
-    await sendTelegramMessage(chatId, `⚠️ <b>${row.client_name}</b> няма записан телефон.`);
-    return;
-  }
-
-  if (row.sms_balance <= 0) {
-    await sendTelegramMessage(chatId, `❌ Няма налични SMS кредити. Купи пакет от Admin → SMS таб.`);
-    return;
-  }
-
-  const { sendSmsReminder } = await import('@/lib/smsapi');
-  const result = await sendSmsReminder(
-    row.client_phone,
-    row.client_name,
-    row.salon_name,
-    row.salon_phone,
-    row.service_name ?? '',
-    row.date,
-    row.time,
-  );
-
-  if (!result.success) {
-    await sendTelegramMessage(chatId, `❌ Неуспешно изпращане до ${row.client_name}: ${result.error ?? 'неизвестна грешка'}`);
-    return;
-  }
-
-  // Debit 1 credit
-  await sql`
-    UPDATE salons SET sms_balance = sms_balance - 1
-    WHERE id::text = ${salon.salonId} AND sms_balance > 0
-  `;
-  await sql`
-    INSERT INTO sms_transactions (salon_id, kind, delta, client_phone, note)
-    VALUES (${salon.salonId}, 'manual_send', -1, ${row.client_phone}, ${'Ръчно изпращане от Telegram до ' + row.client_name})
-  `;
-
-  await sendTelegramMessage(chatId, `✅ SMS изпратен до <b>${row.client_name}</b> (${row.client_phone})\n📅 Резервация: ${formatDateBg(row.date)} в ${row.time}`);
 }
 
 // ─── Gallery photo upload ─────────────────────────────────────────────────────
@@ -4171,7 +4011,6 @@ async function handleCreateBooking(
     date,
     time,
     notes: 'Записан от собственика',
-    smsReminderConsent: false,
     offerId: null,
   });
 

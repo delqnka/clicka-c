@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { Resend } from 'resend';
+import { brandSender } from '@/lib/brand';
 import {
   ensureAdminAuthSchema,
   getPrimaryOwnerForSalon,
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 
   await resend.emails.send({
-    from: 'Clicka.bg <noreply@clicka.bg>',
+    from: brandSender(),
     to: allowedEmail,
     subject: `Задай нова парола`,
     html: `

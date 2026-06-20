@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs';
+import { BRAND } from '@/lib/brand';
 
 export const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 
@@ -11,8 +12,8 @@ export function openRouterHeaders(): HeadersInit {
   return {
     Authorization: `Bearer ${getOpenRouterApiKey()}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'https://clicka.bg',
-    'X-Title': 'Clicka.bg',
+    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? BRAND.siteUrl,
+    'X-Title': BRAND.name,
   };
 }
 

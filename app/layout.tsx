@@ -48,11 +48,26 @@ export const metadata: Metadata = engineOnly
       },
     };
 
+/**
+ * Extracts the Sentry ingest host from NEXT_PUBLIC_SENTRY_DSN so the preconnect
+ * link works on any deploy (not just the canonical Clicka.bg Sentry project).
+ * DSN format: https://<key>@<ingest_host>/<project_id> — we want <ingest_host>.
+ */
+function sentryIngestOrigin(): string | null {
+  try {
+    const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+    if (!dsn) return null;
+    const url = new URL(dsn);
+    return `https://${url.hostname}`;
+  } catch { return null; }
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const sentryOrigin = sentryIngestOrigin();
   return (
     <html lang="bg" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://o4511518502289408.ingest.de.sentry.io" />
+        {sentryOrigin && <link rel="preconnect" href={sentryOrigin} />}
       </head>
       <body suppressHydrationWarning>
         {children}

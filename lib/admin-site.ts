@@ -18,7 +18,6 @@ import {
 } from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { ensureAdminSiteSchema } from '@/lib/ensure-admin-site-schema';
-import { normalizeSmsReminderMode, type SmsReminderMode } from '@/lib/sms-shared';
 
 export { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 
@@ -94,17 +93,7 @@ export type AdminSitePayload = {
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
   venueExtras: SalonVenueExtras;
-  smsBalance: number;
-  smsEnabled: boolean;
-  smsReminderMode: SmsReminderMode;
   plan: string;
-  billingPeriod: string | null;
-  planStartedAt: string | null;
-  planExpiresAt: string | null;
-  planPaidAmount: number | null;
-  planPaidCurrency: string | null;
-  pendingPlan: string | null;
-  pendingBillingPeriod: string | null;
   brandIds: string[];
   onboardingTourDone: boolean;
   ga4Id: string;
@@ -234,9 +223,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       google_place_id, telegram_chat_id, onboarding_code, onboarding_tour_done,
       site_status, legal_info, latitude, longitude,
       faq_items, visitor_info, visitor_additional_info, venue_extras,
-      sms_balance, sms_enabled, sms_reminder_mode, plan,
-      billing_period, plan_started_at, plan_expires_at, plan_paid_amount, plan_paid_currency,
-      pending_plan, pending_billing_period, brand_domains,
+      plan,
+      brand_domains,
       stripe_account_id, stripe_charges_enabled,
       ga4_id, meta_pixel_id, clarity_id
     FROM salons
@@ -321,17 +309,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       parseSalonVenueExtras(row.venue_extras),
       normalizeSalonVisitorInfo(row.visitor_info),
     ),
-    smsBalance: Math.max(0, Number(row.sms_balance ?? 0) || 0),
-    smsEnabled: row.sms_enabled === true,
-    smsReminderMode: normalizeSmsReminderMode(row.sms_reminder_mode),
     plan: String(row.plan ?? 'solo'),
-    billingPeriod: row.billing_period ? String(row.billing_period) : null,
-    planStartedAt: row.plan_started_at ? String(row.plan_started_at) : null,
-    planExpiresAt: row.plan_expires_at ? String(row.plan_expires_at) : null,
-    planPaidAmount: row.plan_paid_amount != null ? Number(row.plan_paid_amount) : null,
-    planPaidCurrency: row.plan_paid_currency ? String(row.plan_paid_currency) : null,
-    pendingPlan: row.pending_plan ? String(row.pending_plan) : null,
-    pendingBillingPeriod: row.pending_billing_period ? String(row.pending_billing_period) : null,
     brandIds: Array.isArray(row.brand_domains) ? row.brand_domains.map(String) : [],
     ga4Id: String(row.ga4_id ?? ''),
     metaPixelId: String(row.meta_pixel_id ?? ''),

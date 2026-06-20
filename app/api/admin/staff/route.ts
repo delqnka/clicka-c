@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
           return null;
         })
         .then((portalUrl) =>
-          sendStaffInviteEmail(memberEmail, member.name, auth.salon.name, onboardingCode, portalUrl)
+          sendStaffInviteEmail(memberEmail, member.name, auth.salon.name, onboardingCode, portalUrl, salonId)
         )
         .catch((err) => {
           console.error('Failed to send staff invite email:', err);
