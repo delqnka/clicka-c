@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { BookingWidget } from './BookingWidget';
 import type { BookingWidgetHandle } from './types';
 
@@ -289,24 +290,34 @@ export function BookingProvider({
     [open, close, salon, error],
   );
 
+  // Render the modal via portal into document.body so it escapes any
+  // ancestor `transform`, `filter`, `perspective`, `contain`, or
+  // `will-change: transform` — any of those create a containing block
+  // for fixed-positioned descendants and would jail the modal inside
+  // the consumer's component subtree instead of the viewport.
+  const modalNode =
+    salon && slug ? (
+      <BookingWidget
+        ref={widgetRef}
+        slug={slug}
+        salon={salon}
+        engineUrl={resolvedEngineUrl}
+        locale={resolvedLocale}
+        successUrl={resolvedSuccessUrl}
+        cancelUrl={resolvedCancelUrl}
+        accentGradient={accentGradient}
+        formatPrice={formatPrice}
+        onEvent={onEvent}
+        basePath={basePath}
+      />
+    ) : null;
+
   return (
     <BookingContext.Provider value={value}>
       {children}
-      {salon && slug ? (
-        <BookingWidget
-          ref={widgetRef}
-          slug={slug}
-          salon={salon}
-          engineUrl={resolvedEngineUrl}
-          locale={resolvedLocale}
-          successUrl={resolvedSuccessUrl}
-          cancelUrl={resolvedCancelUrl}
-          accentGradient={accentGradient}
-          formatPrice={formatPrice}
-          onEvent={onEvent}
-          basePath={basePath}
-        />
-      ) : null}
+      {modalNode && typeof document !== 'undefined'
+        ? createPortal(modalNode, document.body)
+        : modalNode}
     </BookingContext.Provider>
   );
 }
