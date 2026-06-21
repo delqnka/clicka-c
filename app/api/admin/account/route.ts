@@ -11,7 +11,7 @@ import {
   sha256,
   verifyPassword,
 } from '@/lib/admin-auth';
-import { getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
 import {
   sendEmailChangeRequestNotification,
   sendEmailVerificationRequest,
@@ -221,10 +221,8 @@ export async function PATCH(request: NextRequest) {
     `;
 
     const salonSlug = slug ?? auth.session.salonSlug;
-    // Email verification hits an admin API route — must use the engine host
-    // (slug.clicka.bg). Custom domain points at the client-owned site which
-    // does not serve /api/admin/*.
-    const base = getPlatformSiteOrigin(salonSlug);
+    const customDomain = await getActiveCustomDomain(auth.session.salonId).catch(() => null);
+    const base = customDomain ? getCustomDomainAdminUrl(customDomain) : getPlatformSiteOrigin(salonSlug);
     const verifyUrl = `${base}/api/admin/verify-email?token=${encodeURIComponent(token)}&owner=${encodeURIComponent(auth.session.ownerId)}`;
 
     // Send verification link to new email + notification to old email

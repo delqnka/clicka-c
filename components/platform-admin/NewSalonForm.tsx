@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getPlatformAdminUrl } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl, getPlatformAdminUrl } from '@/lib/domain-routing';
 
 type Result = {
   ok: boolean;
@@ -90,9 +90,9 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
 
   if (result) {
     const normalizedCustomDomain = customDomain.trim().toLowerCase();
-    // Admin lives only on the engine subdomain — custom_domain points at the
-    // client's own site (separate Vercel project) and has no /admin route.
-    const primaryAdminUrl = getPlatformAdminUrl(result.slug);
+    const primaryAdminUrl = normalizedCustomDomain
+      ? `${getCustomDomainAdminUrl(normalizedCustomDomain)}/admin`
+      : getPlatformAdminUrl(result.slug);
     const fallbackAdminUrl = getPlatformAdminUrl(result.slug);
     const statusLabel =
       result.domainStatus === 'active' ? 'активен'
