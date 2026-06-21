@@ -83,75 +83,87 @@ export async function ensureAdminAuthSchema() {
       const [{ exists }] = await sql`
         SELECT to_regclass('owner_sessions') IS NOT NULL AS exists
       ` as [{ exists: boolean }];
-      if (exists) return;
 
-      await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
-      await sql`
-        CREATE TABLE IF NOT EXISTS admin_login_tokens (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          salon_id text NOT NULL,
-          token_hash text NOT NULL,
-          expires_at timestamptz NOT NULL,
-          used_at timestamptz NULL,
-          created_at timestamptz NOT NULL DEFAULT now()
-        )
-      `;
-      await sql`CREATE INDEX IF NOT EXISTS admin_login_tokens_salon_id_idx ON admin_login_tokens(salon_id)`;
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS admin_login_tokens_token_hash_uniq ON admin_login_tokens(token_hash)`;
-      await sql`
-        CREATE TABLE IF NOT EXISTS site_owners (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          email text NOT NULL,
-          email_norm text NOT NULL,
-          created_at timestamptz NOT NULL DEFAULT now(),
-          updated_at timestamptz NOT NULL DEFAULT now()
-        )
-      `;
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS site_owners_email_norm_uniq ON site_owners(email_norm)`;
-      await sql`
-        CREATE TABLE IF NOT EXISTS salon_owner_memberships (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          salon_id text NOT NULL,
-          owner_id uuid NOT NULL REFERENCES site_owners(id) ON DELETE CASCADE,
-          role text NOT NULL DEFAULT 'owner',
-          created_at timestamptz NOT NULL DEFAULT now()
-        )
-      `;
-      await sql`
-        CREATE UNIQUE INDEX IF NOT EXISTS salon_owner_memberships_salon_owner_uniq
-        ON salon_owner_memberships(salon_id, owner_id)
-      `;
-      await sql`
-        CREATE TABLE IF NOT EXISTS salon_claim_otp (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          salon_id text NOT NULL,
-          email_norm text NOT NULL,
-          code_hash text NOT NULL,
-          expires_at timestamptz NOT NULL,
-          attempts integer NOT NULL DEFAULT 0,
-          created_at timestamptz NOT NULL DEFAULT now()
-        )
-      `;
-      await sql`
-        CREATE UNIQUE INDEX IF NOT EXISTS salon_claim_otp_salon_email_uniq
-        ON salon_claim_otp(salon_id, email_norm)
-      `;
-      await sql`
-        CREATE TABLE IF NOT EXISTS owner_sessions (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          salon_id text NOT NULL,
-          owner_id uuid NOT NULL REFERENCES site_owners(id) ON DELETE CASCADE,
-          session_hash text NOT NULL,
-          expires_at timestamptz NOT NULL,
-          created_at timestamptz NOT NULL DEFAULT now()
-        )
-      `;
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS owner_sessions_session_hash_uniq ON owner_sessions(session_hash)`;
-      await sql`CREATE INDEX IF NOT EXISTS owner_sessions_owner_id_idx ON owner_sessions(owner_id)`;
-      await sql`CREATE INDEX IF NOT EXISTS owner_sessions_expires_at_idx ON owner_sessions(expires_at)`;
+      // CREATE statements only run on a fresh DB. The ALTER block below
+      // runs every cold start because new columns get added over time and
+      // older deployments may have created the tables before we knew we
+      // needed those columns — skipping ALTERs left them with the wrong
+      // schema and queries failed with "column does not exist".
+      if (!exists) {
+        await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
+        await sql`
+          CREATE TABLE IF NOT EXISTS admin_login_tokens (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            salon_id text NOT NULL,
+            token_hash text NOT NULL,
+            expires_at timestamptz NOT NULL,
+            used_at timestamptz NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+          )
+        `;
+        await sql`CREATE INDEX IF NOT EXISTS admin_login_tokens_salon_id_idx ON admin_login_tokens(salon_id)`;
+        await sql`CREATE UNIQUE INDEX IF NOT EXISTS admin_login_tokens_token_hash_uniq ON admin_login_tokens(token_hash)`;
+        await sql`
+          CREATE TABLE IF NOT EXISTS site_owners (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            email text NOT NULL,
+            email_norm text NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            updated_at timestamptz NOT NULL DEFAULT now()
+          )
+        `;
+        await sql`CREATE UNIQUE INDEX IF NOT EXISTS site_owners_email_norm_uniq ON site_owners(email_norm)`;
+        await sql`
+          CREATE TABLE IF NOT EXISTS salon_owner_memberships (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            salon_id text NOT NULL,
+            owner_id uuid NOT NULL REFERENCES site_owners(id) ON DELETE CASCADE,
+            role text NOT NULL DEFAULT 'owner',
+            created_at timestamptz NOT NULL DEFAULT now()
+          )
+        `;
+        await sql`
+          CREATE UNIQUE INDEX IF NOT EXISTS salon_owner_memberships_salon_owner_uniq
+          ON salon_owner_memberships(salon_id, owner_id)
+        `;
+        await sql`
+          CREATE TABLE IF NOT EXISTS salon_claim_otp (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            salon_id text NOT NULL,
+            email_norm text NOT NULL,
+            code_hash text NOT NULL,
+            expires_at timestamptz NOT NULL,
+            attempts integer NOT NULL DEFAULT 0,
+            created_at timestamptz NOT NULL DEFAULT now()
+          )
+        `;
+        await sql`
+          CREATE UNIQUE INDEX IF NOT EXISTS salon_claim_otp_salon_email_uniq
+          ON salon_claim_otp(salon_id, email_norm)
+        `;
+        await sql`
+          CREATE TABLE IF NOT EXISTS owner_sessions (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            salon_id text NOT NULL,
+            owner_id uuid NOT NULL REFERENCES site_owners(id) ON DELETE CASCADE,
+            session_hash text NOT NULL,
+            expires_at timestamptz NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+          )
+        `;
+        await sql`CREATE UNIQUE INDEX IF NOT EXISTS owner_sessions_session_hash_uniq ON owner_sessions(session_hash)`;
+        await sql`CREATE INDEX IF NOT EXISTS owner_sessions_owner_id_idx ON owner_sessions(owner_id)`;
+        await sql`CREATE INDEX IF NOT EXISTS owner_sessions_expires_at_idx ON owner_sessions(expires_at)`;
+      }
+
+      // Idempotent column adds — always run. Append new columns here rather
+      // than relying on a separate migration step.
       await sql`ALTER TABLE admin_login_tokens ADD COLUMN IF NOT EXISTS email_norm text`;
       await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS password_hash text`;
       await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS display_name text`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email text`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_token_hash text`;
+      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_expires_at timestamptz`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS category text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_name text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_role text`;
@@ -163,16 +175,19 @@ export async function ensureAdminAuthSchema() {
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_verified_at timestamptz`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_last_checked_at timestamptz`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_config jsonb`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb`;
+      // Per-salon Resend (db/migration-salon-resend.sql) — fold into auto-schema
+      // so existing deploys don't need a manual migration step.
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_api_key_encrypted text`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS email_from text`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS email_from_name text`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_domain text`;
       await sql`
         CREATE UNIQUE INDEX IF NOT EXISTS salons_custom_domain_uniq
         ON salons ((lower(custom_domain)))
         WHERE custom_domain IS NOT NULL
       `;
-      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
-      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb`;
-      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email text`;
-      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_token_hash text`;
-      await sql`ALTER TABLE site_owners ADD COLUMN IF NOT EXISTS pending_email_expires_at timestamptz`;
     })();
   }
 
