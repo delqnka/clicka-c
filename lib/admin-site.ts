@@ -116,8 +116,12 @@ export function normalizeWorkingHours(raw: unknown): WorkingHours {
   if (!raw || typeof raw !== 'object') return base;
 
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    const row = value as Record<string, unknown>;
     if (!base[key]) continue;
+    if (!value || typeof value !== 'object') {
+      base[key] = { open: '', close: '', closed: true };
+      continue;
+    }
+    const row = value as Record<string, unknown>;
     base[key] = {
       open: String(row.open ?? base[key].open ?? ''),
       close: String(row.close ?? base[key].close ?? ''),
