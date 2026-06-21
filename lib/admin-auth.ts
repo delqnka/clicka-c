@@ -7,7 +7,6 @@ import {
   getPlatformSubdomain,
   getPlatformSiteOrigin,
   getHostAwareSalonPath,
-  getCustomDomainAdminUrl,
   isPlatformApexHost,
   isAdminSubdomainHost,
   stripAdminSubdomain,
@@ -244,8 +243,15 @@ export async function resolveSalonBySlugOrHost({
     ? stripAdminSubdomain(hostname)
     : hostname;
 
-  // Only route custom domains that have been verified (domain_status = 'active').
-  // This prevents an unverified/squatted domain from intercepting traffic.
+  // Public traffic only routes to verified custom domains (domain_status = 'active')
+  // to prevent unverified/squatted domains from intercepting bookings.
+  //
+  // Admin lookups (includeInactive=true) intentionally skip the domain_status
+  // filter — otherwise the owner cannot reach /admin during the verification
+  // window (status='pending_verification' / 'pending_dns'), which falls through
+  // to redirect('/') and the platform's bare root has no page → Vercel NOT_FOUND.
+  // Only the platform admin can set custom_domain, so squat-protection isn't
+  // needed on the admin path.
   const customRows = includeInactive
     ? await sql`
         SELECT
@@ -258,7 +264,6 @@ export async function resolveSalonBySlugOrHost({
           domain_status
         FROM salons
         WHERE lower(custom_domain) = lower(${candidateHostname})
-          AND domain_status = 'active'
         LIMIT 1
       `
     : await sql`
@@ -541,10 +546,12 @@ export async function generateAdminMagicLink({
 }): Promise<string> {
   await ensureAdminAuthSchema();
 
-  const cleanCustom = (customDomain ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  const base = cleanCustom
-    ? getCustomDomainAdminUrl(cleanCustom)
-    : getPlatformSiteOrigin(slug);
+  // Admin lives on the Clicka engine (slug.clicka.bg) only. The salon's
+  // custom_domain points at a separate client-owned Vercel project that has no
+  // /admin route, so a magic link to https://<customDomain>/admin would 404.
+  // customDomain param kept for back-compat but intentionally ignored here.
+  void customDomain;
+  const base = getPlatformSiteOrigin(slug);
 
   // If the owner already has a password, send them to sign-in instead of
   // making them set a new one — a login token would be wasted on them anyway.

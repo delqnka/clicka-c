@@ -1,5 +1,4 @@
 import {
-  getCustomDomainAdminUrl,
   getPlatformAdminUrl,
   getPlatformPublicUrl,
 } from '@/lib/domain-routing';
@@ -12,13 +11,14 @@ export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; 
   if (!client) return;
   const greeting = ownerName && ownerName.trim() ? `Здравей, ${ownerName.trim()}!` : 'Здравей!';
   const customDomain = await getActiveCustomDomain(salonId).catch(() => null);
+  // Public site = custom domain when present (client-owned Vercel project).
+  // Admin = always engine subdomain (slug.clicka.bg) — the client site has no /admin route.
   const publicUrl = customDomain ? `https://${customDomain}` : getPlatformPublicUrl(slug);
-  const adminUrl = customDomain ? `${getCustomDomainAdminUrl(customDomain)}/admin` : getPlatformAdminUrl(slug);
+  const adminUrl = getPlatformAdminUrl(slug);
   const magicLink = await generateAdminMagicLink({
     salonId,
     slug,
     email,
-    customDomain,
     expiresMs: 24 * 60 * 60 * 1000,
   });
   const displayName = name && name.trim() ? name.trim() : 'твоят салон';

@@ -521,15 +521,15 @@ export default function PlatformAdminDashboard({
                                 </div>
                                 <div className="space-y-3 text-sm">
                                   <div className="rounded-2xl border border-black/10 px-4 py-3">
-                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Primary admin</div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Admin URL</div>
                                     <div className="mt-1 font-medium text-black">
-                                      {salon.custom_domain ? `${salon.custom_domain}/admin` : `${salon.slug}.clicka.bg/admin`}
+                                      {`${salon.slug}.clicka.bg/admin`}
                                     </div>
                                   </div>
                                   <div className="rounded-2xl border border-black/10 px-4 py-3">
-                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Fallback</div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Публичен сайт</div>
                                     <div className="mt-1 font-medium text-black">
-                                      {`${salon.slug}.clicka.bg/admin`}
+                                      {salon.custom_domain || `${salon.slug}.clicka.bg`}
                                     </div>
                                   </div>
                                   <div className="rounded-2xl border border-black/10 px-4 py-3">

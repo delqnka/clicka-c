@@ -8,7 +8,7 @@ import {
   normalizeEmail,
   sha256,
 } from '@/lib/admin-auth';
-import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getPlatformSiteOrigin } from '@/lib/domain-routing';
 import { getSalonResend } from '@/lib/resend';
 
 function buildAdminMagicLink({
@@ -83,14 +83,11 @@ export async function POST(request: NextRequest) {
     : [];
   const hasPassword = !!String((passwordRows[0] as Record<string, unknown> | undefined)?.password_hash ?? '');
 
-  const customDomain =
-    String(salon.domain_status ?? '').toLowerCase() === 'active' &&
-    typeof salon.custom_domain === 'string' &&
-    salon.custom_domain.trim()
-      ? salon.custom_domain.trim().toLowerCase()
-      : null;
-
-  const base = customDomain ? getCustomDomainAdminUrl(customDomain) : getPlatformSiteOrigin(slug);
+  // Admin lives on the Clicka engine (slug.clicka.bg), NEVER on the salon's
+  // custom marketing domain — that's a separate client-owned Vercel project
+  // and has no /admin route. Pointing the magic link at custom_domain/admin
+  // results in a 404 on the client site.
+  const base = getPlatformSiteOrigin(slug);
   const token = crypto.randomBytes(32).toString('hex');
   const tokenHash = sha256(token);
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);

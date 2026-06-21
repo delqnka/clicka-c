@@ -14,7 +14,6 @@ import {
 } from '@/lib/admin-auth';
 import {
   extractHostname,
-  getCustomDomainAdminUrl,
   getPlatformAdminUrl,
   isPlatformApexHost,
 } from '@/lib/domain-routing';
@@ -121,12 +120,11 @@ export async function POST(request: NextRequest) {
   });
 
   const host = request.headers.get('host') ?? '';
-  // /[slug]/admin on the apex host always 404s — admin only lives on the
-  // salon's own host: custom domain /admin or platform subdomain /admin.
+  // Admin only lives on the platform subdomain (slug.clicka.bg/admin).
+  // Custom_domain is the client's own site (separate Vercel project) and has
+  // no /admin route — sending owners there hits a 404.
   const redirectTo = isPlatformApexHost(extractHostname(host))
-    ? salon.customDomain
-      ? `${getCustomDomainAdminUrl(salon.customDomain)}/admin`
-      : getPlatformAdminUrl(salon.slug)
+    ? getPlatformAdminUrl(salon.slug)
     : '/admin';
 
   const response = NextResponse.json({ success: true, redirectTo });

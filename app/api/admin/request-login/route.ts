@@ -8,7 +8,7 @@ import {
   resolveSalonBySlugOrHost,
   sha256,
 } from '@/lib/admin-auth';
-import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getPlatformSiteOrigin } from '@/lib/domain-routing';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { checkCsrfOrigin } from '@/lib/csrf';
 import { getSalonResend } from '@/lib/resend';
@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
     VALUES (${salon.salonId}, ${tokenHash}, ${allowedEmail}, ${expiresAt.toISOString()}, null, now())
   `;
 
-  const base = salon.customDomain
-    ? getCustomDomainAdminUrl(salon.customDomain)
-    : getPlatformSiteOrigin(salon.slug);
+  // Admin lives on the engine (slug.clicka.bg), never on the salon's
+  // client-owned custom domain — that project has no /admin route.
+  const base = getPlatformSiteOrigin(salon.slug);
   const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}&mode=reset`;
 
   const { client, from } = await getSalonResend(salon.salonId, salon.name);
