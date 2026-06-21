@@ -227,7 +227,7 @@ export function ResendSettingsPanel({ salonId }: Props) {
             type="button"
             onClick={() => void save()}
             disabled={saving || (useOwnKey && !apiKey.trim() && !settings?.uses_own_key)}
-            className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40"
+            className="rounded-full border border-black bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/92 disabled:opacity-40"
           >
             {saving ? 'Проверка…' : 'Провери и запази'}
           </button>

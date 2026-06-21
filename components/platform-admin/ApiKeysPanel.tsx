@@ -151,8 +151,7 @@ export function ApiKeysPanel({ salonId }: Props) {
           <button
             onClick={handleIssue}
             disabled={issuing}
-            className="w-full py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 cursor-pointer"
-            style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
+            className="w-full rounded-full border border-[#15803d] bg-[#15803d] py-2.5 text-xs font-semibold text-white transition hover:bg-[#166534] disabled:opacity-40 cursor-pointer"
           >
             {issuing ? 'Издава…' : 'Издай нов ключ'}
           </button>
@@ -173,7 +172,7 @@ export function ApiKeysPanel({ salonId }: Props) {
             return (
               <li
                 key={k.id}
-                className={`rounded-lg border p-2 flex items-center gap-2 ${revoked ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200 bg-white'}`}
+                className={`flex items-center gap-2 rounded-2xl border p-3 ${revoked ? 'border-black/8 bg-white opacity-60' : 'border-black/10 bg-white'}`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">

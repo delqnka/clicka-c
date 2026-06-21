@@ -1,7 +1,20 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  ArrowUpRight,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  CreditCard,
+  LogOut,
+  Mail,
+  Search,
+  Sparkles,
+  UserRound,
+} from 'lucide-react';
 import type { SalonRow } from '@/app/pa/page';
 import { ApiKeysPanel } from './ApiKeysPanel';
 import { ResendSettingsPanel } from './ResendSettingsPanel';
@@ -40,113 +53,177 @@ type PaymentRow = {
 
 type Tab = 'salons' | 'bookings' | 'payments';
 
-type ReconcileIssue = {
-  sessionId: string;
-  flow: string;
-  amountTotal: number;
-  currency: string;
-  createdAt: number;
-  reason: string;
+type InviteNotice = {
+  salonId: string;
+  tone: 'success' | 'error';
+  message: string;
 };
 
-type ReconcileResult = {
-  ok: boolean;
-  checked: number;
-  total: number;
-  issues: ReconcileIssue[];
-};
-
-/* ── SVG Icons ─────────────────────────────────────────────── */
-function IconSearch({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-    </svg>
-  );
-}
-function IconLogout({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-  );
-}
-function IconBuilding({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-  );
-}
-function IconCalendar({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-  );
-}
-function IconCreditCard({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-    </svg>
-  );
-}
-function IconUsers({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  );
-}
-function IconChevronRight({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
-  );
-}
-function IconGlobe({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-    </svg>
-  );
-}
-function IconExternalLink({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-    </svg>
-  );
-}
-/* ── Helpers ────────────────────────────────────────────────── */
 function formatDate(iso: string) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('bg-BG', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
   });
 }
-function formatDateTime(iso: string) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' });
-}
+
 function formatAmount(cents: number, currency: string) {
   return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
 }
+
 function planLabel(plan: string | null) {
   const map: Record<string, string> = {
-    solo: 'Solo', team: 'Екип',
-    solo_bonus_12m: 'Solo bonus', solo_bonus_6m: 'Solo bonus',
-    team_bonus_12m: 'Екип bonus', team_bonus_6m: 'Екип bonus',
-    custom_domain: 'Домейн', sms_pack: 'SMS',
+    solo: 'Solo',
+    team: 'Екип',
+    solo_bonus_12m: 'Solo 12м',
+    solo_bonus_6m: 'Solo 6м',
+    team_bonus_12m: 'Екип 12м',
+    team_bonus_6m: 'Екип 6м',
+    custom_domain: 'Домейн',
+    sms_pack: 'SMS',
   };
   return plan ? (map[plan] ?? plan) : null;
 }
 
-/* ── Main component ─────────────────────────────────────────── */
+function shellCard(extra = '') {
+  return `rounded-[28px] border border-black/10 bg-white shadow-[0_18px_40px_rgba(0,0,0,0.06)] ${extra}`;
+}
+
+function actionButton({
+  tone = 'dark',
+  children,
+  className = '',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  tone?: 'dark' | 'green' | 'ghost' | 'danger';
+}) {
+  const tones = {
+    dark: 'bg-black text-white border-black hover:bg-black/92',
+    green: 'bg-[#15803d] text-white border-[#15803d] hover:bg-[#166534]',
+    ghost: 'bg-white text-black border-black/12 hover:border-black/24',
+    danger: 'bg-white text-[#b91c1c] border-[#fecaca] hover:border-[#fca5a5]',
+  };
+
+  return (
+    <button
+      {...props}
+      className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition ${tones[tone]} disabled:cursor-default disabled:opacity-40 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  note,
+  icon,
+  onClick,
+}: {
+  label: string;
+  value: string | number;
+  note: string;
+  icon: ReactNode;
+  onClick?: () => void;
+}) {
+  const content = (
+    <div className={`${shellCard()} h-full p-5 text-left`}>
+      <div className="mb-8 flex items-start justify-between gap-3">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-black/10 text-black">
+          {icon}
+        </span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black/35">
+          Live
+        </span>
+      </div>
+      <div className="text-3xl font-semibold tracking-[-0.05em] text-black">{value}</div>
+      <div className="mt-2 text-sm font-medium text-black/88">{label}</div>
+      <div className="mt-1 text-sm text-black/45">{note}</div>
+    </div>
+  );
+
+  if (!onClick) return content;
+  return (
+    <button type="button" onClick={onClick} className="block h-full text-left">
+      {content}
+    </button>
+  );
+}
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className={`${shellCard()} p-12 text-center`}>
+      <div className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full border border-black/10">
+        <Sparkles className="h-5 w-5 text-[#15803d]" />
+      </div>
+      <div className="text-lg font-semibold text-black">{title}</div>
+      <div className="mx-auto mt-2 max-w-md text-sm leading-6 text-black/48">{body}</div>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-2xl border border-black/8 bg-white px-4 py-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/30">{label}</div>
+      <div className="mt-1 text-lg font-semibold tracking-[-0.04em] text-black">{value}</div>
+    </div>
+  );
+}
+
+function SidebarTabButton({
+  active,
+  label,
+  note,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  note: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-[24px] border px-4 py-4 text-left transition ${
+        active
+          ? 'border-black bg-black text-white'
+          : 'border-black/10 bg-white text-black hover:border-black/22'
+      }`}
+    >
+      <div className="text-sm font-semibold">{label}</div>
+      <div className={`mt-1 text-sm ${active ? 'text-white/68' : 'text-black/45'}`}>{note}</div>
+    </button>
+  );
+}
+
+function ContextCard({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className={`${shellCard('p-5 shadow-none')}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/28">{eyebrow}</div>
+      <div className="mt-3 text-lg font-semibold tracking-[-0.04em] text-black">{title}</div>
+      <div className="mt-2 text-sm leading-6 text-black/48">{body}</div>
+    </div>
+  );
+}
+
 export default function PlatformAdminDashboard({
   salons,
   recentBookings,
@@ -160,34 +237,44 @@ export default function PlatformAdminDashboard({
   const [tab, setTab] = useState<Tab>('salons');
   const [search, setSearch] = useState('');
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
+  const [expandedSalon, setExpandedSalon] = useState<string | null>(null);
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [sendingInvite, setSendingInvite] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
-  const [salonList, setSalonList] = useState<SalonRow[]>(salons);
+  const [settingPlan, setSettingPlan] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [payments, setPayments] = useState<PaymentRow[] | null>(null);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [totalRevenue, setTotalRevenue] = useState(0);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [expandedSalon, setExpandedSalon] = useState<string | null>(null);
-  const [settingPlan, setSettingPlan] = useState<string | null>(null);
-  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null);
-  const [reconcileLoading, setReconcileLoading] = useState(false);
+  const [salonList, setSalonList] = useState<SalonRow[]>(salons);
+  const [inviteNotice, setInviteNotice] = useState<InviteNotice | null>(null);
 
   const filteredSalons = useMemo(() => {
-    return salonList.filter((s) => {
-      const q = search.toLowerCase();
-      const matchSearch =
+    return salonList.filter((salon) => {
+      const q = search.toLowerCase().trim();
+      const matchesSearch =
         !q ||
-        s.name.toLowerCase().includes(q) ||
-        s.slug.toLowerCase().includes(q) ||
-        (s.email ?? '').toLowerCase().includes(q) ||
-        (s.owner_email ?? '').toLowerCase().includes(q);
-      const matchActive =
+        salon.name.toLowerCase().includes(q) ||
+        salon.slug.toLowerCase().includes(q) ||
+        (salon.email ?? '').toLowerCase().includes(q) ||
+        (salon.owner_email ?? '').toLowerCase().includes(q);
+      const matchesActive =
         filterActive === 'all' ||
-        (filterActive === 'active' && s.is_active) ||
-        (filterActive === 'inactive' && !s.is_active);
-      return matchSearch && matchActive;
+        (filterActive === 'active' && salon.is_active) ||
+        (filterActive === 'inactive' && !salon.is_active);
+      return matchesSearch && matchesActive;
     });
-  }, [salonList, search, filterActive]);
+  }, [filterActive, salonList, search]);
+
+  const visibleActiveCount = useMemo(
+    () => filteredSalons.filter((salon) => salon.is_active).length,
+    [filteredSalons],
+  );
+
+  const visibleClaimedCount = useMemo(
+    () => filteredSalons.filter((salon) => salon.owner_email).length,
+    [filteredSalons],
+  );
 
   async function handleImpersonate(salonId: string) {
     setImpersonating(salonId);
@@ -204,6 +291,34 @@ export default function PlatformAdminDashboard({
     }
   }
 
+  async function handleSendInvite(salonId: string) {
+    setInviteNotice(null);
+    setSendingInvite(salonId);
+    try {
+      const res = await fetch('/api/pa/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salonId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setInviteNotice({
+          salonId,
+          tone: 'error',
+          message: typeof data.error === 'string' ? data.error : 'Не успяхме да изпратим magic link.',
+        });
+        return;
+      }
+      setInviteNotice({
+        salonId,
+        tone: 'success',
+        message: 'Magic link имейлът е изпратен успешно.',
+      });
+    } finally {
+      setSendingInvite(null);
+    }
+  }
+
   async function handleToggleActive(salonId: string, current: boolean) {
     setToggling(salonId);
     try {
@@ -214,7 +329,9 @@ export default function PlatformAdminDashboard({
       });
       if (res.ok) {
         setSalonList((prev) =>
-          prev.map((s) => s.salon_id === salonId ? { ...s, is_active: !current } : s)
+          prev.map((salon) =>
+            salon.salon_id === salonId ? { ...salon, is_active: !current } : salon,
+          ),
         );
       }
     } finally {
@@ -232,7 +349,9 @@ export default function PlatformAdminDashboard({
       });
       if (res.ok) {
         setSalonList((prev) =>
-          prev.map((s) => s.salon_id === salonId ? { ...s, plan_type: planType } : s)
+          prev.map((salon) =>
+            salon.salon_id === salonId ? { ...salon, plan_type: planType } : salon,
+          ),
         );
       }
     } finally {
@@ -253,18 +372,6 @@ export default function PlatformAdminDashboard({
     }
   }
 
-  async function handleReconcile() {
-    setReconcileLoading(true);
-    setReconcileResult(null);
-    try {
-      const res = await fetch('/api/pa/stripe-reconcile');
-      const data = await res.json();
-      setReconcileResult(data);
-    } finally {
-      setReconcileLoading(false);
-    }
-  }
-
   async function handleLogout() {
     setLoggingOut(true);
     await fetch('/api/pa/auth', {
@@ -275,407 +382,664 @@ export default function PlatformAdminDashboard({
     router.push('/pa/sign-in');
   }
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'salons',   label: 'Салони',      icon: <IconBuilding className="w-4 h-4" /> },
-    { id: 'bookings', label: 'Резервации',  icon: <IconCalendar className="w-4 h-4" /> },
-    { id: 'payments', label: 'Плащания',    icon: <IconCreditCard className="w-4 h-4" /> },
+  const tabMeta: Array<{ id: Tab; label: string; note: string }> = [
+    { id: 'salons', label: 'Салони', note: 'Клиенти, onboarding и достъп' },
+    { id: 'bookings', label: 'Резервации', note: 'Последни записи и активност' },
+    { id: 'payments', label: 'Плащания', note: 'Приходи и планове' },
   ];
+  const expandedSalonData = salonList.find((salon) => salon.salon_id === expandedSalon) ?? null;
 
   return (
-    <div className="min-h-dvh bg-white font-sans text-gray-900">
-
-      {/* ── Header ───────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {/* Gradient logo mark */}
-            <span
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-              aria-label="Agency"
-            >
-              C
-            </span>
-            <span className="font-semibold text-sm text-gray-900 leading-none">
-              Platform Admin
-            </span>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900
-                       transition-colors duration-150 cursor-pointer disabled:opacity-40
-                       min-h-[44px] px-2"
-            aria-label="Изход"
-          >
-            <IconLogout className="w-4 h-4" />
-            <span className="hidden sm:inline">Изход</span>
-          </button>
-        </div>
-      </header>
-
-      {/* ── Stats cards ──────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto px-4 pt-5 pb-2 grid grid-cols-2 gap-3">
-        {[
-          { label: 'Общо салони',  value: stats.totalSalons,   icon: <IconBuilding className="w-5 h-5" />, from: '#6366f1', to: '#818cf8', onClick: () => { setTab('salons'); setFilterActive('all'); } },
-          { label: 'Активни',      value: stats.activeSalons,  icon: <IconGlobe className="w-5 h-5" />,   from: '#10b981', to: '#34d399', onClick: () => { setTab('salons'); setFilterActive('active'); } },
-          { label: 'Регистрирани', value: stats.claimedSalons, icon: <IconUsers className="w-5 h-5" />,   from: '#f59e0b', to: '#fbbf24', onClick: () => { setTab('salons'); setFilterActive('all'); setSearch(''); } },
-          { label: 'Резервации',   value: stats.totalBookings, icon: <IconCalendar className="w-5 h-5" />, from: '#ec4899', to: '#f472b6', onClick: () => setTab('bookings') },
-        ].map((s) => (
-          <button
-            key={s.label}
-            type="button"
-            onClick={s.onClick}
-            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left
-                       hover:shadow-md hover:border-gray-200 active:scale-[0.97]
-                       transition-all duration-150 cursor-pointer"
-          >
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white mb-3"
-              style={{ background: `linear-gradient(135deg,${s.from},${s.to})` }}
-            >
-              {s.icon}
+    <div className="min-h-dvh bg-white text-black">
+      <div className="mx-auto max-w-[1620px] px-4 pb-16 pt-4 sm:px-6 lg:px-8">
+        <div className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)_320px]">
+          <aside className={`${shellCard('h-fit p-4 xl:sticky xl:top-4')}`}>
+            <div className="rounded-[26px] border border-black/10 px-4 py-4">
+              <div className="inline-flex items-center gap-3 rounded-full border border-black/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/42">
+                <span className="h-2 w-2 rounded-full bg-[#15803d]" />
+                Platform Console
+              </div>
+              <div className="mt-5 text-[2rem] font-semibold leading-[0.92] tracking-[-0.08em] text-black">
+                Clean
+                <br />
+                control.
+              </div>
+              <div className="mt-3 text-sm leading-6 text-black/48">
+                Един спокоен workspace за onboarding, достъп и оперативни действия.
+              </div>
             </div>
-            <div className="text-2xl font-bold text-gray-900 leading-none">{s.value}</div>
-            <div className="text-xs text-gray-500 mt-1">{s.label}</div>
-          </button>
-        ))}
-      </div>
 
-      {/* ── Tabs ─────────────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto px-4 mt-5">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Tab bar */}
-          <div className="flex border-b border-gray-100">
-            {tabs.map((t) => {
-              const active = tab === t.id;
-              return (
-                <button
-                  key={t.id}
+            <div className="mt-4 space-y-3">
+              {tabMeta.map((item) => (
+                <SidebarTabButton
+                  key={item.id}
+                  active={tab === item.id}
+                  label={item.label}
+                  note={item.note}
                   onClick={() => {
-                    setTab(t.id);
-                    if (t.id === 'payments') handleLoadPayments();
+                    setTab(item.id);
+                    if (item.id === 'payments') void handleLoadPayments();
                   }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-base font-medium
-                               transition-colors duration-150 cursor-pointer min-h-[48px]
-                               ${active
-                                 ? 'text-gray-900 border-b-2'
-                                 : 'text-gray-400 hover:text-gray-700 border-b-2 border-transparent'}`}
-                  style={active ? { borderBottomColor: '#6366f1' } : {}}
-                >
-                  <span style={active ? { color: '#6366f1' } : {}}>{t.icon}</span>
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
+                />
+              ))}
+            </div>
 
-          {/* ── TAB: Салони ────────────────────────────────── */}
-          {tab === 'salons' && (
-            <div className="p-4 space-y-3">
-              {/* New salon */}
+            <div className="mt-4 grid gap-3">
+              <MiniStat label="Салони" value={stats.totalSalons} />
+              <MiniStat label="Активни" value={stats.activeSalons} />
+              <MiniStat label="Claim owner" value={stats.claimedSalons} />
+            </div>
+
+            <div className="mt-4 grid gap-3">
               <NewSalonForm onCreated={() => window.location.reload()} />
+              {actionButton({
+                tone: 'ghost',
+                onClick: handleLogout,
+                disabled: loggingOut,
+                className: 'w-full',
+                children: (
+                  <>
+                    <LogOut className="h-4 w-4" />
+                    {loggingOut ? 'Излиза…' : 'Изход'}
+                  </>
+                ),
+              })}
+            </div>
+          </aside>
 
-              {/* Search + filter */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  <input
-                    type="search"
-                    placeholder="Търси салон, имейл…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200
-                               rounded-xl focus:outline-none focus:ring-2 focus:border-transparent"
-                    style={{ '--tw-ring-color': '#6366f1' } as React.CSSProperties}
-                  />
+          <main className={`${shellCard('overflow-hidden')}`}>
+            <div className="border-b border-black/8 px-4 py-4 sm:px-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/30">
+                    {tab === 'salons'
+                      ? 'Salon operations'
+                      : tab === 'bookings'
+                      ? 'Booking activity'
+                      : 'Payment monitoring'}
+                  </div>
+                  <h1 className="mt-3 text-[clamp(2rem,4vw,4rem)] font-semibold leading-[0.92] tracking-[-0.08em] text-black">
+                    {tab === 'salons'
+                      ? 'Agency dashboard that feels like a product.'
+                      : tab === 'bookings'
+                      ? 'All recent booking motion in one place.'
+                      : 'Payments, plans and revenue at a glance.'}
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-base leading-7 text-black/50">
+                    {tab === 'salons'
+                      ? 'По-малко шум, по-ясна структура и по-бързи действия за всеки salon record.'
+                      : tab === 'bookings'
+                      ? 'Бърз преглед на последните записи без да ровиш из отделни панели.'
+                      : 'Оперативен financial view за бърза проверка на планове и постъпления.'}
+                  </p>
                 </div>
-                <select
-                  value={filterActive}
-                  onChange={(e) => setFilterActive(e.target.value as typeof filterActive)}
-                  className="px-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl
-                             focus:outline-none cursor-pointer min-h-[44px]"
-                >
-                  <option value="all">Всички</option>
-                  <option value="active">Активни</option>
-                  <option value="inactive">Неактивни</option>
-                </select>
+
+                <div className="flex flex-wrap gap-3">
+                  <div className="rounded-full border border-black/10 px-4 py-2.5 text-sm text-black/52">
+                    Standard admin URL: <span className="font-semibold text-black">domain.com/admin</span>
+                  </div>
+                </div>
               </div>
 
-              <p className="text-xs text-gray-400">{filteredSalons.length} салона</p>
+              <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+                <MetricCard
+                  label="Общо салони"
+                  value={stats.totalSalons}
+                  note="Пълният agency portfolio"
+                  icon={<Building2 className="h-5 w-5" />}
+                  onClick={() => {
+                    setTab('salons');
+                    setFilterActive('all');
+                  }}
+                />
+                <MetricCard
+                  label="Активни в момента"
+                  value={stats.activeSalons}
+                  note="Готови за traffic и работа"
+                  icon={<CheckCircle2 className="h-5 w-5 text-[#15803d]" />}
+                  onClick={() => {
+                    setTab('salons');
+                    setFilterActive('active');
+                  }}
+                />
+                <MetricCard
+                  label="С claim owner"
+                  value={stats.claimedSalons}
+                  note="Клиенти с достъп до панела"
+                  icon={<UserRound className="h-5 w-5" />}
+                  onClick={() => {
+                    setTab('salons');
+                    setSearch('');
+                  }}
+                />
+                <MetricCard
+                  label="Резервации"
+                  value={stats.totalBookings}
+                  note="Натрупана активност"
+                  icon={<CalendarDays className="h-5 w-5" />}
+                  onClick={() => setTab('bookings')}
+                />
+              </div>
+            </div>
 
-              {/* Salon list */}
-              <div className="space-y-2">
-                {filteredSalons.length === 0 && (
-                  <div className="text-center py-12 text-sm text-gray-400">Няма резултати</div>
-                )}
-                {filteredSalons.map((salon) => {
-                  const isExpanded = expandedSalon === salon.salon_id;
-                  const plan = planLabel(salon.plan_type);
+            {tab === 'salons' && (
+              <div className="p-4 sm:p-6">
+              <div className="mb-6 grid gap-3 md:grid-cols-3">
+                <MiniStat label="Видими салони" value={filteredSalons.length} />
+                <MiniStat label="Активни в selection" value={visibleActiveCount} />
+                <MiniStat label="Claim-нати" value={visibleClaimedCount} />
+              </div>
+
+              <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
+                <label className={`${shellCard('flex items-center gap-3 px-4 py-3 shadow-none')}`}>
+                  <Search className="h-4 w-4 text-black/32" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Търси по име, slug, имейл"
+                    className="w-full border-0 bg-transparent text-sm text-black outline-none placeholder:text-black/28"
+                  />
+                </label>
+
+                <div className={`${shellCard('relative px-4 py-3 shadow-none')}`}>
+                  <select
+                    value={filterActive}
+                    onChange={(e) => setFilterActive(e.target.value as typeof filterActive)}
+                    className="w-full appearance-none border-0 bg-transparent pr-8 text-sm font-medium text-black outline-none"
+                  >
+                    <option value="all">Всички салони</option>
+                    <option value="active">Само активни</option>
+                    <option value="inactive">Само неактивни</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+                </div>
+              </div>
+
+              <div className="mb-6 flex flex-wrap gap-2">
+                {[
+                  { id: 'all', label: 'Всички' },
+                  { id: 'active', label: 'Активни' },
+                  { id: 'inactive', label: 'Неактивни' },
+                ].map((item) => {
+                  const active = filterActive === item.id;
                   return (
-                    <div
-                      key={salon.salon_id}
-                      className="border border-gray-100 rounded-2xl overflow-hidden"
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setFilterActive(item.id as typeof filterActive)}
+                      className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                        active
+                          ? 'border-[#15803d] bg-[#15803d] text-white'
+                          : 'border-black/10 bg-white text-black/58 hover:border-black/22 hover:text-black'
+                      }`}
                     >
-                      {/* Row header — tappable */}
-                      <button
-                        onClick={() => setExpandedSalon(isExpanded ? null : salon.salon_id)}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left
-                                   hover:bg-white transition-colors duration-150 cursor-pointer"
-                        aria-expanded={isExpanded}
-                      >
-                        {/* Avatar */}
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center
-                                     text-white text-sm font-bold shrink-0"
-                          style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                          aria-hidden="true"
-                        >
-                          {salon.name.charAt(0).toUpperCase()}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm text-gray-900 truncate">
-                              {salon.name}
-                            </span>
-                            {/* Active dot */}
-                            <span
-                              className={`w-2 h-2 rounded-full shrink-0 ${salon.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`}
-                              title={salon.is_active ? 'Активен' : 'Неактивен'}
-                            />
-                            {plan && (
-                              <span
-                                className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                style={{ background: 'linear-gradient(135deg,#ede9fe,#fce7f3)', color: '#7c3aed' }}
-                              >
-                                {plan}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-400 truncate mt-0.5">
-                            {salon.custom_domain || `${salon.slug}.site`}
-                          </div>
-                        </div>
-
-                        <IconChevronRight
-                          className={`w-4 h-4 text-gray-300 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
-                        />
-                      </button>
-
-                      {/* Expanded details */}
-                      {isExpanded && (
-                        <div className="border-t border-gray-100 px-4 py-4 space-y-4">
-                          {/* Info grid */}
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div>
-                              <p className="text-xs text-gray-400 mb-0.5">Имейл</p>
-                              <p className="text-gray-800 break-all">{salon.email}</p>
-                            </div>
-                            {salon.owner_email && (
-                              <div>
-                                <p className="text-xs text-gray-400 mb-0.5">Собственик</p>
-                                <p className="text-gray-800 break-all">{salon.owner_email}</p>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-xs text-gray-400 mb-0.5">Регистриран</p>
-                              <p className="text-gray-800">{formatDate(salon.created_at)}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-400 mb-0.5">Резервации</p>
-                              <p className="text-gray-800">{salon.booking_count}</p>
-                            </div>
-                            {salon.stripe_session_id && (
-                              <div>
-                                <p className="text-xs text-gray-400 mb-0.5">Stripe</p>
-                                <p className="text-emerald-600 text-xs font-medium">✓ Платен</p>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-xs text-gray-400 mb-0.5">Статус</p>
-                              <p className={`text-xs font-medium ${salon.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                {salon.is_active ? 'Активен' : 'Неактивен'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Set Plan */}
-                          <div className="pt-1">
-                            <p className="text-xs text-gray-400 mb-1.5">Bonus абонамент</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              {([
-                                { value: 'solo_bonus_12m', label: 'Solo · 1 год' },
-                                { value: 'solo_bonus_6m',  label: 'Solo · 6 мес' },
-                                { value: 'team_bonus_12m', label: 'Екип · 1 год' },
-                                { value: 'team_bonus_6m',  label: 'Екип · 6 мес' },
-                              ] as { value: string; label: string }[]).map((p) => {
-                                const active = salon.plan_type === p.value;
-                                return (
-                                  <button
-                                    key={p.value}
-                                    onClick={() => !active && handleSetPlan(salon.salon_id, p.value)}
-                                    disabled={settingPlan === salon.salon_id || active}
-                                    className={`py-2 rounded-xl text-xs font-semibold border transition-colors duration-150 cursor-pointer disabled:cursor-default min-h-[36px]
-                                      ${active
-                                        ? 'text-white border-transparent'
-                                        : 'text-gray-500 border-gray-200 bg-white hover:border-indigo-300 hover:text-indigo-600'}`}
-                                    style={active ? { background: 'linear-gradient(135deg,#6366f1,#ec4899)' } : {}}
-                                  >
-                                    {settingPlan === salon.salon_id && !active ? '…' : p.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* API Keys */}
-                          <ApiKeysPanel salonId={salon.salon_id} />
-
-                          {/* Resend email sender */}
-                          <ResendSettingsPanel salonId={salon.salon_id} />
-
-                          {/* Actions */}
-                          <div className="flex gap-2 pt-1">
-                            {/* Impersonate */}
-                            <button
-                              onClick={() => handleImpersonate(salon.salon_id)}
-                              disabled={impersonating === salon.salon_id}
-                              className="flex-1 flex items-center justify-center gap-2 py-2.5
-                                         rounded-xl text-sm font-semibold text-white
-                                         transition-opacity duration-150 cursor-pointer
-                                         disabled:opacity-40 min-h-[44px]"
-                              style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                            >
-                              <IconExternalLink className="w-4 h-4" />
-                              {impersonating === salon.salon_id ? 'Зарежда…' : 'Влез в панела'}
-                            </button>
-
-                            {/* Toggle active */}
-                            <button
-                              onClick={() => handleToggleActive(salon.salon_id, salon.is_active)}
-                              disabled={toggling === salon.salon_id}
-                              className={`px-4 py-2.5 rounded-xl text-sm font-semibold
-                                          transition-colors duration-150 cursor-pointer
-                                          disabled:opacity-40 min-h-[44px] border
-                                          ${salon.is_active
-                                            ? 'border-red-200 text-red-500 bg-red-50 hover:bg-red-100'
-                                            : 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100'}`}
-                            >
-                              {toggling === salon.salon_id
-                                ? '…'
-                                : salon.is_active ? 'Деакт.' : 'Активирай'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      {item.label}
+                    </button>
                   );
                 })}
               </div>
-            </div>
-          )}
 
-          {/* ── TAB: Резервации ────────────────────────────── */}
-          {tab === 'bookings' && (
-            <div className="p-4 space-y-2">
-              {recentBookings.length === 0 && (
-                <div className="text-center py-12 text-sm text-gray-400">Няма резервации</div>
-              )}
-              {recentBookings.map((b) => (
-                <div key={b.booking_id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                    aria-hidden="true"
-                  >
-                    {b.client_name?.charAt(0)?.toUpperCase() ?? '?'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{b.client_name}</p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {b.salon_name} · {b.service_name} · {b.date} {b.time}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${
-                      b.status === 'completed'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : b.status === 'cancelled'
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {b.status}
-                  </span>
+              <div className="mb-5 flex items-center justify-between">
+                <div className="text-sm text-black/45">
+                  {filteredSalons.length} салона
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── TAB: Плащания ──────────────────────────────── */}
-          {tab === 'payments' && (
-            <div className="p-4">
-              {paymentsLoading && (
-                <div className="flex items-center justify-center py-12 gap-2 text-gray-400 text-sm">
-                  <span className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-indigo-500 animate-spin" />
-                  Зарежда…
+                <div className="text-sm text-black/45">
+                  Primary admin: <span className="font-medium text-black">domain.com/admin</span>
                 </div>
-              )}
+              </div>
 
-              {!paymentsLoading && payments !== null && (
-                <>
-                  {/* Total */}
-                  <div
-                    className="rounded-2xl p-4 mb-4 text-white"
-                    style={{ background: 'linear-gradient(135deg,#6366f1,#ec4899)' }}
-                  >
-                    <p className="text-xs opacity-80 mb-1">Общи приходи</p>
-                    <p className="text-3xl font-bold">{formatAmount(totalRevenue, 'eur')}</p>
-                    <p className="text-xs opacity-70 mt-1">последни 100 плащания</p>
-                  </div>
+              {filteredSalons.length === 0 ? (
+                <EmptyState
+                  title="Няма съвпадения"
+                  body="Промени търсенето или филтъра и ще покажем правилните салони веднага."
+                />
+              ) : (
+                <div className="space-y-4">
+                  {filteredSalons.map((salon) => {
+                    const isExpanded = expandedSalon === salon.salon_id;
+                    const plan = planLabel(salon.plan_type);
+                    const statusLabel = salon.is_active ? 'Активен' : 'Неактивен';
 
-                  <div className="space-y-2">
-                    {payments.length === 0 && (
-                      <div className="text-center py-8 text-sm text-gray-400">Няма плащания</div>
-                    )}
-                    {payments.map((p) => (
-                      <div key={p.id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
-                          style={{ background: 'linear-gradient(135deg,#10b981,#34d399)' }}
-                          aria-hidden="true"
+                    return (
+                      <article key={salon.salon_id} className={shellCard('overflow-hidden')}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSalon(isExpanded ? null : salon.salon_id)}
+                          className="w-full px-5 py-5 text-left sm:px-6"
                         >
-                          <IconCreditCard className="w-4 h-4" />
+                          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                            <div className="min-w-0">
+                              <div className="mb-3 flex flex-wrap items-center gap-2">
+                                <span className="rounded-full border border-black/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-black/35">
+                                  {salon.slug}
+                                </span>
+                                <span className="text-xl font-semibold tracking-[-0.04em] text-black">
+                                  {salon.name}
+                                </span>
+                                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                                  salon.is_active
+                                    ? 'border-[#bbf7d0] text-[#15803d]'
+                                    : 'border-black/10 text-black/45'
+                                }`}>
+                                  {statusLabel}
+                                </span>
+                                {plan && (
+                                  <span className="rounded-full border border-black/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-black/58">
+                                    {plan}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-black/50">
+                                <span>{salon.custom_domain || `${salon.slug}.site`}</span>
+                                <span>{salon.email}</span>
+                                <span>{salon.booking_count} резервации</span>
+                                <span>Създаден: {formatDate(salon.created_at)}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-5 text-sm text-black/42">
+                              <div className="text-right">
+                                <div className="text-[11px] uppercase tracking-[0.18em] text-black/28">Owner</div>
+                                <div className="mt-1 max-w-[240px] truncate text-black/62">
+                                  {salon.owner_email || 'Все още няма owner'}
+                                </div>
+                              </div>
+                              <span className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition ${
+                                isExpanded ? 'border-black bg-black text-white' : 'border-black/10 text-black/48'
+                              }`}>
+                                <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="border-t border-black/8 px-5 pb-6 pt-5 sm:px-6">
+                            {inviteNotice?.salonId === salon.salon_id && (
+                              <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
+                                inviteNotice.tone === 'success'
+                                  ? 'border-[#bbf7d0] text-[#166534]'
+                                  : 'border-[#fecaca] text-[#b91c1c]'
+                              }`}>
+                                {inviteNotice.message}
+                              </div>
+                            )}
+
+                            <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                              <div className={`${shellCard('p-5 shadow-none')}`}>
+                                <div className="mb-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                                  Overview
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                  <div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Slug</div>
+                                    <div className="mt-1 text-sm font-medium text-black">{salon.slug}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Домейн</div>
+                                    <div className="mt-1 text-sm font-medium text-black">
+                                      {salon.custom_domain || 'Няма custom domain'}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Клиентски имейл</div>
+                                    <div className="mt-1 text-sm font-medium text-black">{salon.email}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Owner login</div>
+                                    <div className="mt-1 text-sm font-medium text-black">
+                                      {salon.owner_email || 'Не е claim-нат'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className={`${shellCard('p-5 shadow-none')}`}>
+                                <div className="mb-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                                  Access
+                                </div>
+                                <div className="space-y-3 text-sm">
+                                  <div className="rounded-2xl border border-black/10 px-4 py-3">
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Primary admin</div>
+                                    <div className="mt-1 font-medium text-black">
+                                      {salon.custom_domain ? `${salon.custom_domain}/admin` : `${salon.slug}.clicka.bg/admin`}
+                                    </div>
+                                  </div>
+                                  <div className="rounded-2xl border border-black/10 px-4 py-3">
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Fallback</div>
+                                    <div className="mt-1 font-medium text-black">
+                                      {`${salon.slug}.clicka.bg/admin`}
+                                    </div>
+                                  </div>
+                                  <div className="rounded-2xl border border-black/10 px-4 py-3">
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Domain status</div>
+                                    <div className="mt-1 font-medium text-black">
+                                      {salon.domain_status || 'Няма custom domain'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mb-6">
+                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                                Actions
+                              </div>
+                              <div className="grid gap-3 lg:grid-cols-4">
+                                {actionButton({
+                                  tone: 'green',
+                                  onClick: () => handleImpersonate(salon.salon_id),
+                                  disabled: impersonating === salon.salon_id,
+                                  className: 'w-full',
+                                  children: (
+                                    <>
+                                      <ArrowUpRight className="h-4 w-4" />
+                                      {impersonating === salon.salon_id ? 'Отваря…' : 'Влез в панела'}
+                                    </>
+                                  ),
+                                })}
+                                {actionButton({
+                                  tone: 'dark',
+                                  onClick: () => handleSendInvite(salon.salon_id),
+                                  disabled: sendingInvite === salon.salon_id,
+                                  className: 'w-full',
+                                  children: (
+                                    <>
+                                      <Mail className="h-4 w-4" />
+                                      {sendingInvite === salon.salon_id ? 'Изпраща…' : 'Изпрати magic link'}
+                                    </>
+                                  ),
+                                })}
+                                {actionButton({
+                                  tone: 'ghost',
+                                  onClick: () => handleSetPlan(salon.salon_id, 'solo_bonus_12m'),
+                                  disabled: settingPlan === salon.salon_id,
+                                  className: 'w-full',
+                                  children: settingPlan === salon.salon_id ? 'Записва…' : 'Solo 12м plan',
+                                })}
+                                {actionButton({
+                                  tone: salon.is_active ? 'danger' : 'ghost',
+                                  onClick: () => handleToggleActive(salon.salon_id, salon.is_active),
+                                  disabled: toggling === salon.salon_id,
+                                  className: 'w-full',
+                                  children:
+                                    toggling === salon.salon_id
+                                      ? 'Обновява…'
+                                      : salon.is_active
+                                      ? 'Деактивирай'
+                                      : 'Активирай',
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="mb-6">
+                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                                Bonus plans
+                              </div>
+                              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                {([
+                                  { value: 'solo_bonus_12m', label: 'Solo · 12 месеца' },
+                                  { value: 'solo_bonus_6m', label: 'Solo · 6 месеца' },
+                                  { value: 'team_bonus_12m', label: 'Екип · 12 месеца' },
+                                  { value: 'team_bonus_6m', label: 'Екип · 6 месеца' },
+                                ] as Array<{ value: string; label: string }>).map((planOption) => {
+                                  const active = salon.plan_type === planOption.value;
+                                  return (
+                                    <button
+                                      key={planOption.value}
+                                      type="button"
+                                      onClick={() => !active && handleSetPlan(salon.salon_id, planOption.value)}
+                                      disabled={settingPlan === salon.salon_id || active}
+                                      className={`rounded-2xl border px-4 py-4 text-left transition ${
+                                        active
+                                          ? 'border-[#15803d] text-[#166534]'
+                                          : 'border-black/10 text-black hover:border-black/25'
+                                      } disabled:opacity-50`}
+                                    >
+                                      <div className="text-sm font-semibold">{planOption.label}</div>
+                                      <div className="mt-2 text-xs text-black/42">
+                                        {active ? 'Текущо избран план' : 'Превключи плана за този салон'}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="grid gap-4 xl:grid-cols-2">
+                              <div className={shellCard('p-5 shadow-none')}>
+                                <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                                  API keys
+                                </div>
+                                <ApiKeysPanel salonId={salon.salon_id} />
+                              </div>
+                              <div className={shellCard('p-5 shadow-none')}>
+                                <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                                  Email sender
+                                </div>
+                                <ResendSettingsPanel salonId={salon.salon_id} />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+              </div>
+            )}
+
+            {tab === 'bookings' && (
+              <div className="p-4 sm:p-6">
+              {recentBookings.length === 0 ? (
+                <EmptyState
+                  title="Няма скорошни резервации"
+                  body="Когато започнат да идват нови записи, тук ще имаш бърз оперативен преглед."
+                />
+              ) : (
+                <div className="space-y-4">
+                  {recentBookings.map((booking) => (
+                    <article key={booking.booking_id} className={`${shellCard()} p-5 sm:p-6`}>
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-lg font-semibold tracking-[-0.04em] text-black">
+                              {booking.client_name}
+                            </span>
+                            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                              booking.status === 'completed'
+                                ? 'border-[#bbf7d0] text-[#15803d]'
+                                : booking.status === 'cancelled'
+                                ? 'border-[#fecaca] text-[#b91c1c]'
+                                : 'border-black/10 text-black/45'
+                            }`}>
+                              {booking.status}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-sm leading-6 text-black/52">
+                            {booking.salon_name} · {booking.service_name} · {booking.date} в {booking.time}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {formatAmount(p.amount, p.currency)}
-                          </p>
-                          <p className="text-xs text-gray-400 truncate">
-                            {p.customerEmail ?? '—'}
-                            {p.planType ? ` · ${planLabel(p.planType)}` : ''}
-                            {p.salonSlug ? ` · ${p.salonSlug}` : ''}
-                          </p>
+                        <div className="text-sm text-black/42">
+                          {formatDate(booking.created_at)}
                         </div>
-                        <p className="text-xs text-gray-400 shrink-0">
-                          {formatDate(new Date(p.created * 1000).toISOString())}
-                        </p>
                       </div>
-                    ))}
+                    </article>
+                  ))}
+                </div>
+              )}
+              </div>
+            )}
+
+            {tab === 'payments' && (
+              <div className="p-4 sm:p-6">
+              {paymentsLoading ? (
+                <EmptyState title="Зареждаме плащанията" body="Събираме последните транзакции и total revenue." />
+              ) : payments === null ? (
+                <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+                  <div className={`${shellCard()} p-8`}>
+                    <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                      Revenue snapshot
+                    </div>
+                    <div className="max-w-lg text-[2rem] font-semibold leading-tight tracking-[-0.06em] text-black">
+                      Зареди плащанията, за да видиш приходите и последните движения.
+                    </div>
+                    <div className="mt-4 text-sm leading-7 text-black/48">
+                      Този изглед е направен за бърз финансов преглед, не за счетоводен export.
+                    </div>
                   </div>
+                  <div className={`${shellCard()} flex items-center justify-center p-8`}>
+                    {actionButton({
+                      tone: 'green',
+                      onClick: () => void handleLoadPayments(),
+                      children: (
+                        <>
+                          <CreditCard className="h-4 w-4" />
+                          Зареди плащанията
+                        </>
+                      ),
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                    <div className={`${shellCard()} p-6`}>
+                      <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                        Total revenue
+                      </div>
+                      <div className="text-5xl font-semibold tracking-[-0.08em] text-black">
+                        {formatAmount(totalRevenue, 'eur')}
+                      </div>
+                      <div className="mt-3 text-sm text-black/46">
+                        Последни 100 плащания в системата.
+                      </div>
+                    </div>
+                    <div className={`${shellCard()} p-6`}>
+                      <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
+                        Notes
+                      </div>
+                      <div className="space-y-3 text-sm leading-7 text-black/52">
+                        <p>Плащанията тук са за оперативен мониторинг и бърза проверка на plan и customer activity.</p>
+                        <p>Ако искаш по-дълбок finance panel, следващата стъпка е отделен payments workspace с филтри и export.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {payments.length === 0 ? (
+                    <EmptyState
+                      title="Няма плащания"
+                      body="Когато системата получи първите транзакции, те ще се покажат тук."
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      {payments.map((payment) => (
+                        <article key={payment.id} className={`${shellCard()} p-5 sm:p-6`}>
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <div className="text-xl font-semibold tracking-[-0.04em] text-black">
+                                {formatAmount(payment.amount, payment.currency)}
+                              </div>
+                              <div className="mt-2 text-sm leading-6 text-black/52">
+                                {payment.customerEmail ?? 'Без customer email'}
+                                {payment.planType ? ` · ${planLabel(payment.planType)}` : ''}
+                                {payment.salonSlug ? ` · ${payment.salonSlug}` : ''}
+                              </div>
+                            </div>
+                            <div className="text-sm text-black/42">
+                              {formatDate(new Date(payment.created * 1000).toISOString())}
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
+              </div>
+            )}
+          </main>
 
+          <aside className="space-y-4 xl:sticky xl:top-4 xl:h-fit">
+            <ContextCard
+              eyebrow="Workflow"
+              title={tab === 'salons' ? 'Избираш салон и действаш веднага.' : tab === 'bookings' ? 'Четеш активността без шум.' : 'Проверяваш revenue и планове за минути.'}
+              body={
+                tab === 'salons'
+                  ? 'Тук няма нужда от графики. Трябват ти добри карти, чисти действия и ясен достъп.'
+                  : tab === 'bookings'
+                  ? 'Фокусът е върху хората, услугите, статуса и точния момент на резервацията.'
+                  : 'Този панел остава умишлено лек, за да служи като оперативен monitor, а не като accounting software.'
+              }
+            />
+
+            <div className={`${shellCard('p-5')}`}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/28">Quick context</div>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-[22px] border border-black/10 px-4 py-3">
+                  <div className="text-xs uppercase tracking-[0.16em] text-black/28">Active tab</div>
+                  <div className="mt-1 text-sm font-semibold text-black">
+                    {tabMeta.find((item) => item.id === tab)?.label}
+                  </div>
+                </div>
+                <div className="rounded-[22px] border border-black/10 px-4 py-3">
+                  <div className="text-xs uppercase tracking-[0.16em] text-black/28">Primary admin</div>
+                  <div className="mt-1 text-sm font-semibold text-black">domain.com/admin</div>
+                </div>
+                <div className="rounded-[22px] border border-black/10 px-4 py-3">
+                  <div className="text-xs uppercase tracking-[0.16em] text-black/28">Fallback</div>
+                  <div className="mt-1 text-sm font-semibold text-black">slug.clicka.bg/admin</div>
+                </div>
+              </div>
             </div>
-          )}
 
+            {tab === 'salons' && (
+              <div className={`${shellCard('p-5')}`}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/28">Selected salon</div>
+                {expandedSalonData ? (
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <div className="text-lg font-semibold tracking-[-0.04em] text-black">{expandedSalonData.name}</div>
+                      <div className="mt-1 text-sm text-black/45">{expandedSalonData.slug}</div>
+                    </div>
+                    <div className="rounded-[22px] border border-black/10 px-4 py-3">
+                      <div className="text-xs uppercase tracking-[0.16em] text-black/28">Owner login</div>
+                      <div className="mt-1 text-sm font-semibold text-black">
+                        {expandedSalonData.owner_email || 'Все още няма owner'}
+                      </div>
+                    </div>
+                    <div className="rounded-[22px] border border-black/10 px-4 py-3">
+                      <div className="text-xs uppercase tracking-[0.16em] text-black/28">Custom domain</div>
+                      <div className="mt-1 text-sm font-semibold text-black">
+                        {expandedSalonData.custom_domain || 'Няма custom domain'}
+                      </div>
+                    </div>
+                    <div className="rounded-[22px] border border-black/10 px-4 py-3">
+                      <div className="text-xs uppercase tracking-[0.16em] text-black/28">Status</div>
+                      <div className="mt-1 text-sm font-semibold text-black">
+                        {expandedSalonData.is_active ? 'Активен' : 'Неактивен'}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 text-sm leading-6 text-black/48">
+                    Отвори salon card и тук ще показваме краткия operational context вместо излишни графики.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <ContextCard
+              eyebrow="Design rule"
+              title="No gradients. No gray canvas."
+              body="Базата остава бяла, текстът черен, а зеленото се пази само за важните действия, за да стои premium и спокойно."
+            />
+          </aside>
         </div>
       </div>
-
-      {/* Bottom safe-area spacer */}
-      <div className="h-8" />
     </div>
   );
 }

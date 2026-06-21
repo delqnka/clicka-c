@@ -121,7 +121,8 @@ export async function POST(request: NextRequest) {
   });
 
   const host = request.headers.get('host') ?? '';
-  // /[slug]/admin on the apex host always 404s — admin only lives on the salon's own subdomain/custom domain.
+  // /[slug]/admin on the apex host always 404s — admin only lives on the
+  // salon's own host: custom domain /admin or platform subdomain /admin.
   const redirectTo = isPlatformApexHost(extractHostname(host))
     ? salon.customDomain
       ? `${getCustomDomainAdminUrl(salon.customDomain)}/admin`

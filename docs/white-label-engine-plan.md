@@ -26,17 +26,18 @@ frontend code. They use Clicka only through backend APIs.
 3. Set the client site's environment variables:
    - `NEXT_PUBLIC_ENGINE_URL`
    - `NEXT_PUBLIC_SALON_SLUG`
-4. The custom site reads public salon data from `/api/public/salons/:slug`.
-5. The custom site reads staff and occupied slots from `/api/public`.
-6. The custom site creates bookings through `/api/public/bookings`.
+   - `NEXT_PUBLIC_SITE_URL`
+4. Mount `BookingProvider` from `@clicka/booking`.
+5. Put `BookingButton` or `data-clicka-book` on the public CTA buttons.
+6. The custom site reads only versioned public endpoints when custom UI is needed.
 
 ## Public API Contract
 
-- `GET /api/public/salons/:slug`
-- `GET /api/public/salons/:slug/staff`
-- `GET /api/public/salons/:slug/slots?date=YYYY-MM-DD&staffMemberId=...`
-- `POST /api/public/bookings`
-- `POST /api/public/booking-checkout`
+- `GET /api/public/v1/salons/:slug`
+- `GET /api/public/v1/salons/:slug/staff`
+- `GET /api/public/v1/salons/:slug/slots?date=YYYY-MM-DD&staffMemberId=...`
+- `POST /api/public/v1/salons/:slug/bookings`
+- `POST /api/public/v1/salons/:slug/booking-checkout`
 
 These endpoints are the contract for all custom client frontends.
 
@@ -67,7 +68,7 @@ These endpoints are the contract for all custom client frontends.
 2. Build a headless booking client/helper for custom sites.
 3. Convert Paradise/Barber to consume only `/api/public`.
 4. Remove client-site routing from `middleware.ts`.
-5. Keep admin white-label capable through client-owned admin domains.
+5. Keep admin white-label capable through client-owned domains and branded `/admin` paths.
 6. Later split marketing/internal platform UI from the engine if needed.
 
 ## Engine-Only Mode

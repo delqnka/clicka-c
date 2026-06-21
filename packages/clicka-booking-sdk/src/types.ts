@@ -1,4 +1,4 @@
-/** Shape of the salon profile returned by GET /api/public/salons/:slug */
+/** Shape of the salon profile returned by GET /api/public/v1/salons/:slug */
 export type PublicSalon = {
   id: string;
   slug: string;
@@ -35,8 +35,9 @@ export type PublicStaffMember = {
 
 /**
  * A time window already taken on the salon's calendar for a given date.
- * Returned by `getSlots()` so external UIs can mark these as unavailable
- * when rendering a slot grid generated from the salon's working hours.
+ * Returned by `getSlots()` from the public v1 API so external UIs can mark
+ * these as unavailable when rendering a slot grid generated from the salon's
+ * working hours.
  * `start` / `end` are Sofia local time without timezone suffix.
  */
 export type PublicSlot = {

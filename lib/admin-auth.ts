@@ -569,7 +569,7 @@ export async function generateAdminMagicLink({
     VALUES (${salonId}, ${tokenHash}, ${normalizeEmail(email)}, ${expiresAt.toISOString()}, now())
   `;
 
-  // Points to set-password page on the salon's own subdomain (first-time activation).
+  // Points to set-password page on the salon's own branded admin path.
   return `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(slug)}`;
 }
 

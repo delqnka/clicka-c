@@ -95,7 +95,7 @@ export function stripAdminSubdomain(hostname: string) {
 }
 
 export function getCustomDomainAdminUrl(domain: string) {
-  return getOriginForHost(getAdminSubdomainHost(domain));
+  return getCustomDomainOrigin(domain);
 }
 
 export function getHostAwareSalonPath({

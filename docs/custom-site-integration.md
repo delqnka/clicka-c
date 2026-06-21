@@ -26,35 +26,33 @@ Target shape:
 client-site repo
   -> @clicka/booking SDK
   -> engine public API
-
-admin domain
-  -> engine admin
+  -> branded admin on /admin
 ```
 
 Example:
 
 ```text
 paradise.bg         -> custom salon website repo
-admin.paradise.bg   -> engine admin
+paradise.bg/admin   -> engine admin
 ```
 
 ## Current State
 
 As of 2026-06-20, the public custom-site setup is working and the engine now
-supports a dedicated admin subdomain for verified client custom domains.
+supports branded admin access on the client custom domain itself.
 
 Confirmed working target:
 
 - custom public site on its own repo and own domain
 - booking widget or custom booking UI talking to engine public API
 - booking confirmation emails from salon-owned sender settings
-- admin login and password-reset flows on `admin.<client-domain>`
+- admin login and password-reset flows on `<client-domain>/admin`
 
 Example:
 
 ```text
 paradise.bg       -> custom salon site repo
-admin.paradise.bg -> engine admin
+paradise.bg/admin -> engine admin
 ```
 
 Platform-domain admin still remains available as fallback:
@@ -156,6 +154,7 @@ Best for:
 - fastest delivery
 - repeatable integration
 - modal booking inside the salon site
+- AI-generated salon sites where we want booking to work immediately
 
 Install:
 
@@ -163,38 +162,51 @@ Install:
 npm install @clicka/booking
 ```
 
-Use:
+Use this exact pattern:
 
 ```tsx
 'use client';
 
-import { BookingWidget, type BookingWidgetHandle } from '@clicka/booking';
+import { BookingProvider, BookingButton } from '@clicka/booking';
 import '@clicka/booking/styles.css';
-import { useRef } from 'react';
 
-type SalonData = Record<string, unknown>;
-
-export function BookingButton({ salon }: { salon: SalonData }) {
-  const widgetRef = useRef<BookingWidgetHandle>(null);
-
+export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <button onClick={() => widgetRef.current?.open()}>
-        Резервирай
-      </button>
-
-      <BookingWidget
-        ref={widgetRef}
-        slug={process.env.NEXT_PUBLIC_SALON_SLUG!}
-        salon={salon}
-        engineUrl={process.env.NEXT_PUBLIC_ENGINE_URL!}
-        successUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/success`}
-        cancelUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/cancel`}
-      />
-    </>
+    <BookingProvider
+      salonSlug={process.env.NEXT_PUBLIC_SALON_SLUG}
+      engineUrl={process.env.NEXT_PUBLIC_ENGINE_URL}
+      successUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/success`}
+      cancelUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/cancel`}
+    >
+      {children}
+    </BookingProvider>
   );
 }
+
+export function HeroCta() {
+  return <BookingButton>Резервирай</BookingButton>;
+}
 ```
+
+Or if the site already has its own button markup, keep the markup and only add
+the attribute:
+
+```tsx
+<button data-clicka-book>Резервирай</button>
+<button data-clicka-book="haircut">Резервирай подстригване</button>
+```
+
+This is the preferred path for new client sites.
+
+Do not make AI build:
+
+- custom booking database logic
+- custom availability calculation
+- custom payment orchestration
+- custom booking form that posts somewhere else
+
+The site should own the design and CTA placement.
+Clicka should own the booking flow.
 
 ### Option B: Build Custom UI On Top Of The Public API
 
@@ -203,8 +215,10 @@ Best for:
 - highly custom booking UX
 - unusual flows
 - fully tailored UI beyond the default widget behavior
+- cases where we explicitly accept slower integration work
 
 Use the engine only through the public endpoints.
+If speed matters more than custom UX, do not choose this option.
 
 ## Public API Contract
 
@@ -296,23 +310,22 @@ That is exactly how you end up with a green deploy and the wrong site or a 404.
 The clean long-term architecture is:
 
 ```text
-paradise.bg       -> salon repo
-admin.paradise.bg -> engine
+paradise.bg -> salon repo
+paradise.bg/admin -> engine admin
 ```
 
 This is the best model for an agency setup because:
 
 - the public site stays isolated
-- the admin can evolve separately
 - you never mix public rendering with admin rendering
 - every client keeps their own branded domain structure
 
 ## Current Supported Reality
 
-The current engine code still resolves admin access primarily from:
+The current engine code resolves admin access primarily from:
 
-- the salon custom domain itself
-- or the engine root-domain salon subdomain
+- the salon custom domain itself on `/admin`
+- or the engine root-domain salon subdomain on `/admin`
 
 So today the safest working admin path is:
 
@@ -326,19 +339,14 @@ or, if using the engine platform domain:
 https://paradise.<engine-root-domain>/admin
 ```
 
-If you want:
+If you still want:
 
 ```text
 https://admin.paradise.bg
 ```
 
-you should treat that as a dedicated admin-host feature and finish these pieces
-in the engine:
-
-- resolve `admin.<custom-domain>` to the salon record
-- generate password-reset and auth links with the admin host
-- generate domain-connected emails with the admin host
-- ensure admin cookies and redirects stay on the admin host
+you should treat that as an optional extra host, not as the default delivery
+path and not as a launch blocker.
 
 ## Login Flow
 
@@ -403,12 +411,11 @@ Use this exact order.
 12. Add `/booking/cancel`.
 13. Point the public domain to the custom site project.
 14. Set engine deployment to `CLICKA_ENGINE_ONLY=1`.
-15. Decide the admin URL model:
-16. if using current safe model, use `paradise.bg/admin`
-17. if using target clean model, complete `admin.paradise.bg -> engine` support
-18. test booking end to end
-19. test confirmation email
-20. test admin sign-in
+15. Use `paradise.bg/admin` as the client admin URL when a custom domain is active.
+16. Keep `paradise.<engine-root-domain>/admin` as fallback.
+17. test booking end to end
+18. test confirmation email
+19. test admin sign-in
 
 ## Five-Minute Repeatable Delivery Template
 

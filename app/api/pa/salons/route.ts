@@ -150,8 +150,9 @@ export async function POST(request: NextRequest) {
   );
 
   // If a custom domain was provided, register it with Vercel and persist the
-  // verification state so the salon's admin URL becomes admin.<domain> as soon
-  // as DNS propagates. Failures are non-fatal — agency can retry later.
+  // verification state so the salon's branded admin URL becomes /admin on that
+  // domain as soon as DNS propagates. Failures are non-fatal — agency can
+  // retry later.
   let domainStatus: string | null = customDomain ? 'requested' : null;
   if (customDomain) {
     try {

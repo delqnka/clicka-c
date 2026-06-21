@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getCustomDomainAdminUrl, getPlatformAdminUrl } from '@/lib/domain-routing';
 
 type Result = {
   ok: boolean;
@@ -80,8 +81,7 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full px-4 py-3 rounded-xl text-sm font-semibold text-white
-                   bg-gradient-to-r from-indigo-600 to-pink-500 hover:opacity-90 cursor-pointer min-h-[44px]"
+        className="min-h-[52px] w-full rounded-full border border-black bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-black/92"
       >
         + Добави нов салон
       </button>
@@ -89,6 +89,11 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
   }
 
   if (result) {
+    const normalizedCustomDomain = customDomain.trim().toLowerCase();
+    const primaryAdminUrl = normalizedCustomDomain
+      ? `${getCustomDomainAdminUrl(normalizedCustomDomain)}/admin`
+      : getPlatformAdminUrl(result.slug);
+    const fallbackAdminUrl = getPlatformAdminUrl(result.slug);
     const statusLabel =
       result.domainStatus === 'active' ? 'активен'
       : result.domainStatus === 'pending_verification' ? 'чака верификация'
@@ -100,16 +105,16 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
       : 'text-amber-700 bg-amber-50';
 
     return (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+      <div className="space-y-4 rounded-[28px] border border-[#bbf7d0] bg-white p-5 shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="text-sm font-bold text-emerald-900">Салонът е създаден ✓</div>
-            <div className="text-xs text-emerald-800 mt-0.5">slug: {result.slug}</div>
+            <div className="text-sm font-bold text-black">Салонът е създаден ✓</div>
+            <div className="mt-0.5 text-xs text-black/55">slug: {result.slug}</div>
           </div>
           <button
             type="button"
             onClick={reset}
-            className="text-xs text-emerald-700 hover:underline cursor-pointer"
+            className="cursor-pointer text-xs text-black/55 hover:text-black"
           >
             Затвори
           </button>
@@ -117,22 +122,37 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
 
         <div className="grid gap-1.5 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-emerald-800">DNS статус:</span>
+            <span className="text-black/55">DNS статус:</span>
             <span className={`px-2 py-0.5 rounded font-semibold ${statusColor}`}>
               {statusLabel}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-emerald-800">Onboarding имейл:</span>
-            <span className={`px-2 py-0.5 rounded font-semibold ${result.inviteSent ? 'text-emerald-700 bg-emerald-100' : 'text-zinc-600 bg-zinc-100'}`}>
+            <span className="text-black/55">Onboarding имейл:</span>
+            <span className={`px-2 py-0.5 rounded font-semibold ${result.inviteSent ? 'text-emerald-700 bg-emerald-100' : 'text-black/60 bg-white border border-black/10'}`}>
               {result.inviteSent ? 'изпратен' : 'не е изпратен'}
             </span>
           </div>
         </div>
 
+        <div className="space-y-2 rounded-2xl border border-black/10 bg-white p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/35">
+            Admin checklist
+          </div>
+          <div className="text-xs text-black">
+            Основен admin URL: <span className="font-mono">{primaryAdminUrl.replace(/^https?:\/\//, '')}</span>
+          </div>
+          <div className="text-xs text-black/72">
+            Fallback admin URL: <span className="font-mono">{fallbackAdminUrl.replace(/^https?:\/\//, '')}</span>
+          </div>
+          <div className="text-[11px] leading-relaxed text-black/48">
+            Ако custom домейнът още не е активен, влизай през fallback адреса. Не е нужно да активираш `admin.` поддомейн.
+          </div>
+        </div>
+
         {result.magicLink ? (
           <div className="space-y-1.5">
-            <div className="text-xs text-emerald-800 font-medium">
+            <div className="text-xs font-medium text-black/72">
               Magic link (валиден 72ч){result.inviteSent ? ' — fallback ако имейлът не пристигне' : ''}:
             </div>
             <div className="flex gap-2">
@@ -146,7 +166,7 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
               <button
                 type="button"
                 onClick={copyLink}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
+                className="rounded-full border border-[#15803d] bg-[#15803d] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#166534]"
               >
                 {copied ? '✓ Копирано' : 'Копирай'}
               </button>
@@ -158,13 +178,13 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3">
+    <div className="space-y-4 rounded-[28px] border border-black/10 bg-white p-5 shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-zinc-900">Нов салон</div>
+        <div className="text-sm font-semibold text-black">Нов салон</div>
         <button
           type="button"
           onClick={() => { setOpen(false); reset(); }}
-          className="text-xs text-zinc-500 hover:text-zinc-700 cursor-pointer"
+          className="cursor-pointer text-xs text-black/55 hover:text-black"
         >
           Отказ
         </button>
@@ -218,8 +238,8 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
             className="w-full px-3 py-2 rounded-lg border border-zinc-300 text-sm"
             maxLength={64}
           />
-          <span className="block mt-1 text-zinc-400">
-            Ако е попълнен — engine ще го регистрира във Vercel + ще генерира admin.{customDomain || 'домейн.bg'} линк.
+          <span className="mt-1 block text-black/42">
+            Ако е попълнен — engine ще го регистрира във Vercel + админът ще е на {customDomain || 'домейн.bg'}/admin.
             Иначе админът ще е на platform subdomain.
           </span>
         </label>
@@ -234,15 +254,13 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
           <span>Изпрати автоматично onboarding имейл с magic link</span>
         </label>
 
-        {error ? <div className="text-xs text-red-700 bg-red-50 rounded px-2 py-1.5">{error}</div> : null}
+        {error ? <div className="rounded-2xl border border-[#fecaca] px-3 py-2 text-xs text-red-700">{error}</div> : null}
 
         <button
           type="button"
           onClick={() => void submit()}
           disabled={submitting}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white
-                     bg-gradient-to-r from-indigo-600 to-pink-500 hover:opacity-90 cursor-pointer
-                     disabled:opacity-50 min-h-[44px]"
+          className="min-h-[52px] rounded-full border border-[#15803d] bg-[#15803d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#166534] disabled:opacity-50"
         >
           {submitting ? 'Създаване…' : 'Създай салон'}
         </button>

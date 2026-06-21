@@ -51,10 +51,16 @@ class BookingApiError extends Error {
   }
 }
 
+type LegacyOccupiedSlot = {
+  time?: string;
+  duration?: number;
+};
+
 export function createBookingClient(config: BookingClientConfig): BookingClient {
   const base = config.engineUrl.replace(/\/$/, '');
   const slug = encodeURIComponent(config.salonSlug);
   const fetchImpl = config.fetchImpl ?? fetch;
+  const v1Base = `/api/public/v1/salons/${slug}`;
 
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetchImpl(`${base}${path}`, {
@@ -79,29 +85,29 @@ export function createBookingClient(config: BookingClientConfig): BookingClient 
 
   return {
     async getSalon() {
-      const data = await request<{ salon: PublicSalon }>(`/api/public/salons/${slug}`);
+      const data = await request<{ salon: PublicSalon }>(v1Base);
       return data.salon;
     },
 
     async getStaff() {
-      const data = await request<{ staff: PublicStaffMember[] }>(`/api/public/salons/${slug}/staff`);
+      const data = await request<{ staff: PublicStaffMember[] }>(`${v1Base}/staff`);
       return data.staff;
     },
 
     async getSlots({ date, staffMemberId }) {
       const params = new URLSearchParams({ date });
       if (staffMemberId) params.set('staffMemberId', staffMemberId);
-      const data = await request<{ slots: PublicSlot[]; date: string }>(
-        `/api/public/salons/${slug}/slots?${params.toString()}`,
+      const data = await request<{ slots?: PublicSlot[]; occupied?: LegacyOccupiedSlot[]; date: string }>(
+        `${v1Base}/slots?${params.toString()}`,
       );
-      return data.slots ?? [];
+      return normalizeSlotsResponse(data, date);
     },
 
     async createBooking(input) {
       try {
         const data = await request<{ bookingId: string; status: 'pending' | 'confirmed'; message?: string }>(
-          `/api/public/bookings`,
-          { method: 'POST', body: JSON.stringify({ ...input, salonSlug: config.salonSlug }) },
+          `${v1Base}/bookings`,
+          { method: 'POST', body: JSON.stringify(input) },
         );
         return { ok: true, bookingId: data.bookingId, status: data.status, message: data.message };
       } catch (err) {
@@ -113,8 +119,8 @@ export function createBookingClient(config: BookingClientConfig): BookingClient 
     async startCheckout(input) {
       try {
         const data = await request<{ checkoutUrl: string; sessionId: string }>(
-          `/api/public/booking-checkout`,
-          { method: 'POST', body: JSON.stringify({ ...input, salonSlug: config.salonSlug }) },
+          `${v1Base}/booking-checkout`,
+          { method: 'POST', body: JSON.stringify(input) },
         );
         return { ok: true, checkoutUrl: data.checkoutUrl, sessionId: data.sessionId };
       } catch (err) {
@@ -123,6 +129,42 @@ export function createBookingClient(config: BookingClientConfig): BookingClient 
       }
     },
   };
+}
+
+function normalizeSlotsResponse(
+  data: { slots?: PublicSlot[]; occupied?: LegacyOccupiedSlot[] },
+  date: string,
+): PublicSlot[] {
+  if (Array.isArray(data.slots)) return data.slots;
+  if (!Array.isArray(data.occupied)) return [];
+
+  return data.occupied
+    .map((entry) => occupiedToPublicSlot(entry, date))
+    .filter((slot): slot is PublicSlot => slot !== null);
+}
+
+function occupiedToPublicSlot(entry: LegacyOccupiedSlot, date: string): PublicSlot | null {
+  const time = typeof entry.time === 'string' ? entry.time : '';
+  const duration = Number(entry.duration) || 0;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{1,2}:\d{2}$/.test(time)) return null;
+
+  const [hours, minutes] = time.split(':').map((value) => parseInt(value, 10));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+
+  const startMin = hours * 60 + minutes;
+  const endMin = startMin + (duration > 0 ? duration : 60);
+
+  return {
+    start: formatLocalSlot(date, startMin),
+    end: formatLocalSlot(date, endMin),
+    available: false,
+  };
+}
+
+function formatLocalSlot(date: string, totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  return `${date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
 }
 
 function safeJsonParse(s: string): unknown {

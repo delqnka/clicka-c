@@ -1,8 +1,12 @@
 # @clicka/booking-sdk
 
-Типизиран клиент за публичното API на Clicka booking engine. Ползва се от
+Типизиран клиент за публичното `v1` API на Clicka booking engine. Ползва се от
 white-label custom фронтенди (paradise.bg, hairandart.bg, …) за да резервират
 часове срещу централния engine deploy.
+
+Ако целта е най-бързо свързване на сайт за 5 минути, ползвай
+`@clicka/booking`, не този пакет. `@clicka/booking-sdk` е за случаите, в които
+съзнателно правим custom booking UI.
 
 ## Инсталиране
 
@@ -19,7 +23,7 @@ npm install @clicka/booking-sdk
 import { createBookingClient } from '@clicka/booking-sdk';
 
 const client = createBookingClient({
-  engineUrl: 'https://clicka.bg',
+  engineUrl: 'https://www.clicka.bg',
   apiKey:    process.env.CLICKA_API_KEY!,   // pk_live_…
   salonSlug: 'paradise',
 });
@@ -40,6 +44,19 @@ if (result.ok) console.log('Booking created:', result.bookingId);
 else console.error('Failed:', result.error);
 ```
 
+## Какво вика пакетът
+
+Клиентът ползва само versioned public endpoints:
+
+- `GET /api/public/v1/salons/:slug`
+- `GET /api/public/v1/salons/:slug/staff`
+- `GET /api/public/v1/salons/:slug/slots?date=YYYY-MM-DD&staffMemberId=...`
+- `POST /api/public/v1/salons/:slug/bookings`
+- `POST /api/public/v1/salons/:slug/booking-checkout`
+
+Има backward-compatible нормализация за `slots`, ако backend върне стария
+`occupied[]` shape.
+
 ## API ключове
 
 Всеки салон има own API key в таблицата `public_api_keys`. Издава се от
@@ -56,8 +73,8 @@ Engine-ът enforce-ва ключа когато `REQUIRE_PUBLIC_API_KEY=1` е �
 `BookingApiError` се хвърля при HTTP грешка. Методите `createBooking` и
 `startCheckout` обвиват грешките в `{ ok: false, error: string }`.
 
-## TODO (следваща итерация)
+## Препоръка
 
-- Bundle на `<BookingWidget>` React компонент (изисква standalone билд)
-- React hook wrappers (`useSlots`, `useSalon`)
-- Webhook receiver helpers
+Не карай Claude, Cursor или друг AI да генерира собствен booking form, ако не е
+абсолютно нужно. За standard salon сайт е по-добре AI-то да прави само
+маркетинг страниците и бутоните, а booking flow-ът да остане в `@clicka/booking`.
