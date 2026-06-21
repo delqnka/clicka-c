@@ -437,8 +437,11 @@ export async function resolveAdminGate({
     }
   }
 
-  const owner = await getPrimaryOwnerForSalon(salon.salonId);
-  return owner ? { kind: 'sign-in', salon } : { kind: 'claim', salon };
+  // Always land on sign-in. There is no self-service /claim flow — the agency
+  // provisions every salon and sends the owner a magic link via PA dashboard
+  // (lands on /admin/set-password). Showing /claim would invite the SaaS-style
+  // "claim your business" UX the vision doc rules out.
+  return { kind: 'sign-in', salon };
 }
 
 export async function requireAdminRequestAccess(
