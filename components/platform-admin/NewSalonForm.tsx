@@ -12,6 +12,16 @@ type Result = {
   inviteSent: boolean;
 };
 
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text().catch(() => '');
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
 export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -54,9 +64,9 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
           autoSendInvite,
         }),
       });
-      const data = await res.json();
+      const data = await readJsonSafe(res);
       if (!res.ok) {
-        setError(data.error || 'Грешка при създаване');
+        setError(typeof data.error === 'string' ? data.error : 'Грешка при създаване');
         return;
       }
       setResult(data as Result);

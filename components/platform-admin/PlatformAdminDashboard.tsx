@@ -208,7 +208,9 @@ export default function PlatformAdminDashboard({
         body: JSON.stringify({ salonId }),
       });
       const data = await readJsonSafe(res);
-      if (data.magicLink) window.open(data.magicLink, '_blank');
+      if (typeof data.magicLink === 'string' && data.magicLink) {
+        window.open(data.magicLink, '_blank');
+      }
     } finally {
       setImpersonating(null);
     }
@@ -292,8 +294,8 @@ export default function PlatformAdminDashboard({
     try {
       const res = await fetch('/api/pa/payments');
       const data = await readJsonSafe(res);
-      setPayments(data.payments ?? []);
-      setTotalRevenue(data.totalRevenue ?? 0);
+      setPayments(Array.isArray(data.payments) ? (data.payments as PaymentRow[]) : []);
+      setTotalRevenue(typeof data.totalRevenue === 'number' ? data.totalRevenue : 0);
     } finally {
       setPaymentsLoading(false);
     }

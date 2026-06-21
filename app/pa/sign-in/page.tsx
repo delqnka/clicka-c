@@ -11,6 +11,16 @@ function stripCyrillic(value: string) {
   return value.replace(/[Ѐ-ӿ]/g, '');
 }
 
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text().catch(() => '');
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
 export default function PlatformAdminSignIn() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -30,12 +40,12 @@ export default function PlatformAdminSignIn() {
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await res.json();
+    const data = await readJsonSafe(res);
 
     if (data.ok) {
       router.push('/pa');
     } else {
-      setError(data.error ?? 'Грешен имейл или парола');
+      setError(typeof data.error === 'string' ? data.error : 'Грешен имейл или парола');
       setLoading(false);
     }
   }

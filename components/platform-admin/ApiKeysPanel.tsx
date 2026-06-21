@@ -18,8 +18,25 @@ type Props = {
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleDateString('bg-BG', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  try {
+    const parsed = new Date(iso);
+    if (Number.isNaN(parsed.getTime())) return '—';
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const year = String(parsed.getUTCFullYear());
+    return `${day}.${month}.${year}`;
+  }
   catch { return '—'; }
+}
+
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text().catch(() => '');
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 }
 
 export function ApiKeysPanel({ salonId }: Props) {
@@ -39,8 +56,8 @@ export function ApiKeysPanel({ salonId }: Props) {
     try {
       const res = await fetch(`/api/pa/api-keys?salonId=${encodeURIComponent(salonId)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setKeys(Array.isArray(data.keys) ? data.keys : []);
+      const data = await readJsonSafe(res);
+      setKeys(Array.isArray(data.keys) ? (data.keys as ApiKey[]) : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Грешка');
     } finally {
@@ -60,9 +77,12 @@ export function ApiKeysPanel({ salonId }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ salonId, label: newLabel.trim() || undefined, scopes: ['read', 'book'] }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      setIssued({ plaintext: data.plaintext, prefix: data.prefix });
+      const data = await readJsonSafe(res);
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`);
+      setIssued({
+        plaintext: typeof data.plaintext === 'string' ? data.plaintext : '',
+        prefix: typeof data.prefix === 'string' ? data.prefix : '',
+      });
       setNewLabel('');
       setShowNew(false);
       await refresh();

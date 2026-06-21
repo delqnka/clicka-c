@@ -96,8 +96,10 @@ export function ResendSettingsPanel({ salonId }: Props) {
         }),
       });
       const data = await readJsonSafe(res);
-      if (!res.ok) throw new Error(data.error || 'Грешка при запис');
-      setSettings(data.settings);
+      if (!res.ok) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'Грешка при запис');
+      }
+      setSettings((data.settings as Settings | undefined) ?? null);
       setApiKey('');
       setNotice('Запазено и проверено в Resend.');
     } catch (e) {
