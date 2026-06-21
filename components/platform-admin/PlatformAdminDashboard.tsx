@@ -225,7 +225,10 @@ export default function PlatformAdminDashboard({
       setInviteNotice({
         salonId,
         tone: 'success',
-        message: `Magic link е изпратен на ${typeof data.email === 'string' ? data.email : email}.`,
+        message:
+          data.emailSent === false
+            ? 'Magic link е генериран, но имейл не е изпратен. Провери email настройките.'
+            : `Magic link е изпратен на ${typeof data.email === 'string' ? data.email : email}.`,
       });
     } finally {
       setSendingInvite(null);
