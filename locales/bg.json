@@ -79,5 +79,62 @@
       "paymentFailed": "Грешка при инициализиране на плащането.",
       "generic": "Грешка при резервация."
     }
+  },
+  "adminAuth": {
+    "loading": "Зареждане…",
+    "signIn": {
+      "title": "Вход",
+      "subtitle": "Въведете имейл и парола за достъп до панела.",
+      "emailLabel": "Имейл",
+      "emailPlaceholder": "ime@example.com",
+      "passwordLabel": "Парола",
+      "passwordPlaceholder": "••••••••",
+      "showPassword": "Покажи паролата",
+      "hidePassword": "Скрий паролата",
+      "submit": "Влез",
+      "submitting": "Влизане…",
+      "forgot": "Забравена парола?",
+      "errorGeneric": "Грешка",
+      "errorLogin": "Грешка при вход"
+    },
+    "forgot": {
+      "back": "← Назад",
+      "title": "Забравена парола",
+      "subtitle": "Въведете имейла на акаунта. Ще изпратим линк за задаване на нова парола.",
+      "submit": "Изпрати линк",
+      "submitting": "Изпращане…",
+      "sentTitle": "Провери пощата си",
+      "sentBody": "Изпратихме линк за задаване на нова парола.",
+      "backToSignIn": "Назад към вход"
+    },
+    "setPassword": {
+      "invalidLink": "Невалиден линк.",
+      "invalidLinkHint": "Поискайте нов от страницата за вход.",
+      "titleCreate": "Задай парола",
+      "titleReset": "Нова парола",
+      "subtitleCreate": "Въведи името си и избери парола за достъп до панела.",
+      "subtitleReset": "Въведи нова парола за твоя панел.",
+      "nameLabel": "Име",
+      "namePlaceholder": "Вашето име",
+      "emailLabel": "Имейл",
+      "emailPlaceholder": "ime@example.com",
+      "passwordLabel": "Парола",
+      "passwordPlaceholder": "Поне 8 символа",
+      "confirmLabel": "Потвърди паролата",
+      "confirmPlaceholder": "Повтори паролата",
+      "show": "Покажи",
+      "hide": "Скрий",
+      "submitCreate": "Създай акаунт →",
+      "submitReset": "Смени паролата →",
+      "submittingCreate": "Създаване…",
+      "submittingReset": "Запазване…",
+      "mismatch": "Паролите не съвпадат.",
+      "doneCreate": "Акаунтът е създаден!",
+      "doneReset": "Паролата е сменена!",
+      "doneRedirect": "Влизаш в панела…",
+      "haveAccount": "Вече имаш акаунт?",
+      "signInLink": "Влез",
+      "errorGeneric": "Грешка"
+    }
   }
 }

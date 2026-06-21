@@ -79,5 +79,62 @@
       "paymentFailed": "Could not initialise payment. Please try again.",
       "generic": "Something went wrong. Please try again."
     }
+  },
+  "adminAuth": {
+    "loading": "Loading…",
+    "signIn": {
+      "title": "Sign in",
+      "subtitle": "Enter your email and password to access the panel.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "name@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "forgot": "Forgot password?",
+      "errorGeneric": "Error",
+      "errorLogin": "Sign-in failed"
+    },
+    "forgot": {
+      "back": "← Back",
+      "title": "Forgot password",
+      "subtitle": "Enter the account email. We will send a link to set a new password.",
+      "submit": "Send link",
+      "submitting": "Sending…",
+      "sentTitle": "Check your inbox",
+      "sentBody": "We sent a link to set a new password.",
+      "backToSignIn": "Back to sign in"
+    },
+    "setPassword": {
+      "invalidLink": "Invalid link.",
+      "invalidLinkHint": "Request a new one from the sign-in page.",
+      "titleCreate": "Set password",
+      "titleReset": "New password",
+      "subtitleCreate": "Enter your name and choose a password to access the panel.",
+      "subtitleReset": "Enter a new password for your panel.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Your name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "name@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmLabel": "Confirm password",
+      "confirmPlaceholder": "Repeat the password",
+      "show": "Show",
+      "hide": "Hide",
+      "submitCreate": "Create account →",
+      "submitReset": "Change password →",
+      "submittingCreate": "Creating…",
+      "submittingReset": "Saving…",
+      "mismatch": "Passwords do not match.",
+      "doneCreate": "Account created!",
+      "doneReset": "Password changed!",
+      "doneRedirect": "Signing you in…",
+      "haveAccount": "Already have an account?",
+      "signInLink": "Sign in",
+      "errorGeneric": "Error"
+    }
   }
 }
