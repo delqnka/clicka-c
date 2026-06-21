@@ -486,8 +486,15 @@ export async function destroyAllOtherOwnerSessions(ownerId: string, currentSessi
 }
 
 export function setAdminSessionCookie(response: NextResponse, request: NextRequest, sessionId: string, expiresAt: Date) {
-  const hostname = request.nextUrl.hostname;
-  const isPlatformHost = hostname === ROOT_DOMAIN || hostname.endsWith(`.${ROOT_DOMAIN}`);
+  // When a client site (e.g. salonurban.online) rewrites /admin/* to the
+  // engine, the engine sees host=<slug>.clicka.bg but the browser is still
+  // at salonurban.online. The forwarded host is the source of truth for the
+  // browser-facing origin — use it to decide the cookie Domain attribute so
+  // the cookie lands on a host the browser will actually send back.
+  const forwardedHost = extractHostname(request.headers.get('x-forwarded-host'));
+  const browserHost = forwardedHost || request.nextUrl.hostname;
+  const isPlatformHost =
+    browserHost === ROOT_DOMAIN || browserHost.endsWith(`.${ROOT_DOMAIN}`);
 
   response.cookies.set({
     name: ADMIN_COOKIE_NAME,
@@ -497,7 +504,9 @@ export function setAdminSessionCookie(response: NextResponse, request: NextReque
     secure: request.nextUrl.protocol === 'https:',
     path: '/',
     expires: expiresAt,
-    // Share the session across the apex and salon subdomains (e.g. clicka.bg ↔ didisalon.clicka.bg).
+    // Apex + salon subdomains share via .clicka.bg. For custom domains
+    // (incl. proxied via X-Forwarded-Host) omit Domain so the cookie binds
+    // to the exact host the browser sees — otherwise the Set-Cookie is rejected.
     domain: isPlatformHost ? `.${ROOT_DOMAIN}` : undefined,
   });
 }
