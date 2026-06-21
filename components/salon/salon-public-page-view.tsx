@@ -37,12 +37,11 @@ function resolveBrandNames(ids: string[]): { id: string; name: string }[] {
 }
 
 function pickLcpImage(salon: Record<string, unknown>): { src: string; alt: string } | null {
-  const coverRaw = String(salon.cover_image_url ?? '').trim();
-  const galleryRaw = Array.isArray(salon.gallery_images)
-    ? salon.gallery_images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
+  const imagesRaw = Array.isArray(salon.images)
+    ? salon.images.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
     : [];
   const salonName = String(salon.name ?? 'Салон');
-  const lcpImage = [coverRaw, ...galleryRaw].find((u) => u && !u.startsWith('data:'));
+  const lcpImage = imagesRaw.find((u) => u && !u.startsWith('data:'));
   if (!lcpImage) return null;
   return { src: lcpImage, alt: salonName };
 }

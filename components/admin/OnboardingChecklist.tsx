@@ -46,7 +46,7 @@ function useOnboardingSteps(site: AdminSitePayload) {
     {
       id: 'images',
       label: 'Качи снимки',
-      done: (site.galleryImages?.length ?? 0) > 0 || !!site.coverImageUrl,
+      done: (site.images?.length ?? 0) > 0,
       tab: 'images',
     },
     {

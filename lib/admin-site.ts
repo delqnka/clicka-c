@@ -19,8 +19,6 @@ import {
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { ensureAdminSiteSchema } from '@/lib/ensure-admin-site-schema';
 
-export { mergeUniqueImageLists } from '@/lib/admin-image-utils';
-
 export type LegalInfoPayload = LegalInfoStored;
 
 export type WorkingDay = {
@@ -67,10 +65,7 @@ export type AdminSitePayload = {
   googleMapsUrl: string;
   latitude: number | null;
   longitude: number | null;
-  coverImageUrl: string;
-  logoImageUrl: string;
-  galleryImages: string[];
-  portfolioImages: string[];
+  images: string[];
   ownerName: string;
   ownerPublicRole: string;
   ownerPublicPhotoUrl: string;
@@ -139,66 +134,14 @@ export function normalizeImageList(raw: unknown): string[] {
     .filter(Boolean);
 }
 
-/** Avoid wiping legacy portfolio when admin uploads into an empty portfolio tab. */
-export function mergePortfolioImageSave(
-  incoming: string[],
-  existingPortfolio: string[],
-  gallery: string[],
-): string[] {
-  const next = normalizeImageList(incoming);
-  const existing = normalizeImageList(existingPortfolio);
-  const salonGallery = normalizeImageList(gallery);
-
-  if (next.length === 0) return existing;
-
-  const wasGalleryDuplicate =
-    existing.length > 0 &&
-    existing.length === salonGallery.length &&
-    existing.every((url, index) => url === salonGallery[index]);
-
-  if (wasGalleryDuplicate && salonGallery.length > next.length) {
-    return [...new Set([...salonGallery, ...next])];
-  }
-
-  if (
-    existing.length === 0 &&
-    salonGallery.length > 0 &&
-    next.length > 0 &&
-    next.length < salonGallery.length &&
-    !next.every((url) => salonGallery.includes(url))
-  ) {
-    return [...new Set([...salonGallery, ...next])];
-  }
-
-  const missingFromGallery = salonGallery.filter((url) => !next.includes(url));
-  if (missingFromGallery.length > 0 && next.length < salonGallery.length) {
-    return [...new Set([...salonGallery, ...next])];
-  }
-
-  return next;
-}
-
-/** Legacy rows stored the same URLs in gallery + portfolio — keep salon photos in gallery only. */
-export function normalizePortfolioImages(gallery: string[], portfolioRaw: unknown): string[] {
-  const portfolio = normalizeImageList(portfolioRaw);
-  if (!portfolio.length) return [];
-  if (
-    portfolio.length === gallery.length &&
-    portfolio.every((url, index) => url === gallery[index])
-  ) {
-    return [];
-  }
-  return portfolio;
-}
-
 export type AdminImageFields = Pick<
   AdminSitePayload,
-  'coverImageUrl' | 'logoImageUrl' | 'galleryImages' | 'portfolioImages' | 'ownerPublicPhotoUrl'
+  'images' | 'ownerPublicPhotoUrl'
 >;
 
 export async function loadAdminImageFieldsBySlug(slug: string): Promise<AdminImageFields | null> {
   const rows = await sql`
-    SELECT cover_image_url, logo_image_url, gallery_images, portfolio_images, owner_public_photo_url
+    SELECT images, owner_public_photo_url
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -206,10 +149,7 @@ export async function loadAdminImageFieldsBySlug(slug: string): Promise<AdminIma
   if (rows.length === 0) return null;
   const row = rows[0] as Record<string, unknown>;
   return {
-    coverImageUrl: String(row.cover_image_url ?? ''),
-    logoImageUrl: String(row.logo_image_url ?? ''),
-    galleryImages: normalizeImageList(row.gallery_images),
-    portfolioImages: normalizeImageList(row.portfolio_images),
+    images: normalizeImageList(row.images),
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),
   };
 }
@@ -220,7 +160,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     SELECT
       slug, name, category, phone, email, city, address, about,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
-      cover_image_url, logo_image_url, gallery_images, portfolio_images,
+      images,
       owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
       services, working_hours, opening_hours,
       custom_domain, domain_status, domain_config,
@@ -261,10 +201,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     googleMapsUrl: String(row.google_maps_url ?? ''),
     latitude: row.latitude != null && Number.isFinite(Number(row.latitude)) ? Number(row.latitude) : null,
     longitude: row.longitude != null && Number.isFinite(Number(row.longitude)) ? Number(row.longitude) : null,
-    coverImageUrl: String(row.cover_image_url ?? ''),
-    logoImageUrl: String(row.logo_image_url ?? ''),
-    galleryImages: normalizeImageList(row.gallery_images),
-    portfolioImages: normalizeImageList(row.portfolio_images),
+    images: normalizeImageList(row.images),
     ownerName: String(row.owner_name ?? ''),
     ownerPublicRole: String(row.owner_public_role ?? ''),
     ownerPublicPhotoUrl: String(row.owner_public_photo_url ?? ''),

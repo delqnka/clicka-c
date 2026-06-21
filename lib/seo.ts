@@ -106,7 +106,7 @@ export function buildSalonPageMetadata(
   const title = buildSalonMetaTitle(salon);
   const description = buildSalonMetaDescription(salon);
   const keywords = buildSalonMetaKeywords(salon);
-  const coverImage = String(salon.cover_image_url ?? '').trim();
+  const coverImage = String((salon.images as string[])?.[0] ?? '').trim();
 
   const canonicalUrl = getPrimaryPublicUrl({
     slug,
@@ -156,8 +156,8 @@ export function buildSalonJsonLd(
   const phone = String(salon.phone ?? '');
   const email = String(salon.email ?? '');
   const about = String(salon.about ?? '').trim() || buildSalonMetaDescription(salon);
-  const coverImage = String(salon.cover_image_url ?? '');
-  const logoImage = String(salon.logo_image_url ?? '');
+  const coverImage = String((salon.images as string[])?.[0] ?? '');
+  const logoImage = String((salon.images as string[])?.[0] ?? '');
 
   const url = getPrimaryPublicUrl({
     slug,
@@ -290,7 +290,7 @@ export function buildBlogIndexMetadata(
     ? `${sectionTitle} от ${salonName} в ${city}. Полезна информация за грижа и услуги.`
     : `${sectionTitle} от ${salonName}. Полезна информация за грижа и услуги.`;
   const canonicalUrl = `${salonPublicBaseUrl(salon, slug)}/blog`;
-  const coverImage = String(salon.cover_image_url ?? '').trim();
+  const coverImage = String((salon.images as string[])?.[0] ?? '').trim();
 
   return {
     title,
@@ -325,7 +325,7 @@ export function buildBlogPostMetadata(
   const fullTitle = title.includes(salonName) ? title : `${title} — ${salonName}`;
   const description = blogPostDescription(post);
   const canonicalUrl = blogPostPublicUrl(salon, slug, post.slug);
-  const coverImage = post.coverImageUrl.trim() || String(salon.cover_image_url ?? '').trim();
+  const coverImage = post.coverImageUrl.trim() || String((salon.images as string[])?.[0] ?? '').trim();
   const keywords = blogPostKeywords(post, salon);
 
   return {
@@ -434,8 +434,8 @@ export function buildBlogPostingJsonLd(
   const url = blogPostPublicUrl(salon, slug, post.slug);
   const blogUrl = `${salonPublicBaseUrl(salon, slug)}/blog`;
   const description = blogPostDescription(post);
-  const coverImage = post.coverImageUrl.trim() || String(salon.cover_image_url ?? '').trim();
-  const logoImage = String(salon.logo_image_url ?? '').trim();
+  const coverImage = post.coverImageUrl.trim() || String((salon.images as string[])?.[0] ?? '').trim();
+  const logoImage = String((salon.images as string[])?.[0] ?? '').trim();
   const sectionTitle = resolveBlogSectionTitle(salon.blog_title);
 
   return {

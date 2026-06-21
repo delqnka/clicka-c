@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, GripVertical, Trash2 } from 'lucide-react';
+import { GripVertical, Trash2 } from 'lucide-react';
 import type { CSSProperties, PointerEvent } from 'react';
 import { useCallback, useRef, useState } from 'react';
 
@@ -20,26 +20,20 @@ type BtnStyle = CSSProperties;
 
 type Props = {
   images: string[];
-  coverImageUrl: string;
   isMobile: boolean;
   pendingUrls?: ReadonlySet<string>;
   btnSmGhost: BtnStyle;
   onReorder: (images: string[]) => void;
-  onSetCover?: (url: string) => void;
   onRemove: (index: number) => void;
-  enableSetCover?: boolean;
 };
 
 export function GalleryReorderGrid({
   images,
-  coverImageUrl,
   isMobile,
   pendingUrls,
   btnSmGhost,
   onReorder,
-  onSetCover,
   onRemove,
-  enableSetCover = true,
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -139,9 +133,7 @@ export function GalleryReorderGrid({
             onPointerUp={e => onItemPointerUp(e, i)}
             onPointerCancel={onItemPointerCancel}
             style={{
-              border: `1px solid ${
-                isDropTarget ? '#22c55e' : coverImageUrl === url ? '#18181B' : '#E5E3DE'
-              }`,
+              border: `1px solid ${isDropTarget ? '#22c55e' : '#E5E3DE'}`,
               borderRadius: isMobile ? 12 : 8,
               overflow: 'hidden',
               background: '#fff',
@@ -247,40 +239,6 @@ export function GalleryReorderGrid({
                 justifyContent: 'center',
               }}
             >
-              {enableSetCover && onSetCover ? (
-              <button
-                type="button"
-                aria-label={coverImageUrl === url ? 'Начална снимка' : 'Задай за cover'}
-                style={{
-                  ...btnSmGhost,
-                  flex: isMobile ? '0 0 auto' : 1,
-                  fontSize: isMobile ? 10 : 11,
-                  padding: isMobile ? '6px' : '4px 8px',
-                  width: isMobile ? 44 : undefined,
-                  height: isMobile ? 44 : undefined,
-                  minWidth: isMobile ? 44 : undefined,
-                  minHeight: isMobile ? 44 : undefined,
-                  borderRadius: isMobile ? 10 : 8,
-                  ...(coverImageUrl === url
-                    ? { background: '#18181B', color: '#fff', borderColor: '#18181B' }
-                    : {}),
-                }}
-                disabled={isPending}
-                onClick={e => {
-                  e.stopPropagation();
-                  if (suppressClickRef.current || isPending) return;
-                  onSetCover(url);
-                }}
-              >
-                {isMobile ? (
-                  <Check size={16} strokeWidth={2.5} />
-                ) : coverImageUrl === url ? (
-                  'Cover ✓'
-                ) : (
-                  'Cover'
-                )}
-              </button>
-              ) : null}
               <button
                 type="button"
                 style={{

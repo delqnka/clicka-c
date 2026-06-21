@@ -9,7 +9,6 @@ ALTER TABLE salons ADD COLUMN IF NOT EXISTS google_place_id text;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS tiktok_username text;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS rating numeric(4,2);
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS review_count integer;
-ALTER TABLE salons ADD COLUMN IF NOT EXISTS portfolio_images jsonb;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_name text;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_role text;
 ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_photo_url text;

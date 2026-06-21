@@ -3,7 +3,6 @@ import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import {
   loadAdminImageFieldsBySlug,
-  mergePortfolioImageSave,
   normalizeImageList,
 } from '@/lib/admin-site';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
@@ -38,37 +37,17 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни.' }, { status: 400 });
   }
 
-  const coverImageUrl =
-    typeof body.coverImageUrl === 'string' ? body.coverImageUrl.trim() : current.coverImageUrl;
-  const logoImageUrl =
-    typeof body.logoImageUrl === 'string' ? body.logoImageUrl.trim() : current.logoImageUrl;
   const ownerPublicPhotoUrl =
     typeof body.ownerPublicPhotoUrl === 'string'
       ? body.ownerPublicPhotoUrl.trim()
       : current.ownerPublicPhotoUrl;
-  const galleryImages =
-    body.galleryImages !== undefined ? normalizeImageList(body.galleryImages) : current.galleryImages;
-  const portfolioImagesRaw =
-    body.portfolioImages !== undefined
-      ? normalizeImageList(body.portfolioImages)
-      : current.portfolioImages;
-  const portfolioImages =
-    body.portfolioImages !== undefined
-      ? mergePortfolioImageSave(portfolioImagesRaw, current.portfolioImages, galleryImages)
-      : current.portfolioImages;
-  // If client sends '' it means "clear the cover" — do NOT silently replace with gallery[0].
-  // The public site already falls back to gallery[0] if cover is empty.
-  const normalizedCoverImageUrl = coverImageUrl || current.coverImageUrl || '';
-  const normalizedLogoImageUrl =
-    logoImageUrl || normalizedCoverImageUrl || galleryImages[0];
+  const images =
+    body.images !== undefined ? normalizeImageList(body.images) : current.images;
 
   await sql`
     UPDATE salons
     SET
-      cover_image_url = ${normalizedCoverImageUrl},
-      logo_image_url = ${normalizedLogoImageUrl},
-      gallery_images = ${JSON.stringify(galleryImages)}::jsonb,
-      portfolio_images = ${JSON.stringify(portfolioImages)}::jsonb,
+      images = ${JSON.stringify(images)}::jsonb,
       owner_public_photo_url = ${ownerPublicPhotoUrl || null},
       updated_at = now()
     WHERE slug = ${auth.salon.slug}
@@ -82,10 +61,7 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({
     success: true,
     site: {
-      coverImageUrl: normalizedCoverImageUrl,
-      logoImageUrl: normalizedLogoImageUrl,
-      galleryImages,
-      portfolioImages,
+      images,
       ownerPublicPhotoUrl,
     },
   });

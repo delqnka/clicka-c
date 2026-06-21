@@ -223,8 +223,9 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
 
   const jsonLd = buildSalonJsonLd(salonRecord, salonSlug);
   const lcp = (() => {
-    const cover = String(salonRecord.cover_image_url ?? '').trim();
-    return cover && !cover.startsWith('data:') ? { src: cover, alt: salonName } : null;
+    const images = Array.isArray(salonRecord.images) ? salonRecord.images : [];
+    const first = String(images[0] ?? '').trim();
+    return first && !first.startsWith('data:') ? { src: first, alt: salonName } : null;
   })();
 
   return (

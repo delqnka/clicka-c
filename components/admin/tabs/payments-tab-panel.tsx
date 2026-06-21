@@ -25,14 +25,24 @@ export function PaymentsTabPanel({
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
 
+  async function safeJson(res: Response): Promise<Record<string, unknown>> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      const preview = text.slice(0, 80).replace(/\s+/g, ' ').trim();
+      throw new Error(`Сървърът върна не-JSON отговор (HTTP ${res.status}): ${preview || 'празно'}`);
+    }
+  }
+
   async function loadStatus() {
     setLoading(true);
     setError('');
     try {
       const res = await fetch(`/api/stripe/connect/status?slug=${encodeURIComponent(slug)}`);
-      const data = await res.json() as StripeStatus & { error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Грешка');
-      setStatus(data);
+      const data = await safeJson(res) as Partial<StripeStatus> & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? `Грешка (HTTP ${res.status})`);
+      setStatus(data as StripeStatus);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Грешка при зареждане на статуса');
     } finally {
@@ -49,8 +59,8 @@ export function PaymentsTabPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug }),
       });
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error ?? 'Грешка при свързване');
+      const data = await safeJson(res) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? `Грешка при свързване (HTTP ${res.status})`);
       window.location.href = data.url;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Грешка');

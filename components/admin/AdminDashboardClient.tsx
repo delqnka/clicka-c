@@ -76,7 +76,6 @@ import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
 import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
-import { mergeUniqueImageLists } from '@/lib/admin-image-utils';
 import { ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
@@ -442,12 +441,7 @@ export default function AdminDashboardClient({
   const blogSaveAgainRef = useRef(false);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
-  const [galleryPending, setGalleryPending] = useState<Set<string>>(() => new Set());
   const [portfolioPending, setPortfolioPending] = useState<Set<string>>(() => new Set());
-  const [galleryUploadProgress, setGalleryUploadProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
   const [portfolioUploadProgress, setPortfolioUploadProgress] = useState<{
     done: number;
     total: number;
@@ -1159,10 +1153,7 @@ export default function AdminDashboardClient({
 
   async function persistImages(
     payload: {
-      coverImageUrl: string;
-      logoImageUrl: string;
-      galleryImages: string[];
-      portfolioImages: string[];
+      images: string[];
       ownerPublicPhotoUrl: string;
     },
     opts?: { silent?: boolean },
@@ -1172,21 +1163,13 @@ export default function AdminDashboardClient({
       setNotice('');
     }
     setBusyKey(opts?.silent ? 'images-auto' : 'images');
-    const galleryImages = payload.galleryImages.filter(u => u && !u.startsWith('blob:'));
-    const portfolioImages = payload.portfolioImages.filter(u => u && !u.startsWith('blob:'));
-    let coverImageUrl = payload.coverImageUrl;
-    if (coverImageUrl.startsWith('blob:')) {
-      coverImageUrl = galleryImages[0] ?? '';
-    }
+    const images = payload.images.filter(u => u && !u.startsWith('blob:'));
     try {
       const res = await fetch(`/api/admin/site-images?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          coverImageUrl,
-          logoImageUrl: payload.logoImageUrl,
-          galleryImages,
-          portfolioImages,
+          images,
           ownerPublicPhotoUrl: payload.ownerPublicPhotoUrl,
         }),
       });
@@ -1202,12 +1185,8 @@ export default function AdminDashboardClient({
   }
 
   async function saveImages() {
-    const merged = mergeUniqueImageLists(site.portfolioImages, site.galleryImages);
     await persistImages({
-      coverImageUrl: site.coverImageUrl,
-      logoImageUrl: site.logoImageUrl,
-      galleryImages: merged,
-      portfolioImages: merged,
+      images: site.images,
       ownerPublicPhotoUrl: site.ownerPublicPhotoUrl,
     });
   }
@@ -1325,84 +1304,6 @@ export default function AdminDashboardClient({
     return String(d.url ?? '');
   }
 
-  async function handleCoverUpload(file: File | null) {
-    if (!file) return;
-    setBusyKey('upload-cover');
-    setError('');
-    const preview = URL.createObjectURL(file);
-    setSite(p => ({ ...p, coverImageUrl: preview }));
-    try {
-      const url = await uploadSingleFile(file);
-      const nextSite: AdminSitePayload = {
-        ...site,
-        coverImageUrl: url,
-        logoImageUrl: site.logoImageUrl || url,
-      };
-      setSite(nextSite);
-      if (isMobile) {
-        await persistImages(
-          {
-            coverImageUrl: nextSite.coverImageUrl,
-            logoImageUrl: nextSite.logoImageUrl,
-            galleryImages: nextSite.galleryImages,
-            portfolioImages: nextSite.portfolioImages,
-            ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
-          },
-          { silent: true },
-        );
-        setNotice('Cover е качен и запазен.');
-      } else {
-        setNotice('Cover качена. Натисни „Запази снимките".');
-      }
-    } catch (e) {
-      handleErr(e);
-      setSite(p => ({
-        ...p,
-        coverImageUrl: p.coverImageUrl === preview ? '' : p.coverImageUrl,
-      }));
-    } finally {
-      URL.revokeObjectURL(preview);
-      setBusyKey('');
-    }
-  }
-
-  async function handleLogoUpload(file: File | null) {
-    if (!file) return;
-    setBusyKey('upload-logo');
-    setError('');
-    const preview = URL.createObjectURL(file);
-    setSite(p => ({ ...p, logoImageUrl: preview }));
-    try {
-      const url = await uploadSingleFile(file);
-      const nextSite: AdminSitePayload = { ...site, logoImageUrl: url };
-      setSite(nextSite);
-      if (isMobile) {
-        await persistImages(
-          {
-            coverImageUrl: nextSite.coverImageUrl,
-            logoImageUrl: nextSite.logoImageUrl,
-            galleryImages: nextSite.galleryImages,
-            portfolioImages: nextSite.portfolioImages,
-            ownerPublicPhotoUrl: nextSite.ownerPublicPhotoUrl,
-          },
-          { silent: true },
-        );
-        setNotice('Лого е качено и запазено.');
-      } else {
-        setNotice('Лого качено. Натисни „Запази снимките".');
-      }
-    } catch (e) {
-      handleErr(e);
-      setSite(p => ({
-        ...p,
-        logoImageUrl: p.logoImageUrl === preview ? '' : p.logoImageUrl,
-      }));
-    } finally {
-      URL.revokeObjectURL(preview);
-      setBusyKey('');
-    }
-  }
-
   async function handleOwnerPhotoUpload(file: File | null) {
     if (!file) return;
     setBusyKey('upload-owner');
@@ -1437,10 +1338,9 @@ export default function AdminDashboardClient({
     }
   }
 
-  async function uploadAdminImageList(
+  async function handlePortfolioUpload(
     files: FileList | File[] | null,
-    input: HTMLInputElement | null | undefined,
-    target: 'gallery' | 'portfolio',
+    input?: HTMLInputElement | null,
   ) {
     const images = imageFilesFromInput(files);
     if (!images.length) {
@@ -1448,21 +1348,9 @@ export default function AdminDashboardClient({
       return;
     }
 
-    const listKey = target === 'gallery' ? 'galleryImages' : 'portfolioImages';
-    const busyUploadKey = target === 'gallery' ? 'upload-gallery' : 'upload-portfolio';
-    const setPending = target === 'gallery' ? setGalleryPending : setPortfolioPending;
-    const setProgress = target === 'gallery' ? setGalleryUploadProgress : setPortfolioUploadProgress;
-    const label = target === 'gallery' ? 'салона' : 'портфолиото';
-
     const snapshot = siteRef.current;
     const filterStable = (urls: string[]) => urls.filter((u) => u && !u.startsWith('blob:'));
-    const stableBefore =
-      target === 'portfolio'
-        ? mergeUniqueImageLists(
-            filterStable(snapshot.portfolioImages),
-            filterStable(snapshot.galleryImages),
-          )
-        : filterStable(snapshot[listKey]);
+    const stableBefore = filterStable(snapshot.images);
 
     const previews = images.map((file) => ({
       file,
@@ -1470,33 +1358,18 @@ export default function AdminDashboardClient({
     }));
     const blobUrls = previews.map((p) => p.blob);
 
-    setPending((prev) => {
+    setPortfolioPending((prev) => {
       const next = new Set(prev);
       blobUrls.forEach((b) => next.add(b));
       return next;
     });
     setSite((p) => {
-      const stable =
-        target === 'portfolio'
-          ? mergeUniqueImageLists(
-              filterStable(p.portfolioImages),
-              filterStable(p.galleryImages),
-            )
-          : p[listKey].filter((u) => !u.startsWith('blob:'));
-      const nextList = [...stable, ...blobUrls];
-      return {
-        ...p,
-        ...(target === 'portfolio'
-          ? { portfolioImages: nextList, galleryImages: nextList }
-          : { [listKey]: nextList }),
-        ...(target === 'gallery' && (!p.coverImageUrl || p.coverImageUrl.startsWith('blob:'))
-          ? { coverImageUrl: nextList[0] ?? '' }
-          : {}),
-      };
+      const stable = filterStable(p.images);
+      return { ...p, images: [...stable, ...blobUrls] };
     });
 
-    setBusyKey(busyUploadKey);
-    setProgress({ done: 0, total: images.length });
+    setBusyKey('upload-portfolio');
+    setPortfolioUploadProgress({ done: 0, total: images.length });
     setError('');
 
     const uploadedUrls: string[] = [];
@@ -1507,110 +1380,49 @@ export default function AdminDashboardClient({
         try {
           const url = await uploadSingleFile(file);
           uploadedUrls.push(url);
-          setSite((p) => {
-            const current =
-              target === 'portfolio'
-                ? mergeUniqueImageLists(
-                    filterStable(p.portfolioImages),
-                    filterStable(p.galleryImages),
-                  )
-                : p[listKey];
-            const nextList = current.map((u) => (u === blob ? url : u));
-            return {
-              ...p,
-              ...(target === 'portfolio'
-                ? { portfolioImages: nextList, galleryImages: nextList }
-                : { [listKey]: nextList }),
-              ...(target === 'gallery' && (!p.coverImageUrl || p.coverImageUrl === blob)
-                ? { coverImageUrl: url }
-                : {}),
-            };
-          });
+          setSite((p) => ({
+            ...p,
+            images: p.images.map((u) => (u === blob ? url : u)),
+          }));
         } catch (e) {
-          setSite((p) => {
-            const current =
-              target === 'portfolio'
-                ? mergeUniqueImageLists(
-                    filterStable(p.portfolioImages),
-                    filterStable(p.galleryImages),
-                  )
-                : p[listKey];
-            const nextList = current.filter((u) => u !== blob);
-            return target === 'portfolio'
-              ? { ...p, portfolioImages: nextList, galleryImages: nextList }
-              : { ...p, [listKey]: nextList };
-          });
+          setSite((p) => ({
+            ...p,
+            images: p.images.filter((u) => u !== blob),
+          }));
           throw e;
         } finally {
           URL.revokeObjectURL(blob);
-          setPending((prev) => {
+          setPortfolioPending((prev) => {
             const next = new Set(prev);
             next.delete(blob);
             return next;
           });
           progressDone += 1;
-          setProgress({ done: progressDone, total: images.length });
+          setPortfolioUploadProgress({ done: progressDone, total: images.length });
         }
       });
 
       const finalList = [...stableBefore, ...uploadedUrls];
       const latest = siteRef.current;
-      const persistPayload = {
-        coverImageUrl:
-          target === 'gallery' && (!latest.coverImageUrl || latest.coverImageUrl.startsWith('blob:'))
-            ? (finalList[0] ?? latest.coverImageUrl)
-            : latest.coverImageUrl,
-        logoImageUrl: latest.logoImageUrl,
-        galleryImages: target === 'portfolio' || target === 'gallery' ? finalList : filterStable(latest.galleryImages),
-        portfolioImages:
-          target === 'portfolio' || target === 'gallery'
-            ? finalList
-            : filterStable(latest.portfolioImages),
-        ownerPublicPhotoUrl: latest.ownerPublicPhotoUrl,
-      };
 
-      setSite((p) => ({
-        ...p,
-        ...(target === 'portfolio'
-          ? { portfolioImages: finalList, galleryImages: finalList }
-          : { [listKey]: finalList }),
-        ...(target === 'gallery'
-          ? {
-              coverImageUrl:
-                p.coverImageUrl && !p.coverImageUrl.startsWith('blob:')
-                  ? p.coverImageUrl
-                  : (finalList[0] ?? ''),
-            }
-          : {}),
-      }));
+      setSite((p) => ({ ...p, images: finalList }));
 
-      await persistImages(persistPayload, { silent: true });
+      await persistImages(
+        { images: finalList, ownerPublicPhotoUrl: latest.ownerPublicPhotoUrl },
+        { silent: true },
+      );
       setNotice(
         uploadedUrls.length === 1
-          ? `Снимката е качена и запазена в ${label}.`
-          : `${uploadedUrls.length} снимки са качени и запазени в ${label}.`,
+          ? 'Снимката е качена и запазена.'
+          : `${uploadedUrls.length} снимки са качени и запазени.`,
       );
     } catch (e) {
       handleErr(e);
     } finally {
       setBusyKey('');
-      setProgress(null);
+      setPortfolioUploadProgress(null);
       if (input) input.value = '';
     }
-  }
-
-  async function handleGalleryUpload(
-    files: FileList | File[] | null,
-    input?: HTMLInputElement | null,
-  ) {
-    await uploadAdminImageList(files, input, 'gallery');
-  }
-
-  async function handlePortfolioUpload(
-    files: FileList | File[] | null,
-    input?: HTMLInputElement | null,
-  ) {
-    await uploadAdminImageList(files, input, 'portfolio');
   }
 
   async function runPriceListAnalysis(urls: string[]) {
@@ -2859,8 +2671,6 @@ export default function AdminDashboardClient({
               portfolioUploadProgress={portfolioUploadProgress}
               existingServiceCategories={existingServiceCategories}
               saveImages={saveImages}
-              handleCoverUpload={handleCoverUpload}
-              handleLogoUpload={handleLogoUpload}
               handlePortfolioUpload={handlePortfolioUpload}
             />
           ) : null}

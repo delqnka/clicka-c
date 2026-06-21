@@ -531,9 +531,7 @@ export default function SalonPublicParity({
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
   const address = String(rawSalon.address ?? '').trim();
-  const cover = String(rawSalon.cover_image_url ?? '').trim();
-  const galleryDb = rawSalon.gallery_images;
-  const portfolioDb = rawSalon.portfolio_images;
+  const imagesDb = rawSalon.images;
   const instagram = rawSalon.instagram_username as string | null | undefined;
   const facebook = rawSalon.facebook_username as string | null | undefined;
   const tiktok = (rawSalon.tiktok_username as string | null | undefined) ?? undefined;
@@ -641,11 +639,10 @@ export default function SalonPublicParity({
 
   const isValidImageUri = useCallback((uri: string | null | undefined) => uri != null && String(uri).trim().length > 0, []);
 
-  /** Снимки на помещението — hero галерия (качени в „Снимки на салона“). */
   const salonGalleryPhotos = useMemo(() => {
-    if (!Array.isArray(galleryDb)) return [] as string[];
+    if (!Array.isArray(imagesDb)) return [] as string[];
     const seen = new Set<string>();
-    return galleryDb
+    return imagesDb
       .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
       .map((u) => wireMediaUri(u.trim()))
       .filter((u) => {
@@ -653,34 +650,14 @@ export default function SalonPublicParity({
         seen.add(u);
         return true;
       });
-  }, [galleryDb]);
+  }, [imagesDb]);
 
-  /** Работа / портфолио — отделна секция на сайта. */
-  const portfolioPhotos = useMemo(() => {
-    if (!Array.isArray(portfolioDb)) return [] as string[];
-    const seen = new Set<string>();
-    return portfolioDb
-      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-      .map((u) => wireMediaUri(u.trim()))
-      .filter((u) => {
-        if (seen.has(u)) return false;
-        seen.add(u);
-        return true;
-      });
-  }, [portfolioDb]);
+  const portfolioPhotos = salonGalleryPhotos;
 
   const hasSalonGallery = salonGalleryPhotos.length > 0;
   const hasPortfolio = portfolioPhotos.length > 0;
 
-  const heroUris = useMemo(() => {
-    const uris: string[] = [];
-    const coverWired = cover && isValidImageUri(cover) ? wireMediaUri(cover) : '';
-    if (coverWired) uris.push(coverWired);
-    for (const u of salonGalleryPhotos) {
-      if (!uris.includes(u)) uris.push(u);
-    }
-    return uris;
-  }, [cover, salonGalleryPhotos, isValidImageUri]);
+  const heroUris = useMemo(() => [...salonGalleryPhotos], [salonGalleryPhotos]);
 
   const portfolioDisplay = useMemo(() => {
     if (portfolioPhotos.length === 0) return salonGalleryPhotos;

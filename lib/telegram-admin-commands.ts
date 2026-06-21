@@ -742,11 +742,9 @@ export async function handleAdminCommand(
     }
     if (state?.type === 'last_photo') {
       const url = state.url;
-      // Remove from gallery_images and portfolio_images
-      const rows = await sql`SELECT gallery_images, portfolio_images FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
-      const gallery = normalizeImageList(rows[0]?.gallery_images).filter((u: string) => u !== url);
-      const portfolio = normalizeImageList(rows[0]?.portfolio_images).filter((u: string) => u !== url);
-      await sql`UPDATE salons SET gallery_images = ${JSON.stringify(gallery)}::jsonb, portfolio_images = ${JSON.stringify(portfolio)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+      const rows = await sql`SELECT images FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
+      const images = normalizeImageList(rows[0]?.images).filter((u: string) => u !== url);
+      await sql`UPDATE salons SET images = ${JSON.stringify(images)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
       revalidateTag(`salon-public-${salon.slug}`);
       await clearState(chatId);
       await sendTelegramMessage(chatId, '🗑 Снимката е изтрита.');
@@ -3772,7 +3770,7 @@ export async function handleGalleryPhoto(
   chatId: number,
   imageUrl: string,
   salon: SalonRef,
-  target: 'gallery' | 'cover' | 'portfolio' = 'gallery',
+  _target: 'gallery' | 'cover' | 'portfolio' = 'gallery',
 ): Promise<void> {
   await sendTelegramMessage(chatId, '⬆️ Качвам снимката...');
 
@@ -3788,7 +3786,7 @@ export async function handleGalleryPhoto(
 
   // Convert to WebP (matches admin upload pipeline) + generate LCP sidecar.
   const stamp = Date.now();
-  const base = `salons/${salon.slug}/${target}/${stamp}`;
+  const base = `salons/${salon.slug}/${_target}/${stamp}`;
   const key = `${base}.webp`;
   const lcpKey = `${base}-lcp-640.webp`;
 
@@ -3822,24 +3820,15 @@ export async function handleGalleryPhoto(
     return;
   }
 
-  if (target === 'cover') {
-    await sql`UPDATE salons SET cover_image_url = ${publicUrl}, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
-    revalidateTag(`salon-public-${salon.slug}`);
-    await sendTelegramMessage(chatId, '✅ Корицата е обновена!');
-    return;
-  }
+  const rows = await sql`SELECT images FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
+  const existing = normalizeImageList(rows[0]?.images);
 
-  const rows = await sql`SELECT gallery_images, portfolio_images FROM salons WHERE CAST(id AS text) = ${salon.salonId} LIMIT 1`;
-  const existingGallery = normalizeImageList(rows[0]?.gallery_images);
-  const existingPortfolio = normalizeImageList(rows[0]?.portfolio_images);
-
-  // Keep gallery_images and portfolio_images in sync — admin UI merges them, so both must have the same URLs.
-  const merged = [...new Set([...existingGallery, ...existingPortfolio, publicUrl])];
+  const merged = [...new Set([...existing, publicUrl])];
   const updatedCount = merged.length;
-  await sql`UPDATE salons SET gallery_images = ${JSON.stringify(merged)}::jsonb, portfolio_images = ${JSON.stringify(merged)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
+  await sql`UPDATE salons SET images = ${JSON.stringify(merged)}::jsonb, updated_at = now() WHERE CAST(id AS text) = ${salon.salonId}`;
 
   revalidateTag(`salon-public-${salon.slug}`);
-  await sendTelegramMessage(chatId, `✅ Снимката е добавена в ${target === 'portfolio' ? 'портфолиото' : 'галерията'}! (${updatedCount} общо)\n💡 Ако искаш да я изтриеш, напиши <code>изтрий снимката</code>`);
+  await sendTelegramMessage(chatId, `✅ Снимката е добавена! (${updatedCount} общо)\n💡 Ако искаш да я изтриеш, напиши <code>изтрий снимката</code>`);
   // Remember last uploaded photo so the owner can delete it immediately
   await setState(chatId, { type: 'last_photo', url: publicUrl, created_at: new Date().toISOString() });
 }

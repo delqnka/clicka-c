@@ -9,9 +9,7 @@ export type PublicSalon = {
   city: string | null;
   address: string | null;
   about: string | null;
-  cover_image_url: string | null;
-  logo_image_url: string | null;
-  gallery_images: unknown[];
+  images: unknown[];
   instagram_username: string | null;
   facebook_username: string | null;
   google_maps_url: string | null;

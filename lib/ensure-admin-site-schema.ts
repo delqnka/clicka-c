@@ -15,7 +15,6 @@ export async function ensureAdminSiteSchema() {
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS opening_hours jsonb;
-          ALTER TABLE salons ADD COLUMN IF NOT EXISTS portfolio_images jsonb;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS latitude double precision;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS longitude double precision;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS legal_info jsonb;

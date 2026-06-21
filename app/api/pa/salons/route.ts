@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     INSERT INTO salons (
       id, slug, name, category, phone, email,
       city, address, about,
-      cover_image_url, logo_image_url, gallery_images,
+      images,
       instagram_username, facebook_username, google_maps_url,
       working_hours, services,
       template_id, primary_color, primary_color_light,
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     ) VALUES (
       ${salonId}, ${slug}, ${name}, ${''}, ${''}, ${email},
       ${''}, ${''}, ${''},
-      ${''}, ${''}, ${'[]'}::jsonb,
+      ${'[]'}::jsonb,
       ${''}, ${''}, ${''},
       ${JSON.stringify(DEFAULT_HOURS)}::jsonb, ${'[]'}::jsonb,
       ${1}, ${'#111111'}, ${'#f3f4f6'},
