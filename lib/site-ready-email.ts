@@ -14,7 +14,13 @@ export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; 
   const customDomain = await getActiveCustomDomain(salonId).catch(() => null);
   const publicUrl = customDomain ? `https://${customDomain}` : getPlatformPublicUrl(slug);
   const adminUrl = customDomain ? `${getCustomDomainAdminUrl(customDomain)}/admin` : getPlatformAdminUrl(slug);
-  const magicLink = await generateAdminMagicLink({ salonId, slug, email, customDomain, expiresMs: 24 * 60 * 60 * 1000 }).catch(() => adminUrl);
+  const magicLink = await generateAdminMagicLink({
+    salonId,
+    slug,
+    email,
+    customDomain,
+    expiresMs: 24 * 60 * 60 * 1000,
+  });
   const displayName = name && name.trim() ? name.trim() : 'твоят салон';
 
   await client.emails.send({

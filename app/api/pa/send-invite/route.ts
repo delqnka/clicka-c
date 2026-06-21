@@ -42,14 +42,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Невалиден имейл' }, { status: 400 });
   }
 
-  await sendSiteReadyEmail({
-    salonId,
-    slug: String(salon.slug ?? ''),
-    email,
-    name: String(salon.name ?? ''),
-    ownerName: typeof salon.owner_name === 'string' ? salon.owner_name : undefined,
-    planType: String(salon.plan_type ?? ''),
-  });
+  try {
+    await sendSiteReadyEmail({
+      salonId,
+      slug: String(salon.slug ?? ''),
+      email,
+      name: String(salon.name ?? ''),
+      ownerName: typeof salon.owner_name === 'string' ? salon.owner_name : undefined,
+      planType: String(salon.plan_type ?? ''),
+    });
+  } catch (error) {
+    console.error('[pa/send-invite] failed:', error);
+    return NextResponse.json(
+      { error: 'Не успяхме да генерираме валиден magic link. Не е изпратен имейл.' },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json({ ok: true, email });
 }
