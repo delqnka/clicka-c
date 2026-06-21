@@ -119,11 +119,12 @@ export async function POST(request: NextRequest) {
       ? `Здравей, ${salon.owner_name.trim()}!`
       : 'Здравей!';
 
-  await client.emails.send({
-    from,
-    to: email,
-    subject: hasPassword ? 'Вход в админ панела' : 'Довърши регистрацията си',
-    html: `
+  const sendResult = await client.emails
+    .send({
+      from,
+      to: email,
+      subject: hasPassword ? 'Вход в админ панела' : 'Довърши регистрацията си',
+      html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #000; margin: 0 0 16px;">${hasPassword ? 'Вход в панела' : 'Довърши регистрацията си'}</h2>
         <p style="line-height: 1.7;">${greeting}</p>
@@ -143,7 +144,30 @@ export async function POST(request: NextRequest) {
         </p>
       </div>
     `,
-  });
+    })
+    .then((res) => ({ ok: true as const, res }))
+    .catch((err: unknown) => ({ ok: false as const, err }));
+
+  if (!sendResult.ok) {
+    const message =
+      sendResult.err instanceof Error ? sendResult.err.message : String(sendResult.err ?? 'unknown');
+    console.error('[pa/send-invite] resend failed', { salonId, email, from, message });
+    return NextResponse.json(
+      { error: `Resend: ${message}`, magicLink, emailSent: false },
+      { status: 502 },
+    );
+  }
+
+  // Resend SDK returns { data, error } on success — surface API-level errors too.
+  const resendApiError = (sendResult.res as { error?: { message?: string } } | null)?.error;
+  if (resendApiError) {
+    const message = resendApiError.message ?? 'Resend върна грешка';
+    console.error('[pa/send-invite] resend api error', { salonId, email, from, message });
+    return NextResponse.json(
+      { error: `Resend: ${message}`, magicLink, emailSent: false },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({ ok: true, email, magicLink, emailSent: true });
 }
