@@ -50,15 +50,26 @@ type InviteNotice = {
 
 function formatDate(iso: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('bg-BG', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  const day = String(parsed.getUTCDate()).padStart(2, '0');
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+  const year = String(parsed.getUTCFullYear());
+  return `${day}.${month}.${year}`;
 }
 
 function formatAmount(cents: number, currency: string) {
   return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
+}
+
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text().catch(() => '');
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 }
 
 function planLabel(plan: string | null) {
@@ -196,7 +207,7 @@ export default function PlatformAdminDashboard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ salonId }),
       });
-      const data = await res.json();
+      const data = await readJsonSafe(res);
       if (data.magicLink) window.open(data.magicLink, '_blank');
     } finally {
       setImpersonating(null);
@@ -213,7 +224,7 @@ export default function PlatformAdminDashboard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ salonId, email }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await readJsonSafe(res);
       if (!res.ok) {
         setInviteNotice({
           salonId,
@@ -280,7 +291,7 @@ export default function PlatformAdminDashboard({
     setPaymentsLoading(true);
     try {
       const res = await fetch('/api/pa/payments');
-      const data = await res.json();
+      const data = await readJsonSafe(res);
       setPayments(data.payments ?? []);
       setTotalRevenue(data.totalRevenue ?? 0);
     } finally {

@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
+import { ensureAdminAuthSchema } from '@/lib/admin-auth';
 import { invalidateSalonResend } from '@/lib/resend';
 import { encryptSecret } from '@/lib/encryption';
 
@@ -46,6 +47,7 @@ function normalizeDomain(value: string) {
 }
 
 async function loadSettings(salonId: string): Promise<Row | null> {
+  await ensureAdminAuthSchema();
   const rows = (await sql`
     SELECT
       CAST(id AS text) AS salon_id,
@@ -152,6 +154,7 @@ export async function POST(request: NextRequest) {
 
   const encryptedKey = ownApiKey ? encryptSecret(ownApiKey) : null;
 
+  await ensureAdminAuthSchema();
   await sql`
     UPDATE salons SET
       resend_api_key_encrypted = ${encryptedKey},
@@ -176,6 +179,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
   }
 
+  await ensureAdminAuthSchema();
   await sql`
     UPDATE salons SET
       resend_api_key_encrypted = NULL,

@@ -79,7 +79,7 @@ export function isValidDomain(domain: string) {
 
 export async function ensureAdminAuthSchema() {
   if (!ensureSchemaPromise) {
-    ensureSchemaPromise = (async () => {
+    const run = (async () => {
       const [{ exists }] = await sql`
         SELECT to_regclass('owner_sessions') IS NOT NULL AS exists
       ` as [{ exists: boolean }];
@@ -183,12 +183,20 @@ export async function ensureAdminAuthSchema() {
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS email_from text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS email_from_name text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_domain text`;
+      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_verified_at timestamptz`;
       await sql`
         CREATE UNIQUE INDEX IF NOT EXISTS salons_custom_domain_uniq
         ON salons ((lower(custom_domain)))
         WHERE custom_domain IS NOT NULL
       `;
     })();
+    ensureSchemaPromise = run.catch((err) => {
+      // Don't cache a rejected promise — otherwise a single transient DB
+      // failure on cold start permanently breaks every admin route on this
+      // instance until it's redeployed.
+      ensureSchemaPromise = null;
+      throw err;
+    });
   }
 
   await ensureSchemaPromise;

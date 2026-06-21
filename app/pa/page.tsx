@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { isPlatformAdminSession } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
+import { ensureAdminAuthSchema } from '@/lib/admin-auth';
 import PlatformAdminDashboard from '@/components/platform-admin/PlatformAdminDashboard';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,7 @@ export type SalonRow = {
 
 async function loadSalons(): Promise<SalonRow[]> {
   try {
+    await ensureAdminAuthSchema();
     const rows = await sql`
       SELECT
         CAST(s.id AS text) AS salon_id,

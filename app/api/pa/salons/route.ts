@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
-import { generateAdminMagicLink, normalizeEmail } from '@/lib/admin-auth';
+import { ensureAdminAuthSchema, generateAdminMagicLink, normalizeEmail } from '@/lib/admin-auth';
 import { ensurePlatformSubdomain, syncDomainWithVercel } from '@/lib/vercel-domains';
 import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 
@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
   }
 
+  await ensureAdminAuthSchema();
   const salons = await sql`
     SELECT
       CAST(s.id AS text) AS salon_id,

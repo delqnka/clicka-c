@@ -20,15 +20,26 @@ type Props = {
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleString('bg-BG', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const parsed = new Date(iso);
+    if (Number.isNaN(parsed.getTime())) return '—';
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const year = String(parsed.getUTCFullYear());
+    const hour = String(parsed.getUTCHours()).padStart(2, '0');
+    const minute = String(parsed.getUTCMinutes()).padStart(2, '0');
+    return `${day}.${month}.${year} ${hour}:${minute}`;
   } catch {
     return '—';
+  }
+}
+
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text().catch(() => '');
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {};
   }
 }
 
@@ -51,7 +62,7 @@ export function ResendSettingsPanel({ salonId }: Props) {
     try {
       const res = await fetch(`/api/pa/resend-settings?salonId=${encodeURIComponent(salonId)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as Settings;
+      const data = (await readJsonSafe(res)) as Settings;
       setSettings(data);
       setEmailFrom(data.email_from ?? '');
       setEmailFromName(data.email_from_name ?? '');
@@ -84,7 +95,7 @@ export function ResendSettingsPanel({ salonId }: Props) {
           apiKey: useOwnKey ? apiKey.trim() : null,
         }),
       });
-      const data = await res.json();
+      const data = await readJsonSafe(res);
       if (!res.ok) throw new Error(data.error || 'Грешка при запис');
       setSettings(data.settings);
       setApiKey('');
