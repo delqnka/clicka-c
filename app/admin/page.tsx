@@ -23,6 +23,18 @@ export default async function AdminEntryPage() {
     sessionId,
   });
 
+  // Explicit trace — drop after admin onboarding is verified working in prod.
+  console.log('[admin/page] trace', {
+    host: headerStore.get('host'),
+    'x-clicka-host': headerStore.get('x-clicka-host'),
+    'x-forwarded-host': headerStore.get('x-forwarded-host'),
+    'x-salon-slug': headerStore.get('x-salon-slug'),
+    browserHost,
+    hasSession: !!sessionId,
+    gateKind: gate.kind,
+    salonSlug: 'salon' in gate ? gate.salon.slug : null,
+  });
+
   if (gate.kind === 'missing-salon') {
     redirect('/');
   }
