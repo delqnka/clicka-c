@@ -9,6 +9,7 @@ import {
   verifyPassword,
 } from '@/lib/admin-auth';
 import { sql } from '@/lib/db';
+import { getBrowserHost } from '@/lib/domain-routing';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { checkCsrfOrigin } from '@/lib/csrf';
 import { writeAuditLog } from '@/lib/audit-log';
@@ -46,10 +47,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Въведете имейл и парола' }, { status: 400 });
   }
 
-  // Resolve salon only from the DNS-controlled Host header.
-  // Never trust x-salon-slug here — it can be forged on direct API calls.
+  // Resolve salon from the browser-facing host (x-forwarded-host when proxied
+  // by a client site, host otherwise). Never trust x-salon-slug — it can be
+  // forged on direct API calls. Forging x-forwarded-host only changes which
+  // salon's flow runs; it still requires that salon's credentials.
   const salon = await resolveSalonBySlugOrHost({
-    host: request.headers.get('host'),
+    host: getBrowserHost(request.headers),
     includeInactive: false,
   });
 

@@ -56,23 +56,23 @@ async function isVerifiedCustomDomain(origin: string): Promise<boolean> {
   try {
     const hostname = new URL(origin).hostname;
     if (!hostname) return false;
-    const candidateHostname = isAdminSubdomainHost(hostname)
-      ? stripAdminSubdomain(hostname)
-      : hostname;
-    const rows = await sql`
-      SELECT 1 FROM salons
-      WHERE lower(custom_domain) = lower(${hostname})
-        AND domain_status = 'active'
-      LIMIT 1
-    `;
-    if (rows.length > 0) return true;
-    const adminRows = await sql`
-      SELECT 1 FROM salons
-      WHERE lower(custom_domain) = lower(${candidateHostname})
-        AND domain_status = 'active'
-      LIMIT 1
-    `;
-    return adminRows.length > 0;
+    // Try the hostname as-is, then admin-stripped, then www-stripped. DB
+    // stores bare domains (e.g. salonurban.online) but the browser Origin
+    // can be www.salonurban.online or admin.salonurban.online.
+    const candidates = new Set<string>([hostname]);
+    if (isAdminSubdomainHost(hostname)) candidates.add(stripAdminSubdomain(hostname));
+    if (hostname.startsWith('www.')) candidates.add(hostname.slice(4));
+
+    for (const candidate of candidates) {
+      const rows = await sql`
+        SELECT 1 FROM salons
+        WHERE lower(custom_domain) = lower(${candidate})
+          AND domain_status = 'active'
+        LIMIT 1
+      `;
+      if (rows.length > 0) return true;
+    }
+    return false;
   } catch {
     return false;
   }

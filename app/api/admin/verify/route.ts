@@ -8,7 +8,7 @@ import {
   setAdminSessionCookie,
   sha256,
 } from '@/lib/admin-auth';
-import { getHostAwareSalonPath } from '@/lib/domain-routing';
+import { getBrowserHost, getHostAwareSalonPath } from '@/lib/domain-routing';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   });
 
   const redirectPath = getHostAwareSalonPath({
-    host: request.headers.get('host'),
+    host: getBrowserHost(request.headers),
     slug,
     path: 'admin',
   });

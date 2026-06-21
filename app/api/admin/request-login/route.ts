@@ -8,7 +8,7 @@ import {
   resolveSalonBySlugOrHost,
   sha256,
 } from '@/lib/admin-auth';
-import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getBrowserHost, getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { checkCsrfOrigin } from '@/lib/csrf';
 import { getSalonResend } from '@/lib/resend';
@@ -42,11 +42,12 @@ export async function POST(request: NextRequest) {
   const email = normalizeEmail(body.email ?? '');
   if (!email) return NextResponse.json({ error: 'Липсва имейл' }, { status: 400 });
 
-  // Resolve only from Host header — never trust client-supplied x-salon-slug.
+  // Resolve from the browser-facing host (x-forwarded-host when the request
+  // comes via a client-site proxy). Never trust client-supplied x-salon-slug.
   // body.slug is still accepted because the token validates ownership anyway.
   const salon = await resolveSalonBySlugOrHost({
     slug: body.slug || undefined,
-    host: request.headers.get('host'),
+    host: getBrowserHost(request.headers),
     includeInactive: true,
   });
   if (!salon) return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });

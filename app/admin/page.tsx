@@ -4,7 +4,7 @@ import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 import { AdminLoadError } from '@/components/admin/AdminLoadError';
 import { OnboardingTour } from '@/components/admin/OnboardingTour';
 import { ADMIN_COOKIE_NAME, resolveAdminGate } from '@/lib/admin-auth';
-import { getHostAwareSalonPath } from '@/lib/domain-routing';
+import { getBrowserHost, getHostAwareSalonPath } from '@/lib/domain-routing';
 import { loadAdminAccountInfo } from '@/lib/admin-account-load';
 import { loadAdminOffersBySalonId } from '@/lib/admin-offers-load';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
@@ -13,10 +13,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminEntryPage() {
   const headerStore = headers();
+  // browserHost honors X-Forwarded-Host so admin works when a client site
+  // (e.g. salonurban.online) proxies /admin/* to this engine deployment.
+  const browserHost = getBrowserHost(headerStore);
   const sessionId = cookies().get(ADMIN_COOKIE_NAME)?.value ?? null;
   const gate = await resolveAdminGate({
     slug: headerStore.get('x-salon-slug'),
-    host: headerStore.get('host'),
+    host: browserHost,
     sessionId,
   });
 
@@ -27,7 +30,7 @@ export default async function AdminEntryPage() {
   if (gate.kind === 'claim') {
     redirect(
       getHostAwareSalonPath({
-        host: headerStore.get('host'),
+        host: browserHost,
         slug: gate.salon.slug,
         path: 'claim',
       })
@@ -37,7 +40,7 @@ export default async function AdminEntryPage() {
   if (gate.kind === 'sign-in') {
     redirect(
       getHostAwareSalonPath({
-        host: headerStore.get('host'),
+        host: browserHost,
         slug: gate.salon.slug,
         path: 'admin/sign-in',
       })

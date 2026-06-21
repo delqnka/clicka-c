@@ -24,6 +24,21 @@ export function extractHostname(host: MaybeHost) {
     .split(':')[0];
 }
 
+/**
+ * Browser-facing host as seen by the user, even when the request reached the
+ * engine through a Vercel rewrite from a client site (e.g. salonurban.online
+ * → clicka.bg). x-forwarded-host is set by Vercel's edge proxy when rewriting
+ * to an absolute URL; we trust it because forging it doesn't bypass auth (it
+ * only changes which salon's flow runs — credentials are still required).
+ *
+ * Falls back to the Host header for direct requests.
+ */
+export function getBrowserHost(headers: { get(name: string): string | null }) {
+  const forwarded = headers.get('x-forwarded-host');
+  const fallback = headers.get('host');
+  return extractHostname(forwarded || fallback);
+}
+
 export function isPlatformApexHost(hostname: string) {
   return (
     !hostname ||

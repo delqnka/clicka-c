@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 import {
   ROOT_DOMAIN,
   extractHostname,
+  getBrowserHost,
   getPlatformSubdomain,
   getPlatformSiteOrigin,
   getHostAwareSalonPath,
@@ -430,9 +431,10 @@ export async function requireAdminRequestAccess(
   slug?: string | null
 ) {
   const sessionId = request.cookies.get(ADMIN_COOKIE_NAME)?.value ?? null;
+  const browserHost = getBrowserHost(request.headers);
   const gate = await resolveAdminGate({
     slug,
-    host: request.headers.get('host'),
+    host: browserHost,
     sessionId,
   });
 
@@ -443,13 +445,13 @@ export async function requireAdminRequestAccess(
   const redirectTo =
     gate.kind === 'claim'
       ? getHostAwareSalonPath({
-          host: request.headers.get('host'),
+          host: browserHost,
           slug: gate.salon.slug,
           path: 'claim',
         })
       : gate.kind === 'sign-in'
         ? getHostAwareSalonPath({
-            host: request.headers.get('host'),
+            host: browserHost,
             slug: gate.salon.slug,
             path: 'admin/sign-in',
           })
@@ -486,13 +488,11 @@ export async function destroyAllOtherOwnerSessions(ownerId: string, currentSessi
 }
 
 export function setAdminSessionCookie(response: NextResponse, request: NextRequest, sessionId: string, expiresAt: Date) {
-  // When a client site (e.g. salonurban.online) rewrites /admin/* to the
-  // engine, the engine sees host=<slug>.clicka.bg but the browser is still
-  // at salonurban.online. The forwarded host is the source of truth for the
-  // browser-facing origin — use it to decide the cookie Domain attribute so
-  // the cookie lands on a host the browser will actually send back.
-  const forwardedHost = extractHostname(request.headers.get('x-forwarded-host'));
-  const browserHost = forwardedHost || request.nextUrl.hostname;
+  // When a client site (e.g. salonurban.online) proxies /admin/* to the
+  // engine, the engine sees host=clicka.bg but the browser is still at the
+  // salon's custom domain. Use the browser-facing host to decide cookie Domain
+  // so the Set-Cookie lands on a host the browser will actually send back.
+  const browserHost = getBrowserHost(request.headers) || request.nextUrl.hostname;
   const isPlatformHost =
     browserHost === ROOT_DOMAIN || browserHost.endsWith(`.${ROOT_DOMAIN}`);
 

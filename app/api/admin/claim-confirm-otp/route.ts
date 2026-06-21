@@ -13,7 +13,7 @@ import {
   setAdminSessionCookie,
 } from '@/lib/admin-auth';
 import {
-  extractHostname,
+  getBrowserHost,
   getCustomDomainAdminUrl,
   getPlatformAdminUrl,
   isPlatformApexHost,
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   const salon = await resolveSalonBySlugOrHost({
     slug: body.slug ?? request.headers.get('x-salon-slug'),
-    host: request.headers.get('host'),
+    host: getBrowserHost(request.headers),
     includeInactive: true,
   });
   if (!salon) {
@@ -120,10 +120,12 @@ export async function POST(request: NextRequest) {
     ownerId: owner.ownerId,
   });
 
-  const host = request.headers.get('host') ?? '';
   // /[slug]/admin on the apex host always 404s — admin only lives on the
-  // salon's own host: custom domain /admin or platform subdomain /admin.
-  const redirectTo = isPlatformApexHost(extractHostname(host))
+  // salon's own host: custom domain /admin (proxied to engine) or platform
+  // subdomain /admin. Use the browser-facing host so a proxied request from
+  // the client site stays on '/admin' there.
+  const browserHost = getBrowserHost(request.headers);
+  const redirectTo = isPlatformApexHost(browserHost)
     ? salon.customDomain
       ? `${getCustomDomainAdminUrl(salon.customDomain)}/admin`
       : getPlatformAdminUrl(salon.slug)

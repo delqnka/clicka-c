@@ -8,6 +8,7 @@ import {
   normalizeEmail,
   resolveSalonBySlugOrHost,
 } from '@/lib/admin-auth';
+import { getBrowserHost } from '@/lib/domain-routing';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getSalonResend } from '@/lib/resend';
 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   const salon = await resolveSalonBySlugOrHost({
     slug: body.slug ?? request.headers.get('x-salon-slug'),
-    host: request.headers.get('host'),
+    host: getBrowserHost(request.headers),
     includeInactive: true,
   });
   if (!salon) {
