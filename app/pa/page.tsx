@@ -116,21 +116,10 @@ export default async function PlatformAdminPage() {
     loadRecentBookings(),
   ]);
 
-  const totalSalons = salons.length;
-  const activeSalons = salons.filter((s) => s.is_active).length;
-  const totalBookings = salons.reduce((sum, s) => sum + s.booking_count, 0);
-  const claimedSalons = salons.filter((s) => s.owner_email).length;
-
   return (
     <PlatformAdminDashboard
       salons={salons}
       recentBookings={recentBookings as never[]}
-      stats={{
-        totalSalons,
-        activeSalons,
-        totalBookings,
-        claimedSalons,
-      }}
     />
   );
 }

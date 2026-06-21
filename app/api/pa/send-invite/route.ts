@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
+import { normalizeEmail } from '@/lib/admin-auth';
 import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 
 export async function POST(request: NextRequest) {
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { salonId } = body as { salonId?: string };
+  const { salonId, email: rawEmail } = body as { salonId?: string; email?: string };
 
   if (!salonId) {
     return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
@@ -33,9 +34,12 @@ export async function POST(request: NextRequest) {
   }
 
   const salon = rows[0] as Record<string, unknown>;
-  const email = String(salon.email ?? '').trim();
+  const email = normalizeEmail(typeof rawEmail === 'string' && rawEmail.trim() ? rawEmail : String(salon.email ?? ''));
   if (!email) {
     return NextResponse.json({ error: 'Липсва имейл за клиента' }, { status: 400 });
+  }
+  if (!email.includes('@') || email.startsWith('@') || email.endsWith('@')) {
+    return NextResponse.json({ error: 'Невалиден имейл' }, { status: 400 });
   }
 
   await sendSiteReadyEmail({
@@ -47,5 +51,5 @@ export async function POST(request: NextRequest) {
     planType: String(salon.plan_type ?? ''),
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, email });
 }

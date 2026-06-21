@@ -1,31 +1,20 @@
 'use client';
 
-import { useMemo, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useMemo, useState, type ButtonHTMLAttributes } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
-  Building2,
-  CalendarDays,
-  CheckCircle2,
   ChevronDown,
   CreditCard,
   LogOut,
   Mail,
   Search,
   Sparkles,
-  UserRound,
 } from 'lucide-react';
 import type { SalonRow } from '@/app/pa/page';
 import { ApiKeysPanel } from './ApiKeysPanel';
 import { ResendSettingsPanel } from './ResendSettingsPanel';
 import { NewSalonForm } from './NewSalonForm';
-
-type Stats = {
-  totalSalons: number;
-  activeSalons: number;
-  totalBookings: number;
-  claimedSalons: number;
-};
 
 type BookingRow = {
   booking_id: string;
@@ -115,43 +104,6 @@ function actionButton({
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  note,
-  icon,
-  onClick,
-}: {
-  label: string;
-  value: string | number;
-  note: string;
-  icon: ReactNode;
-  onClick?: () => void;
-}) {
-  const content = (
-    <div className={`${shellCard()} h-full p-5 text-left`}>
-      <div className="mb-8 flex items-start justify-between gap-3">
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-black/10 text-black">
-          {icon}
-        </span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black/35">
-          Live
-        </span>
-      </div>
-      <div className="text-3xl font-semibold tracking-[-0.05em] text-black">{value}</div>
-      <div className="mt-2 text-sm font-medium text-black/88">{label}</div>
-      <div className="mt-1 text-sm text-black/45">{note}</div>
-    </div>
-  );
-
-  if (!onClick) return content;
-  return (
-    <button type="button" onClick={onClick} className="block h-full text-left">
-      {content}
-    </button>
-  );
-}
-
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <div className={`${shellCard()} p-12 text-center`}>
@@ -160,21 +112,6 @@ function EmptyState({ title, body }: { title: string; body: string }) {
       </div>
       <div className="text-lg font-semibold text-black">{title}</div>
       <div className="mx-auto mt-2 max-w-md text-sm leading-6 text-black/48">{body}</div>
-    </div>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="rounded-2xl border border-black/8 bg-white px-4 py-3">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/30">{label}</div>
-      <div className="mt-1 text-lg font-semibold tracking-[-0.04em] text-black">{value}</div>
     </div>
   );
 }
@@ -201,37 +138,19 @@ function SidebarTabButton({
       }`}
     >
       <div className="text-sm font-semibold">{label}</div>
-      <div className={`mt-1 text-sm ${active ? 'text-white/68' : 'text-black/45'}`}>{note}</div>
+      {note ? (
+        <div className={`mt-1 text-sm ${active ? 'text-white/68' : 'text-black/45'}`}>{note}</div>
+      ) : null}
     </button>
-  );
-}
-
-function ContextCard({
-  eyebrow,
-  title,
-  body,
-}: {
-  eyebrow: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className={`${shellCard('p-5 shadow-none')}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/28">{eyebrow}</div>
-      <div className="mt-3 text-lg font-semibold tracking-[-0.04em] text-black">{title}</div>
-      <div className="mt-2 text-sm leading-6 text-black/48">{body}</div>
-    </div>
   );
 }
 
 export default function PlatformAdminDashboard({
   salons,
   recentBookings,
-  stats,
 }: {
   salons: SalonRow[];
   recentBookings: BookingRow[];
-  stats: Stats;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('salons');
@@ -248,6 +167,9 @@ export default function PlatformAdminDashboard({
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [salonList, setSalonList] = useState<SalonRow[]>(salons);
   const [inviteNotice, setInviteNotice] = useState<InviteNotice | null>(null);
+  const [inviteEmails, setInviteEmails] = useState<Record<string, string>>(() =>
+    Object.fromEntries(salons.map((salon) => [salon.salon_id, salon.email ?? ''])),
+  );
 
   const filteredSalons = useMemo(() => {
     return salonList.filter((salon) => {
@@ -265,16 +187,6 @@ export default function PlatformAdminDashboard({
       return matchesSearch && matchesActive;
     });
   }, [filterActive, salonList, search]);
-
-  const visibleActiveCount = useMemo(
-    () => filteredSalons.filter((salon) => salon.is_active).length,
-    [filteredSalons],
-  );
-
-  const visibleClaimedCount = useMemo(
-    () => filteredSalons.filter((salon) => salon.owner_email).length,
-    [filteredSalons],
-  );
 
   async function handleImpersonate(salonId: string) {
     setImpersonating(salonId);
@@ -295,10 +207,11 @@ export default function PlatformAdminDashboard({
     setInviteNotice(null);
     setSendingInvite(salonId);
     try {
+      const email = (inviteEmails[salonId] ?? '').trim();
       const res = await fetch('/api/pa/send-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salonId }),
+        body: JSON.stringify({ salonId, email }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -312,7 +225,7 @@ export default function PlatformAdminDashboard({
       setInviteNotice({
         salonId,
         tone: 'success',
-        message: 'Magic link имейлът е изпратен успешно.',
+        message: `Magic link е изпратен на ${typeof data.email === 'string' ? data.email : email}.`,
       });
     } finally {
       setSendingInvite(null);
@@ -383,32 +296,16 @@ export default function PlatformAdminDashboard({
   }
 
   const tabMeta: Array<{ id: Tab; label: string; note: string }> = [
-    { id: 'salons', label: 'Салони', note: 'Клиенти, onboarding и достъп' },
-    { id: 'bookings', label: 'Резервации', note: 'Последни записи и активност' },
-    { id: 'payments', label: 'Плащания', note: 'Приходи и планове' },
+    { id: 'salons', label: 'Салони', note: '' },
+    { id: 'bookings', label: 'Резервации', note: '' },
+    { id: 'payments', label: 'Плащания', note: '' },
   ];
-  const expandedSalonData = salonList.find((salon) => salon.salon_id === expandedSalon) ?? null;
 
   return (
     <div className="min-h-dvh bg-white text-black">
       <div className="mx-auto max-w-[1620px] px-4 pb-16 pt-4 sm:px-6 lg:px-8">
-        <div className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)_320px]">
+        <div className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)]">
           <aside className={`${shellCard('h-fit p-4 xl:sticky xl:top-4')}`}>
-            <div className="rounded-[26px] border border-black/10 px-4 py-4">
-              <div className="inline-flex items-center gap-3 rounded-full border border-black/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/42">
-                <span className="h-2 w-2 rounded-full bg-[#15803d]" />
-                Platform Console
-              </div>
-              <div className="mt-5 text-[2rem] font-semibold leading-[0.92] tracking-[-0.08em] text-black">
-                Clean
-                <br />
-                control.
-              </div>
-              <div className="mt-3 text-sm leading-6 text-black/48">
-                Един спокоен workspace за onboarding, достъп и оперативни действия.
-              </div>
-            </div>
-
             <div className="mt-4 space-y-3">
               {tabMeta.map((item) => (
                 <SidebarTabButton
@@ -422,12 +319,6 @@ export default function PlatformAdminDashboard({
                   }}
                 />
               ))}
-            </div>
-
-            <div className="mt-4 grid gap-3">
-              <MiniStat label="Салони" value={stats.totalSalons} />
-              <MiniStat label="Активни" value={stats.activeSalons} />
-              <MiniStat label="Claim owner" value={stats.claimedSalons} />
             </div>
 
             <div className="mt-4 grid gap-3">
@@ -449,87 +340,32 @@ export default function PlatformAdminDashboard({
 
           <main className={`${shellCard('overflow-hidden')}`}>
             <div className="border-b border-black/8 px-4 py-4 sm:px-6">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div className="max-w-3xl">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/30">
-                    {tab === 'salons'
-                      ? 'Salon operations'
-                      : tab === 'bookings'
-                      ? 'Booking activity'
-                      : 'Payment monitoring'}
-                  </div>
-                  <h1 className="mt-3 text-[clamp(2rem,4vw,4rem)] font-semibold leading-[0.92] tracking-[-0.08em] text-black">
-                    {tab === 'salons'
-                      ? 'Agency dashboard that feels like a product.'
-                      : tab === 'bookings'
-                      ? 'All recent booking motion in one place.'
-                      : 'Payments, plans and revenue at a glance.'}
-                  </h1>
-                  <p className="mt-3 max-w-2xl text-base leading-7 text-black/50">
-                    {tab === 'salons'
-                      ? 'По-малко шум, по-ясна структура и по-бързи действия за всеки salon record.'
-                      : tab === 'bookings'
-                      ? 'Бърз преглед на последните записи без да ровиш из отделни панели.'
-                      : 'Оперативен financial view за бърза проверка на планове и постъпления.'}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <div className="rounded-full border border-black/10 px-4 py-2.5 text-sm text-black/52">
-                    Standard admin URL: <span className="font-semibold text-black">domain.com/admin</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-                <MetricCard
-                  label="Общо салони"
-                  value={stats.totalSalons}
-                  note="Пълният agency portfolio"
-                  icon={<Building2 className="h-5 w-5" />}
-                  onClick={() => {
-                    setTab('salons');
-                    setFilterActive('all');
-                  }}
-                />
-                <MetricCard
-                  label="Активни в момента"
-                  value={stats.activeSalons}
-                  note="Готови за traffic и работа"
-                  icon={<CheckCircle2 className="h-5 w-5 text-[#15803d]" />}
-                  onClick={() => {
-                    setTab('salons');
-                    setFilterActive('active');
-                  }}
-                />
-                <MetricCard
-                  label="С claim owner"
-                  value={stats.claimedSalons}
-                  note="Клиенти с достъп до панела"
-                  icon={<UserRound className="h-5 w-5" />}
-                  onClick={() => {
-                    setTab('salons');
-                    setSearch('');
-                  }}
-                />
-                <MetricCard
-                  label="Резервации"
-                  value={stats.totalBookings}
-                  note="Натрупана активност"
-                  icon={<CalendarDays className="h-5 w-5" />}
-                  onClick={() => setTab('bookings')}
-                />
+              <div className="flex flex-wrap gap-2">
+                {tabMeta.map((item) => {
+                  const active = tab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setTab(item.id);
+                        if (item.id === 'payments') void handleLoadPayments();
+                      }}
+                      className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
+                        active
+                          ? 'border-black bg-black text-white'
+                          : 'border-black/10 bg-white text-black/62 hover:border-black/25 hover:text-black'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {tab === 'salons' && (
               <div className="p-4 sm:p-6">
-              <div className="mb-6 grid gap-3 md:grid-cols-3">
-                <MiniStat label="Видими салони" value={filteredSalons.length} />
-                <MiniStat label="Активни в selection" value={visibleActiveCount} />
-                <MiniStat label="Claim-нати" value={visibleClaimedCount} />
-              </div>
-
               <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
                 <label className={`${shellCard('flex items-center gap-3 px-4 py-3 shadow-none')}`}>
                   <Search className="h-4 w-4 text-black/32" />
@@ -556,38 +392,7 @@ export default function PlatformAdminDashboard({
                 </div>
               </div>
 
-              <div className="mb-6 flex flex-wrap gap-2">
-                {[
-                  { id: 'all', label: 'Всички' },
-                  { id: 'active', label: 'Активни' },
-                  { id: 'inactive', label: 'Неактивни' },
-                ].map((item) => {
-                  const active = filterActive === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setFilterActive(item.id as typeof filterActive)}
-                      className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                        active
-                          ? 'border-[#15803d] bg-[#15803d] text-white'
-                          : 'border-black/10 bg-white text-black/58 hover:border-black/22 hover:text-black'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mb-5 flex items-center justify-between">
-                <div className="text-sm text-black/45">
-                  {filteredSalons.length} салона
-                </div>
-                <div className="text-sm text-black/45">
-                  Primary admin: <span className="font-medium text-black">domain.com/admin</span>
-                </div>
-              </div>
+              <div className="mb-5 text-sm text-black/45">{filteredSalons.length} салона</div>
 
               {filteredSalons.length === 0 ? (
                 <EmptyState
@@ -633,7 +438,7 @@ export default function PlatformAdminDashboard({
 
                               <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-black/50">
                                 <span>{salon.custom_domain || `${salon.slug}.site`}</span>
-                                <span>{salon.email}</span>
+                                <span>{inviteEmails[salon.salon_id] || salon.email}</span>
                                 <span>{salon.booking_count} резервации</span>
                                 <span>Създаден: {formatDate(salon.created_at)}</span>
                               </div>
@@ -684,8 +489,19 @@ export default function PlatformAdminDashboard({
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Клиентски имейл</div>
-                                    <div className="mt-1 text-sm font-medium text-black">{salon.email}</div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Имейл за magic link</div>
+                                    <input
+                                      type="email"
+                                      value={inviteEmails[salon.salon_id] ?? ''}
+                                      onChange={(e) =>
+                                        setInviteEmails((prev) => ({
+                                          ...prev,
+                                          [salon.salon_id]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="client@email.com"
+                                      className="mt-1 min-h-[46px] w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-sm font-medium text-black outline-none focus:border-black/24"
+                                    />
                                   </div>
                                   <div>
                                     <div className="text-xs uppercase tracking-[0.16em] text-black/28">Owner login</div>
@@ -962,82 +778,6 @@ export default function PlatformAdminDashboard({
               </div>
             )}
           </main>
-
-          <aside className="space-y-4 xl:sticky xl:top-4 xl:h-fit">
-            <ContextCard
-              eyebrow="Workflow"
-              title={tab === 'salons' ? 'Избираш салон и действаш веднага.' : tab === 'bookings' ? 'Четеш активността без шум.' : 'Проверяваш revenue и планове за минути.'}
-              body={
-                tab === 'salons'
-                  ? 'Тук няма нужда от графики. Трябват ти добри карти, чисти действия и ясен достъп.'
-                  : tab === 'bookings'
-                  ? 'Фокусът е върху хората, услугите, статуса и точния момент на резервацията.'
-                  : 'Този панел остава умишлено лек, за да служи като оперативен monitor, а не като accounting software.'
-              }
-            />
-
-            <div className={`${shellCard('p-5')}`}>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/28">Quick context</div>
-              <div className="mt-4 space-y-3">
-                <div className="rounded-[22px] border border-black/10 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.16em] text-black/28">Active tab</div>
-                  <div className="mt-1 text-sm font-semibold text-black">
-                    {tabMeta.find((item) => item.id === tab)?.label}
-                  </div>
-                </div>
-                <div className="rounded-[22px] border border-black/10 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.16em] text-black/28">Primary admin</div>
-                  <div className="mt-1 text-sm font-semibold text-black">domain.com/admin</div>
-                </div>
-                <div className="rounded-[22px] border border-black/10 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.16em] text-black/28">Fallback</div>
-                  <div className="mt-1 text-sm font-semibold text-black">slug.clicka.bg/admin</div>
-                </div>
-              </div>
-            </div>
-
-            {tab === 'salons' && (
-              <div className={`${shellCard('p-5')}`}>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/28">Selected salon</div>
-                {expandedSalonData ? (
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <div className="text-lg font-semibold tracking-[-0.04em] text-black">{expandedSalonData.name}</div>
-                      <div className="mt-1 text-sm text-black/45">{expandedSalonData.slug}</div>
-                    </div>
-                    <div className="rounded-[22px] border border-black/10 px-4 py-3">
-                      <div className="text-xs uppercase tracking-[0.16em] text-black/28">Owner login</div>
-                      <div className="mt-1 text-sm font-semibold text-black">
-                        {expandedSalonData.owner_email || 'Все още няма owner'}
-                      </div>
-                    </div>
-                    <div className="rounded-[22px] border border-black/10 px-4 py-3">
-                      <div className="text-xs uppercase tracking-[0.16em] text-black/28">Custom domain</div>
-                      <div className="mt-1 text-sm font-semibold text-black">
-                        {expandedSalonData.custom_domain || 'Няма custom domain'}
-                      </div>
-                    </div>
-                    <div className="rounded-[22px] border border-black/10 px-4 py-3">
-                      <div className="text-xs uppercase tracking-[0.16em] text-black/28">Status</div>
-                      <div className="mt-1 text-sm font-semibold text-black">
-                        {expandedSalonData.is_active ? 'Активен' : 'Неактивен'}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-4 text-sm leading-6 text-black/48">
-                    Отвори salon card и тук ще показваме краткия operational context вместо излишни графики.
-                  </div>
-                )}
-              </div>
-            )}
-
-            <ContextCard
-              eyebrow="Design rule"
-              title="No gradients. No gray canvas."
-              body="Базата остава бяла, текстът черен, а зеленото се пази само за важните действия, за да стои premium и спокойно."
-            />
-          </aside>
         </div>
       </div>
     </div>
