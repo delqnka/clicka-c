@@ -97,12 +97,15 @@ function SignInForm({ locale }: { locale: Locale }) {
     padding: '13px 14px',
     borderRadius: 999,
     border: 'none',
-    background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+    background: '#18181B',
     color: '#fff',
-    fontWeight: 800,
+    fontWeight: 700,
     fontSize: 15,
+    letterSpacing: '-0.01em',
     cursor: loading ? 'not-allowed' : 'pointer',
     opacity: loading ? 0.7 : 1,
+    boxShadow: '0 1px 0 rgba(255,255,255,0.08) inset, 0 4px 12px -4px rgba(15,23,42,0.35), 0 1px 2px rgba(15,23,42,0.16)',
+    transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease',
   };
 
   return (

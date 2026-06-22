@@ -20,8 +20,6 @@ import {
   UsersRound,
   Users,
   ExternalLink,
-  Eye,
-  LogOut,
   BarChart3,
   CheckCircle2,
   XCircle,
@@ -32,7 +30,6 @@ import {
   ChevronRight,
   Copy,
   Check,
-  Menu,
   X,
   KeyRound,
   CreditCard,
@@ -78,6 +75,7 @@ import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import { ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
 import type { BookingBlock } from '@/lib/booking-blocks';
+import { getT, type Locale } from '@/lib/i18n';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
 import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-analysis';
 import {
@@ -93,6 +91,11 @@ import {
 import { defaultLegalInfoStored, type LegalInfoStored } from '@/lib/legal-custom-documents';
 import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
 import { formatSalonPrice } from '@/lib/salon-currency';
+import { T, tokens, BOOKING_STATUS_PALETTE } from '@/lib/admin-theme';
+import { AdminHeader } from '@/components/admin/AdminHeader';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { MobileBottomNav } from '@/components/admin/MobileBottomNav';
+import { MobileNavSheet } from '@/components/admin/MobileNavSheet';
 const BookingsPanel = dynamic(
   () => import('@/components/admin/dashboard-panels').then((m) => m.BookingsPanel),
   { ssr: false }
@@ -112,97 +115,108 @@ const ServicesEditorPanel = dynamic(
 
 /* ─── Constants ───────────────────────────────────────── */
 const DAYS = [
-  { key: 'monday',    label: 'Понеделник' },
-  { key: 'tuesday',   label: 'Вторник' },
-  { key: 'wednesday', label: 'Сряда' },
-  { key: 'thursday',  label: 'Четвъртък' },
-  { key: 'friday',    label: 'Петък' },
-  { key: 'saturday',  label: 'Събота' },
-  { key: 'sunday',    label: 'Неделя' },
+  { key: 'monday',    labelKey: 'common.days.monday' },
+  { key: 'tuesday',   labelKey: 'common.days.tuesday' },
+  { key: 'wednesday', labelKey: 'common.days.wednesday' },
+  { key: 'thursday',  labelKey: 'common.days.thursday' },
+  { key: 'friday',    labelKey: 'common.days.friday' },
+  { key: 'saturday',  labelKey: 'common.days.saturday' },
+  { key: 'sunday',    labelKey: 'common.days.sunday' },
 ] as const;
 
 const TABS = [
-  { id: 'site',          label: 'Сайт',          Icon: BriefcaseBusiness },
-  { id: 'images',        label: 'Снимки',         Icon: ImageIcon },
-  { id: 'specialist',    label: 'Специалист',     Icon: UserRound },
-  { id: 'staff',         label: 'Служители',      Icon: UsersRound },
-  { id: 'services',      label: 'Услуги',         Icon: Scissors },
-  { id: 'offers',        label: 'Оферти',         Icon: Tag },
-  { id: 'brands',        label: 'Брандове',       Icon: Sparkles },
-  { id: 'blog',          label: 'Блог',           Icon: Newspaper },
-  { id: 'hours',         label: 'Работно време',  Icon: Clock3 },
-  { id: 'bookings',      label: 'Резервации',     Icon: CalendarClock },
-  { id: 'clients',       label: 'Клиенти',        Icon: Users },
-  { id: 'domain',        label: 'Домейн',         Icon: Globe },
-  { id: 'payments',     label: 'Плащания',       Icon: CreditCard },
-  { id: 'integrations', label: 'Интеграции',     Icon: Plug },
-  { id: 'marketing',    label: 'Маркетинг',      Icon: BarChart3 },
-  { id: 'legal',         label: 'Правни',         Icon: FileText },
-  { id: 'account',       label: 'Профил',         Icon: KeyRound },
+  { id: 'site',          labelKey: 'adminDashboard.tabs.site', Icon: BriefcaseBusiness },
+  { id: 'images',        labelKey: 'adminDashboard.tabs.images', Icon: ImageIcon },
+  { id: 'specialist',    labelKey: 'adminDashboard.tabs.specialist', Icon: UserRound },
+  { id: 'staff',         labelKey: 'adminDashboard.tabs.staff', Icon: UsersRound },
+  { id: 'services',      labelKey: 'adminDashboard.tabs.services', Icon: Scissors },
+  { id: 'offers',        labelKey: 'adminDashboard.tabs.offers', Icon: Tag },
+  { id: 'brands',        labelKey: 'adminDashboard.tabs.brands', Icon: Sparkles },
+  { id: 'blog',          labelKey: 'adminDashboard.tabs.blog', Icon: Newspaper },
+  { id: 'hours',         labelKey: 'adminDashboard.tabs.hours', Icon: Clock3 },
+  { id: 'bookings',      labelKey: 'adminDashboard.tabs.bookings', Icon: CalendarClock },
+  { id: 'clients',       labelKey: 'adminDashboard.tabs.clients', Icon: Users },
+  { id: 'domain',        labelKey: 'adminDashboard.tabs.domain', Icon: Globe },
+  { id: 'payments',      labelKey: 'adminDashboard.tabs.payments', Icon: CreditCard },
+  { id: 'integrations',  labelKey: 'adminDashboard.tabs.integrations', Icon: Plug },
+  { id: 'marketing',     labelKey: 'adminDashboard.tabs.marketing', Icon: BarChart3 },
+  { id: 'legal',         labelKey: 'adminDashboard.tabs.legal', Icon: FileText },
+  { id: 'account',       labelKey: 'adminDashboard.tabs.account', Icon: KeyRound },
 ] as const;
 
 const TAB_BAR_IDS = new Set<TabId>(['site', 'bookings', 'services', 'images', 'clients']);
 const TAB_BAR_ORDER: TabId[] = ['site', 'bookings', 'services', 'images', 'clients'];
 const TAB_BAR_TABS = TAB_BAR_ORDER.map(id => TABS.find(t => t.id === id)!);
 
-const SHEET_GROUPS: { label: string; ids: TabId[] }[] = [
-  { label: 'Съдържание', ids: ['offers', 'brands', 'blog'] },
-  { label: 'Екип',      ids: ['specialist', 'staff'] },
-  { label: 'Настройки',  ids: ['hours', 'domain', 'payments', 'integrations', 'marketing', 'legal', 'account'] },
+const SHEET_GROUPS: { labelKey: string; ids: TabId[] }[] = [
+  { labelKey: 'adminDashboard.groups.content', ids: ['offers', 'brands', 'blog'] },
+  { labelKey: 'adminDashboard.groups.team', ids: ['specialist', 'staff'] },
+  { labelKey: 'adminDashboard.groups.settings', ids: ['hours', 'domain', 'payments', 'integrations', 'marketing', 'legal', 'account'] },
 ];
 const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
 
-const SIDEBAR_GROUPS: { label?: string; ids: TabId[] }[] = [
+const SIDEBAR_GROUPS: { labelKey?: string; ids: TabId[] }[] = [
   { ids: ['bookings', 'clients'] },
-  { label: 'Сайт', ids: ['site', 'images', 'services', 'offers', 'brands', 'blog'] },
-  { label: 'Екип', ids: ['specialist', 'staff'] },
-  { label: 'Настройки', ids: ['hours', 'integrations', 'marketing', 'domain', 'payments', 'legal', 'account'] },
+  { labelKey: 'adminDashboard.groups.site', ids: ['site', 'images', 'services', 'offers', 'brands', 'blog'] },
+  { labelKey: 'adminDashboard.groups.team', ids: ['specialist', 'staff'] },
+  { labelKey: 'adminDashboard.groups.settings', ids: ['hours', 'integrations', 'marketing', 'domain', 'payments', 'legal', 'account'] },
 ];
 
-const ICON_GRADIENT = 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)';
+const ICON_GRADIENT = tokens.gradient.brand;
 /** Space for fixed mobile bottom tab bar (bar + safe area + tap margin). */
 const MOBILE_BOTTOM_INSET = 'calc(96px + env(safe-area-inset-bottom, 0px))';
 const PWA_HOME_STORAGE_KEY = (slug: string) => `admin-pwa-homescreen:${slug}`;
 
-function getPwaInstallGuide(ua: string): { title: string; note: string; steps: string[] } {
+function getPwaInstallGuide(locale: Locale, ua: string): { title: string; note: string; steps: string[] } {
+  const isEn = locale === 'en';
   const isIos = /iphone|ipad|ipod/i.test(ua);
   if (!isIos) {
     return {
-      title: 'Добави на началния екран',
+      title: isEn ? 'Add to home screen' : 'Добави на началния екран',
       note: '',
-      steps: ['От менюто на браузъра (⋮) избери „Инсталирай приложение“ или „Добави на началния екран“.'],
+      steps: [
+        isEn
+          ? 'From the browser menu (⋮), choose "Install app" or "Add to Home Screen".'
+          : 'От менюто на браузъра (⋮) избери „Инсталирай приложение“ или „Добави на началния екран“.',
+      ],
     };
   }
   if (/crios/i.test(ua)) {
     return {
-      title: 'Добави в Chrome (iPhone)',
-      note: 'Apple не позволява на Chrome да инсталира с един бутон — добавянето е ръчно, както по-долу.',
+      title: isEn ? 'Add in Chrome (iPhone)' : 'Добави в Chrome (iPhone)',
+      note: isEn
+        ? 'Apple does not allow one-tap install in Chrome, so adding is manual as shown below.'
+        : 'Apple не позволява на Chrome да инсталира с един бутон — добавянето е ръчно, както по-долу.',
       steps: [
-        'Натисни ⋯ (трите точки) долу вдясно в Chrome',
-        'Избери „Share“ / „Сподели“',
-        'Плъзни надолу и натисни „Add to Home Screen“ / „Добави на началния екран“',
-        'Потвърди с „Add“ / „Добави“',
+        isEn ? 'Tap ⋯ (the three dots) in the bottom-right corner of Chrome' : 'Натисни ⋯ (трите точки) долу вдясно в Chrome',
+        isEn ? 'Choose "Share"' : 'Избери „Share“ / „Сподели“',
+        isEn ? 'Scroll down and tap "Add to Home Screen"' : 'Плъзни надолу и натисни „Add to Home Screen“ / „Добави на началния екран“',
+        isEn ? 'Confirm with "Add"' : 'Потвърди с „Add“ / „Добави“',
       ],
     };
   }
   if (/fxios/i.test(ua)) {
     return {
-      title: 'Добави в Firefox (iPhone)',
-      note: 'На iPhone инсталацията е само ръчна през менюто на браузъра.',
+      title: isEn ? 'Add in Firefox (iPhone)' : 'Добави в Firefox (iPhone)',
+      note: isEn
+        ? 'On iPhone, installation is only available manually through the browser menu.'
+        : 'На iPhone инсталацията е само ръчна през менюто на браузъра.',
       steps: [
-        'Натисни менюто (≡) в Firefox',
-        'Избери „Share“ / „Сподели“',
-        '„Add to Home Screen“ / „Добави на началния екран“',
+        isEn ? 'Open the menu (≡) in Firefox' : 'Натисни менюто (≡) в Firefox',
+        isEn ? 'Choose "Share"' : 'Избери „Share“ / „Сподели“',
+        isEn ? '"Add to Home Screen"' : '„Add to Home Screen“ / „Добави на началния екран“',
       ],
     };
   }
   return {
-    title: 'Добави в Safari',
-    note: 'На iPhone автоматична инсталация работи само през Safari.',
+    title: isEn ? 'Add in Safari' : 'Добави в Safari',
+    note: isEn
+      ? 'On iPhone, automatic installation works only in Safari.'
+      : 'На iPhone автоматична инсталация работи само през Safari.',
     steps: [
-      'Натисни Share (□↑) долу в средата на екрана',
-      'Избери „Добави на началния екран“',
-      'Потвърди с „Добави“',
+      isEn ? 'Tap Share (□↑) at the bottom center of the screen' : 'Натисни Share (□↑) долу в средата на екрана',
+      isEn ? 'Choose "Add to Home Screen"' : 'Избери „Добави на началния екран“',
+      isEn ? 'Confirm with "Add"' : 'Потвърди с „Добави“',
     ],
   };
 }
@@ -277,12 +291,15 @@ function getDomainMeta(site: AdminSitePayload) {
 
 function isPendingDomainStatus(s: string) { return ['pending_dns', 'pending_verification'].includes(s); }
 
-function formatDomainStatus(s: string) {
+function formatDomainStatus(s: string, locale: Locale = 'bg') {
+  const isEn = locale === 'en';
   const map: Record<string, string> = {
-    active: 'Активен', pending_verification: 'Чака верификация',
-    pending_dns: 'Чака DNS', error: 'Грешка',
+    active: isEn ? 'Active' : 'Активен',
+    pending_verification: isEn ? 'Pending verification' : 'Чака верификация',
+    pending_dns: isEn ? 'Pending DNS' : 'Чака DNS',
+    error: isEn ? 'Error' : 'Грешка',
   };
-  return map[s] ?? s ?? 'Не е свързан';
+  return map[s] ?? s ?? (isEn ? 'Not connected' : 'Не е свързан');
 }
 
 function formatBgDateDMY(dateStr: string) {
@@ -323,27 +340,15 @@ function useIsMobileLayout(bp = 768) {
   return m;
 }
 
-/* ─── Status config ───────────────────────────────────── */
+/* ─── Status config (colors come from `lib/admin-theme.ts`; labels stay here for i18n) ─ */
 const STATUS_CFG: Record<BookingStatus, { label: string; bg: string; text: string; dot: string }> = {
-  pending:   { label: 'Чакаща',     bg: '#FEF3C7', text: '#92400E', dot: '#F59E0B' },
-  confirmed: { label: 'Потвърдена', bg: '#DBEAFE', text: '#1E40AF', dot: '#3B82F6' },
-  completed: { label: 'Завършена',  bg: '#D1FAE5', text: '#065F46', dot: '#10B981' },
-  cancelled: { label: 'Отказана',   bg: '#FEE2E2', text: '#991B1B', dot: '#EF4444' },
+  pending:   { label: 'Чакаща',     ...BOOKING_STATUS_PALETTE.pending },
+  confirmed: { label: 'Потвърдена', ...BOOKING_STATUS_PALETTE.confirmed },
+  completed: { label: 'Завършена',  ...BOOKING_STATUS_PALETTE.completed },
+  cancelled: { label: 'Отказана',   ...BOOKING_STATUS_PALETTE.cancelled },
 };
 
-/* ─── Design tokens (module-level so sub-components can use them) ─ */
-const T = {
-  bg:       '#FFFFFF',
-  surface:  '#FFFFFF',
-  border:   '#E5E3DE',
-  text:     '#18181B',
-  muted:    '#71717A',
-  subtle:   '#A1A1AA',
-  accent:   '#18181B',
-  radius:   12,
-  radiusLg: 16,
-  radiusSm: 8,
-} as const;
+/* `T` is imported from `lib/admin-theme.ts`. Keep the import the source of truth. */
 
 /* ═══════════════════════════════════════════════════════ */
 export default function AdminDashboardClient({
@@ -354,6 +359,8 @@ export default function AdminDashboardClient({
   initialAccount,
 }: Props) {
   const [site, setSite]           = useState(initialSite);
+  const locale = site.language as Locale;
+  const t = useMemo(() => getT(locale), [locale]);
   const siteRef = useRef(site);
   siteRef.current = site;
   const [displayName, setDisplayName] = useState<string | null>(initialAccount?.displayName ?? null);
@@ -1108,6 +1115,7 @@ export default function AdminDashboardClient({
       const res = await fetch(`/api/admin/site-settings?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          language: site.language,
           name: site.name,
           category: site.category,
           phone: site.phone,
@@ -1129,7 +1137,7 @@ export default function AdminDashboardClient({
       });
       const data = await guardResponse(res) as { site: Partial<AdminSitePayload> };
       setSite((prev) => ({ ...prev, ...data.site }));
-      setNotice('Информацията е запазена.');
+      setNotice(t('adminDashboard.notices.siteSaved'));
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1147,7 +1155,7 @@ export default function AdminDashboardClient({
       });
       const data = await guardResponse(res) as { site: Partial<AdminSitePayload> };
       setSite((prev) => ({ ...prev, ...data.site }));
-      setNotice('Профилът е запазен.');
+      setNotice(t('adminDashboard.notices.profileSaved'));
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1175,10 +1183,10 @@ export default function AdminDashboardClient({
       });
       const data = await guardResponse(res) as { site: Partial<AdminSitePayload> };
       setSite((prev) => ({ ...prev, ...data.site }));
-      if (!opts?.silent) setNotice('Снимките са запазени.');
+      if (!opts?.silent) setNotice(t('adminDashboard.notices.imagesSaved'));
     } catch (e) {
       if (!opts?.silent) handleErr(e);
-      else setError('Снимките са качени, но не успяхме да ги запазим. Натисни „Запази".');
+      else setError(t('adminDashboard.notices.imagesUploadNeedsSave'));
     } finally {
       setBusyKey('');
     }
@@ -1200,7 +1208,7 @@ export default function AdminDashboardClient({
       });
       const data = await guardResponse(res);
       setSite(prev => ({ ...prev, services: data.services as AdminSitePayload['services'] }));
-      setNotice('Услугите са запазени.');
+      setNotice(t('adminDashboard.notices.servicesSaved'));
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1219,7 +1227,7 @@ export default function AdminDashboardClient({
         bookingAdvanceDays: typeof data.bookingAdvanceDays === 'number' ? data.bookingAdvanceDays : prev.bookingAdvanceDays,
         slotIntervalMin: typeof data.slotIntervalMin === 'number' ? data.slotIntervalMin : prev.slotIntervalMin,
       }));
-      setNotice('Работното време е запазено.');
+      setNotice(t('adminDashboard.notices.hoursSaved'));
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1232,12 +1240,14 @@ export default function AdminDashboardClient({
       });
       const data = await guardResponse(res);
       setSite(prev => ({ ...prev, customDomain: data.customDomain, domainStatus: data.domainStatus, domainConfig: { dnsInstructions: data.dnsInstructions, verificationInstructions: data.verificationInstructions, configuredBy: data.configuredBy, misconfigured: data.misconfigured, verified: data.verified, provider: data.provider, providerDetails: data.providerDetails, checkedAt: new Date().toISOString() } }));
-      setNotice(data.domainStatus === 'active' ? 'Домейнът е активен.' : 'Домейнът е записан. Добави DNS записите и изчакай верификация.');
+      setNotice(data.domainStatus === 'active'
+        ? (locale === 'en' ? 'The domain is active.' : 'Домейнът е активен.')
+        : (locale === 'en' ? 'The domain is saved. Add the DNS records and wait for verification.' : 'Домейнът е записан. Добави DNS записите и изчакай верификация.'));
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function removeDomain() {
-    if (!confirm('Сигурен ли си, че искаш да премахнеш домейна?')) return;
+    if (!confirm(locale === 'en' ? 'Are you sure you want to remove the domain?' : 'Сигурен ли си, че искаш да премахнеш домейна?')) return;
     setError(''); setNotice(''); setBusyKey('domain-remove');
     try {
       const res = await fetch('/api/domain-connect', {
@@ -1247,7 +1257,7 @@ export default function AdminDashboardClient({
       await guardResponse(res);
       setSite(prev => ({ ...prev, customDomain: '', domainStatus: '', domainConfig: null }));
       setDomainInput('');
-      setNotice('Домейнът е премахнат.');
+      setNotice(locale === 'en' ? 'The domain was removed.' : 'Домейнът е премахнат.');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1262,7 +1272,9 @@ export default function AdminDashboardClient({
       });
       const data = await guardResponse(res);
       setSite(prev => ({ ...prev, customDomain: data.customDomain, domainStatus: data.domainStatus, domainConfig: { dnsInstructions: data.dnsInstructions, verificationInstructions: data.verificationInstructions, configuredBy: data.configuredBy, misconfigured: data.misconfigured, verified: data.verified, provider: data.provider, providerDetails: data.providerDetails, checkedAt: new Date().toISOString() } }));
-      if (!silent) setNotice(data.domainStatus === 'active' ? 'Домейнът е активен.' : 'Статусът е обновен.');
+      if (!silent) setNotice(data.domainStatus === 'active'
+        ? (locale === 'en' ? 'The domain is active.' : 'Домейнът е активен.')
+        : (locale === 'en' ? 'The status was updated.' : 'Статусът е обновен.'));
     } catch (e) { if (!silent) handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1282,7 +1294,7 @@ export default function AdminDashboardClient({
         body: JSON.stringify({ bookingId, status }),
       });
       await guardResponse(res);
-      setNotice('Статусът е обновен.');
+      setNotice(locale === 'en' ? 'The status was updated.' : 'Статусът е обновен.');
     } catch (e) { setBookings(previous); handleErr(e); }
   }
 
@@ -1877,491 +1889,55 @@ export default function AdminDashboardClient({
       </div>
 
       {/* ── Top nav ───────────────────────────────────── */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: isMobile ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: isMobile ? '0.5px solid rgba(0,0,0,0.06)' : `1px solid ${T.border}`,
-        height: isMobile ? 52 : 56,
-        transform: 'translateZ(0)',
-        willChange: 'transform',
-      }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '0 16px' : '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 12 }}>
-          {isMobile ? (
-            <button
-              type="button"
-              onClick={() => setNavOpen(true)}
-              aria-label="Отвори меню"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 36,
-                height: 36,
-                borderRadius: 999,
-                border: 'none',
-                background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
-                color: '#fff',
-                boxShadow: '0 8px 20px rgba(219,39,119,0.28)',
-                flexShrink: 0,
-                cursor: 'pointer',
-              }}
-            >
-              <Menu size={18} />
-            </button>
-          ) : null}
-          {/* Brand */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
-            {!isMobile && (
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>c</div>
-            )}
-            <span style={{ fontSize: isMobile ? 17 : 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>{site.name || slug}</span>
-            <span style={{
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: '0.05em',
-              padding: '3px 8px',
-              borderRadius: 999,
-              flexShrink: 0,
-              color: '#fff',
-              background: site.plan === 'team'
-                ? 'linear-gradient(135deg,#a855f7,#6366f1)'
-                : 'linear-gradient(135deg,#0071E3,#007AFF,#34AADC)',
-            }}>
-              {site.plan === 'team' ? 'TEAM' : 'SOLO'}
-            </span>
-            {!isMobile && (
-              <span style={{ fontSize: 12, color: T.subtle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{displayName || ownerEmail}</span>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 8, flexShrink: 0 }}>
-            {site.siteStatus !== 'active' && (
-              <button
-                type="button"
-                onClick={() => void publishSite()}
-                disabled={busyKey === 'publish'}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                  borderRadius: isMobile ? 12 : T.radiusSm, border: 'none',
-                  background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-                  color: '#fff',
-                  padding: isMobile ? '8px 14px' : '6px 14px',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  opacity: busyKey === 'publish' ? 0.7 : 1,
-                }}
-              >
-                {busyKey === 'publish' ? '…' : (isMobile ? 'Публикувай' : 'Публикувай сайта')}
-              </button>
-            )}
-            <a
-              href={sitePublicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Виж сайта"
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: isMobile ? 36 : undefined, height: isMobile ? 36 : undefined,
-                borderRadius: isMobile ? 10 : T.radiusSm,
-                border: isMobile ? 'none' : `1px solid ${T.border}`,
-                background: 'transparent',
-                boxShadow: 'none',
-                textDecoration: 'none', color: isMobile ? '#18181b' : T.muted,
-                padding: isMobile ? 0 : '6px 12px',
-                fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              <Eye size={isMobile ? 16 : 13} color="#db2777" />
-              {!isMobile && <span style={{ marginLeft: 6 }}>Виж сайта</span>}
-            </a>
-            {showInstallButton && !isMobile && (
-              <button type="button" onClick={triggerPwaInstall} style={btn('sm-ghost')}>
-                Инсталирай
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={logout}
-              disabled={busyKey === 'logout'}
-              aria-label="Изход"
-              title="Изход"
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: isMobile ? 36 : undefined, height: isMobile ? 36 : undefined,
-                borderRadius: isMobile ? 10 : T.radiusSm,
-                border: isMobile ? 'none' : `1px solid ${T.border}`,
-                background: 'transparent',
-                color: '#000',
-                padding: isMobile ? 0 : '6px 12px',
-                fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              <LogOut size={14} />
-              {!isMobile && <span style={{ marginLeft: 6 }}>{busyKey === 'logout' ? 'Излизане…' : 'Изход'}</span>}
-            </button>
-          </div>
-        </div>
-      </header>
+      <AdminHeader
+        isMobile={isMobile}
+        site={site}
+        slug={slug}
+        displayName={displayName}
+        ownerEmail={ownerEmail}
+        locale={locale}
+        sitePublicUrl={sitePublicUrl}
+        busyKey={busyKey}
+        showInstallButton={showInstallButton}
+        onPublish={() => void publishSite()}
+        onLogout={logout}
+        onTriggerPwaInstall={triggerPwaInstall}
+        onOpenNav={() => setNavOpen(true)}
+      />
 
       {/* ── Mobile bottom sheet nav ───────────────────── */}
-      {isMobile && navOpen && (
-        <>
-          <button
-            type="button"
-            aria-label="Затвори менюто (фон)"
-            onClick={() => setNavOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 55,
-              margin: 0,
-              padding: 0,
-              border: 'none',
-              background: 'rgba(0,0,0,0.32)',
-              cursor: 'pointer',
-              animation: 'fadeIn 200ms ease',
-            }}
-          />
-          <div
-            ref={mobileNavSheetRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Навигация"
-            style={{
-              position: 'fixed',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 56,
-              background: '#fff',
-              borderRadius: '20px 20px 0 0',
-              paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
-              fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
-              animation: 'slideUp 280ms cubic-bezier(0.32, 0.72, 0, 1)',
-              maxHeight: 'min(92dvh, calc(100dvh - 12px))',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 -12px 40px rgba(0,0,0,0.12)',
-              pointerEvents: 'auto',
-              touchAction: 'pan-y',
-            }}
-          >
-            <button
-              type="button"
-              aria-label="Затвори менюто"
-              className="admin-sheet-handle"
-              onClick={() => {
-                if (sheetDragRef.current.offset > 10) return;
-                setNavOpen(false);
-              }}
-              onTouchStart={(e) => onSheetDragStart(e.touches[0]?.clientY ?? 0)}
-              onTouchMove={(e) => {
-                onSheetDragMove(e.touches[0]?.clientY ?? 0);
-                if (sheetDragRef.current.offset > 8) e.preventDefault();
-              }}
-              onTouchEnd={() => onSheetDragEnd()}
-              onTouchCancel={() => onSheetDragEnd()}
-              style={{
-                display: 'flex',
-                width: '100%',
-                minHeight: 48,
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '14px 16px 8px',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'grab',
-                flexShrink: 0,
-                touchAction: 'none',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              <span
-                aria-hidden
-                style={{ width: 44, height: 5, borderRadius: 3, background: '#A1A1AA', pointerEvents: 'none' }}
-              />
-            </button>
-
-            <div
-              style={{
-                padding: '0 12px 8px',
-                overflowY: 'auto',
-                WebkitOverflowScrolling: 'touch',
-                flex: '1 1 auto',
-                minHeight: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 16,
-              }}
-            >
-              {SHEET_GROUPS.map(group => {
-                const visibleTabs = TABS.filter(
-                  t => group.ids.includes(t.id) && (t.id !== 'staff' || site.plan === 'team')
-                );
-                if (visibleTabs.length === 0) return null;
-                const isGroupOpen = openGroups.has(group.label);
-                return (
-                  <div key={group.label}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenGroups(prev => {
-                        const next = new Set(prev);
-                        if (next.has(group.label)) next.delete(group.label);
-                        else next.add(group.label);
-                        return next;
-                      })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        width: '100%',
-                        background: 'none',
-                        border: 'none',
-                        padding: '2px 4px 8px 4px',
-                        cursor: 'pointer',
-                        WebkitTapHighlightColor: 'transparent',
-                      }}
-                    >
-                      <p style={{
-                        fontSize: 15,
-                        fontWeight: 700,
-                        letterSpacing: '-0.01em',
-                        margin: 0,
-                        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
-                        background: ICON_GRADIENT,
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                        color: 'transparent',
-                      }}>{group.label}</p>
-                      <svg
-                        width={14} height={14} viewBox="0 0 24 24" fill="none"
-                        strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
-                        style={{
-                          transform: isGroupOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
-                          transition: 'transform 220ms ease',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <defs>
-                          <linearGradient id={`chev-${group.label}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#e11d48" />
-                            <stop offset="50%" stopColor="#db2777" />
-                            <stop offset="100%" stopColor="#a855f7" />
-                          </linearGradient>
-                        </defs>
-                        <polyline points="6 9 12 15 18 9" stroke={`url(#chev-${group.label})`} />
-                      </svg>
-                    </button>
-                    <div style={{
-                      overflow: 'hidden',
-                      maxHeight: isGroupOpen ? '600px' : '0px',
-                      opacity: isGroupOpen ? 1 : 0,
-                      transition: 'max-height 300ms ease, opacity 220ms ease',
-                    }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {visibleTabs.map(({ id, label, Icon }) => {
-                        const active = activeTab === id;
-                        return (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => { setActiveTab(id); setError(''); setNotice(''); setTimeout(() => setNavOpen(false), 180); }}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 12,
-                              padding: '10px 12px',
-                              borderRadius: 12,
-                              border: 'none',
-                              background: active ? 'linear-gradient(135deg, rgba(225,29,72,0.06) 0%, rgba(168,85,247,0.06) 100%)' : 'transparent',
-                              cursor: 'pointer',
-                              width: '100%',
-                              textAlign: 'left',
-                              WebkitTapHighlightColor: 'transparent',
-                              fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
-                            }}
-                          >
-                            <div style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                              background: active ? ICON_GRADIENT : 'none',
-                              color: active ? '#fff' : '#52525b',
-                              boxShadow: active ? '0 4px 12px rgba(219,39,119,0.2)' : 'none',
-                            }}>
-                              <Icon size={17} strokeWidth={1.9} />
-                            </div>
-                            <span style={{
-                              fontSize: 14,
-                              fontWeight: active ? 600 : 400,
-                              letterSpacing: '-0.01em',
-                              color: active ? 'transparent' : '#18181B',
-                              background: active ? ICON_GRADIENT : 'none',
-                              WebkitBackgroundClip: active ? 'text' : 'unset',
-                              backgroundClip: active ? 'text' : 'unset',
-                              flex: 1,
-                            }}>
-                              {label}
-                            </span>
-                            {active && (
-                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: ICON_GRADIENT, flexShrink: 0 }} />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* ── Чат поддръжка — 4-та секция ── */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNavOpen(false);
-                    window.dispatchEvent(new Event('clicka:open-chat'));
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    width: '100%', padding: '10px 12px', borderRadius: 12,
-                    border: 'none', background: '#fff',
-                    cursor: 'pointer', fontSize: 14, fontWeight: 500,
-                    color: '#18181B', WebkitTapHighlightColor: 'transparent',
-                  }}
-                >
-                  <span style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 28, height: 28, borderRadius: 999,
-                    background: ICON_GRADIENT, color: '#fff', flexShrink: 0,
-                  }}>
-                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                  </span>
-                  Имаш въпрос?
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNavOpen(false);
-                    window.dispatchEvent(new Event('clicka:open-chat-history'));
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    width: '100%', padding: '10px 12px', borderRadius: 12,
-                    border: 'none', background: '#fff',
-                    cursor: 'pointer', fontSize: 14, fontWeight: 500,
-                    color: '#18181B', WebkitTapHighlightColor: 'transparent',
-                  }}
-                >
-                  <span style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 28, height: 28, borderRadius: 999,
-                    background: '#F3F4F6', color: '#6B7280', flexShrink: 0,
-                  }}>
-                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      <line x1="9" y1="9" x2="15" y2="9" />
-                      <line x1="9" y1="13" x2="13" y2="13" />
-                    </svg>
-                  </span>
-                  История на чата
-                </button>
-              </div>
-            </div>
-
-            <div
-              style={{
-                margin: '0 12px',
-                paddingTop: 10,
-                borderTop: `1px solid ${T.border}`,
-                flexShrink: 0,
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center',
-              }}
-            >
-              <a
-                href={sitePublicUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setNavOpen(false)}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  padding: '11px 10px',
-                  borderRadius: 12,
-                  textDecoration: 'none',
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  background: ICON_GRADIENT,
-                  boxShadow: '0 6px 16px rgba(219,39,119,0.22)',
-                }}
-              >
-                <ExternalLink size={16} /> Виж сайта
-              </a>
-              {!pwaOnHomeScreen ? (
-                <button
-                  type="button"
-                  aria-label="Добави на началния екран"
-                  onClick={triggerPwaInstall}
-                  style={{
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    border: `1px solid ${T.border}`,
-                    background: '#fff',
-                    color: T.text,
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  }}
-                >
-                  <Plus size={18} strokeWidth={2} />
-                </button>
-              ) : (
-                <div
-                  aria-label="Добавено на началния екран"
-                  style={{
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    border: '1px solid #BBF7D0',
-                    background: '#F0FDF4',
-                  }}
-                >
-                  <Check size={20} strokeWidth={2.5} style={{ color: '#22C55E' }} />
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      <MobileNavSheet
+        open={isMobile && navOpen}
+        onClose={() => setNavOpen(false)}
+        sheetRef={mobileNavSheetRef}
+        sheetDragRef={sheetDragRef}
+        onSheetDragStart={onSheetDragStart}
+        onSheetDragMove={onSheetDragMove}
+        onSheetDragEnd={onSheetDragEnd}
+        groups={SHEET_GROUPS}
+        tabs={TABS}
+        sitePlan={site.plan}
+        activeTab={activeTab}
+        onSelectTab={(id) => { setActiveTab(id as TabId); setError(''); setNotice(''); setTimeout(() => setNavOpen(false), 180); }}
+        openGroups={openGroups}
+        setOpenGroups={setOpenGroups}
+        sitePublicUrl={sitePublicUrl}
+        locale={locale}
+        pwaOnHomeScreen={pwaOnHomeScreen}
+        onTriggerPwaInstall={triggerPwaInstall}
+        t={t}
+      />
 
       {pwaInstallOpen && (() => {
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-        const guide = getPwaInstallGuide(ua);
+        const guide = getPwaInstallGuide(locale, ua);
         const isIos = /iphone|ipad|ipod/i.test(ua);
         const canNativeInstall = Boolean(installPromptEvent) && !isIos;
         return (
           <>
             <button
               type="button"
-              aria-label="Затвори"
+              aria-label={locale === 'en' ? 'Close' : 'Затвори'}
               onClick={() => setPwaInstallOpen(false)}
               style={{
                 position: 'fixed',
@@ -2429,7 +2005,7 @@ export default function AdminDashboardClient({
                         markPwaOnHomeScreen();
                         setPwaInstallOpen(false);
                         setNavOpen(false);
-                        setNotice('Приложението се добавя на екрана.');
+                        setNotice(locale === 'en' ? 'The app is being added to your home screen.' : 'Приложението се добавя на екрана.');
                         setInstallPromptEvent(null);
                       });
                   }}
@@ -2442,7 +2018,7 @@ export default function AdminDashboardClient({
                     padding: '12px 16px',
                     borderRadius: 12,
                     border: 'none',
-                    background: ICON_GRADIENT,
+                    background: tokens.color.primary,
                     color: '#fff',
                     fontSize: 14,
                     fontWeight: 600,
@@ -2450,7 +2026,7 @@ export default function AdminDashboardClient({
                     marginBottom: 8,
                   }}
                 >
-                  <Plus size={18} /> Инсталирай сега
+                  <Plus size={18} /> {locale === 'en' ? 'Install now' : 'Инсталирай сега'}
                 </button>
               ) : null}
               <button
@@ -2476,7 +2052,7 @@ export default function AdminDashboardClient({
                   marginBottom: 8,
                 }}
               >
-                Готово — добавих го
+                {locale === 'en' ? 'Done — I added it' : 'Готово — добавих го'}
               </button>
               <button
                 type="button"
@@ -2496,7 +2072,7 @@ export default function AdminDashboardClient({
                   cursor: 'pointer',
                 }}
               >
-                Затвори
+                {locale === 'en' ? 'Close' : 'Затвори'}
               </button>
             </div>
           </>
@@ -2508,60 +2084,13 @@ export default function AdminDashboardClient({
 
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
-          <aside style={{
-            width: 196, flexShrink: 0,
-            position: 'sticky', top: 56, height: 'calc(100dvh - 56px)',
-            overflowY: 'auto', borderRight: `1px solid ${T.border}`,
-            background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '14px 8px',
-            display: 'flex', flexDirection: 'column', gap: 2,
-          }}>
-            {SIDEBAR_GROUPS.map((group, gi) => (
-              <div key={gi} style={{ marginBottom: gi < SIDEBAR_GROUPS.length - 1 ? 4 : 0 }}>
-                {group.label && (
-                  <div style={{
-                    padding: '6px 10px 4px',
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-                    color: T.subtle, textTransform: 'uppercase',
-                    userSelect: 'none',
-                  }}>
-                    {group.label}
-                  </div>
-                )}
-                {group.ids.map(id => {
-                  const tab = TABS.find(t => t.id === id)!;
-                  const active = activeTab === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => switchTab(id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '7px 10px', borderRadius: T.radiusSm,
-                        border: active ? '1px solid #E4E4E7' : '1px solid transparent',
-                        width: '100%', textAlign: 'left',
-                        background: active ? '#fff' : 'transparent',
-                        color: active ? T.text : T.muted,
-                        fontSize: 14, fontWeight: active ? 600 : 400,
-                        cursor: 'pointer',
-                        transition: 'background 120ms, color 120ms',
-                      }}
-                      onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = '#f4f4f5'; (e.currentTarget as HTMLButtonElement).style.color = T.text; } }}
-                      onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = T.muted; } }}
-                    >
-                      <tab.Icon size={14} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
-                      <span style={{ flex: 1 }}>{tab.label}</span>
-                      {active && <ChevronRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />}
-                    </button>
-                  );
-                })}
-                {gi < SIDEBAR_GROUPS.length - 1 && (
-                  <div style={{ height: 1, background: T.border, margin: '6px 10px 2px' }} />
-                )}
-              </div>
-            ))}
-
-          </aside>
+          <AdminSidebar
+            groups={SIDEBAR_GROUPS}
+            tabs={TABS}
+            activeTab={activeTab}
+            onSwitch={(id) => switchTab(id as TabId)}
+            t={t}
+          />
         )}
 
         {/* ── Main content ──────────────────────────── */}
@@ -2569,9 +2098,11 @@ export default function AdminDashboardClient({
           style={{
             flex: 1,
             minWidth: 0,
+            maxWidth: isMobile ? undefined : 960,
+            marginInline: isMobile ? undefined : 'auto',
             padding: isMobile
               ? `16px 12px ${MOBILE_BOTTOM_INSET} 12px`
-              : '28px 32px 48px',
+              : '32px 40px 56px',
             scrollPaddingBottom: isMobile ? MOBILE_BOTTOM_INSET : undefined,
           }}
         >
@@ -2613,9 +2144,9 @@ export default function AdminDashboardClient({
                 {/* Copy button */}
                 <button
                   type="button"
-                  title="Копирай линка"
+                  title={t('adminDashboard.actions.copyLink')}
                   onClick={() => {
-                    void navigator.clipboard.writeText(sitePublicUrl).then(() => setNotice('Линкът е копиран!'));
+                    void navigator.clipboard.writeText(sitePublicUrl).then(() => setNotice(t('adminDashboard.notices.linkCopied')));
                   }}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2630,7 +2161,7 @@ export default function AdminDashboardClient({
                 {/* QR button */}
                 <button
                   type="button"
-                  title="QR код"
+                  title={t('adminDashboard.actions.qrCode')}
                   onClick={() => setQrOpen(true)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2654,7 +2185,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => { setActiveTab('domain'); }} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => { setActiveTab('domain'); }} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} locale={locale} />
             </>
           )}
 
@@ -2672,6 +2203,7 @@ export default function AdminDashboardClient({
               existingServiceCategories={existingServiceCategories}
               saveImages={saveImages}
               handlePortfolioUpload={handlePortfolioUpload}
+              locale={locale}
             />
           ) : null}
 
@@ -2683,6 +2215,7 @@ export default function AdminDashboardClient({
               busyKey={busyKey}
               saveSpecialist={saveSpecialist}
               onOwnerPhotoUpload={(file) => void handleOwnerPhotoUpload(file)}
+              locale={locale}
             />
           ) : null}
 
@@ -2693,14 +2226,15 @@ export default function AdminDashboardClient({
               initialStaff={staffMembers}
               planLimit={site.plan === 'team' ? 2 : 1}
               salonServices={site.services}
+              locale={locale}
             />
           ) : null}
 
           {/* ── Услуги ── */}
           {activeTab === 'services' && (
             <Section
-              title="Услуги"
-              desc={isMobile ? undefined : 'Управлявай услугите и категориите на салона.'}
+              title={locale === 'en' ? 'Services' : 'Услуги'}
+              desc={isMobile ? undefined : (locale === 'en' ? 'Manage the salon services and categories.' : 'Управлявай услугите и категориите на салона.')}
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -2713,8 +2247,8 @@ export default function AdminDashboardClient({
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
-                      boxShadow: '0 4px 12px rgba(219,39,119,0.18)',
+                      background: tokens.color.primary,
+                      boxShadow: tokens.shadow.primary,
                       padding: '6px 10px',
                       fontSize: 12,
                       fontWeight: 600,
@@ -2724,10 +2258,10 @@ export default function AdminDashboardClient({
                     onClick={() => setServiceModalOpen(true)}
                   >
                     <Plus size={13} />
-                    Добави
+                    {locale === 'en' ? 'Add' : 'Добави'}
                   </button>
                   <AdminSaveBtn
-                    label="Запази"
+                    label={locale === 'en' ? 'Save' : 'Запази'}
                     busy={busyKey === 'services'}
                     mobile={isMobile}
                     green
@@ -2766,7 +2300,7 @@ export default function AdminDashboardClient({
 
           {activeTab === 'offers' && (
             <Section
-              title="Оферти"
+              title={locale === 'en' ? 'Offers' : 'Оферти'}
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -2780,7 +2314,7 @@ export default function AdminDashboardClient({
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+                      background: tokens.color.primary,
                       padding: '6px 12px',
                       fontSize: 12,
                       fontWeight: 600,
@@ -2789,7 +2323,7 @@ export default function AdminDashboardClient({
                     }}
                   >
                     <Plus size={14} strokeWidth={2.25} />
-                    Добави
+                    {locale === 'en' ? 'Add' : 'Добави'}
                   </button>
                   <button
                     type="button"
@@ -2801,7 +2335,7 @@ export default function AdminDashboardClient({
                       cursor: busyKey === 'offers' ? 'wait' : 'pointer',
                     }}
                   >
-                    {busyKey === 'offers' ? 'Запазване…' : offersSaved ? 'Запазено ✓' : 'Запази'}
+                    {busyKey === 'offers' ? (locale === 'en' ? 'Saving…' : 'Запазване…') : offersSaved ? (locale === 'en' ? 'Saved ✓' : 'Запазено ✓') : (locale === 'en' ? 'Save' : 'Запази')}
                   </button>
                 </div>
               }
@@ -2821,12 +2355,13 @@ export default function AdminDashboardClient({
             <LazyBrandsTabPanel
               initialBrandIds={site.brandIds}
               isMobile={isMobile}
+              locale={locale}
             />
           )}
 
           {activeTab === 'blog' && (
             <Section
-              title="Блог"
+              title={locale === 'en' ? 'Blog' : 'Блог'}
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -2845,7 +2380,7 @@ export default function AdminDashboardClient({
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+                      background: tokens.color.primary,
                       padding: '6px 12px',
                       fontSize: 12,
                       fontWeight: 600,
@@ -2854,7 +2389,7 @@ export default function AdminDashboardClient({
                     }}
                   >
                     <Plus size={14} strokeWidth={2.25} />
-                    Нова статия
+                    {locale === 'en' ? 'New article' : 'Нова статия'}
                   </button>
                   {blogPosts.length > 0 ? (
                     <button
@@ -2867,7 +2402,7 @@ export default function AdminDashboardClient({
                         cursor: busyKey === 'blog' ? 'wait' : 'pointer',
                       }}
                     >
-                      {busyKey === 'blog' ? 'Запазване…' : 'Запази'}
+                      {busyKey === 'blog' ? (locale === 'en' ? 'Saving…' : 'Запазване…') : (locale === 'en' ? 'Save' : 'Запази')}
                     </button>
                   ) : null}
                 </div>
@@ -2909,25 +2444,25 @@ export default function AdminDashboardClient({
           ) : null}
 
           {activeTab === 'hours' ? (
-            <LazyHoursTabPanel site={site} setSite={setSite} isMobile={isMobile} inp={inp} btn={btn} busyKey={busyKey} saveHours={saveHours} />
+            <LazyHoursTabPanel site={site} setSite={setSite} isMobile={isMobile} inp={inp} btn={btn} busyKey={busyKey} saveHours={saveHours} locale={locale} />
           ) : null}
 
           {/* ── Резервации ── */}
           {activeTab === 'bookings' && (
             <Section
-              title="Резервации"
+              title={locale === 'en' ? 'Bookings' : 'Резервации'}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
-                    {bookings.length} общо
+                    {bookings.length} {locale === 'en' ? 'total' : 'общо'}
                   </span>
                   {!isMobile ? (
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as BookingListFilter)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
-                      <option value="all">Всички</option>
-                      <option value="upcoming">Предстоящи</option>
-                      <option value="pending">Чакащи</option>
-                      <option value="completed">Завършени</option>
-                      <option value="cancelled">Отказани</option>
+                      <option value="all">{locale === 'en' ? 'All' : 'Всички'}</option>
+                      <option value="upcoming">{locale === 'en' ? 'Upcoming' : 'Предстоящи'}</option>
+                      <option value="pending">{locale === 'en' ? 'Pending' : 'Чакащи'}</option>
+                      <option value="completed">{locale === 'en' ? 'Completed' : 'Завършени'}</option>
+                      <option value="cancelled">{locale === 'en' ? 'Cancelled' : 'Отказани'}</option>
                     </select>
                   ) : null}
                 </div>
@@ -2959,7 +2494,7 @@ export default function AdminDashboardClient({
           {/* ── Клиенти ── */}
           {activeTab === 'clients' && (
             <Section
-              title="Клиенти"
+              title={locale === 'en' ? 'Clients' : 'Клиенти'}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
@@ -2967,7 +2502,7 @@ export default function AdminDashboardClient({
                     const bc = clients.filter(c => !hiddenClientKeys.has(c.key));
                     const names = new Set(bc.map(c => c.name.toLowerCase().trim()));
                     return bc.length + extraClients.filter(c => !names.has(c.name.toLowerCase().trim())).length;
-                  })()} уникални
+                  })()} {locale === 'en' ? 'unique' : 'уникални'}
                   </span>
                   <button
                     type="button"
@@ -2978,8 +2513,8 @@ export default function AdminDashboardClient({
                       borderRadius: 8,
                       border: 'none',
                       color: '#fff',
-                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
-                      boxShadow: '0 4px 12px rgba(219,39,119,0.18)',
+                      background: tokens.color.primary,
+                      boxShadow: tokens.shadow.primary,
                       padding: '6px 10px',
                       fontSize: 12,
                       fontWeight: 600,
@@ -2989,7 +2524,7 @@ export default function AdminDashboardClient({
                     onClick={() => { setNewClientDraft({ name: '', phone: '' }); setClientModalOpen(true); }}
                   >
                     <Plus size={13} />
-                    Добави
+                    {locale === 'en' ? 'Add' : 'Добави'}
                   </button>
                 </div>
               }
@@ -3085,10 +2620,10 @@ export default function AdminDashboardClient({
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#000' }}>Нов клиент</h3>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#000' }}>{locale === 'en' ? 'New client' : 'Нов клиент'}</h3>
                 <input
                   type="text"
-                  placeholder="Име"
+                  placeholder={locale === 'en' ? 'Name' : 'Име'}
                   value={newClientDraft.name}
                   onChange={(e) => setNewClientDraft((d) => ({ ...d, name: e.target.value }))}
                   style={{
@@ -3101,7 +2636,7 @@ export default function AdminDashboardClient({
                 />
                 <input
                   type="tel"
-                  placeholder="Телефон (по желание)"
+                  placeholder={locale === 'en' ? 'Phone (optional)' : 'Телефон (по желание)'}
                   value={newClientDraft.phone}
                   onChange={(e) => setNewClientDraft((d) => ({ ...d, phone: e.target.value }))}
                   style={{
@@ -3126,7 +2661,7 @@ export default function AdminDashboardClient({
                       padding: '8px 12px',
                     }}
                   >
-                    Отказ
+                    {locale === 'en' ? 'Cancel' : 'Отказ'}
                   </button>
                   <button
                     type="button"
@@ -3166,7 +2701,7 @@ export default function AdminDashboardClient({
                     style={{
                       border: 'none',
                       borderRadius: 8,
-                      background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+                      background: tokens.color.primary,
                       color: '#fff',
                       fontSize: 14,
                       fontWeight: 700,
@@ -3175,7 +2710,7 @@ export default function AdminDashboardClient({
                       opacity: !newClientDraft.name.trim() || clientSaving ? 0.6 : 1,
                     }}
                   >
-                    {clientSaving ? 'Записване…' : 'Запази'}
+                    {clientSaving ? (locale === 'en' ? 'Saving…' : 'Записване…') : (locale === 'en' ? 'Save' : 'Запази')}
                   </button>
                 </div>
               </div>
@@ -3196,6 +2731,7 @@ export default function AdminDashboardClient({
               removeDomain={removeDomain}
               inp={inp}
               btn={btn}
+              locale={locale}
               onBack={() => {
                 setSiteNav(prev => ({ section: 'address', v: (prev?.v ?? 0) + 1 }));
                 setActiveTab('site');
@@ -3219,11 +2755,11 @@ export default function AdminDashboardClient({
           ) : null}
 
           {activeTab === 'account' && initialAccount ? (
-            <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} onDisplayNameChange={setDisplayName} />
+            <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} onDisplayNameChange={setDisplayName} locale={locale} />
           ) : null}
 
           {activeTab === 'payments' ? (
-            <LazyPaymentsTabPanel slug={slug} btn={btn} />
+            <LazyPaymentsTabPanel slug={slug} btn={btn} locale={locale} />
           ) : null}
 
           {activeTab === 'integrations' ? (
@@ -3249,11 +2785,12 @@ export default function AdminDashboardClient({
               calendarStatus={calendarIntegrationStatus}
               loadCalendarStatus={loadCalendarIntegrationStatus}
               onSaveExternalIcsUrl={saveExternalIcsUrl}
+              locale={locale}
             />
           ) : null}
 
           {activeTab === 'marketing' ? (
-            <LazyMarketingTabPanel site={site} setSite={setSite} slug={slug} inp={inp} sitePublicUrl={sitePublicUrl} />
+            <LazyMarketingTabPanel site={site} setSite={setSite} slug={slug} inp={inp} sitePublicUrl={sitePublicUrl} locale={locale} />
           ) : null}
 
         </main>
@@ -3261,126 +2798,15 @@ export default function AdminDashboardClient({
 
       {/* ── Mobile bottom tab bar (full-width glass bar) ─ */}
       {isMobile && (
-        <nav
-          aria-label="Навигация"
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: '0 8px max(8px, env(safe-area-inset-bottom, 8px))',
-            zIndex: 50,
-            pointerEvents: 'none',
-            width: '100%',
-            boxSizing: 'border-box',
-            transform: 'translateZ(0)',
-            willChange: 'transform',
-          }}
-        >
-          <div
-            style={{
-              pointerEvents: 'auto',
-              display: 'flex',
-              alignItems: 'stretch',
-              justifyContent: 'space-between',
-              gap: 2,
-              padding: '10px 6px',
-              borderRadius: 22,
-              background: 'rgba(255,255,255,0.68)',
-              backdropFilter: 'blur(20px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-              border: '1px solid rgba(255,255,255,0.72)',
-              boxShadow:
-                '0 14px 50px rgba(15,23,42,0.2), 0 6px 20px rgba(15,23,42,0.14), 0 0 0 1px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)',
-            }}
-          >
-            {TAB_BAR_TABS.map(({ id, label, Icon }) => {
-              const active = activeTab === id && !navOpen;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-label={label}
-                  title={label}
-                  onClick={() => switchTab(id)}
-                  style={{
-                    flex: '1 1 0',
-                    minWidth: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    padding: '6px 4px',
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    minHeight: 52,
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: active ? 32 : 28,
-                      height: active ? 32 : 28,
-                      borderRadius: 999,
-                      background: active ? ICON_GRADIENT : 'transparent',
-                      color: active ? '#fff' : '#18181B',
-                      boxShadow: active ? '0 8px 20px rgba(219,39,119,0.28)' : 'none',
-                      transition: 'all 180ms ease',
-                    }}
-                  >
-                    <Icon size={active ? 17 : 16} strokeWidth={active ? 2.2 : 1.8} />
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: active ? 700 : 500,
-                      letterSpacing: '-0.01em',
-                      color: active ? '#db2777' : '#18181B',
-                      lineHeight: 1.15,
-                      textAlign: 'center',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+        <MobileBottomNav
+          tabs={TAB_BAR_TABS}
+          activeTab={activeTab}
+          sheetOpen={navOpen}
+          onSwitch={(id) => switchTab(id as TabId)}
+          t={t}
+        />
       )}
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .admin-mobile-root {
-          overscroll-behavior-y: none;
-        }
-        .admin-mobile-root input:focus, .admin-mobile-root textarea:focus, .admin-mobile-root select:focus {
-          border-color: #18181B !important;
-          outline: none;
-        }
-        .admin-mobile-root button:active:not(.admin-sheet-handle) {
-          transform: scale(0.97);
-        }
-        .admin-sheet-handle:active {
-          transform: none;
-          opacity: 0.85;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .admin-mobile-root * {
-            animation-duration: 0.01ms !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -3471,13 +2897,12 @@ function AdminSaveBtn({
     fontWeight: 700,
     cursor: busy ? 'wait' : 'pointer',
     whiteSpace: 'nowrap',
-    backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
+    color: saved ? tokens.color.success.text : tokens.color.text,
     display: 'inline-flex',
     alignItems: 'center',
     flexShrink: 0,
+    transition: 'color 160ms ease, opacity 160ms ease',
+    opacity: busy ? 0.6 : 1,
   };
 
   return (
@@ -3828,13 +3253,17 @@ function StepCard({ step, title, done, children }: { step: number; title: string
   );
 }
 
-function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
+function DnsRecordCard({ record, copied, onCopy, isVerification = false, locale = 'bg' }: {
   record: DomainInstruction;
   copied: string;
   onCopy: (value: string, key: string) => void;
   isVerification?: boolean;
+  locale?: Locale;
 }) {
-  const typeLabels: Record<string, string> = { CNAME: 'CNAME — пренасочване към нашия сървър', A: 'A — IP адрес', TXT: 'TXT — верификационен текст' };
+  const isEn = locale === 'en';
+  const typeLabels: Record<string, string> = isEn
+    ? { CNAME: 'CNAME - points to our server', A: 'A - IP address', TXT: 'TXT - verification text' }
+    : { CNAME: 'CNAME — пренасочване към нашия сървър', A: 'A — IP адрес', TXT: 'TXT — верификационен текст' };
   const type = String(record.type ?? '').toUpperCase();
   const host = String(record.host ?? '');
   const value = String(record.value ?? '');
@@ -3861,7 +3290,7 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
               style={{ padding: '7px 12px', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, background: '#F0F7FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#007AFF', fontWeight: 600, flexShrink: 0 }}
             >
               {copied === hostKey ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
-              {copied === hostKey ? 'Копирано' : 'Копирай'}
+              {copied === hostKey ? (isEn ? 'Copied' : 'Копирано') : (isEn ? 'Copy' : 'Копирай')}
             </button>
           </div>
         </div>
@@ -3877,7 +3306,7 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
               style={{ padding: '7px 12px', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, background: '#F0F7FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#007AFF', fontWeight: 600, flexShrink: 0 }}
             >
               {copied === valueKey ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
-              {copied === valueKey ? 'Копирано' : 'Копирай'}
+              {copied === valueKey ? (isEn ? 'Copied' : 'Копирано') : (isEn ? 'Copy' : 'Копирай')}
             </button>
           </div>
         </div>
@@ -3893,7 +3322,7 @@ function DnsRecordCard({ record, copied, onCopy, isVerification = false }: {
 function DomainTab({
   site, isMobile, domainInput, setDomainInput, domainMeta,
   busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn,
-  onBack,
+  onBack, locale,
 }: {
   site: AdminSitePayload;
   isMobile: boolean;
@@ -3907,7 +3336,9 @@ function DomainTab({
   inp: CSSProperties;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   onBack: () => void;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   const [copied, setCopied] = useState('');
 
   function copyVal(value: string, key: string) {
@@ -3923,9 +3354,9 @@ function DomainTab({
   /* ── No domain yet ── connect-only flow ── */
   if (!hasDomain) {
     return (
-      <Section title="Собствен домейн" desc="Въведи домейна, който вече си купил, и ще те преведем стъпка по стъпка как да го свържеш.">
+      <Section title={isEn ? 'Custom domain' : 'Собствен домейн'} desc={isEn ? 'Enter a domain you already bought and we will guide you step by step to connect it.' : 'Въведи домейна, който вече си купил, и ще те преведем стъпка по стъпка как да го свържеш.'}>
         <div style={{ ...maxW, display: 'grid', gap: 14 }}>
-          <Field label="Твоят домейн">
+          <Field label={isEn ? 'Your domain' : 'Твоят домейн'}>
             <input
               value={domainInput}
               onChange={e => setDomainInput(e.target.value)}
@@ -3936,15 +3367,15 @@ function DomainTab({
           </Field>
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" onClick={onBack} style={{ ...btn('ghost'), flex: '0 0 auto' }}>
-              ← Назад
+              {isEn ? '← Back' : '← Назад'}
             </button>
             <button
               type="button"
-              style={{ ...btn('primary'), flex: 1, background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)', opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
+              style={{ ...btn('primary'), flex: 1, opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
               disabled={busyKey === 'domain' || !domainInput.trim()}
               onClick={() => void connectDomain()}
             >
-              {busyKey === 'domain' ? 'Проверяваме…' : 'Напред →'}
+              {busyKey === 'domain' ? (isEn ? 'Checking…' : 'Проверяваме…') : (isEn ? 'Continue →' : 'Напред →')}
             </button>
           </div>
         </div>
@@ -3955,17 +3386,17 @@ function DomainTab({
   /* ── Active domain ── */
   if (isActive) {
     return (
-      <Section title="Собствен домейн" desc="Домейнът е активен и свързан към твоя сайт.">
+      <Section title={isEn ? 'Custom domain' : 'Собствен домейн'} desc={isEn ? 'The domain is active and connected to your site.' : 'Домейнът е активен и свързан към твоя сайт.'}>
         <div style={{ ...maxW, display: 'grid', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: T.radiusLg }}>
             <CheckCircle2 size={22} style={{ color: '#10B981', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#065F46' }}>Домейнът е свързан успешно</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#065F46' }}>{isEn ? 'The domain is connected successfully' : 'Домейнът е свързан успешно'}</p>
               <p style={{ margin: '2px 0 0', fontSize: 13, color: '#047857', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.customDomain}</p>
             </div>
             <a href={`https://${site.customDomain}`} target="_blank" rel="noreferrer" style={{ ...btn('sm-ghost'), textDecoration: 'none', flexShrink: 0 }}>
               <ExternalLink size={13} />
-              {!isMobile && 'Отвори'}
+              {!isMobile && (isEn ? 'Open' : 'Отвори')}
             </a>
           </div>
           <button
@@ -3975,7 +3406,7 @@ function DomainTab({
             disabled={busyKey === 'domain-remove'}
           >
             <Trash2 size={14} />
-            {busyKey === 'domain-remove' ? 'Премахваме…' : 'Премахни домейна'}
+            {busyKey === 'domain-remove' ? (isEn ? 'Removing…' : 'Премахваме…') : (isEn ? 'Remove domain' : 'Премахни домейна')}
           </button>
         </div>
       </Section>
@@ -3995,8 +3426,8 @@ function DomainTab({
 
   return (
     <Section
-      title="Свърши свързването на домейна"
-      desc={`Следвай стъпките по-долу за ${site.customDomain}`}
+      title={isEn ? 'Finish connecting the domain' : 'Свърши свързването на домейна'}
+      desc={isEn ? `Follow the steps below for ${site.customDomain}` : `Следвай стъпките по-долу за ${site.customDomain}`}
     >
       <div style={{ ...maxW, display: 'grid', gap: 14 }}>
 
@@ -4005,69 +3436,73 @@ function DomainTab({
           <Globe size={15} style={{ color: T.muted, flexShrink: 0 }} />
           <span style={{ fontSize: 14, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.customDomain}</span>
           <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', fontWeight: 600, flexShrink: 0 }}>
-            {formatDomainStatus(site.domainStatus ?? '')}
+            {formatDomainStatus(site.domainStatus ?? '', locale)}
           </span>
-          <button type="button" style={{ ...btn('sm-ghost'), padding: '5px 8px', flexShrink: 0 }} onClick={() => void removeDomain()} disabled={busyKey === 'domain-remove'} title="Премахни домейна">
+          <button type="button" style={{ ...btn('sm-ghost'), padding: '5px 8px', flexShrink: 0 }} onClick={() => void removeDomain()} disabled={busyKey === 'domain-remove'} title={isEn ? 'Remove domain' : 'Премахни домейна'}>
             <Trash2 size={13} style={{ color: '#EF4444' }} />
           </button>
         </div>
 
         {/* Step 1 */}
-        <StepCard step={1} title="Влез при регистратора на домейна" done={false}>
+        <StepCard step={1} title={isEn ? 'Log in to your domain registrar' : 'Влез при регистратора на домейна'} done={false}>
           <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            Отиди на сайта, от който си купил домейна (Register.bg, Superhosting.bg, GoDaddy и др.).
-            Влез в акаунта си и намери управлението на домейна.
+            {isEn
+              ? 'Go to the website where you bought the domain, sign in to your account, and open the domain management area.'
+              : 'Отиди на сайта, от който си купил домейна (Register.bg, Superhosting.bg, GoDaddy и др.). Влез в акаунта си и намери управлението на домейна.'}
           </p>
         </StepCard>
 
         {/* Step 2 */}
-        <StepCard step={2} title='Намери DNS настройките' done={false}>
+        <StepCard step={2} title={isEn ? 'Find the DNS settings' : 'Намери DNS настройките'} done={false}>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            Търси раздел или бутон с някое от тези имена:{' '}
+            {isEn ? 'Look for a section or button named ' : 'Търси раздел или бутон с някое от тези имена: '}
             <strong style={{ color: T.text }}>DNS Settings</strong>,{' '}
-            <strong style={{ color: T.text }}>Manage DNS</strong> или{' '}
+            <strong style={{ color: T.text }}>Manage DNS</strong> {isEn ? 'or' : 'или'}{' '}
             <strong style={{ color: T.text }}>Zone Editor</strong>.
-            Ще видиш таблица с DNS записи — ето как изглежда:
+            {isEn ? ' You will see a table with DNS records like this:' : ' Ще видиш таблица с DNS записи — ето как изглежда:'}
           </p>
           <img
             src="/dns-example.png"
-            alt="Пример за DNS записи"
+            alt={isEn ? 'Example DNS records' : 'Пример за DNS записи'}
             style={{ width: '100%', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, marginBottom: 12, display: 'block' }}
           />
           <div style={{ padding: '10px 14px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: T.radiusSm }}>
             <p style={{ margin: 0, fontSize: 13, color: '#92400E', lineHeight: 1.7 }}>
-              <strong style={{ color: '#7C2D12' }}>⚠️ Важно</strong> — ако вече има{' '}
-              <strong>CNAME с „www"</strong> или <strong>A запис с „@"</strong>, изтрий ги преди да добавяш новите.
+              <strong style={{ color: '#7C2D12' }}>{isEn ? 'Important' : '⚠️ Важно'}</strong>{' '}
+              {isEn
+                ? 'If there is already a '
+                : '— ако вече има '}
+              <strong>{isEn ? 'CNAME for "www"' : 'CNAME с „www"'}</strong> {isEn ? 'or' : 'или'} <strong>{isEn ? 'A record for "@"' : 'A запис с „@"'}</strong>{isEn ? ', delete it before adding the new one.' : ', изтрий ги преди да добавяш новите.'}
             </p>
           </div>
         </StepCard>
 
         {/* Step 3 */}
-        <StepCard step={3} title="Добави двата DNS записа" done={false}>
+        <StepCard step={3} title={isEn ? 'Add the two DNS records' : 'Добави двата DNS записа'} done={false}>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            Натисни „Add Record" и добави и двата записа по-долу. Използвай бутона „Копирай" за да не сбъркаш:
+            {isEn ? 'Click "Add Record" and add both records below. Use the copy button so nothing is mistyped:' : 'Натисни „Add Record" и добави и двата записа по-долу. Използвай бутона „Копирай" за да не сбъркаш:'}
           </p>
 
           {instructions.length > 0 ? (
             <div style={{ display: 'grid', gap: 10 }}>
               {instructions.map((ins, i) => (
-                <DnsRecordCard key={i} record={ins} copied={copied} onCopy={copyVal} />
+                <DnsRecordCard key={i} record={ins} copied={copied} onCopy={copyVal} locale={locale} />
               ))}
             </div>
           ) : (
             <div style={{ padding: '12px 14px', background: '#F4F4F5', borderRadius: T.radiusSm, fontSize: 13, color: T.muted }}>
-              Инструкциите се зареждат…
+              {isEn ? 'Loading instructions…' : 'Инструкциите се зареждат…'}
             </div>
           )}
 
           {verifications.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <p style={{ margin: '0 0 10px', fontSize: 13, color: T.muted, lineHeight: 1.7 }}>
-                Освен горния запис, добави и верификационен запис (нужен е еднократно, за да потвърдим собствеността на домейна):
+                {isEn ? 'Also add the verification record below. It is needed only once to confirm domain ownership:' : 'Освен горния запис, добави и верификационен запис (нужен е еднократно, за да потвърдим собствеността на домейна):'}
               </p>
               <div style={{ display: 'grid', gap: 8 }}>
                 {verifications.map((v, i) => (
-                  <DnsRecordCard key={i} record={v} copied={copied} onCopy={copyVal} isVerification />
+                  <DnsRecordCard key={i} record={v} copied={copied} onCopy={copyVal} isVerification locale={locale} />
                 ))}
               </div>
             </div>
@@ -4075,11 +3510,11 @@ function DomainTab({
         </StepCard>
 
         {/* Step 4 */}
-        <StepCard step={4} title="Изчакай и провери" done={false}>
+        <StepCard step={4} title={isEn ? 'Wait and check' : 'Изчакай и провери'} done={false}>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            Промените се разпространяват обикновено между{' '}
-            <strong style={{ color: T.text }}>15 мин. и 24 часа</strong>.
-            Ние проверяваме автоматично — ще те уведомим щом е готово. Можеш и ръчно:
+            {isEn ? 'Changes usually propagate within ' : 'Промените се разпространяват обикновено между '}
+            <strong style={{ color: T.text }}>{isEn ? '15 minutes and 24 hours' : '15 мин. и 24 часа'}</strong>.
+            {isEn ? ' We check automatically and will let you know when it is ready. You can also check manually:' : ' Ние проверяваме автоматично — ще те уведомим щом е готово. Можеш и ръчно:'}
           </p>
           <button
             type="button"
@@ -4091,17 +3526,17 @@ function DomainTab({
               size={14}
               style={busyKey === 'domain-refresh' ? { animation: 'spin 1s linear infinite' } : undefined}
             />
-            {busyKey === 'domain-refresh' ? 'Проверяваме…' : 'Провери сега'}
+            {busyKey === 'domain-refresh' ? (isEn ? 'Checking…' : 'Проверяваме…') : (isEn ? 'Check now' : 'Провери сега')}
           </button>
           {isPending && (
             <p style={{ margin: '10px 0 0', fontSize: 12, color: T.subtle, lineHeight: 1.5 }}>
-              Проверяваме автоматично. Страницата ще се обнови при успешно свързване.
+              {isEn ? 'We are checking automatically. The page will refresh when the domain is connected.' : 'Проверяваме автоматично. Страницата ще се обнови при успешно свързване.'}
             </p>
           )}
           <div style={{ marginTop: 16, padding: '10px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm }}>
             <p style={{ margin: 0, fontSize: 12, color: '#1E40AF', lineHeight: 1.6 }}>
-              <strong style={{ color: '#1E3A8A' }}>ℹ Браузърът казва „Not secure"?</strong>{' '}
-              Нормално е — SSL сертификатът се издава автоматично до 30 мин. след DNS. Не правиш нищо.
+              <strong style={{ color: '#1E3A8A' }}>{isEn ? 'Browser says "Not secure"?' : 'ℹ Браузърът казва „Not secure"?'} </strong>
+              {isEn ? 'This is normal. The SSL certificate is issued automatically up to 30 minutes after the DNS records are in place. You do not need to do anything.' : 'Нормално е — SSL сертификатът се издава автоматично до 30 мин. след DNS. Не правиш нищо.'}
             </p>
           </div>
         </StepCard>
@@ -4258,7 +3693,7 @@ function QrModal({ url, salonName, onClose }: { url: string; salonName: string; 
             onClick={handleDownload}
             style={{
               flex: 1, padding: '13px', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+              background: tokens.color.primary,
               color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}

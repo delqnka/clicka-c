@@ -66,3 +66,88 @@ html:has(.admin-mobile-root) {
   border-color: #db2777 !important;
   box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
 }
+
+/* ─── Keyframes (Phase 1: moved from inline <style> in AdminDashboardClient) ─── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Focus-visible rings (a11y) ─── */
+.admin-mobile-root button:focus-visible,
+.admin-mobile-root a:focus-visible,
+.admin-mobile-root [role='button']:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px rgba(24, 24, 27, 0.5);
+  border-radius: inherit;
+}
+
+.admin-cta-primary:focus-visible {
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px rgba(24, 24, 27, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 12px -4px rgba(15, 23, 42, 0.35);
+}
+
+/* ─── CTA classes ─── */
+.admin-cta-primary:hover:not(:disabled) {
+  background: #27272A;
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.10) inset,
+    0 8px 18px -6px rgba(15, 23, 42, 0.40),
+    0 2px 4px rgba(15, 23, 42, 0.18);
+}
+.admin-cta-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+.admin-cta-ghost:hover {
+  background: rgba(0, 0, 0, 0.035);
+  border-color: rgba(0, 0, 0, 0.16);
+  color: #18181B;
+}
+
+/* Sidebar items: CSS hover instead of JS handlers */
+.admin-sidebar-item:hover:not([data-active]) {
+  background: #f4f4f5;
+  color: #18181B;
+}
+
+/* ─── Admin shell behavior ─── */
+.admin-mobile-root {
+  overscroll-behavior-y: none;
+}
+.admin-mobile-root input:focus,
+.admin-mobile-root textarea:focus,
+.admin-mobile-root select:focus {
+  border-color: #18181B !important;
+  outline: none;
+}
+.admin-mobile-root button:active:not(.admin-sheet-handle) {
+  transform: scale(0.97);
+}
+.admin-sheet-handle:active {
+  transform: none;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-mobile-root * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
