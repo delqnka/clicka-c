@@ -136,5 +136,90 @@
       "signInLink": "Sign in",
       "errorGeneric": "Error"
     }
+  },
+  "common": {
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
+  },
+  "adminDashboard": {
+    "navigation": "Navigation",
+    "tabs": {
+      "site": "Site",
+      "images": "Images",
+      "specialist": "Specialist",
+      "staff": "Staff",
+      "services": "Services",
+      "offers": "Offers",
+      "brands": "Brands",
+      "blog": "Blog",
+      "hours": "Working hours",
+      "bookings": "Bookings",
+      "clients": "Clients",
+      "domain": "Domain",
+      "payments": "Payments",
+      "integrations": "Integrations",
+      "marketing": "Marketing",
+      "legal": "Legal",
+      "account": "Account"
+    },
+    "groups": {
+      "content": "Content",
+      "team": "Team",
+      "settings": "Settings",
+      "site": "Site"
+    },
+    "actions": {
+      "save": "Save",
+      "copyLink": "Copy link",
+      "qrCode": "QR code",
+      "closeMenu": "Close menu"
+    },
+    "notices": {
+      "siteSaved": "Information saved.",
+      "profileSaved": "Profile saved.",
+      "imagesSaved": "Images saved.",
+      "imagesUploadNeedsSave": "The images were uploaded, but we could not save them. Press \"Save\".",
+      "servicesSaved": "Services saved.",
+      "hoursSaved": "Working hours saved.",
+      "linkCopied": "Link copied!"
+    },
+    "siteTab": {
+      "sections": {
+        "basics": "Contacts",
+        "address": "WWW.",
+        "addressMobile": "Address / WWW",
+        "about": "About",
+        "faq": "FAQ",
+        "amenities": "Additional",
+        "amenitiesMobile": "More info"
+      },
+      "fields": {
+        "salonName": "Salon name",
+        "category": "Category",
+        "phone": "Phone",
+        "email": "Email",
+        "city": "City",
+        "language": "Language",
+        "address": "Address"
+      },
+      "languageOptions": {
+        "bg": "Bulgarian",
+        "en": "English"
+      },
+      "locationFallback": "Location",
+      "viewAppleMaps": "View in Apple Maps",
+      "socialPlaceholder": "salonexample",
+      "connectedDomain": "Connected domain",
+      "manage": "Manage",
+      "connectOwnDomain": "Connect your own domain",
+      "connectOwnDomainHint": "Enter a domain you already bought and point it to the site."
+    }
   }
 }

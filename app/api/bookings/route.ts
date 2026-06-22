@@ -58,7 +58,7 @@ async function resolveSalonFromRequest(request: NextRequest) {
 
   const salons = await sql`
     SELECT CAST(id AS text) AS salon_id, name, email, slug, phone, city, address,
-           owner_name, telegram_chat_id, google_place_id, opening_hours,
+           owner_name, telegram_chat_id, google_place_id, opening_hours, language,
            custom_domain, domain_status
     FROM salons
     WHERE slug = ${lookup.slug} AND is_active = true
@@ -444,6 +444,7 @@ export async function POST(request: NextRequest) {
         .map(value => String(value ?? '').trim())
         .filter(Boolean)
         .join(', ') || undefined,
+    language: resolved.salon.language ? String(resolved.salon.language) : undefined,
   };
 
   const telegramChatId = String((resolved.salon as Record<string, unknown>).telegram_chat_id ?? '').trim();

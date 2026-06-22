@@ -136,5 +136,90 @@
       "signInLink": "Влез",
       "errorGeneric": "Грешка"
     }
+  },
+  "common": {
+    "days": {
+      "monday": "Понеделник",
+      "tuesday": "Вторник",
+      "wednesday": "Сряда",
+      "thursday": "Четвъртък",
+      "friday": "Петък",
+      "saturday": "Събота",
+      "sunday": "Неделя"
+    }
+  },
+  "adminDashboard": {
+    "navigation": "Навигация",
+    "tabs": {
+      "site": "Сайт",
+      "images": "Снимки",
+      "specialist": "Специалист",
+      "staff": "Служители",
+      "services": "Услуги",
+      "offers": "Оферти",
+      "brands": "Брандове",
+      "blog": "Блог",
+      "hours": "Работно време",
+      "bookings": "Резервации",
+      "clients": "Клиенти",
+      "domain": "Домейн",
+      "payments": "Плащания",
+      "integrations": "Интеграции",
+      "marketing": "Маркетинг",
+      "legal": "Правни",
+      "account": "Профил"
+    },
+    "groups": {
+      "content": "Съдържание",
+      "team": "Екип",
+      "settings": "Настройки",
+      "site": "Сайт"
+    },
+    "actions": {
+      "save": "Запази",
+      "copyLink": "Копирай линка",
+      "qrCode": "QR код",
+      "closeMenu": "Затвори менюто"
+    },
+    "notices": {
+      "siteSaved": "Информацията е запазена.",
+      "profileSaved": "Профилът е запазен.",
+      "imagesSaved": "Снимките са запазени.",
+      "imagesUploadNeedsSave": "Снимките са качени, но не успяхме да ги запазим. Натисни „Запази\".",
+      "servicesSaved": "Услугите са запазени.",
+      "hoursSaved": "Работното време е запазено.",
+      "linkCopied": "Линкът е копиран!"
+    },
+    "siteTab": {
+      "sections": {
+        "basics": "Контакти",
+        "address": "WWW.",
+        "addressMobile": "Адрес / WWW",
+        "about": "За салона",
+        "faq": "FAQ",
+        "amenities": "Допълнителна",
+        "amenitiesMobile": "Доп. информация"
+      },
+      "fields": {
+        "salonName": "Име на салона",
+        "category": "Категория",
+        "phone": "Телефон",
+        "email": "Имейл",
+        "city": "Град",
+        "language": "Език",
+        "address": "Адрес"
+      },
+      "languageOptions": {
+        "bg": "Български",
+        "en": "Английски"
+      },
+      "locationFallback": "Локация",
+      "viewAppleMaps": "Виж в Apple Maps",
+      "socialPlaceholder": "salonnaprimer",
+      "connectedDomain": "Свързан домейн",
+      "manage": "Управлявай",
+      "connectOwnDomain": "Свържи собствен домейн",
+      "connectOwnDomainHint": "Въведи домейн, който вече си купил, и го насочи към сайта."
+    }
   }
 }

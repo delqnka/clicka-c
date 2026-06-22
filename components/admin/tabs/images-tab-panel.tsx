@@ -6,6 +6,7 @@ import { AdminGalleryAddBtn } from '@/components/admin/admin-gallery-add-btn';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminGalleryDropZone, AdminSaveBtn, AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
+import { type Locale } from '@/lib/i18n';
 
 const GalleryReorderGrid = dynamic(
   () => import('@/components/admin/gallery-reorder-grid').then((m) => m.GalleryReorderGrid),
@@ -24,6 +25,7 @@ function GalleryGrid({
   onReorder,
   onRemove,
   uploadedLabel = 'Качени',
+  locale,
 }: {
   uploadBtn: ReactNode;
   images: string[];
@@ -36,7 +38,9 @@ function GalleryGrid({
   onReorder: (next: string[]) => void;
   onRemove: (index: number) => void;
   uploadedLabel?: string;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   return (
     <div>
       <div
@@ -52,7 +56,7 @@ function GalleryGrid({
 
       {uploadProgress ? (
         <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.4 }}>
-          Качваме {uploadProgress.done}/{uploadProgress.total}…
+          {isEn ? `Uploading ${uploadProgress.done}/${uploadProgress.total}…` : `Качваме ${uploadProgress.done}/${uploadProgress.total}…`}
         </p>
       ) : null}
       {images.length > 0 && (
@@ -84,6 +88,7 @@ export function ImagesTabPanel({
   portfolioUploadProgress,
   saveImages,
   handlePortfolioUpload,
+  locale,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -97,14 +102,16 @@ export function ImagesTabPanel({
   existingServiceCategories: string[];
   saveImages: () => void | Promise<void>;
   handlePortfolioUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   return (
     <AdminSection
-      title="Снимки"
+      title={isEn ? 'Images' : 'Снимки'}
       compact
       action={
         <AdminSaveBtn
-          label="Запази"
+          label={isEn ? 'Save' : 'Запази'}
           busy={busyKey === 'images' || busyKey === 'images-auto'}
           mobile={isMobile}
           green
@@ -114,7 +121,7 @@ export function ImagesTabPanel({
       }
     >
       <GalleryGrid
-        uploadedLabel="Качени снимки"
+        uploadedLabel={isEn ? 'Uploaded images' : 'Качени снимки'}
         uploadBtn={
           <AdminGalleryAddBtn busy={busyKey === 'upload-portfolio'} onUpload={handlePortfolioUpload} />
         }
@@ -124,10 +131,11 @@ export function ImagesTabPanel({
         pendingUrls={portfolioPending}
         uploadProgress={portfolioUploadProgress}
         btn={btn}
+        locale={locale}
         onUpload={handlePortfolioUpload}
         onReorder={(next) => {
           setSite((p) => ({ ...p, images: next }));
-          setNotice('Редът е променен. Натисни Запази.');
+          setNotice(isEn ? 'The order changed. Press Save.' : 'Редът е променен. Натисни Запази.');
         }}
         onRemove={(i) =>
           setSite((p) => ({

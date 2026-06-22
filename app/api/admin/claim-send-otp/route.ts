@@ -101,25 +101,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  const { client, from } = await getSalonResend(salon.salonId, salon.name);
+  const { client, from, locale } = await getSalonResend(salon.salonId, salon.name);
   if (!client) {
     return NextResponse.json({ error: 'Имейл услугата не е конфигурирана.' }, { status: 503 });
   }
+  const isEn = locale === 'en';
 
   const sendResult = await client.emails.send({
     from,
     to: allowedEmail,
-    subject: '🔑 Код за достъп',
+    subject: isEn ? '🔑 Access code' : '🔑 Код за достъп',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
         <p style="font-size: 15px; line-height: 1.6; color: #444; margin: 0 0 24px;">
-          Използвайте този код, за да влезете в управлението на сайта си.
+          ${isEn ? 'Use this code to sign in to your site admin.' : 'Използвайте този код, за да влезете в управлението на сайта си.'}
         </p>
         <div style="margin: 0 0 24px; padding: 20px; border-radius: 16px; background: #F3F4F6; color: #111; font-size: 36px; font-weight: 800; letter-spacing: 0.28em; text-align: center; border: 1.5px solid #E5E7EB;">
           ${code}
         </div>
         <p style="font-size: 13px; color: #888; line-height: 1.6; margin: 0;">
-          Кодът е валиден 10 минути. Ако не сте поискали този код, просто игнорирайте имейла.
+          ${isEn ? 'The code is valid for 10 minutes. If you did not request it, simply ignore this email.' : 'Кодът е валиден 10 минути. Ако не сте поискали този код, просто игнорирайте имейла.'}
         </p>
       </div>
     `,

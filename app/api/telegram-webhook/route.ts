@@ -17,6 +17,7 @@ import {
   photoTargetFromCaption,
   handleClientRemindCallback,
 } from '@/lib/telegram-admin-commands';
+import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
 if (!WEBHOOK_SECRET) {
@@ -48,13 +49,13 @@ type TelegramUpdate = {
 
 async function findSalonByChatId(
   chatId: number,
-): Promise<{ salonId: string; slug: string; name: string; staffMemberId: string | null } | null> {
+): Promise<{ salonId: string; slug: string; name: string; staffMemberId: string | null; language: 'bg' | 'en' } | null> {
   // 1. Look up non-owner staff members first (TEAM plan).
   // Owners are excluded here so they always fall through to the salons lookup
   // and get staffMemberId: null — preserving their "sees all bookings" access.
   const staffRows = await sql`
     SELECT sm.id AS staff_member_id, sm.salon_id,
-           s.slug, s.name
+           s.slug, s.name, s.language
     FROM staff_members sm
     JOIN salons s ON CAST(s.id AS text) = sm.salon_id
     WHERE sm.telegram_chat_id = ${String(chatId)}
@@ -63,20 +64,38 @@ async function findSalonByChatId(
   `.catch(() => []);
 
   if (staffRows.length > 0) {
-    const r = staffRows[0] as { staff_member_id: string; salon_id: string; slug: string; name: string };
-    return { salonId: r.salon_id, slug: r.slug, name: r.name, staffMemberId: r.staff_member_id };
+    const r = staffRows[0] as { staff_member_id: string; salon_id: string; slug: string; name: string; language?: string | null };
+    return { salonId: r.salon_id, slug: r.slug, name: r.name, staffMemberId: r.staff_member_id, language: resolveSalonLocale(r.language) };
   }
 
   // 2. Fall back to legacy salon-level telegram_chat_id (pre-migration salons).
   const rows = await sql`
-    SELECT CAST(id AS text) AS salon_id, slug, name
+    SELECT CAST(id AS text) AS salon_id, slug, name, language
     FROM salons
     WHERE telegram_chat_id = ${String(chatId)}
     LIMIT 1
   `;
   if (rows.length === 0) return null;
-  const row = rows[0] as { salon_id: string; slug: string; name: string };
-  return { salonId: row.salon_id, slug: row.slug, name: row.name, staffMemberId: null };
+  const row = rows[0] as { salon_id: string; slug: string; name: string; language?: string | null };
+  return { salonId: row.salon_id, slug: row.slug, name: row.name, staffMemberId: null, language: resolveSalonLocale(row.language) };
+}
+
+function formatTelegramDate(dateStr: string, language: 'bg' | 'en', opts?: Intl.DateTimeFormatOptions): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  return d.toLocaleDateString(toLocaleTag(language), opts ?? { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function getTelegramUi(language: 'bg' | 'en') {
+  const isEn = language === 'en';
+  return {
+    connectFirst: isEn ? 'First connect your Telegram profile with /start CODE.' : 'Първо свържи Telegram профила си чрез /start КОД.',
+    onboardingDone: isEn
+      ? '🎉 <b>Your profile is ready!</b>\n\nFrom now on you will receive booking notifications here.\n\nType /help for all commands.'
+      : '🎉 <b>Профилът ти е готов!</b>\n\nОтсега насетне ще получаваш известия за резервациите ти тук.\n\nНапиши /help за всички команди.',
+    skipHint: isEn ? '<i>Type /skip to skip.</i>' : '<i>Напиши /пропусни за да пропуснеш.</i>',
+    allWord: isEn ? 'all' : 'всички',
+    photoExpired: isEn ? '⚠️ The photo has expired. Send it again.' : '⚠️ Снимката е изтекла. Изпрати я отново.',
+  };
 }
 
 async function addBookingBlock(salonId: string, slug: string, block: BookingBlock): Promise<void> {
@@ -135,36 +154,49 @@ async function clearConvState(salonId: string): Promise<void> {
 
 // ── Onboarding wizard ─────────────────────────────────────────────────────────
 
-async function startOnboarding(chatId: number, salonId: string, staffMemberId: string | null): Promise<void> {
+async function startOnboarding(chatId: number, salonId: string, staffMemberId: string | null, language: 'bg' | 'en'): Promise<void> {
+  const ui = getTelegramUi(language);
   await setConvState(salonId, { type: 'onboarding', step: 'bio', staff_member_id: staffMemberId });
   await sendTelegramMessage(
     chatId,
-    '📝 <b>Стъпка 1/3 — Bio</b>\n\nНапиши кратко представяне за себе си:\n\n<i>Пример: Фризьор с 10 години опит, специализирам в кератинови терапии и балеаж. Работя с продукти на Wella и L\'Oréal.</i>\n\n<i>Напиши /пропусни за да пропуснеш.</i>',
+    language === 'en'
+      ? `📝 <b>Step 1/3 — Bio</b>\n\nWrite a short introduction about yourself:\n\n<i>Example: Hairstylist with 10 years of experience, specializing in keratin treatments and balayage. I work with Wella and L'Oréal products.</i>\n\n${ui.skipHint}`
+      : `📝 <b>Стъпка 1/3 — Bio</b>\n\nНапиши кратко представяне за себе си:\n\n<i>Пример: Фризьор с 10 години опит, специализирам в кератинови терапии и балеаж. Работя с продукти на Wella и L'Oréal.</i>\n\n${ui.skipHint}`,
   );
 }
 
-async function sendServicesStep(chatId: number, salonId: string, staffMemberId: string | null): Promise<void> {
+async function sendServicesStep(chatId: number, salonId: string, staffMemberId: string | null, language: 'bg' | 'en'): Promise<void> {
+  const ui = getTelegramUi(language);
   const rows = await sql`SELECT services FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`.catch(() => []) as { services: unknown }[];
   const services = normalizeServices(rows[0]?.services ?? []);
 
   if (services.length === 0) {
     await clearConvState(salonId);
-    await sendTelegramMessage(chatId, '🎉 <b>Профилът ти е готов!</b>\n\nОтсега насетне ще получаваш известия за резервациите ти тук.\n\nНапиши /help за всички команди.');
+    await sendTelegramMessage(chatId, ui.onboardingDone);
     return;
   }
 
   await setConvState(salonId, { type: 'onboarding', step: 'services', staff_member_id: staffMemberId });
 
-  const lines = ['✂️ <b>Стъпка 3/3 — Услуги</b>\n\nКои услуги предлагаш?\n'];
+  const lines = [
+    language === 'en'
+      ? '✂️ <b>Step 3/3 — Services</b>\n\nWhich services do you offer?\n'
+      : '✂️ <b>Стъпка 3/3 — Услуги</b>\n\nКои услуги предлагаш?\n',
+  ];
   services.forEach((s, i) => {
-    lines.push(`${i + 1}. ${s.name} — ${s.duration_min} мин — ${s.price} лв`);
+    lines.push(`${i + 1}. ${s.name} — ${s.duration_min} ${language === 'en' ? 'min' : 'мин'} — ${s.price} ${language === 'en' ? 'lv' : 'лв'}`);
   });
-  lines.push('\nОтговори с номерата разделени с запетая:\n<code>1, 3, 5</code>\nИли напиши <b>всички</b> за да изберем всички.\n\n<i>Напиши /пропусни за да пропуснеш.</i>');
+  lines.push(
+    language === 'en'
+      ? `\nReply with the numbers separated by commas:\n<code>1, 3, 5</code>\nOr type <b>${ui.allWord}</b> to select all.\n\n${ui.skipHint}`
+      : `\nОтговори с номерата разделени с запетая:\n<code>1, 3, 5</code>\nИли напиши <b>${ui.allWord}</b> за да изберем всички.\n\n${ui.skipHint}`,
+  );
 
   await sendTelegramMessage(chatId, lines.join('\n'));
 }
 
-async function handleOnboardingText(chatId: number, text: string, state: Record<string, unknown>, salonId: string): Promise<void> {
+async function handleOnboardingText(chatId: number, text: string, state: Record<string, unknown>, salonId: string, language: 'bg' | 'en'): Promise<void> {
+  const ui = getTelegramUi(language);
   const step = state.step as string;
   const staffMemberId = state.staff_member_id as string | null;
   const isSingleStep = state.single_step === true;
@@ -181,19 +213,24 @@ async function handleOnboardingText(chatId: number, text: string, state: Record<
     }
     if (isSingleStep) {
       await clearConvState(salonId);
-      await sendTelegramMessage(chatId, '✅ Биото е запазено успешно!');
+      await sendTelegramMessage(chatId, language === 'en' ? '✅ Your bio was saved successfully!' : '✅ Биото е запазено успешно!');
       return;
     }
     await setConvState(salonId, { type: 'onboarding', step: 'avatar', staff_member_id: staffMemberId });
-    await sendTelegramMessage(chatId, '📸 <b>Стъпка 2/3 — Профилна снимка</b>\n\nИзпрати снимка за профила си.\n\n<i>Напиши /пропусни за да пропуснеш.</i>');
+    await sendTelegramMessage(
+      chatId,
+      language === 'en'
+        ? `📸 <b>Step 2/3 — Profile photo</b>\n\nSend a photo for your profile.\n\n${ui.skipHint}`
+        : `📸 <b>Стъпка 2/3 — Профилна снимка</b>\n\nИзпрати снимка за профила си.\n\n${ui.skipHint}`,
+    );
     return;
   }
 
   if (step === 'avatar') {
     if (isSkip) {
-      await sendServicesStep(chatId, salonId, staffMemberId);
+      await sendServicesStep(chatId, salonId, staffMemberId, language);
     } else {
-      await sendTelegramMessage(chatId, '📸 Изпрати снимка или напиши /пропусни за да пропуснеш.');
+      await sendTelegramMessage(chatId, language === 'en' ? '📸 Send a photo or type /skip to skip.' : '📸 Изпрати снимка или напиши /пропусни за да пропуснеш.');
     }
     return;
   }
@@ -204,7 +241,7 @@ async function handleOnboardingText(chatId: number, text: string, state: Record<
       const services = normalizeServices(svcRows[0]?.services ?? []);
 
       let selectedIds: string[] = [];
-      if (/^всички$/i.test(text.trim())) {
+      if (/^(всички|all)$/i.test(text.trim())) {
         selectedIds = services.map(s => s.id ?? '').filter(Boolean);
       } else {
         const nums = text.split(/[,\s]+/).map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= services.length);
@@ -226,11 +263,11 @@ async function handleOnboardingText(chatId: number, text: string, state: Record<
     }
 
     await clearConvState(salonId);
-    await sendTelegramMessage(chatId, '🎉 <b>Профилът ти е готов!</b>\n\nОтсега насетне ще получаваш известия за резервациите ти тук.\n\nНапиши /help за всички команди.');
+    await sendTelegramMessage(chatId, ui.onboardingDone);
   }
 }
 
-async function handleOnboardingAvatar(chatId: number, imageUrl: string, state: Record<string, unknown>, salonId: string): Promise<void> {
+async function handleOnboardingAvatar(chatId: number, imageUrl: string, state: Record<string, unknown>, salonId: string, language: 'bg' | 'en'): Promise<void> {
   const staffMemberId = state.staff_member_id as string | null;
 
   if (staffMemberId) {
@@ -239,8 +276,8 @@ async function handleOnboardingAvatar(chatId: number, imageUrl: string, state: R
     await sql`UPDATE staff_members SET avatar_url = ${imageUrl} WHERE salon_id = ${salonId} AND is_owner = true`.catch(() => {});
   }
 
-  await sendTelegramMessage(chatId, '✅ Снимката е запазена!');
-  await sendServicesStep(chatId, salonId, staffMemberId);
+  await sendTelegramMessage(chatId, language === 'en' ? '✅ The photo was saved!' : '✅ Снимката е запазена!');
+  await sendServicesStep(chatId, salonId, staffMemberId, language);
 }
 
 async function handleBlockMessage(chatId: number, text: string): Promise<void> {
@@ -316,7 +353,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       const state = stateRows[0]?.bot_conversation_state as { type?: string; url?: string } | null;
       const imageUrl = state?.type === 'last_photo' ? state.url : null;
       if (!imageUrl) {
-        await sendTelegramMessage(cbChatId, '⚠️ Снимката е изтекла. Изпрати я отново.');
+        await sendTelegramMessage(cbChatId, getTelegramUi(salon.language).photoExpired);
         return NextResponse.json({ ok: true });
       }
 
@@ -339,6 +376,8 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   // ── Onboarding wizard (intercepts before all other handlers) ────────────────
   if (!text.startsWith('/start')) {
     const conv = await getConvState(chatId);
+    const salonForChat = await findSalonByChatId(chatId);
+    const language = salonForChat?.language ?? 'bg';
     if (conv?.state?.type === 'onboarding') {
       const step = conv.state.step as string;
       // Avatar step: accept photo
@@ -346,15 +385,15 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         const largest = message.photo[message.photo.length - 1]!;
         const filePath = await getTelegramFilePath(largest.file_id);
         if (filePath) {
-          await handleOnboardingAvatar(chatId, getTelegramFileUrl(filePath), conv.state, conv.salonId);
+          await handleOnboardingAvatar(chatId, getTelegramFileUrl(filePath), conv.state, conv.salonId, language);
         } else {
-          await sendTelegramMessage(chatId, '❌ Не успях да изтегля снимката. Пробвай отново.');
+          await sendTelegramMessage(chatId, language === 'en' ? '❌ I could not download the photo. Try again.' : '❌ Не успях да изтегля снимката. Пробвай отново.');
         }
         return NextResponse.json({ ok: true });
       }
       // Text steps: bio, avatar-skip, services
       if (text) {
-        await handleOnboardingText(chatId, text, conv.state, conv.salonId);
+        await handleOnboardingText(chatId, text, conv.state, conv.salonId, language);
         return NextResponse.json({ ok: true });
       }
     }
@@ -366,15 +405,16 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   const ownerHasPhoto = isOwnerMessage && message.photo && message.photo.length > 0;
 
   if (ownerHasText || ownerHasPhoto) {
+    const salonForOwner = await findSalonByChatId(chatId);
     // Try admin commands first — only fall through to support-chat reply if not recognised.
     if (ownerHasText) {
-      const salonForOwner = await findSalonByChatId(chatId);
       if (salonForOwner) {
         const handled = await handleAdminCommand(chatId, text, {
           salonId: salonForOwner.salonId,
           slug: salonForOwner.slug,
           name: salonForOwner.name,
           staffMemberId: salonForOwner.staffMemberId,
+          language: salonForOwner.language,
         });
         if (handled) return NextResponse.json({ ok: true });
       }
@@ -413,11 +453,11 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       await sql`
         UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${sess.id}
       `;
-      await sendTelegramMessage(chatId, `✅ Отговорът е изпратен на <b>${sess.client_name}</b>.`);
+      await sendTelegramMessage(chatId, salonForOwner?.language === 'en' ? `✅ Your reply was sent to <b>${sess.client_name}</b>.` : `✅ Отговорът е изпратен на <b>${sess.client_name}</b>.`);
       return NextResponse.json({ ok: true });
     }
 
-    await sendTelegramMessage(chatId, '📭 Няма активен support чат в момента.');
+    await sendTelegramMessage(chatId, salonForOwner?.language === 'en' ? '📭 There is no active support chat right now.' : '📭 Няма активен support чат в момента.');
     return NextResponse.json({ ok: true });
   }
 
@@ -427,9 +467,10 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     const state = conv?.state as { type?: string; session_id?: string } | null;
 
     if (state?.type === 'waiting_chat_reply' && state.session_id) {
+      const salonForChat = await findSalonByChatId(chatId);
       if (/^\/стоп$/i.test(text) || /^\/stop$/i.test(text)) {
         if (conv) await clearConvState(conv.salonId);
-        await sendTelegramMessage(chatId, '🔕 Чат режимът е изключен. Пишеш командите на бота.\n\nЗа да се върнеш към клиента напиши <b>/чат</b>');
+        await sendTelegramMessage(chatId, salonForChat?.language === 'en' ? '🔕 Chat mode is off. You can use the bot commands again.\n\nTo return to the client, type <b>/chat</b>.' : '🔕 Чат режимът е изключен. Пишеш командите на бота.\n\nЗа да се върнеш към клиента напиши <b>/чат</b>');
         return NextResponse.json({ ok: true });
       }
       // Any other slash command → silently exit chat mode and fall through to execute it
@@ -439,7 +480,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       } else {
         await sql`INSERT INTO salon_chat_messages (session_id, role, content) VALUES (${state.session_id}, 'salon', ${text})`;
         await sql`UPDATE salon_chat_sessions SET last_message_at = now() WHERE id = ${state.session_id}`;
-        await sendTelegramMessage(chatId, '✅ Изпратено на клиента. Напиши /стоп за да излезеш от чат режим.');
+        await sendTelegramMessage(chatId, salonForChat?.language === 'en' ? '✅ Sent to the client. Type /stop to leave chat mode.' : '✅ Изпратено на клиента. Напиши /стоп за да излезеш от чат режим.');
         return NextResponse.json({ ok: true });
       }
     }
@@ -506,7 +547,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     // Try staff member onboarding code first (TEAM plan — each staff has own code).
     const staffRows = await sql`
       SELECT sm.id AS staff_member_id, sm.name AS staff_name,
-             sm.salon_id, s.name AS salon_name
+             sm.salon_id, s.name AS salon_name, s.language
       FROM staff_members sm
       JOIN salons s ON CAST(s.id AS text) = sm.salon_id
       WHERE upper(sm.onboarding_code) = ${code}
@@ -514,7 +555,8 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     `.catch(() => []);
 
     if (staffRows.length > 0) {
-      const sr = staffRows[0] as { staff_member_id: string; staff_name: string; salon_name: string; salon_id: string };
+      const sr = staffRows[0] as { staff_member_id: string; staff_name: string; salon_name: string; salon_id: string; language?: string | null };
+      const language = resolveSalonLocale(sr.language);
       await sql`
         UPDATE staff_members
         SET telegram_chat_id = ${String(chatId)}
@@ -522,15 +564,17 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       `;
       await sendTelegramMessage(
         chatId,
-        `✅ <b>${sr.staff_name}</b> от <b>${sr.salon_name}</b> е свързан успешно${firstName ? `, ${firstName}` : ''}!\n\nНека попълним профила ти за 2 минути 👇`,
+        language === 'en'
+          ? `✅ <b>${sr.staff_name}</b> from <b>${sr.salon_name}</b> is connected successfully${firstName ? `, ${firstName}` : ''}!\n\nLet's complete your profile in 2 minutes 👇`
+          : `✅ <b>${sr.staff_name}</b> от <b>${sr.salon_name}</b> е свързан успешно${firstName ? `, ${firstName}` : ''}!\n\nНека попълним профила ти за 2 минути 👇`,
       );
-      await startOnboarding(chatId, sr.salon_id, sr.staff_member_id);
+      await startOnboarding(chatId, sr.salon_id, sr.staff_member_id, language);
       return NextResponse.json({ ok: true });
     }
 
     // Fall back to salon-level onboarding code (SOLO plan / owner).
     const salons = await sql`
-      SELECT CAST(id AS text) AS salon_id, name, slug
+      SELECT CAST(id AS text) AS salon_id, name, slug, language
       FROM salons
       WHERE upper(onboarding_code) = ${code}
       LIMIT 1
@@ -564,20 +608,57 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       SET telegram_chat_id = ${String(chatId)}
       WHERE salon_id = ${String(salon.salon_id ?? '')} AND is_owner = true
     `.catch(() => {});
+    const language = resolveSalonLocale(typeof salon.language === 'string' ? salon.language : 'bg');
 
     await sendTelegramMessage(
       chatId,
-      `✅ <b>${String(salon.name ?? '')}</b> е свързан успешно${firstName ? `, ${firstName}` : ''}!\n\nНека попълним профила ти за 2 минути 👇`,
+      language === 'en'
+        ? `✅ <b>${String(salon.name ?? '')}</b> is connected successfully${firstName ? `, ${firstName}` : ''}!\n\nLet's complete your profile in 2 minutes 👇`
+        : `✅ <b>${String(salon.name ?? '')}</b> е свързан успешно${firstName ? `, ${firstName}` : ''}!\n\nНека попълним профила ти за 2 минути 👇`,
     );
-    await startOnboarding(chatId, String(salon.salon_id ?? ''), null);
+    await startOnboarding(chatId, String(salon.salon_id ?? ''), null, language);
     return NextResponse.json({ ok: true });
   }
 
   // Handle /help
   if (text === '/help') {
+    const salon = await findSalonByChatId(chatId);
+    const isEn = salon?.language === 'en';
     await sendTelegramMessage(
       chatId,
-      [
+      (isEn ? [
+        '📋 <b>All commands</b>',
+        '',
+        '📅 <b>Bookings</b>',
+        '<code>/reserve Maria haircut tomorrow 13:00</code>',
+        '<code>bookings tomorrow</code>  |  <code>bookings today</code>',
+        '<code>bookings this week</code>',
+        '<code>next client</code>',
+        '<code>pending bookings</code>',
+        '',
+        '✅ <b>Manage bookings</b>',
+        '<code>confirm Maria</code>',
+        '<code>cancel the booking at 14:00 tomorrow</code>',
+        '<code>done with Maria</code>',
+        '<code>move Maria from Friday to Tuesday at 13:00</code>',
+        '',
+        '✂️ <b>Services</b>',
+        '<code>add service: Lamination — 45 min — 60 lv</code>',
+        '<code>change the price of Manicure to 35 lv</code>',
+        '<code>delete service Manicure</code>',
+        '<code>show all services</code>',
+        '',
+        '🔒 <b>Block time</b>',
+        '<code>busy 14:00-16:00 tomorrow</code>',
+        '<code>/unblock 14:00 tomorrow</code>',
+        '',
+        '📸 <b>Photos</b>',
+        'Send a photo and I will ask whether it is a price list or portfolio.',
+        '',
+        '💬 <b>Client chat</b>',
+        '<code>/chat</code>  ← enter chat mode with the last client',
+        '<code>/stop</code>  ← exit chat mode',
+      ] : [
         '📋 <b>Всички команди</b>',
         '',
         '📅 <b>Резервации</b>',
@@ -644,7 +725,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         '<code>/чат</code>  ← влез в чат режим с последния клиент',
         '<code>/стоп</code>  ← излез от чат режим',
         'Или напиши всяка <b>/команда</b> — автоматично излиза от чат режим',
-      ].join('\n'),
+      ]).join('\n'),
     );
     return NextResponse.json({ ok: true });
   }
@@ -653,12 +734,12 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text.startsWith('/reserve') || text.startsWith('/резервирай') || text.startsWith('/запиши')) {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
+      await sendTelegramMessage(chatId, getTelegramUi('bg').connectFirst);
       return NextResponse.json({ ok: true });
     }
     const args = text.replace(/^\/(reserve|резервирай|запиши)\s*/i, '').trim();
     if (!args) {
-      await sendTelegramMessage(chatId, '❌ Формат: <code>/reserve Мария подстригване утре 13:00</code>');
+      await sendTelegramMessage(chatId, salon.language === 'en' ? '❌ Format: <code>/reserve Maria haircut tomorrow 13:00</code>' : '❌ Формат: <code>/reserve Мария подстригване утре 13:00</code>');
       return NextResponse.json({ ok: true });
     }
     const { handleAdminCommand } = await import('@/lib/telegram-admin-commands');
@@ -670,13 +751,13 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text.startsWith('/unblock') || text.startsWith('/деблокирай')) {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
+      await sendTelegramMessage(chatId, getTelegramUi('bg').connectFirst);
       return NextResponse.json({ ok: true });
     }
 
     const parsed = parseBlockFromMessage(text.replace(/^\/(unblock|деблокирай)\s*/i, ''));
     if (!parsed) {
-      await sendTelegramMessage(chatId, '❌ Напиши напр.: <b>/unblock 14:00 утре</b>');
+      await sendTelegramMessage(chatId, salon.language === 'en' ? '❌ Try for example: <b>/unblock 14:00 tomorrow</b>' : '❌ Напиши напр.: <b>/unblock 14:00 утре</b>');
       return NextResponse.json({ ok: true });
     }
 
@@ -695,7 +776,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
     );
 
     if (filtered.length === before) {
-      await sendTelegramMessage(chatId, '❌ Не намерих блокиран час за тази дата и час.');
+      await sendTelegramMessage(chatId, salon.language === 'en' ? '❌ I could not find a blocked time for that date and time.' : '❌ Не намерих блокиран час за тази дата и час.');
       return NextResponse.json({ ok: true });
     }
 
@@ -708,9 +789,8 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
 
     revalidateTag(`salon-public-${salon.slug}`);
 
-    const d = new Date(`${parsed.date}T12:00:00`);
-    const dateStr = d.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
-    await sendTelegramMessage(chatId, `🔓 Деблокиран: ${dateStr}, ${parsed.start}`);
+    const dateStr = formatTelegramDate(parsed.date, salon.language, { weekday: 'long', day: 'numeric', month: 'long' });
+    await sendTelegramMessage(chatId, salon.language === 'en' ? `🔓 Unblocked: ${dateStr}, ${parsed.start}` : `🔓 Деблокиран: ${dateStr}, ${parsed.start}`);
     return NextResponse.json({ ok: true });
   }
 
@@ -718,11 +798,11 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text === '/bio') {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
+      await sendTelegramMessage(chatId, getTelegramUi('bg').connectFirst);
       return NextResponse.json({ ok: true });
     }
     await setConvState(salon.salonId, { type: 'onboarding', step: 'bio', staff_member_id: salon.staffMemberId ?? null, single_step: true });
-    await sendTelegramMessage(chatId, '✏️ Напиши новото си bio (до 500 знака):\n\n<i>Пример: Фризьор с 10 години опит, специализирам в кератинови терапии и балеаж.</i>');
+    await sendTelegramMessage(chatId, salon.language === 'en' ? '✏️ Write your new bio (up to 500 characters):\n\n<i>Example: Hairstylist with 10 years of experience, specializing in keratin treatments and balayage.</i>' : '✏️ Напиши новото си bio (до 500 знака):\n\n<i>Пример: Фризьор с 10 години опит, специализирам в кератинови терапии и балеаж.</i>');
     return NextResponse.json({ ok: true });
   }
 
@@ -730,7 +810,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (text === '/чат' || text === '/chat') {
     const salonForChat = await findSalonByChatId(chatId);
     if (!salonForChat) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
+      await sendTelegramMessage(chatId, getTelegramUi('bg').connectFirst);
       return NextResponse.json({ ok: true });
     }
     const sessRows = await sql`
@@ -740,7 +820,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       LIMIT 1
     ` as { id: string; client_name: string }[];
     if (!sessRows[0]) {
-      await sendTelegramMessage(chatId, '📭 Няма активен чат с клиент в момента.');
+      await sendTelegramMessage(chatId, salonForChat.language === 'en' ? '📭 There is no active client chat at the moment.' : '📭 Няма активен чат с клиент в момента.');
       return NextResponse.json({ ok: true });
     }
     const sess = sessRows[0];
@@ -748,7 +828,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       UPDATE salons SET bot_conversation_state = ${JSON.stringify({ type: 'waiting_chat_reply', session_id: sess.id })}::jsonb
       WHERE telegram_chat_id = ${String(chatId)}
     `.catch(() => {});
-    await sendTelegramMessage(chatId, `💬 Върнат си в чат режим с <b>${sess.client_name}</b>. Пиши директно за да й отговориш.\n\nНапиши /стоп за да излезеш.`);
+    await sendTelegramMessage(chatId, salonForChat.language === 'en' ? `💬 You are back in chat mode with <b>${sess.client_name}</b>. Type directly to reply.\n\nType /stop to exit.` : `💬 Върнат си в чат режим с <b>${sess.client_name}</b>. Пиши директно за да й отговориш.\n\nНапиши /стоп за да излезеш.`);
     return NextResponse.json({ ok: true });
   }
 
@@ -756,14 +836,14 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
   if (message.photo && message.photo.length > 0) {
     const salon = await findSalonByChatId(chatId);
     if (!salon) {
-      await sendTelegramMessage(chatId, 'Първо свържи Telegram профила си чрез /start КОД.');
+      await sendTelegramMessage(chatId, getTelegramUi('bg').connectFirst);
       return NextResponse.json({ ok: true });
     }
 
     const largest = message.photo[message.photo.length - 1];
     const filePath = await getTelegramFilePath(largest.file_id);
     if (!filePath) {
-      await sendTelegramMessage(chatId, '❌ Не успях да изтегля снимката. Пробвай отново.');
+      await sendTelegramMessage(chatId, salon.language === 'en' ? '❌ I could not download the photo. Try again.' : '❌ Не успях да изтегля снимката. Пробвай отново.');
       return NextResponse.json({ ok: true });
     }
 
@@ -779,23 +859,22 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
 
     // Photo without special caption → try booking screenshot/notes parse first
     if (!caption) {
-      await sendTelegramMessage(chatId, '🔍 Анализирам снимката...');
+      await sendTelegramMessage(chatId, salon.language === 'en' ? '🔍 Analyzing the image...' : '🔍 Анализирам снимката...');
       const bookings = await parseBookingsFromPhoto(imageUrl);
       if (bookings.length > 0) {
         let blockedCount = 0;
         for (const b of bookings) {
-          const block: BookingBlock = { date: b.date, allDay: false, start: b.start, end: b.end, note: b.note ? `От снимка — ${b.note}` : 'От снимка' };
+          const block: BookingBlock = { date: b.date, allDay: false, start: b.start, end: b.end, note: b.note ? (salon.language === 'en' ? `From image — ${b.note}` : `От снимка — ${b.note}`) : (salon.language === 'en' ? 'From image' : 'От снимка') };
           await addBookingBlock(salon.salonId, salon.slug, block);
           blockedCount++;
         }
         revalidateTag(`salon-public-${salon.slug}`);
-        const lines = [`🔒 <b>Блокирани ${blockedCount} часа от снимката:</b>`, ''];
+        const lines = [salon.language === 'en' ? `🔒 <b>Blocked ${blockedCount} time slots from the image:</b>` : `🔒 <b>Блокирани ${blockedCount} часа от снимката:</b>`, ''];
         for (const b of bookings) {
-          const d = new Date(`${b.date}T12:00:00`);
           const suffix = b.note ? ` (${b.note})` : '';
-          lines.push(`📅 ${d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'long' })} — ${b.start} – ${b.end}${suffix}`);
+          lines.push(`📅 ${formatTelegramDate(b.date, salon.language, { weekday: 'short', day: 'numeric', month: 'long' })} — ${b.start} – ${b.end}${suffix}`);
         }
-        lines.push('', '💡 Ако нещо е грешно, деблокирай с /unblock');
+        lines.push('', salon.language === 'en' ? '💡 If anything is wrong, unblock it with /unblock' : '💡 Ако нещо е грешно, деблокирай с /unblock');
         await sendTelegramMessage(chatId, lines.join('\n'));
         return NextResponse.json({ ok: true });
       }
@@ -811,10 +890,10 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
       `;
       await sendTelegramInlineKeyboard(
         chatId,
-        '📸 Какво да направя с тази снимка?',
+        salon.language === 'en' ? '📸 What should I do with this photo?' : '📸 Какво да направя с тази снимка?',
         [[
-          { text: '📋 Ценоразпис', callback_data: 'photo_action:price_list' },
-          { text: '🖼️ Портфолио', callback_data: 'photo_action:gallery' },
+          { text: salon.language === 'en' ? '📋 Price list' : '📋 Ценоразпис', callback_data: 'photo_action:price_list' },
+          { text: salon.language === 'en' ? '🖼️ Portfolio' : '🖼️ Портфолио', callback_data: 'photo_action:gallery' },
         ]],
       );
       return NextResponse.json({ ok: true });
@@ -837,6 +916,7 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         slug: salon.slug,
         name: salon.name,
         staffMemberId: salon.staffMemberId,
+        language: salon.language,
       });
       const _t2 = Date.now();
       console.log(`[TIMING] webhook | salon_lookup: ${_t1 - _t0}ms | handleAdminCommand: ${_t2 - _t1}ms | total: ${_t2 - _t0}ms | text: "${text.slice(0, 60)}"`);
@@ -853,11 +933,9 @@ async function handleUpdate(update: TelegramUpdate): Promise<NextResponse> {
         // Nothing matched — send a helpful hint instead of the confusing time-parser error
         await sendTelegramMessage(
           chatId,
-          '❓ Не разбрах тази команда.\n\n' +
-          '<b>Справки:</b>\n• оборот тази седмица / месец\n• резервации утре / днес\n• следващ клиент\n\n' +
-          '<b>Блокиране:</b>\n• зает 14:00-16:00 утре\n• почивам утре\n\n' +
-          '<b>Управление:</b>\n• добави услуга: Масаж — 60 мин — 80 лв\n• промени цената на Масаж на 90 лв\n\n' +
-          'Натисни /help за пълен списък.',
+          salon.language === 'en'
+            ? '❓ I did not understand that command.\n\n<b>Reports:</b>\n• revenue this week / month\n• bookings tomorrow / today\n• next client\n\n<b>Blocking:</b>\n• busy 14:00-16:00 tomorrow\n• day off tomorrow\n\n<b>Management:</b>\n• add service: Massage — 60 min — 80 lv\n• change the price of Massage to 90 lv\n\nPress /help for the full list.'
+            : '❓ Не разбрах тази команда.\n\n<b>Справки:</b>\n• оборот тази седмица / месец\n• резервации утре / днес\n• следващ клиент\n\n<b>Блокиране:</b>\n• зает 14:00-16:00 утре\n• почивам утре\n\n<b>Управление:</b>\n• добави услуга: Масаж — 60 мин — 80 лв\n• промени цената на Масаж на 90 лв\n\nНатисни /help за пълен списък.',
         );
       }
       return NextResponse.json({ ok: true });

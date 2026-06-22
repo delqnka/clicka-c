@@ -35,6 +35,69 @@
 
   var BASE = getBaseUrl();
   var defaultSlug = getDefaultSlug();
+  var TRANSLATIONS = {
+    bg: {
+      close: 'Затвори',
+      title: 'Резервация',
+      subtitle: 'Изберете услуга, ден и свободен час.',
+      service: 'Услуга',
+      date: 'Дата',
+      time: 'Час',
+      name: 'Име',
+      phone: 'Телефон',
+      email: 'Имейл',
+      notes: 'Бележка',
+      notesPlaceholder: 'Бележка (по желание)',
+      noSlots: 'Няма свободни часове',
+      submit: 'Потвърди резервация',
+      saving: 'Записваме резервацията...',
+      success: 'Резервацията е изпратена успешно.',
+      genericBooking: 'Резервация',
+      serviceFallback: 'Услуга',
+      loadFailed: 'Не можем да заредим резервациите.',
+      bookingFailed: 'Неуспешна резервация. Опитайте отново.',
+      priceSuffix: 'EUR',
+    },
+    en: {
+      close: 'Close',
+      title: 'Booking',
+      subtitle: 'Choose a service, date and available time.',
+      service: 'Service',
+      date: 'Date',
+      time: 'Time',
+      name: 'Name',
+      phone: 'Phone',
+      email: 'Email',
+      notes: 'Notes',
+      notesPlaceholder: 'Notes (optional)',
+      noSlots: 'No available time slots',
+      submit: 'Confirm booking',
+      saving: 'Saving your booking...',
+      success: 'Your booking request was sent successfully.',
+      genericBooking: 'Booking',
+      serviceFallback: 'Service',
+      loadFailed: 'We could not load booking data.',
+      bookingFailed: 'Booking failed. Please try again.',
+      priceSuffix: 'EUR',
+    },
+  };
+
+  function normalizeLocale(value) {
+    var normalized = String(value || '').trim().toLowerCase();
+    return normalized === 'en' || normalized.indexOf('en-') === 0 ? 'en' : 'bg';
+  }
+
+  function getConfiguredLocale() {
+    if (script && script.getAttribute('data-locale')) {
+      return normalizeLocale(script.getAttribute('data-locale'));
+    }
+    var langAttr = document.documentElement && document.documentElement.getAttribute('lang');
+    if (langAttr) return normalizeLocale(langAttr);
+    if (window.navigator && window.navigator.language) {
+      return normalizeLocale(window.navigator.language);
+    }
+    return 'bg';
+  }
 
   function request(path, init) {
     return fetch(BASE + path, {
@@ -132,21 +195,23 @@
     if (!slug) return;
 
     var state = { salon: null, services: [], occupied: [] };
+    var locale = getConfiguredLocale();
+    var text = TRANSLATIONS[locale] || TRANSLATIONS.bg;
     var overlay = el('div', { className: 'be-overlay' });
     var panel = el('div', { className: 'be-panel' });
-    var close = el('button', { className: 'be-close', type: 'button', 'aria-label': 'Close', text: 'x' });
-    var title = el('h2', { className: 'be-title', text: 'Запази час' });
-    var subtitle = el('p', { className: 'be-subtitle', text: 'Изберете услуга, ден и свободен час.' });
+    var close = el('button', { className: 'be-close', type: 'button', 'aria-label': text.close, text: 'x' });
+    var title = el('h2', { className: 'be-title', text: text.title });
+    var subtitle = el('p', { className: 'be-subtitle', text: text.subtitle });
     var form = el('form', { className: 'be-form' });
     var service = el('select', { name: 'service', required: 'required' });
     var date = el('input', { name: 'date', type: 'date', min: today(), value: today(), required: 'required' });
     var time = el('select', { name: 'time', required: 'required' });
-    var name = el('input', { name: 'clientName', type: 'text', placeholder: 'Име', required: 'required' });
-    var phone = el('input', { name: 'clientPhone', type: 'tel', placeholder: 'Телефон', required: 'required' });
-    var email = el('input', { name: 'clientEmail', type: 'email', placeholder: 'Имейл', required: 'required' });
-    var notes = el('textarea', { name: 'notes', placeholder: 'Бележка (по желание)', rows: '3' });
+    var name = el('input', { name: 'clientName', type: 'text', placeholder: text.name, required: 'required' });
+    var phone = el('input', { name: 'clientPhone', type: 'tel', placeholder: text.phone, required: 'required' });
+    var email = el('input', { name: 'clientEmail', type: 'email', placeholder: text.email, required: 'required' });
+    var notes = el('textarea', { name: 'notes', placeholder: text.notesPlaceholder, rows: '3' });
     var message = el('p', { className: 'be-message' });
-    var submit = el('button', { className: 'be-submit', type: 'submit', text: 'Потвърди резервация' });
+    var submit = el('button', { className: 'be-submit', type: 'submit', text: text.submit });
 
     function closeModal() {
       document.body.style.overflow = '';
@@ -164,7 +229,7 @@
         time.appendChild(option(slot, slot));
       });
       if (!time.children.length) {
-        time.appendChild(option('', 'Няма свободни часове'));
+        time.appendChild(option('', text.noSlots));
       }
     }
 
@@ -184,7 +249,7 @@
     function renderServices() {
       service.innerHTML = '';
       state.services.forEach(function (item) {
-        var price = item.price ? ' · ' + item.price + ' EUR' : '';
+        var price = item.price ? ' · ' + item.price + ' ' + text.priceSuffix : '';
         service.appendChild(option(item.id, item.name + price));
       });
       if (serviceId) service.value = String(serviceId);
@@ -202,7 +267,7 @@
       var current = selectedService();
       if (!current || !time.value) return;
       submit.disabled = true;
-      setMessage(message, 'Записваме резервацията...', '');
+      setMessage(message, text.saving, '');
       request('/api/public/bookings', {
         method: 'POST',
         body: JSON.stringify({
@@ -218,24 +283,31 @@
           notes: notes.value,
         }),
       }).then(function () {
-        setMessage(message, 'Резервацията е изпратена успешно.', 'success');
+        setMessage(message, text.success, 'success');
         form.reset();
         date.value = today();
         return loadSlots();
       }).catch(function (error) {
-        setMessage(message, error.message || 'Неуспешна резервация. Опитайте отново.', 'error');
+        setMessage(message, error.message || text.bookingFailed, 'error');
       }).finally(function () {
         submit.disabled = false;
       });
     });
 
-    form.appendChild(el('label', { text: 'Услуга' }, [service]));
-    form.appendChild(el('label', { text: 'Дата' }, [date]));
-    form.appendChild(el('label', { text: 'Час' }, [time]));
-    form.appendChild(el('label', { text: 'Име' }, [name]));
-    form.appendChild(el('label', { text: 'Телефон' }, [phone]));
-    form.appendChild(el('label', { text: 'Имейл' }, [email]));
-    form.appendChild(el('label', { text: 'Бележка' }, [notes]));
+    var serviceLabel = el('label', { text: text.service }, [service]);
+    var dateLabel = el('label', { text: text.date }, [date]);
+    var timeLabel = el('label', { text: text.time }, [time]);
+    var nameLabel = el('label', { text: text.name }, [name]);
+    var phoneLabel = el('label', { text: text.phone }, [phone]);
+    var emailLabel = el('label', { text: text.email }, [email]);
+    var notesLabel = el('label', { text: text.notes }, [notes]);
+    form.appendChild(serviceLabel);
+    form.appendChild(dateLabel);
+    form.appendChild(timeLabel);
+    form.appendChild(nameLabel);
+    form.appendChild(phoneLabel);
+    form.appendChild(emailLabel);
+    form.appendChild(notesLabel);
     form.appendChild(message);
     form.appendChild(submit);
     panel.appendChild(close);
@@ -248,15 +320,32 @@
 
     request('/api/public/salons/' + encodeURIComponent(slug)).then(function (payload) {
       state.salon = payload && payload.salon ? payload.salon : null;
+      locale = normalizeLocale(state.salon && state.salon.language ? state.salon.language : locale);
+      text = TRANSLATIONS[locale] || TRANSLATIONS.bg;
+      close.setAttribute('aria-label', text.close);
+      if (!state.salon || !state.salon.name) title.textContent = text.title;
+      subtitle.textContent = text.subtitle;
+      serviceLabel.firstChild.textContent = text.service;
+      dateLabel.firstChild.textContent = text.date;
+      timeLabel.firstChild.textContent = text.time;
+      nameLabel.firstChild.textContent = text.name;
+      phoneLabel.firstChild.textContent = text.phone;
+      emailLabel.firstChild.textContent = text.email;
+      notesLabel.firstChild.textContent = text.notes;
+      name.setAttribute('placeholder', text.name);
+      phone.setAttribute('placeholder', text.phone);
+      email.setAttribute('placeholder', text.email);
+      notes.setAttribute('placeholder', text.notesPlaceholder);
+      submit.textContent = text.submit;
       state.services = getServices(state.salon);
       if (!state.services.length) {
-        state.services = [{ id: 'booking', name: 'Резервация', price: 0, duration: 30 }];
+        state.services = [{ id: 'booking', name: text.genericBooking, price: 0, duration: 30 }];
       }
       if (state.salon && state.salon.name) title.textContent = String(state.salon.name);
       renderServices();
       return loadSlots();
     }).catch(function (error) {
-      setMessage(message, error.message || 'Не можем да заредим резервациите.', 'error');
+      setMessage(message, error.message || text.loadFailed, 'error');
     });
   }
 

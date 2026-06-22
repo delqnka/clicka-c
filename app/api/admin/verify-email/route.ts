@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const ownerId = request.nextUrl.searchParams.get('owner') ?? '';
 
   if (!token || !ownerId) {
-    return new NextResponse(errorPage('Невалиден линк.'), {
+    return new NextResponse(errorPage('bg', 'Невалиден линк.'), {
       status: 400,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       so.pending_email_token_hash,
       so.pending_email_expires_at,
       CAST(som.salon_id AS text) AS salon_id,
-      s.name AS salon_name
+      s.name AS salon_name,
+      s.language
     FROM site_owners so
     LEFT JOIN salon_owner_memberships som ON som.owner_id = so.id
     LEFT JOIN salons s ON CAST(s.id AS text) = CAST(som.salon_id AS text)
@@ -31,9 +32,10 @@ export async function GET(request: NextRequest) {
   `;
 
   const row = rows[0] as Record<string, unknown> | undefined;
+  const locale = row?.language === 'en' ? 'en' : 'bg';
 
   if (!row || !row.pending_email || row.pending_email_token_hash !== tokenHash) {
-    return new NextResponse(errorPage('Линкът е невалиден или вече е използван.'), {
+    return new NextResponse(errorPage(locale, locale === 'en' ? 'The link is invalid or has already been used.' : 'Линкът е невалиден или вече е използван.'), {
       status: 400,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
   const expiresAt = new Date(String(row.pending_email_expires_at ?? ''));
   if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
     return new NextResponse(
-      errorPage('Линкът е изтекъл. Заявете нова смяна на имейл от панела.'),
+      errorPage(locale, locale === 'en' ? 'The link has expired. Request a new email change from the admin panel.' : 'Линкът е изтекъл. Заявете нова смяна на имейл от панела.'),
       { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
     );
   }
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
       WHERE id = ${ownerId}
     `;
     return new NextResponse(
-      errorPage('Този имейл вече се използва от друг акаунт. Заявете нова смяна.'),
+      errorPage(locale, locale === 'en' ? 'This email is already used by another account. Request a new change.' : 'Този имейл вече се използва от друг акаунт. Заявете нова смяна.'),
       { status: 409, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
     );
   }
@@ -85,19 +87,20 @@ export async function GET(request: NextRequest) {
     // non-fatal
   }
 
-  return new NextResponse(successPage(newEmail), {
+  return new NextResponse(successPage(locale, newEmail), {
     status: 200,
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
 
-function successPage(email: string) {
+function successPage(locale: 'bg' | 'en', email: string) {
+  const isEn = locale === 'en';
   return `<!DOCTYPE html>
-<html lang="bg">
+<html lang="${locale}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Имейлът е потвърден</title>
+  <title>${isEn ? 'Email confirmed' : 'Имейлът е потвърден'}</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f9f9f9; display: flex; align-items: center;
            justify-content: center; min-height: 100vh; margin: 0; }
@@ -111,21 +114,22 @@ function successPage(email: string) {
 </head>
 <body>
   <div class="card">
-    <h1>✓ Имейлът е потвърден</h1>
-    <p>Новият ви имейл за вход е:<br /><strong>${email}</strong></p>
-    <a href="/admin">Към панела</a>
+    <h1>✓ ${isEn ? 'Email confirmed' : 'Имейлът е потвърден'}</h1>
+    <p>${isEn ? 'Your new login email is:' : 'Новият ви имейл за вход е:'}<br /><strong>${email}</strong></p>
+    <a href="/admin">${isEn ? 'Open admin' : 'Към панела'}</a>
   </div>
 </body>
 </html>`;
 }
 
-function errorPage(message: string) {
+function errorPage(locale: 'bg' | 'en', message: string) {
+  const isEn = locale === 'en';
   return `<!DOCTYPE html>
-<html lang="bg">
+<html lang="${locale}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Грешка</title>
+  <title>${isEn ? 'Error' : 'Грешка'}</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f9f9f9; display: flex; align-items: center;
            justify-content: center; min-height: 100vh; margin: 0; }
@@ -139,9 +143,9 @@ function errorPage(message: string) {
 </head>
 <body>
   <div class="card">
-    <h1>Грешка</h1>
+    <h1>${isEn ? 'Error' : 'Грешка'}</h1>
     <p>${message}</p>
-    <a href="/admin">Към панела</a>
+    <a href="/admin">${isEn ? 'Open admin' : 'Към панела'}</a>
   </div>
 </body>
 </html>`;

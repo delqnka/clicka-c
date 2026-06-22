@@ -7,13 +7,14 @@ import { AdminField, AdminSaveBtn, AdminSection } from '@/components/admin/admin
 import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
 import { SlugEditor } from '@/components/admin/SlugEditor';
 import type { AdminSitePayload } from '@/lib/admin-site';
+import { getT, type Locale } from '@/lib/i18n';
 
 const SITE_SECTIONS = [
-  { id: 'basics', label: 'Контакти', mobileLabel: 'Контакти' },
-  { id: 'address', label: 'WWW.', mobileLabel: 'Адрес / WWW' },
-  { id: 'about', label: 'За салона', mobileLabel: 'За салона' },
-  { id: 'faq', label: 'FAQ', mobileLabel: 'FAQ' },
-  { id: 'amenities', label: 'Допълнителна', mobileLabel: 'Доп. информация' },
+  { id: 'basics', labelKey: 'adminDashboard.siteTab.sections.basics', mobileLabelKey: 'adminDashboard.siteTab.sections.basics' },
+  { id: 'address', labelKey: 'adminDashboard.siteTab.sections.address', mobileLabelKey: 'adminDashboard.siteTab.sections.addressMobile' },
+  { id: 'about', labelKey: 'adminDashboard.siteTab.sections.about', mobileLabelKey: 'adminDashboard.siteTab.sections.about' },
+  { id: 'faq', labelKey: 'adminDashboard.siteTab.sections.faq', mobileLabelKey: 'adminDashboard.siteTab.sections.faq' },
+  { id: 'amenities', labelKey: 'adminDashboard.siteTab.sections.amenities', mobileLabelKey: 'adminDashboard.siteTab.sections.amenitiesMobile' },
 ] as const;
 
 const ACTIVE_GRADIENT = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
@@ -81,6 +82,7 @@ export function SiteTabPanel({
   onNavigateToDomain,
   initialSection,
   siteNavVersion,
+  locale,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -95,7 +97,9 @@ export function SiteTabPanel({
   onNavigateToDomain?: () => void;
   initialSection?: SiteSectionId;
   siteNavVersion?: number;
+  locale: Locale;
 }) {
+  const t = getT(locale);
   const [section, setSection] = useState<SiteSectionId>(initialSection ?? 'basics');
   useEffect(() => {
     if (initialSection) setSection(initialSection);
@@ -105,10 +109,10 @@ export function SiteTabPanel({
   return (
     <AdminSection
       compact
-      title="Сайт"
+      title={t('adminDashboard.tabs.site')}
       action={
         <AdminSaveBtn
-          label="Запази"
+          label={t('adminDashboard.actions.save')}
           busy={busyKey === 'site'}
           mobile={isMobile}
           green
@@ -130,7 +134,7 @@ export function SiteTabPanel({
             marginBottom: 14,
           }}
         >
-          {SITE_SECTIONS.map(({ id, label, mobileLabel }) => {
+          {SITE_SECTIONS.map(({ id, labelKey, mobileLabelKey }) => {
             const active = section === id;
             return (
               <button
@@ -139,7 +143,7 @@ export function SiteTabPanel({
                 onClick={() => setSection(id)}
                 style={siteSectionTabStyle(active, true)}
               >
-                {mobileLabel || label}
+                {t(mobileLabelKey ?? labelKey)}
               </button>
             );
           })}
@@ -158,7 +162,7 @@ export function SiteTabPanel({
             paddingBottom: 2,
           }}
         >
-          {SITE_SECTIONS.map(({ id, label }) => {
+          {SITE_SECTIONS.map(({ id, labelKey }) => {
             const active = section === id;
             return (
               <button
@@ -167,7 +171,7 @@ export function SiteTabPanel({
                 onClick={() => setSection(id)}
                 style={siteSectionTabStyle(active, false)}
               >
-                {label}
+                {t(labelKey)}
               </button>
             );
           })}
@@ -176,24 +180,34 @@ export function SiteTabPanel({
 
       {section === 'basics' ? (
         <div style={compactGrid}>
-          <AdminField compact label="Име на салона">
+          <AdminField compact label={t('adminDashboard.siteTab.fields.salonName')}>
             <input value={site.name} onChange={(e) => setSite((p) => ({ ...p, name: e.target.value }))} style={fieldInp} />
           </AdminField>
-          <AdminField compact label="Категория">
+          <AdminField compact label={t('adminDashboard.siteTab.fields.category')}>
             <input value={site.category} onChange={(e) => setSite((p) => ({ ...p, category: e.target.value }))} style={fieldInp} />
           </AdminField>
-          <AdminField compact label="Телефон">
+          <AdminField compact label={t('adminDashboard.siteTab.fields.phone')}>
             <input value={site.phone} onChange={(e) => setSite((p) => ({ ...p, phone: e.target.value }))} style={fieldInp} type="tel" inputMode="tel" />
           </AdminField>
-          <AdminField compact label="Имейл">
+          <AdminField compact label={t('adminDashboard.siteTab.fields.email')}>
             <input value={site.email} readOnly style={{ ...fieldInp, color: '#71717A', cursor: 'default' }} />
           </AdminField>
-          <AdminField compact label="Град">
+          <AdminField compact label={t('adminDashboard.siteTab.fields.city')}>
             <input value={site.city} onChange={(e) => setSite((p) => ({ ...p, city: e.target.value }))} style={fieldInp} />
+          </AdminField>
+          <AdminField compact label={t('adminDashboard.siteTab.fields.language')}>
+            <select
+              value={site.language}
+              onChange={(e) => setSite((p) => ({ ...p, language: e.target.value === 'en' ? 'en' : 'bg' }))}
+              style={fieldInp}
+            >
+              <option value="bg">{t('adminDashboard.siteTab.languageOptions.bg')}</option>
+              <option value="en">{t('adminDashboard.siteTab.languageOptions.en')}</option>
+            </select>
           </AdminField>
           <div style={{ display: 'grid', gap: 4 }}>
             <AddressAutocompleteField
-              label="Адрес"
+              label={t('adminDashboard.siteTab.fields.address')}
               value={site.address}
               inputStyle={fieldInp}
               onChange={(address) => setSite((p) => ({ ...p, address }))}
@@ -210,24 +224,24 @@ export function SiteTabPanel({
             />
             {site.latitude && site.longitude ? (
               <a
-                href={`https://maps.apple.com/?ll=${site.latitude},${site.longitude}&q=${encodeURIComponent(site.address || 'Локация')}`}
+                  href={`https://maps.apple.com/?ll=${site.latitude},${site.longitude}&q=${encodeURIComponent(site.address || t('adminDashboard.siteTab.locationFallback'))}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ fontSize: 12, color: '#007AFF', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                Виж в Apple Maps
+                {t('adminDashboard.siteTab.viewAppleMaps')}
               </a>
             ) : null}
           </div>
           <AdminField compact label="Instagram">
-            <input value={site.instagram} onChange={(e) => setSite((p) => ({ ...p, instagram: e.target.value }))} placeholder="salonnaprimer" style={fieldInp} />
+            <input value={site.instagram} onChange={(e) => setSite((p) => ({ ...p, instagram: e.target.value }))} placeholder={t('adminDashboard.siteTab.socialPlaceholder')} style={fieldInp} />
           </AdminField>
           <AdminField compact label="Facebook">
-            <input value={site.facebook} onChange={(e) => setSite((p) => ({ ...p, facebook: e.target.value }))} placeholder="salonnaprimer" style={fieldInp} />
+            <input value={site.facebook} onChange={(e) => setSite((p) => ({ ...p, facebook: e.target.value }))} placeholder={t('adminDashboard.siteTab.socialPlaceholder')} style={fieldInp} />
           </AdminField>
           <AdminField compact label="TikTok">
-            <input value={site.tiktok} onChange={(e) => setSite((p) => ({ ...p, tiktok: e.target.value }))} placeholder="salonnaprimer" style={fieldInp} />
+            <input value={site.tiktok} onChange={(e) => setSite((p) => ({ ...p, tiktok: e.target.value }))} placeholder={t('adminDashboard.siteTab.socialPlaceholder')} style={fieldInp} />
           </AdminField>
         </div>
       ) : null}
@@ -246,7 +260,7 @@ export function SiteTabPanel({
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)' }}>
               <span style={{ fontSize: 18, flexShrink: 0 }}>✓</span>
               <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#047857' }}>Свързан домейн</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#047857' }}>{t('adminDashboard.siteTab.connectedDomain')}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 13, color: '#065f46' }}>{site.customDomain}</p>
               </div>
               {onNavigateToDomain && (
@@ -255,7 +269,7 @@ export function SiteTabPanel({
                   onClick={() => onNavigateToDomain()}
                   style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: 12, color: '#047857', fontWeight: 600, cursor: 'pointer', flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
                 >
-                  Управлявай
+                  {t('adminDashboard.siteTab.manage')}
                 </button>
               )}
             </div>
@@ -288,9 +302,9 @@ export function SiteTabPanel({
               >
                 <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>🔗</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>Свържи собствен домейн</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>{t('adminDashboard.siteTab.connectOwnDomain')}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.45 }}>
-                    Въведи домейн, който вече си купил, и го насочи към сайта.
+                    {t('adminDashboard.siteTab.connectOwnDomainHint')}
                   </p>
                 </div>
                 <span style={{ color: ADMIN_T.subtle, fontSize: 16, flexShrink: 0 }}>›</span>
@@ -303,7 +317,7 @@ export function SiteTabPanel({
 
       {section === 'about' ? (
         <div style={{ display: 'grid', gap: 10 }}>
-          <AdminField compact label="За салона">
+          <AdminField compact label={t('adminDashboard.siteTab.sections.about')}>
             <textarea
               value={site.about}
               onChange={(e) => setSite((p) => ({ ...p, about: e.target.value }))}

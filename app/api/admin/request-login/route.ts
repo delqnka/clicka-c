@@ -74,26 +74,27 @@ export async function POST(request: NextRequest) {
     : getPlatformSiteOrigin(salon.slug);
   const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}&mode=reset`;
 
-  const { client, from } = await getSalonResend(salon.salonId, salon.name);
+  const { client, from, locale } = await getSalonResend(salon.salonId, salon.name);
   if (!client) {
     return NextResponse.json({ error: 'Имейл услугата не е конфигурирана.' }, { status: 503 });
   }
+  const isEn = locale === 'en';
 
   await client.emails.send({
     from,
     to: allowedEmail,
-    subject: `Задай нова парола`,
+    subject: isEn ? 'Set a new password' : `Задай нова парола`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #000; margin: 0 0 16px;">Задай нова парола</h2>
-        <p style="line-height: 1.7;">Натисни бутона, за да зададеш нова парола за панела.</p>
+        <h2 style="color: #000; margin: 0 0 16px;">${isEn ? 'Set a new password' : 'Задай нова парола'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Use the button below to set a new password for your panel.' : 'Натисни бутона, за да зададеш нова парола за панела.'}</p>
         <p style="margin: 20px 0;">
           <a href="${resetUrl}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:13px 22px;border-radius:999px;font-weight:700;font-size:15px;">
-            Задай парола →
+            ${isEn ? 'Set password →' : 'Задай парола →'}
           </a>
         </p>
         <p style="color:#999;font-size:13px;line-height:1.5;">
-          Линкът е валиден 15 минути. Ако не си поискал нова парола, игнорирай имейла.
+          ${isEn ? 'The link is valid for 15 minutes. If you did not request a new password, ignore this email.' : 'Линкът е валиден 15 минути. Ако не си поискал нова парола, игнорирай имейла.'}
         </p>
       </div>
     `,

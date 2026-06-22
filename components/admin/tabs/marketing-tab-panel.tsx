@@ -5,6 +5,7 @@ import { BarChart3, Eye, Facebook, CheckCircle2, AlertCircle, Loader2, Circle, Z
 import { ADMIN_T, ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
+import { type Locale } from '@/lib/i18n';
 
 type Props = {
   site: AdminSitePayload;
@@ -12,6 +13,7 @@ type Props = {
   slug: string;
   inp: CSSProperties;
   sitePublicUrl: string;
+  locale: Locale;
 };
 
 const GA4_RE = /^G-[A-Z0-9]{4,20}$/;
@@ -26,7 +28,8 @@ type ToolStatus = {
   clarity: ConnectionStatus;
 };
 
-export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: Props) {
+export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl, locale }: Props) {
+  const isEn = locale === 'en';
   const [ga4Id, setGa4Id] = useState(site.ga4Id ?? '');
   const [metaPixelId, setMetaPixelId] = useState(site.metaPixelId ?? '');
   const [clarityId, setClarityId] = useState(site.clarityId ?? '');
@@ -59,13 +62,13 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
       });
       const json = await res.json().catch(() => ({})) as Record<string, unknown>;
       if (!res.ok) {
-        setNotice(String(json.error ?? 'Грешка при запис.'));
+        setNotice(String(json.error ?? (isEn ? 'Error while saving.' : 'Грешка при запис.')));
         return;
       }
       setSite((prev) => ({ ...prev, ga4Id, metaPixelId, clarityId }));
-      setNotice('Настройките са запазени.');
+      setNotice(isEn ? 'Settings saved.' : 'Настройките са запазени.');
     } catch {
-      setNotice('Мрежова грешка.');
+      setNotice(isEn ? 'Network error.' : 'Мрежова грешка.');
     } finally {
       setSaving(false);
     }
@@ -74,9 +77,9 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
   function handleTest() {
     const errors: Partial<Record<keyof ToolStatus, string>> = {};
 
-    if (ga4Id && !GA4_RE.test(ga4Id)) errors.ga4 = 'Невалиден формат (трябва: G-XXXXXXXXXX)';
-    if (metaPixelId && !PIXEL_RE.test(metaPixelId)) errors.pixel = 'Невалиден формат (само цифри, 10-20 знака)';
-    if (clarityId && !CLARITY_RE.test(clarityId)) errors.clarity = 'Невалиден формат';
+    if (ga4Id && !GA4_RE.test(ga4Id)) errors.ga4 = isEn ? 'Invalid format (must be: G-XXXXXXXXXX)' : 'Невалиден формат (трябва: G-XXXXXXXXXX)';
+    if (metaPixelId && !PIXEL_RE.test(metaPixelId)) errors.pixel = isEn ? 'Invalid format (digits only, 10-20 chars)' : 'Невалиден формат (само цифри, 10-20 знака)';
+    if (clarityId && !CLARITY_RE.test(clarityId)) errors.clarity = isEn ? 'Invalid format' : 'Невалиден формат';
 
     setStatus({
       ga4: !ga4Id ? 'idle' : errors.ga4 ? 'error' : 'ok',
@@ -106,7 +109,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '4px 0' }}>
 
       <AdminSection
-        title={<>Google Analytics 4{site.ga4Id ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>Настроен</span> : null}</>}
+        title={<>Google Analytics 4{site.ga4Id ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>{isEn ? 'Connected' : 'Настроен'}</span> : null}</>}
         icon={<BarChart3 size={16} color="#e11d48" />}
         desc=""
       >
@@ -123,7 +126,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
       </AdminSection>
 
       <AdminSection
-        title={<>Meta Pixel{site.metaPixelId ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>Настроен</span> : null}</>}
+        title={<>Meta Pixel{site.metaPixelId ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>{isEn ? 'Connected' : 'Настроен'}</span> : null}</>}
         icon={<Facebook size={16} color="#1877f2" />}
         desc=""
       >
@@ -136,11 +139,11 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
           spellCheck={false}
           autoComplete="off"
         />
-        <p style={hintStyle}>Meta Events Manager → твоят пиксел → Settings</p>
+        <p style={hintStyle}>{isEn ? 'Meta Events Manager → your pixel → Settings' : 'Meta Events Manager → твоят пиксел → Settings'}</p>
       </AdminSection>
 
       <AdminSection
-        title={<>Microsoft Clarity{site.clarityId ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>Настроен</span> : null}</>}
+        title={<>Microsoft Clarity{site.clarityId ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>{isEn ? 'Connected' : 'Настроен'}</span> : null}</>}
         icon={<Eye size={16} color="#0078d4" />}
         desc=""
       >
@@ -153,7 +156,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
           spellCheck={false}
           autoComplete="off"
         />
-        <p style={hintStyle}>clarity.microsoft.com → твоят проект → Settings</p>
+        <p style={hintStyle}>{isEn ? 'clarity.microsoft.com → your project → Settings' : 'clarity.microsoft.com → твоят проект → Settings'}</p>
       </AdminSection>
 
       {/* Events info */}
@@ -163,7 +166,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6, color: ADMIN_T.muted, fontSize: 13 }}
       >
         <span style={{ display: 'inline-block', transition: 'transform 180ms', transform: showTechDetails ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-        Покажи технически детайли
+        {isEn ? 'Show technical details' : 'Покажи технически детайли'}
       </button>
       {showTechDetails && (
         <div style={{
@@ -172,7 +175,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
           display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
-            Автоматични събития
+            {isEn ? 'Automatic events' : 'Автоматични събития'}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
             {[
@@ -186,14 +189,15 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
             ))}
           </div>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.5 }}>
-            При резервация се изпраща и стойността (EUR) — агенцията може да види 100 € реклама → 800 € резервации.
-            Скриптовете се активират само след cookie consent. Всеки салон използва само своите ID-та.
+            {isEn
+              ? 'Booking events also send value (EUR), so an agency can see 100 EUR ad spend -> 800 EUR bookings. Scripts activate only after cookie consent. Each salon uses only its own IDs.'
+              : 'При резервация се изпраща и стойността (EUR) — агенцията може да види 100 € реклама → 800 € резервации. Скриптовете се активират само след cookie consent. Всеки салон използва само своите ID-та.'}
           </p>
         </div>
       )}
 
       {notice && (
-        <p style={{ margin: 0, fontSize: 14, color: notice.includes('запазени') ? '#15803d' : '#be123c' }}>
+        <p style={{ margin: 0, fontSize: 14, color: notice.includes(isEn ? 'saved' : 'запазени') ? '#15803d' : '#be123c' }}>
           {notice}
         </p>
       )}
@@ -205,16 +209,16 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
           style={{ ...ADMIN_COMPACT_SAVE_BTN, opacity: saving || !hasUnsavedChanges ? 0.6 : 1, width: '100%', maxWidth: 320, justifyContent: 'center', padding: '14px 24px', fontSize: 16 }}
         >
           {saving && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', marginRight: 6 }} />}
-          {saving ? 'Запис...' : 'Запази'}
+          {saving ? (isEn ? 'Saving...' : 'Запис...') : (isEn ? 'Save' : 'Запази')}
         </button>
         {metaPixelId && (
           <button
             onClick={handleMetaTest}
             style={{ ...testBtnStyle, display: 'flex', alignItems: 'center', gap: 6, borderColor: '#1877f2', color: '#1877f2' }}
-            title="Изпраща EngineTest събитие — провери го в Meta Events Manager"
+            title={isEn ? 'Sends an EngineTest event, check it in Meta Events Manager' : 'Изпраща EngineTest събитие — провери го в Meta Events Manager'}
           >
             <Zap size={13} />
-            Изпрати тест към Meta
+            {isEn ? 'Send Meta test' : 'Изпрати тест към Meta'}
           </button>
         )}
       </div>
@@ -228,15 +232,14 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
         }}>
           <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 2 }} />
           <div>
-            <strong>Публичният сайт е отворен с тестово събитие.</strong>
+            <strong>{isEn ? 'The public site was opened with a test event.' : 'Публичният сайт е отворен с тестово събитие.'}</strong>
             <ol style={{ margin: '6px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <li>В новия таб — <strong>приеми маркетинговите бисквитки</strong> в cookie banner-а.</li>
-              <li>Събитието <code>EngineTest</code> ще се изпрати от <strong>домейна на твоя сайт</strong>.</li>
-              <li>Отвори <strong>Meta Events Manager → твоят пиксел → Test Events</strong> и провери дали виждаш <code>EngineTest</code>.</li>
+              <li>{isEn ? <><strong>Accept marketing cookies</strong> in the cookie banner on the new tab.</> : <>В новия таб — <strong>приеми маркетинговите бисквитки</strong> в cookie banner-а.</>}</li>
+              <li>{isEn ? <>The <code>EngineTest</code> event will be sent from <strong>your site's domain</strong>.</> : <>Събитието <code>EngineTest</code> ще се изпрати от <strong>домейна на твоя сайт</strong>.</>}</li>
+              <li>{isEn ? <>Open <strong>Meta Events Manager → your pixel → Test Events</strong> and check whether you can see <code>EngineTest</code>.</> : <>Отвори <strong>Meta Events Manager → твоят пиксел → Test Events</strong> и провери дали виждаш <code>EngineTest</code>.</>}</li>
             </ol>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: '#3b82f6' }}>
-              Защо от публичния сайт? Meta отчита събитията по домейн — ако тестът тръгне от админ панела,
-              Meta ще види грешен домейн и рекламните кампании ще са некоректно атрибутирани.
+              {isEn ? 'Why from the public site? Meta attributes events by domain, so if the test starts from the admin panel, Meta will see the wrong domain and campaign attribution will be incorrect.' : 'Защо от публичния сайт? Meta отчита събитията по домейн — ако тестът тръгне от админ панела, Meta ще види грешен домейн и рекламните кампании ще са некоректно атрибутирани.'}
             </p>
           </div>
         </div>
@@ -246,12 +249,13 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl }: P
 }
 
 function StatusCard({
-  label, id, status, color,
+  label, id, status, color, locale,
 }: {
   label: string;
   id: string;
   status: ConnectionStatus;
   color: string;
+  locale?: Locale;
 }) {
   const icons: Record<ConnectionStatus, React.ReactNode> = {
     idle: <Circle size={14} color={ADMIN_T.subtle} />,
@@ -259,11 +263,12 @@ function StatusCard({
     ok: <CheckCircle2 size={14} color="#16a34a" />,
     error: <AlertCircle size={14} color="#dc2626" />,
   };
+  const isEn = locale === 'en';
   const labels: Record<ConnectionStatus, string> = {
-    idle: 'Не е настроен',
-    checking: 'Проверява...',
-    ok: id ? `ID: ${id.length > 14 ? id.slice(0, 12) + '…' : id}` : 'Настроен',
-    error: 'Невалиден формат',
+    idle: isEn ? 'Not configured' : 'Не е настроен',
+    checking: isEn ? 'Checking...' : 'Проверява...',
+    ok: id ? `ID: ${id.length > 14 ? id.slice(0, 12) + '…' : id}` : (isEn ? 'Configured' : 'Настроен'),
+    error: isEn ? 'Invalid format' : 'Невалиден формат',
   };
   const colors: Record<ConnectionStatus, string> = {
     idle: ADMIN_T.subtle,

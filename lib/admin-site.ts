@@ -30,6 +30,8 @@ export type WorkingDay = {
 export type WorkingHours = Record<string, WorkingDay>;
 
 import { normalizeServices, type ServiceItem } from '@/lib/salon-services';
+import type { Locale } from '@/lib/i18n';
+import { resolveSalonLocale } from '@/lib/salon-locale';
 
 export type { ServiceItem };
 export { normalizeServices };
@@ -52,6 +54,7 @@ export type BookingRecord = {
 
 export type AdminSitePayload = {
   slug: string;
+  language: Locale;
   name: string;
   category: string;
   phone: string;
@@ -159,6 +162,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
   const rows = await sql`
     SELECT
       slug, name, category, phone, email, city, address, about,
+      language,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       images,
       owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
@@ -188,6 +192,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
 
   return {
     slug: String(row.slug ?? ''),
+    language: resolveSalonLocale(String(row.language ?? 'bg')),
     name: String(row.name ?? ''),
     category: String(row.category ?? ''),
     phone: String(row.phone ?? ''),

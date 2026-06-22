@@ -8,7 +8,17 @@ import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 import { getStaffMemberById } from '@/lib/staff-members';
 import { alertOwnerWebhookFailure } from '@/lib/webhook-alert';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+let cachedStripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (cachedStripe) return cachedStripe;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('STRIPE_SECRET_KEY is not configured');
+  cachedStripe = new Stripe(key);
+  return cachedStripe;
+}
+const stripe = new Proxy({} as Stripe, {
+  get: (_t, p, r) => Reflect.get(getStripe(), p, r),
+});
 
 async function markBookingEventProcessed(eventId: string): Promise<boolean> {
   const rows = await sql`
@@ -91,7 +101,7 @@ export async function POST(request: NextRequest) {
       CAST(s.id AS text) AS salon_id,
       s.name AS salon_name, s.owner_name AS salon_owner_name, s.email AS salon_email, s.phone AS salon_phone,
       s.address AS salon_address, s.city AS salon_city,
-      s.telegram_chat_id
+      s.telegram_chat_id, s.language
     FROM bookings b
     JOIN salons s ON s.id = b.salon_id
     WHERE b.id = ${bookingId}
@@ -126,6 +136,7 @@ export async function POST(request: NextRequest) {
         .map((v) => String(v ?? '').trim())
         .filter(Boolean)
         .join(', ') || undefined,
+    language: row.language ? String(row.language) : undefined,
   };
 
   const clientEmail = String(row.client_email ?? '').trim();

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import { AdminSection, AdminSaveBtn } from '@/components/admin/admin-ui';
 import { ALL_BRANDS, BRAND_CATEGORY_LABELS, type BrandCategory } from '@/lib/brands';
+import { type Locale } from '@/lib/i18n';
 
 type Props = {
   initialBrandIds: string[];
   isMobile: boolean;
+  locale: Locale;
 };
 
 const CUSTOM_PREFIX = 'custom|';
@@ -35,7 +37,8 @@ function splitInitialIds(ids: string[]): { predefined: string[]; customNames: st
   return { predefined, customNames };
 }
 
-export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
+export function BrandsTabPanel({ initialBrandIds, isMobile, locale }: Props) {
+  const isEn = locale === 'en';
   const init = splitInitialIds(initialBrandIds ?? []);
   const [selected, setSelected] = useState<Set<string>>(new Set(init.predefined));
   const [customNames, setCustomNames] = useState<string[]>(init.customNames);
@@ -68,8 +71,8 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
 
   function addCustom() {
     const name = customInput.trim();
-    if (!name) { setCustomError('Въведи име на бранда'); return; }
-    if (customNames.includes(name)) { setCustomError('Вече е добавен'); return; }
+    if (!name) { setCustomError(isEn ? 'Enter a brand name' : 'Въведи име на бранда'); return; }
+    if (customNames.includes(name)) { setCustomError(isEn ? 'Already added' : 'Вече е добавен'); return; }
     setCustomNames((prev) => [...prev, name]);
     setCustomInput('');
     setCustomError('');
@@ -102,10 +105,10 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
     <div style={{ maxWidth: 560 }}>
     <AdminSection
       compact
-      title="Брандове"
+      title={isEn ? 'Brands' : 'Брандове'}
       action={
         <AdminSaveBtn
-          label={saved ? 'Запазено ✓' : 'Запази'}
+          label={saved ? (isEn ? 'Saved ✓' : 'Запазено ✓') : (isEn ? 'Save' : 'Запази')}
           busy={busy}
           mobile={isMobile}
           onClick={save}
@@ -115,7 +118,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
       {/* Custom brands — най-горе */}
       <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
         <p style={{ fontSize: 12, fontWeight: 700, color: '#0f0f0f', marginBottom: 12, ...font }}>
-          Добави ръчно
+          {isEn ? 'Add manually' : 'Добави ръчно'}
         </p>
 
         {customNames.length > 0 && (
@@ -132,7 +135,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.3 }}>{name}</span>
                 <button
                   onClick={() => removeCustom(name)}
-                  title="Премахни"
+                  title={isEn ? 'Remove' : 'Премахни'}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: 16, height: 16, borderRadius: '50%',
@@ -151,7 +154,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
             value={customInput}
             onChange={(e) => { setCustomInput(e.target.value); setCustomError(''); }}
             onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-            placeholder="Ime на бранда..."
+            placeholder={isEn ? 'Brand name...' : 'Ime на бранда...'}
             style={{
               height: 36, padding: '0 10px', borderRadius: 8,
               border: '1.5px solid #e5e7eb', fontSize: 13, outline: 'none', flex: 1, ...font,
@@ -167,7 +170,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile }: Props) {
             }}
           >
             <Plus size={14} />
-            Добави
+            {isEn ? 'Add' : 'Добави'}
           </button>
         </div>
         {customError && (

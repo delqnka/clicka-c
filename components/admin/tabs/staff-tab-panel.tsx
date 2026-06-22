@@ -6,6 +6,7 @@ import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
 import type { StaffMember } from '@/lib/staff-members';
 import type { ServiceItem } from '@/lib/salon-services';
+import { type Locale } from '@/lib/i18n';
 
 type Props = {
   salonSlug: string;
@@ -13,9 +14,11 @@ type Props = {
   initialStaff: StaffMember[];
   planLimit: number;
   salonServices?: ServiceItem[];
+  locale: Locale;
 };
 
-function Badge({ active }: { active: boolean }) {
+function Badge({ active, locale }: { active: boolean; locale: Locale }) {
+  const isEn = locale === 'en';
   return (
     <span
       style={{
@@ -28,12 +31,13 @@ function Badge({ active }: { active: boolean }) {
         color: active ? '#15803d' : ADMIN_T.muted,
       }}
     >
-      {active ? 'Активен' : 'Неактивен'}
+      {active ? (isEn ? 'Active' : 'Активен') : (isEn ? 'Inactive' : 'Неактивен')}
     </span>
   );
 }
 
-function CopyButton({ value, label }: { value: string; label: string }) {
+function CopyButton({ value, label, locale }: { value: string; label: string; locale: Locale }) {
+  const isEn = locale === 'en';
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
     void navigator.clipboard.writeText(value).then(() => {
@@ -45,7 +49,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      title={`Копирай ${label}`}
+      title={isEn ? `Copy ${label}` : `Копирай ${label}`}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         padding: '3px 8px', borderRadius: 6, border: `1px solid ${ADMIN_T.border}`,
@@ -54,7 +58,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       }}
     >
       {copied ? <Check size={11} /> : <Copy size={11} />}
-      {copied ? 'Копирано' : 'Копирай'}
+      {copied ? (isEn ? 'Copied' : 'Копирано') : (isEn ? 'Copy' : 'Копирай')}
     </button>
   );
 }
@@ -64,12 +68,15 @@ function ConfirmModal({
   onConfirm,
   onCancel,
   busy,
+  locale,
 }: {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
   busy: boolean;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   return (
     <div
       style={{
@@ -107,7 +114,7 @@ function ConfirmModal({
               background: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: ADMIN_T.text,
             }}
           >
-            Отказ
+            {isEn ? 'Cancel' : 'Отказ'}
           </button>
           <button
             type="button"
@@ -119,7 +126,7 @@ function ConfirmModal({
               cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
             }}
           >
-            {busy ? 'Изтриване…' : 'Изтрий'}
+            {busy ? (isEn ? 'Deleting…' : 'Изтриване…') : (isEn ? 'Delete' : 'Изтрий')}
           </button>
         </div>
       </div>
@@ -132,12 +139,15 @@ function ServiceAssignPanel({
   salonServices,
   salonSlug,
   onUpdate,
+  locale,
 }: {
   member: StaffMember;
   salonServices: ServiceItem[];
   salonSlug: string;
   onUpdate: (serviceIds: string[]) => void;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,22 +169,22 @@ function ServiceAssignPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: member.id, serviceIds: nextIds }),
       });
-      if (!r.ok) throw new Error('Грешка');
+      if (!r.ok) throw new Error(isEn ? 'Error' : 'Грешка');
       onUpdate(nextIds);
     } catch {
-      setError('Грешка при запис. Опитайте отново.');
+      setError(isEn ? 'Save failed. Please try again.' : 'Грешка при запис. Опитайте отново.');
     } finally {
       setBusy(false);
     }
   }, [member.id, member.serviceIds, salonSlug, onUpdate, assigned]);
 
   if (salonServices.length === 0) {
-    return <p style={{ fontSize: 12, color: ADMIN_T.muted, marginTop: 8 }}>Няма добавени услуги в салона.</p>;
+    return <p style={{ fontSize: 12, color: ADMIN_T.muted, marginTop: 8 }}>{isEn ? 'No salon services added yet.' : 'Няма добавени услуги в салона.'}</p>;
   }
 
   return (
     <div style={{ marginTop: 10 }}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Услуги</p>
+      <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{isEn ? 'Services' : 'Услуги'}</p>
       {error ? <p style={{ fontSize: 12, color: '#b91c1c', marginBottom: 6 }}>{error}</p> : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {salonServices.map((svc) => {
@@ -206,7 +216,8 @@ function ServiceAssignPanel({
   );
 }
 
-function PortalLinkInfo({ member, salonSlug }: { member: StaffMember; salonSlug: string }) {
+function PortalLinkInfo({ member, salonSlug, locale }: { member: StaffMember; salonSlug: string; locale: Locale }) {
+  const isEn = locale === 'en';
   const [link, setLink] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -237,15 +248,15 @@ function PortalLinkInfo({ member, salonSlug }: { member: StaffMember; salonSlug:
   return (
     <div style={{ marginTop: 14, display: 'grid', gap: 6 }}>
       <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-        Линк за достъп до график
+        {isEn ? 'Schedule access link' : 'Линк за достъп до график'}
       </p>
       <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.5 }}>
-        Сподели този линк със служителя — той вижда само своя график и може сам да добавя резервации, без нужда от вход в админ панела.
+        {isEn ? 'Share this link with the staff member. They only see their own schedule and can add bookings without admin access.' : 'Сподели този линк със служителя — той вижда само своя график и може сам да добавя резервации, без нужда от вход в админ панела.'}
       </p>
       {link ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: '#7C3AED', fontFamily: 'monospace', wordBreak: 'break-all' }}>{link}</span>
-          <CopyButton value={link} label="линк" />
+          <CopyButton value={link} label={isEn ? 'link' : 'линк'} locale={locale} />
         </div>
       ) : null}
       {error ? <p style={{ margin: 0, fontSize: 12, color: '#dc2626' }}>{error}</p> : null}
@@ -261,7 +272,7 @@ function PortalLinkInfo({ member, salonSlug }: { member: StaffMember; salonSlug:
               color: ADMIN_T.text,
             }}
           >
-            {loading ? 'Генерираме…' : 'Генерирай линк'}
+            {loading ? (isEn ? 'Generating…' : 'Генерираме…') : (isEn ? 'Generate link' : 'Генерирай линк')}
           </button>
         ) : !confirmRegen ? (
           <button
@@ -272,25 +283,25 @@ function PortalLinkInfo({ member, salonSlug }: { member: StaffMember; salonSlug:
               background: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: ADMIN_T.muted,
             }}
           >
-            Регенерирай (старият линк ще спре да работи)
+            {isEn ? 'Regenerate (the old link will stop working)' : 'Регенерирай (старият линк ще спре да работи)'}
           </button>
         ) : (
           <>
-            <span style={{ fontSize: 12, color: '#92400e' }}>Сигурен ли си? Старият линк ще престане да работи.</span>
+            <span style={{ fontSize: 12, color: '#92400e' }}>{isEn ? 'Are you sure? The old link will stop working.' : 'Сигурен ли си? Старият линк ще престане да работи.'}</span>
             <button
               type="button"
               onClick={() => void generate(true)}
               disabled={loading}
               style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff', fontSize: 12, fontWeight: 600, color: '#dc2626', cursor: loading ? 'wait' : 'pointer' }}
             >
-              {loading ? 'Генерираме…' : 'Да, регенерирай'}
+              {loading ? (isEn ? 'Generating…' : 'Генерираме…') : (isEn ? 'Yes, regenerate' : 'Да, регенерирай')}
             </button>
             <button
               type="button"
               onClick={() => setConfirmRegen(false)}
               style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${ADMIN_T.border}`, background: '#fff', fontSize: 12, color: ADMIN_T.muted, cursor: 'pointer' }}
             >
-              Отказ
+              {isEn ? 'Cancel' : 'Отказ'}
             </button>
           </>
         )}
@@ -299,35 +310,37 @@ function PortalLinkInfo({ member, salonSlug }: { member: StaffMember; salonSlug:
   );
 }
 
-function OnboardingInfo({ member, sitePublicUrl }: { member: StaffMember; sitePublicUrl: string }) {
+function OnboardingInfo({ member, sitePublicUrl, locale }: { member: StaffMember; sitePublicUrl: string; locale: Locale }) {
+  const isEn = locale === 'en';
   const bookingUrl = `${sitePublicUrl.replace(/\/$/, '')}/book/${member.slug}`;
   return (
     <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Онбординг</p>
+      <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{isEn ? 'Onboarding' : 'Онбординг'}</p>
       {member.onboardingCode ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: ADMIN_T.muted }}>Telegram код:</span>
+          <span style={{ fontSize: 12, color: ADMIN_T.muted }}>{isEn ? 'Telegram code:' : 'Telegram код:'}</span>
           <code style={{
             background: '#f4f4f5', borderRadius: 6, padding: '2px 8px',
             fontSize: 13, fontWeight: 700, color: ADMIN_T.text, letterSpacing: '0.08em',
           }}>
             {member.onboardingCode}
           </code>
-          <CopyButton value={member.onboardingCode} label="код" />
+          <CopyButton value={member.onboardingCode} label={isEn ? 'code' : 'код'} locale={locale} />
         </div>
       ) : (
-        <p style={{ fontSize: 12, color: ADMIN_T.muted }}>Кодът ще се появи след опресняване.</p>
+        <p style={{ fontSize: 12, color: ADMIN_T.muted }}>{isEn ? 'The code will appear after refresh.' : 'Кодът ще се появи след опресняване.'}</p>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: ADMIN_T.muted }}>Линк за резервации:</span>
+        <span style={{ fontSize: 12, color: ADMIN_T.muted }}>{isEn ? 'Booking link:' : 'Линк за резервации:'}</span>
         <span style={{ fontSize: 12, color: '#7C3AED', fontFamily: 'monospace', wordBreak: 'break-all' }}>{bookingUrl}</span>
-        <CopyButton value={bookingUrl} label="линк" />
+        <CopyButton value={bookingUrl} label={isEn ? 'link' : 'линк'} locale={locale} />
       </div>
     </div>
   );
 }
 
-export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimit, salonServices = [] }: Props) {
+export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimit, salonServices = [], locale }: Props) {
+  const isEn = locale === 'en';
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -427,16 +440,17 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
     <>
       {confirmDelete ? (
         <ConfirmModal
-          message={`Сигурни ли сте, че искате да изтриете ${confirmDelete.name}? Тази операция не може да бъде върната назад.`}
+          message={isEn ? `Are you sure you want to delete ${confirmDelete.name}? This action cannot be undone.` : `Сигурни ли сте, че искате да изтриете ${confirmDelete.name}? Тази операция не може да бъде върната назад.`}
           onConfirm={() => void handleDelete(confirmDelete.id)}
           onCancel={() => setConfirmDelete(null)}
           busy={busy === `delete-${confirmDelete.id}`}
+          locale={locale}
         />
       ) : null}
 
       <AdminSection
-        title="Служители"
-        desc={`${nonOwners.length} / ${planLimit} служителя (ти като собственик не влизаш в този брой)`}
+        title={isEn ? 'Staff' : 'Служители'}
+        desc={isEn ? `${nonOwners.length} / ${planLimit} staff members (you as owner are not counted here)` : `${nonOwners.length} / ${planLimit} служителя (ти като собственик не влизаш в този брой)`}
         action={
           canAdd ? (
             <button
@@ -452,10 +466,10 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
               }}
             >
               <Plus size={13} />
-              Добави
+              {isEn ? 'Add' : 'Добави'}
             </button>
           ) : (
-            <span style={{ fontSize: 12, color: ADMIN_T.muted }}>Лимит достигнат</span>
+            <span style={{ fontSize: 12, color: ADMIN_T.muted }}>{isEn ? 'Limit reached' : 'Лимит достигнат'}</span>
           )
         }
       >
@@ -487,17 +501,17 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
           >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>Име *</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>{isEn ? 'Name *' : 'Име *'}</label>
                 <input
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
-                  placeholder="Мария Иванова"
+                  placeholder={isEn ? 'Maria Ivanova' : 'Мария Иванова'}
                   style={inp}
                   onKeyDown={(e) => { if (e.key === 'Enter') void handleAdd(); }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>Имейл</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>{isEn ? 'Email' : 'Имейл'}</label>
                 <input
                   value={addEmail}
                   onChange={(e) => setAddEmail(e.target.value)}
@@ -513,7 +527,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
                 onClick={() => { setAddOpen(false); setAddName(''); setAddEmail(''); }}
                 style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${ADMIN_T.border}`, background: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: ADMIN_T.text }}
               >
-                Отказ
+                {isEn ? 'Cancel' : 'Отказ'}
               </button>
               <button
                 type="button"
@@ -526,7 +540,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
                   opacity: busy === 'add' || !addName.trim() ? 0.6 : 1,
                 }}
               >
-                {busy === 'add' ? 'Добавяне…' : 'Добави'}
+                {busy === 'add' ? (isEn ? 'Adding…' : 'Добавяне…') : (isEn ? 'Add' : 'Добави')}
               </button>
             </div>
           </div>
@@ -534,7 +548,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
 
         {nonOwners.length === 0 ? (
           <p style={{ fontSize: 14, color: ADMIN_T.muted, padding: '24px 0', textAlign: 'center' }}>
-            Няма добавени служители.
+            {isEn ? 'No staff members added yet.' : 'Няма добавени служители.'}
           </p>
         ) : (
           <div style={{ display: 'grid', gap: 8 }}>
@@ -579,7 +593,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: ADMIN_T.text }}>{member.name}</span>
-                        <Badge active={member.isActive} />
+                        <Badge active={member.isActive} locale={locale} />
                       </div>
                       {member.email ? (
                         <p style={{ fontSize: 12, color: ADMIN_T.muted, marginTop: 2 }}>{member.email}</p>
@@ -592,7 +606,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button
                         type="button"
-                        title={expanded ? 'Скрий детайли' : 'Детайли'}
+                        title={expanded ? (isEn ? 'Hide details' : 'Скрий детайли') : (isEn ? 'Details' : 'Детайли')}
                         onClick={() => setExpandedId(expanded ? null : member.id)}
                         style={{
                           width: 32, height: 32, borderRadius: 8, border: `1px solid ${ADMIN_T.border}`,
@@ -604,7 +618,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
                       </button>
                       <button
                         type="button"
-                        title={member.isActive ? 'Деактивирай' : 'Активирай'}
+                        title={member.isActive ? (isEn ? 'Deactivate' : 'Деактивирай') : (isEn ? 'Activate' : 'Активирай')}
                         onClick={() => void toggleActive(member)}
                         disabled={isBusyToggle}
                         style={{
@@ -621,7 +635,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
                       </button>
                       <button
                         type="button"
-                        title="Изтрий"
+                        title={isEn ? 'Delete' : 'Изтрий'}
                         onClick={() => setConfirmDelete({ id: member.id, name: member.name })}
                         disabled={isBusyDelete}
                         style={{
@@ -652,9 +666,10 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
                         salonServices={salonServices}
                         salonSlug={salonSlug}
                         onUpdate={(ids) => updateMemberServices(member.id, ids)}
+                        locale={locale}
                       />
-                      <OnboardingInfo member={member} sitePublicUrl={sitePublicUrl} />
-                      {!member.isOwner ? <PortalLinkInfo member={member} salonSlug={salonSlug} /> : null}
+                      <OnboardingInfo member={member} sitePublicUrl={sitePublicUrl} locale={locale} />
+                      {!member.isOwner ? <PortalLinkInfo member={member} salonSlug={salonSlug} locale={locale} /> : null}
                     </div>
                   ) : null}
                 </div>

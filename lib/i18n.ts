@@ -20,6 +20,11 @@ function interpolate(str: string, vars: Record<string, string | number>): string
   return str.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));
 }
 
+export function normalizeLocale(value: string | null | undefined): Locale {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return normalized === 'en' || normalized.startsWith('en-') ? 'en' : 'bg';
+}
+
 export function getT(locale: Locale): TFunc {
   const translations = dict[locale] ?? dict.bg;
   return function t(key: string, vars?: Record<string, string | number>): string {

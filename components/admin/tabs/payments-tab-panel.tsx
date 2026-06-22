@@ -4,6 +4,7 @@ import { CheckCircle2, ExternalLink, Loader2, RefreshCw, XCircle } from 'lucide-
 import { type ReactNode, useEffect, useState } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
+import { type Locale } from '@/lib/i18n';
 
 type StripeStatus = {
   connected: boolean;
@@ -16,10 +17,13 @@ type StripeStatus = {
 export function PaymentsTabPanel({
   slug,
   btn,
+  locale,
 }: {
   slug: string;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => React.CSSProperties;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   const [status, setStatus] = useState<StripeStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -31,7 +35,7 @@ export function PaymentsTabPanel({
       return JSON.parse(text) as Record<string, unknown>;
     } catch {
       const preview = text.slice(0, 80).replace(/\s+/g, ' ').trim();
-      throw new Error(`Сървърът върна не-JSON отговор (HTTP ${res.status}): ${preview || 'празно'}`);
+      throw new Error(isEn ? `The server returned a non-JSON response (HTTP ${res.status}): ${preview || 'empty'}` : `Сървърът върна не-JSON отговор (HTTP ${res.status}): ${preview || 'празно'}`);
     }
   }
 
@@ -41,10 +45,10 @@ export function PaymentsTabPanel({
     try {
       const res = await fetch(`/api/stripe/connect/status?slug=${encodeURIComponent(slug)}`);
       const data = await safeJson(res) as Partial<StripeStatus> & { error?: string };
-      if (!res.ok) throw new Error(data.error ?? `Грешка (HTTP ${res.status})`);
+      if (!res.ok) throw new Error(data.error ?? (isEn ? `Error (HTTP ${res.status})` : `Грешка (HTTP ${res.status})`));
       setStatus(data as StripeStatus);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Грешка при зареждане на статуса');
+      setError(e instanceof Error ? e.message : (isEn ? 'Error while loading the status' : 'Грешка при зареждане на статуса'));
     } finally {
       setLoading(false);
     }
@@ -60,10 +64,10 @@ export function PaymentsTabPanel({
         body: JSON.stringify({ slug }),
       });
       const data = await safeJson(res) as { url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error ?? `Грешка при свързване (HTTP ${res.status})`);
+      if (!res.ok || !data.url) throw new Error(data.error ?? (isEn ? `Connection error (HTTP ${res.status})` : `Грешка при свързване (HTTP ${res.status})`));
       window.location.href = data.url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Грешка');
+      setError(e instanceof Error ? e.message : (isEn ? 'Error' : 'Грешка'));
       setConnecting(false);
     }
   }
@@ -73,7 +77,7 @@ export function PaymentsTabPanel({
   const isFullyConnected = status?.connected && status.chargesEnabled;
 
   return (
-    <AdminSection title="Плащания">
+    <AdminSection title={isEn ? 'Payments' : 'Плащания'}>
       <AdminInfoCard
         title={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -88,18 +92,18 @@ export function PaymentsTabPanel({
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: ADMIN_T.muted, fontSize: 13 }}>
             <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-            Проверяваме статуса…
+            {isEn ? 'Checking status…' : 'Проверяваме статуса…'}
           </div>
         ) : isFullyConnected ? (
           <div style={{ display: 'grid', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <CheckCircle2 size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
               <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                Stripe е свързан — можеш да приемаш плащания
+                {isEn ? 'Stripe is connected and ready to accept payments' : 'Stripe е свързан — можеш да приемаш плащания'}
               </span>
             </div>
-            <StatusRow label="Плащания" enabled={status?.chargesEnabled} />
-            <StatusRow label="Изплащания" enabled={status?.payoutsEnabled} />
+            <StatusRow label={isEn ? 'Charges' : 'Плащания'} enabled={status?.chargesEnabled} locale={locale} />
+            <StatusRow label={isEn ? 'Payouts' : 'Изплащания'} enabled={status?.payoutsEnabled} locale={locale} />
             <div style={{ marginTop: 4 }}>
               <button
                 type="button"
@@ -108,7 +112,7 @@ export function PaymentsTabPanel({
                 style={{ ...btn('sm-ghost'), display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <RefreshCw size={13} />
-                Обнови статуса
+                {isEn ? 'Refresh status' : 'Обнови статуса'}
               </button>
             </div>
           </div>
@@ -116,32 +120,32 @@ export function PaymentsTabPanel({
           <div style={{ display: 'grid', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <XCircle size={16} style={{ color: '#f59e0b', flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>Онбордингът не е завършен</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>{isEn ? 'Onboarding is not complete' : 'Онбордингът не е завършен'}</span>
             </div>
             <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-              Stripe акаунтът е създаден, но трябва да попълниш информацията за да активираш плащанията.
+              {isEn ? 'Your Stripe account was created, but you need to complete the details to activate payments.' : 'Stripe акаунтът е създаден, но трябва да попълниш информацията за да активираш плащанията.'}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => void startOnboarding()} disabled={connecting}
                 style={{ ...btn('primary'), display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {connecting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Зареждаме…</> : <><ExternalLink size={14} /> Продължи регистрацията</>}
+                {connecting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> {isEn ? 'Loading…' : 'Зареждаме…'}</> : <><ExternalLink size={14} /> {isEn ? 'Continue setup' : 'Продължи регистрацията'}</>}
               </button>
               <button type="button" onClick={() => void loadStatus()}
                 style={{ ...btn('sm-ghost'), display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <RefreshCw size={13} /> Обнови статуса
+                <RefreshCw size={13} /> {isEn ? 'Refresh status' : 'Обнови статуса'}
               </button>
             </div>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
-              <BulletRow>Свържи своя Stripe акаунт, за да приемаш онлайн плащания директно в своята сметка</BulletRow>
-              <BulletRow>Парите отиват директно при теб — без комисиона</BulletRow>
-              <BulletRow>Сигурно — управлявано от Stripe</BulletRow>
+              <BulletRow>{isEn ? 'Connect your Stripe account to accept online payments directly into your own account.' : 'Свържи своя Stripe акаунт, за да приемаш онлайн плащания директно в своята сметка'}</BulletRow>
+              <BulletRow>{isEn ? 'The money goes directly to you.' : 'Парите отиват директно при теб — без комисиона'}</BulletRow>
+              <BulletRow>{isEn ? 'Secure and managed by Stripe.' : 'Сигурно — управлявано от Stripe'}</BulletRow>
             </ul>
             <button type="button" onClick={() => void startOnboarding()} disabled={connecting}
               style={{ ...btn('primary'), display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'start' }}>
-              {connecting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Зареждаме…</> : <><ExternalLink size={14} /> Свържи Stripe акаунт</>}
+              {connecting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> {isEn ? 'Loading…' : 'Зареждаме…'}</> : <><ExternalLink size={14} /> {isEn ? 'Connect Stripe account' : 'Свържи Stripe акаунт'}</>}
             </button>
           </div>
         )}
@@ -160,13 +164,14 @@ function BulletRow({ children }: { children: ReactNode }) {
   );
 }
 
-function StatusRow({ label, enabled }: { label: string; enabled?: boolean }) {
+function StatusRow({ label, enabled, locale }: { label: string; enabled?: boolean; locale: Locale }) {
+  const isEn = locale === 'en';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ADMIN_T.muted }}>
       {enabled
         ? <CheckCircle2 size={14} style={{ color: '#16a34a' }} />
         : <XCircle size={14} style={{ color: '#f59e0b' }} />}
-      {label}: <span style={{ fontWeight: 600, color: enabled ? '#16a34a' : '#92400e' }}>{enabled ? 'Активно' : 'Неактивно'}</span>
+      {label}: <span style={{ fontWeight: 600, color: enabled ? '#16a34a' : '#92400e' }}>{enabled ? (isEn ? 'Active' : 'Активно') : (isEn ? 'Inactive' : 'Неактивно')}</span>
     </div>
   );
 }

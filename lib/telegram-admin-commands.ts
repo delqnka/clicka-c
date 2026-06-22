@@ -16,6 +16,7 @@ import {
   openRouterHeaders,
 } from '@/lib/openrouter';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
+import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 
 // ─── Conversation history (persisted in DB per chatId, last 12 messages) ─────
 type HistoryMessage = { role: 'user' | 'assistant'; content: string };
@@ -292,6 +293,15 @@ function formatDateBg(dateStr: string, opts?: Intl.DateTimeFormatOptions): strin
   return d.toLocaleDateString('bg-BG', opts ?? { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+function salonIsEn(salon: SalonRef): boolean {
+  return resolveSalonLocale(salon.language) === 'en';
+}
+
+function formatDateForSalon(salon: SalonRef, dateStr: string, opts?: Intl.DateTimeFormatOptions): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  return d.toLocaleDateString(toLocaleTag(resolveSalonLocale(salon.language)), opts ?? { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 function lvToEur(lv: number): number {
   return Math.round(lv / 1.95583);
 }
@@ -326,6 +336,7 @@ export type SalonRef = {
   name: string;
   /** Set for TEAM staff members — scopes all Telegram queries to this staff member only. */
   staffMemberId?: string | null;
+  language?: string | null;
 };
 
 export function isPriceListPhoto(caption: string): boolean {
@@ -2493,22 +2504,23 @@ export async function handlePriceListPhoto(
   }
 
   if (added.length === 0) {
-    await sendTelegramMessage(chatId, 'ℹ️ Всички услуги от ценоразписа вече съществуват.');
+    await sendTelegramMessage(chatId, salonIsEn(salon) ? 'ℹ️ All services from the price list already exist.' : 'ℹ️ Всички услуги от ценоразписа вече съществуват.');
     return;
   }
 
   await saveSalonServices(salon.salonId, salon.slug, [...existing, ...added]);
 
-  const lines = [`✅ <b>Добавени ${added.length} услуги от ценоразписа:</b>`, ''];
+  const isEn = salonIsEn(salon);
+  const lines = [isEn ? `✅ <b>Added ${added.length} services from the price list:</b>` : `✅ <b>Добавени ${added.length} услуги от ценоразписа:</b>`, ''];
   for (const s of added) {
     if (s.variants && s.variants.length > 1) {
       const variantStr = s.variants.map(v => `${v.label} ${v.price}€`).join(' / ');
-      lines.push(`• ${s.name} — ${s.duration_min} мин — ${variantStr}${s.category ? ` (${s.category})` : ''}`);
+      lines.push(`• ${s.name} — ${s.duration_min} ${isEn ? 'min' : 'мин'} — ${variantStr}${s.category ? ` (${s.category})` : ''}`);
     } else {
-      lines.push(`• ${s.name} — ${s.duration_min} мин — ${s.price} €${s.category ? ` (${s.category})` : ''}`);
+      lines.push(`• ${s.name} — ${s.duration_min} ${isEn ? 'min' : 'мин'} — ${s.price} €${s.category ? ` (${s.category})` : ''}`);
     }
   }
-  lines.push('', '💡 Ако искаш да ги изтриеш, напиши <code>изтрий добавените услуги</code>');
+  lines.push('', isEn ? '💡 If you want to remove them, type <code>delete imported services</code>' : '💡 Ако искаш да ги изтриеш, напиши <code>изтрий добавените услуги</code>');
   await sendTelegramMessage(chatId, lines.join('\n'));
 
   // Remember imported service names so owner can undo the import
@@ -2544,15 +2556,16 @@ async function handleBookingsForDay(
     ? salonRows[0].opening_hours : {}) as Record<string, unknown>;
   const dayBlocks = normalizeBookingBlocks(openingHours.booking_blocks).filter(b => b.date === date && !b.allDay);
 
-  const dateStr = formatDateBg(date);
+  const isEn = salonIsEn(salon);
+  const dateStr = formatDateForSalon(salon, date);
 
   if (rows.length === 0 && dayBlocks.length === 0) {
-    await sendTelegramMessage(chatId, `📅 <b>${dateStr}</b>\n\nНяма записи за ${label}.`);
+    await sendTelegramMessage(chatId, isEn ? `📅 <b>${dateStr}</b>\n\nThere are no bookings for ${label}.` : `📅 <b>${dateStr}</b>\n\nНяма записи за ${label}.`);
     return;
   }
 
   const totalCount = rows.length + dayBlocks.length;
-  const lines = [`📅 <b>${dateStr} — ${totalCount} ${pluralBooking(totalCount)}:</b>`, ''];
+  const lines = [`📅 <b>${dateStr} — ${totalCount} ${pluralBooking(totalCount, salon)}:</b>`, ''];
 
   // Merge bookings and blocks sorted by time
   type Entry = { time: string; label: string };
@@ -2563,7 +2576,7 @@ async function handleBookingsForDay(
     })),
     ...dayBlocks.map(b => ({
       time: b.start!,
-      label: `🔒 ${b.start}–${b.end} — <b>Зает час</b>${b.note ? ` (${b.note})` : ''}`,
+      label: `🔒 ${b.start}–${b.end} — <b>${isEn ? 'Blocked slot' : 'Зает час'}</b>${b.note ? ` (${b.note})` : ''}`,
     })),
   ].sort((a, b) => a.time.localeCompare(b.time));
 
@@ -2617,7 +2630,7 @@ async function handleBookingsForWeek(chatId: number, salon: SalonRef, mode: 'cur
   ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string; service_price: number | null; status: string }[];
 
   if (rows.length === 0) {
-    await sendTelegramMessage(chatId, mode === 'last' ? `📅 Няма резервации за миналата седмица.` : `📅 Няма резервации за следващите 7 дни.`);
+    await sendTelegramMessage(chatId, salonIsEn(salon) ? (mode === 'last' ? '📅 There were no bookings last week.' : '📅 There are no bookings for the next 7 days.') : (mode === 'last' ? `📅 Няма резервации за миналата седмица.` : `📅 Няма резервации за следващите 7 дни.`));
     return;
   }
 
@@ -2629,10 +2642,11 @@ async function handleBookingsForWeek(chatId: number, salon: SalonRef, mode: 'cur
     byDate.set(r.date, list);
   }
 
-  const weekLabel = mode === 'last' ? 'миналата седмица' : 'тази седмица';
-  const lines = [`📅 <b>Резервации за ${weekLabel} (${rows.length} ${pluralBooking(rows.length)}):</b>`];
+  const isEn = salonIsEn(salon);
+  const weekLabel = mode === 'last' ? (isEn ? 'last week' : 'миналата седмица') : (isEn ? 'this week' : 'тази седмица');
+  const lines = [isEn ? `📅 <b>Bookings for ${weekLabel} (${rows.length} ${pluralBooking(rows.length, salon)}):</b>` : `📅 <b>Резервации за ${weekLabel} (${rows.length} ${pluralBooking(rows.length, salon)}):</b>`];
   for (const [date, dayRows] of byDate) {
-    lines.push('', `<b>${formatDateBg(date)}</b>`);
+    lines.push('', `<b>${formatDateForSalon(salon, date)}</b>`);
     for (let i = 0; i < dayRows.length; i++) {
       const r = dayRows[i]!;
       const icon = r.status === 'confirmed' ? '✅' : '⏳';
@@ -2660,21 +2674,22 @@ async function handleNextClient(chatId: number, salon: SalonRef): Promise<void> 
   ` as { id: string; client_name: string; client_phone: string; time: string; service_name: string; service_duration: number | null; date: string }[];
 
   if (rows.length === 0) {
-    await sendTelegramMessage(chatId, 'ℹ️ Няма предстоящи записи.');
+    await sendTelegramMessage(chatId, salonIsEn(salon) ? 'ℹ️ There are no upcoming bookings.' : 'ℹ️ Няма предстоящи записи.');
     return;
   }
 
   const r = rows[0]!;
   const isToday = r.date === todayStr;
-  const dateLabel = isToday ? 'Днес' : formatDateBg(r.date);
+  const isEn = salonIsEn(salon);
+  const dateLabel = isToday ? (isEn ? 'Today' : 'Днес') : formatDateForSalon(salon, r.date);
 
   const lines = [
-    `👤 <b>Следващ клиент:</b>`,
+    `👤 <b>${isEn ? 'Next client:' : 'Следващ клиент:'}</b>`,
     '',
-    `🗓 ${dateLabel} в ${r.time}`,
+    `🗓 ${dateLabel} ${isEn ? 'at' : 'в'} ${r.time}`,
     `👤 ${r.client_name}`,
     `📞 ${r.client_phone}`,
-    `✂️ ${r.service_name}${r.service_duration ? ` (${r.service_duration} мин)` : ''}`,
+    `✂️ ${r.service_name}${r.service_duration ? ` (${r.service_duration} ${isEn ? 'min' : 'мин'})` : ''}`,
   ];
   await sendTelegramMessage(chatId, lines.join('\n'));
 
@@ -2701,7 +2716,7 @@ async function handleConfirmBooking(chatId: number, salon: SalonRef, clientName:
   ` as { id: string; client_name: string; date: string; time: string; service_name: string }[];
 
   if (rows.length === 0) {
-    await sendTelegramMessage(chatId, `❌ Не намерих незатвърдена резервация за <b>${clientName}</b>.`);
+    await sendTelegramMessage(chatId, salonIsEn(salon) ? `❌ I could not find a pending booking for <b>${clientName}</b>.` : `❌ Не намерих незатвърдена резервация за <b>${clientName}</b>.`);
     return;
   }
 
@@ -2709,7 +2724,9 @@ async function handleConfirmBooking(chatId: number, salon: SalonRef, clientName:
   await sql`UPDATE bookings SET status = 'confirmed' WHERE CAST(id AS text) = ${r.id}`;
   await sendTelegramMessage(
     chatId,
-    `✅ Потвърдена резервация:\n👤 ${r.client_name}\n🗓 ${formatDateBg(r.date)} в ${r.time}\n✂️ ${r.service_name}`,
+    salonIsEn(salon)
+      ? `✅ Booking confirmed:\n👤 ${r.client_name}\n🗓 ${formatDateForSalon(salon, r.date)} at ${r.time}\n✂️ ${r.service_name}`
+      : `✅ Потвърдена резервация:\n👤 ${r.client_name}\n🗓 ${formatDateForSalon(salon, r.date)} в ${r.time}\n✂️ ${r.service_name}`,
   );
 }
 
@@ -2726,7 +2743,7 @@ async function handleCancelBooking(chatId: number, salon: SalonRef, date: string
   ` as { id: string; client_name: string; service_name: string }[];
 
   if (rows.length === 0) {
-    await sendTelegramMessage(chatId, `❌ Не намерих резервация в ${time} на ${formatDateBg(date)}.`);
+    await sendTelegramMessage(chatId, salonIsEn(salon) ? `❌ I could not find a booking at ${time} on ${formatDateForSalon(salon, date)}.` : `❌ Не намерих резервация в ${time} на ${formatDateForSalon(salon, date)}.`);
     return;
   }
 
@@ -2734,7 +2751,9 @@ async function handleCancelBooking(chatId: number, salon: SalonRef, date: string
   await sql`UPDATE bookings SET status = 'cancelled' WHERE CAST(id AS text) = ${r.id}`;
   await sendTelegramMessage(
     chatId,
-    `🚫 Резервацията е отказана:\n👤 ${r.client_name}\n🗓 ${formatDateBg(date)} в ${time}\n✂️ ${r.service_name}`,
+    salonIsEn(salon)
+      ? `🚫 Booking cancelled:\n👤 ${r.client_name}\n🗓 ${formatDateForSalon(salon, date)} at ${time}\n✂️ ${r.service_name}`
+      : `🚫 Резервацията е отказана:\n👤 ${r.client_name}\n🗓 ${formatDateForSalon(salon, date)} в ${time}\n✂️ ${r.service_name}`,
   );
 }
 
@@ -2751,19 +2770,20 @@ async function handlePendingBookings(chatId: number, salon: SalonRef): Promise<v
   ` as { id: string; client_name: string; client_phone: string; date: string; time: string; service_name: string; service_price: number | null }[];
 
   if (rows.length === 0) {
-    await sendTelegramMessage(chatId, '✅ Няма незатвърдени резервации.');
+    await sendTelegramMessage(chatId, salonIsEn(salon) ? '✅ There are no pending bookings.' : '✅ Няма незатвърдени резервации.');
     return;
   }
 
-  const lines = [`⏳ <b>Незатвърдени резервации (${rows.length}):</b>`, ''];
+  const isEn = salonIsEn(salon);
+  const lines = [isEn ? `⏳ <b>Pending bookings (${rows.length}):</b>` : `⏳ <b>Незатвърдени резервации (${rows.length}):</b>`, ''];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]!;
     const priceStr = r.service_price != null ? ` — ${r.service_price} €` : '';
-    lines.push(`${i + 1}. ${formatDateBg(r.date, { weekday: 'short', day: 'numeric', month: 'short' })} ${r.time} — <b>${r.client_name}</b> (${r.service_name}${priceStr})`);
+    lines.push(`${i + 1}. ${formatDateForSalon(salon, r.date, { weekday: 'short', day: 'numeric', month: 'short' })} ${r.time} — <b>${r.client_name}</b> (${r.service_name}${priceStr})`);
   }
   const total = rows.reduce((sum, r) => sum + (Number(r.service_price) || 0), 0);
-  if (total > 0) lines.push('', `💰 <b>Общо: ${total} €</b>`);
-  lines.push('', '💡 Напиши <code>потвърди 1</code> (или <code>потвърди Деляна</code>) — клиентът получава потвърждение по имейл.');
+  if (total > 0) lines.push('', isEn ? `💰 <b>Total: ${total} €</b>` : `💰 <b>Общо: ${total} €</b>`);
+  lines.push('', isEn ? '💡 Type <code>confirm 1</code> (or <code>confirm Deliana</code>) and the client will receive an email confirmation.' : '💡 Напиши <code>потвърди 1</code> (или <code>потвърди Деляна</code>) — клиентът получава потвърждение по имейл.');
   await sendTelegramMessage(chatId, lines.join('\n'));
 
   await setState(chatId, {
@@ -2803,7 +2823,7 @@ async function handleRescheduleBooking(
   ` as { id: string; client_name: string; date: string; time: string; service_name: string; service_duration: number | null }[];
 
   if (rows.length === 0) {
-    await sendTelegramMessage(chatId, `❌ Не намерих резервация на <b>${clientName}</b> за ${formatDateBg(fromDate)}.`);
+    await sendTelegramMessage(chatId, salonIsEn(salon) ? `❌ I could not find a booking for <b>${clientName}</b> on ${formatDateForSalon(salon, fromDate)}.` : `❌ Не намерих резервация на <b>${clientName}</b> за ${formatDateForSalon(salon, fromDate)}.`);
     return;
   }
 
@@ -2830,21 +2850,22 @@ async function handleRescheduleBooking(
   });
 
   // Build owner report
+  const isEn = salonIsEn(salon);
   const lines = [
-    `✅ <b>Резервацията е преместена</b>`,
+    isEn ? `✅ <b>The booking was moved</b>` : `✅ <b>Резервацията е преместена</b>`,
     ``,
     `👤 <b>${r.client_name}</b>`,
     `✂️ ${r.service_name}`,
-    `📅 ${formatDateBg(toDate)} в <b>${resolvedTime}</b>`,
+    `📅 ${formatDateForSalon(salon, toDate)} ${isEn ? 'at' : 'в'} <b>${resolvedTime}</b>`,
     ``,
   ];
 
   if (rescheduleResult.emailSent) {
-    lines.push(`📧 Изпратих имейл уведомление на клиента.`);
+    lines.push(isEn ? '📧 I sent an email notification to the client.' : `📧 Изпратих имейл уведомление на клиента.`);
   } else if (rescheduleResult.emailReason === 'no_email') {
-    lines.push(`⚠️ Клиентът няма имейл адрес — не беше изпратено уведомление.`);
+    lines.push(isEn ? '⚠️ The client has no email address, so no notification was sent.' : `⚠️ Клиентът няма имейл адрес — не беше изпратено уведомление.`);
   } else if (rescheduleResult.emailReason === 'send_failed') {
-    lines.push(`⚠️ Имейлът не беше изпратен поради техническа грешка.`);
+    lines.push(isEn ? '⚠️ The email was not sent because of a technical error.' : `⚠️ Имейлът не беше изпратен поради техническа грешка.`);
   }
 
   await sendTelegramMessage(chatId, lines.join('\n'));
@@ -3852,12 +3873,14 @@ function findServiceIndex(services: ServiceItem[], name: string): number {
   );
 }
 
-function listServicesText(services: ServiceItem[]): string {
-  if (services.length === 0) return 'Все още няма добавени услуги.';
-  return 'Налични услуги:\n' + services.map((s) => `• ${s.name}`).join('\n');
+function listServicesText(services: ServiceItem[], language: string | null | undefined = 'bg'): string {
+  const isEn = resolveSalonLocale(language) === 'en';
+  if (services.length === 0) return isEn ? 'There are no added services yet.' : 'Все още няма добавени услуги.';
+  return (isEn ? 'Available services:\n' : 'Налични услуги:\n') + services.map((s) => `• ${s.name}`).join('\n');
 }
 
-function pluralBooking(n: number): string {
+function pluralBooking(n: number, salon?: SalonRef): string {
+  if (salon && salonIsEn(salon)) return n === 1 ? 'booking' : 'bookings';
   return n === 1 ? 'запис' : 'записа';
 }
 

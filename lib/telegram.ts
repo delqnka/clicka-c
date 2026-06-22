@@ -1,5 +1,6 @@
 import { formatSalonPrice } from '@/lib/salon-currency';
 import { fetchWithRetry } from '@/lib/http-retry';
+import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
@@ -24,10 +25,10 @@ export async function getTelegramFilePath(fileId: string): Promise<string | null
   }
 }
 
-function formatBgDateDMY(dateStr: string): string {
+function formatDateDMY(dateStr: string, language?: string | null): string {
   const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('bg-BG');
+  return d.toLocaleDateString(toLocaleTag(resolveSalonLocale(language)));
 }
 
 export async function telegramPost(method: string, body: Record<string, unknown>): Promise<unknown> {
@@ -81,15 +82,18 @@ export interface BookingTelegramDetails {
   time: string;
   notes?: string | null;
   salonName: string;
+  language?: string | null;
 }
 
 export async function sendBookingTelegram(
   chatId: string,
   booking: BookingTelegramDetails
 ): Promise<void> {
-  const formattedDate = formatBgDateDMY(booking.date);
+  const locale = resolveSalonLocale(booking.language);
+  const formattedDate = formatDateDMY(booking.date, booking.language);
+  const isEn = locale === 'en';
   const lines: string[] = [
-    `<b>📅 Нова резервация</b>`,
+    `<b>📅 ${isEn ? 'New booking' : 'Нова резервация'}</b>`,
     `<b>${booking.salonName}</b>`,
     '',
     `👤 ${booking.clientName}`,
@@ -101,9 +105,9 @@ export async function sendBookingTelegram(
   lines.push(`✂️ ${booking.serviceName}`);
 
   if (booking.servicePrice != null) lines.push(`💰 ${formatSalonPrice(booking.servicePrice)}`);
-  if (booking.serviceDuration) lines.push(`⏱ ${booking.serviceDuration} мин`);
+  if (booking.serviceDuration) lines.push(`⏱ ${booking.serviceDuration} ${isEn ? 'min' : 'мин'}`);
 
-  lines.push(`🗓 ${formattedDate} в ${booking.time}`);
+  lines.push(`🗓 ${formattedDate} ${isEn ? 'at' : 'в'} ${booking.time}`);
 
   if (booking.notes) lines.push(`📝 ${booking.notes}`);
 

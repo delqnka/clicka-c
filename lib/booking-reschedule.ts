@@ -35,7 +35,7 @@ export async function onBookingRescheduled(opts: {
     SELECT
       b.client_name, b.client_email,
       b.service_name,
-      s.name AS salon_name, s.phone AS salon_phone
+      s.name AS salon_name, s.phone AS salon_phone, s.language
     FROM bookings b
     JOIN salons s ON CAST(s.id AS text) = b.salon_id
     WHERE CAST(b.id AS text) = ${opts.bookingId}
@@ -46,6 +46,7 @@ export async function onBookingRescheduled(opts: {
     service_name: string;
     salon_name: string;
     salon_phone: string | null;
+    language: string | null;
   }[];
 
   if (rows.length === 0) return result;
@@ -64,6 +65,7 @@ export async function onBookingRescheduled(opts: {
         salonName: r.salon_name,
         salonPhone: r.salon_phone ?? undefined,
         salonId: opts.salonId,
+        language: r.language,
       });
       result.emailSent = true;
     } catch (err) {

@@ -18,7 +18,7 @@ import type { BookingCatalogService } from '@/lib/booking-modal-catalog';
 import { useBookingFlow } from './useBookingFlow';
 import type { BookingServiceItem, BookingWidgetHandle, BookingWidgetProps } from './types';
 import { I18nProvider } from '@/lib/i18n-react';
-import type { Locale } from '@/lib/i18n';
+import { normalizeLocale } from '@/lib/i18n';
 
 const SalonBookingModal = lazy(() =>
   import('@/components/salon/SalonBookingModal').then((m) => ({ default: m.SalonBookingModal })),
@@ -221,8 +221,10 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
     }, [serviceCatalog]);
 
     // ── Locale ────────────────────────────────────────────────────────
-    const lang = (typeof salon.language === 'string' ? salon.language : 'bg') as Locale;
-    const resolvedLocale = localeProp ?? (lang === 'en' ? 'en-US' : 'bg-BG');
+    const providerLocale = normalizeLocale(
+      localeProp ?? (typeof salon.language === 'string' ? salon.language : 'bg'),
+    );
+    const resolvedLocale = localeProp ?? (providerLocale === 'en' ? 'en-US' : 'bg-BG');
 
     // ── Derived display props ─────────────────────────────────────────
     const primaryColor = typeof salon.primary_color === 'string' && salon.primary_color
@@ -230,7 +232,7 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
       : '#5B21B6';
 
     return (
-      <I18nProvider locale={lang}>
+      <I18nProvider locale={providerLocale}>
         <BookingWidgetInner
           forwardedRef={ref}
           slug={slug}

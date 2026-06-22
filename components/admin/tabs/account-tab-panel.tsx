@@ -3,6 +3,7 @@
 import { useState, type CSSProperties, type FormEvent } from 'react';
 import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField } from '@/components/admin/admin-ui';
+import { type Locale } from '@/lib/i18n';
 
 type AccountInfo = {
   displayName?: string | null;
@@ -25,12 +26,15 @@ export function AccountTabPanel({
   inp,
   initialAccount,
   onDisplayNameChange,
+  locale,
 }: {
   slug: string;
   inp: CSSProperties;
   initialAccount: AccountInfo;
   onDisplayNameChange?: (name: string | null) => void;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   const [info, setInfo] = useState<AccountInfo>(initialAccount);
   const [subTab, setSubTab] = useState<SubTab>('profile');
   const [notice, setNotice] = useState('');
@@ -64,14 +68,14 @@ export function AccountTabPanel({
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; displayName?: string };
-      if (!res.ok) throw new Error(data.error || 'Грешка при запазване на името');
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Error while saving the name' : 'Грешка при запазване на името'));
       const nextDisplayName = data.displayName ?? profileForm.displayName.trim();
       setInfo((p) => ({ ...p, displayName: nextDisplayName }));
       setProfileForm({ displayName: nextDisplayName });
       onDisplayNameChange?.(nextDisplayName || null);
-      setNotice(data.message ?? 'Името е обновено.');
+      setNotice(data.message ?? (isEn ? 'Name updated.' : 'Името е обновено.'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Грешка');
+      setError(err instanceof Error ? err.message : (isEn ? 'Error' : 'Грешка'));
     } finally {
       setBusy(null);
     }
@@ -94,7 +98,7 @@ export function AccountTabPanel({
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; loginEmail?: string; pendingEmail?: string };
-      if (!res.ok) throw new Error(data.error || 'Грешка при смяна на имейла');
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Error while changing the email' : 'Грешка при смяна на имейла'));
       if (data.pendingEmail) {
         setInfo((p) => ({ ...p, pendingEmail: data.pendingEmail }));
       } else {
@@ -102,9 +106,9 @@ export function AccountTabPanel({
         setInfo((p) => ({ ...p, loginEmail: nextEmail, pendingEmail: null }));
       }
       setEmailForm({ newEmail: '', currentPassword: '' });
-      setNotice(data.message ?? 'Имейлът е сменен.');
+      setNotice(data.message ?? (isEn ? 'Email updated.' : 'Имейлът е сменен.'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Грешка');
+      setError(err instanceof Error ? err.message : (isEn ? 'Error' : 'Грешка'));
     } finally {
       setBusy(null);
     }
@@ -127,12 +131,12 @@ export function AccountTabPanel({
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
-      if (!res.ok) throw new Error(data.error || 'Грешка при смяна на паролата');
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Error while changing the password' : 'Грешка при смяна на паролата'));
       setInfo((p) => ({ ...p, hasPassword: true }));
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setNotice(data.message ?? 'Паролата е сменена.');
+      setNotice(data.message ?? (isEn ? 'Password updated.' : 'Паролата е сменена.'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Грешка');
+      setError(err instanceof Error ? err.message : (isEn ? 'Error' : 'Грешка'));
     } finally {
       setBusy(null);
     }
@@ -149,10 +153,10 @@ export function AccountTabPanel({
         body: JSON.stringify({ email: info.loginEmail, slug }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(data.error || 'Грешка');
-      setNotice(`Линк изпратен на ${info.loginEmail}.`);
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Error' : 'Грешка'));
+      setNotice(isEn ? `Link sent to ${info.loginEmail}.` : `Линк изпратен на ${info.loginEmail}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Грешка');
+      setError(err instanceof Error ? err.message : (isEn ? 'Error' : 'Грешка'));
     } finally {
       setBusy(null);
     }
@@ -162,8 +166,10 @@ export function AccountTabPanel({
     <div style={{ display: 'grid', gap: 10 }}>
       {info.pendingEmail ? (
         <p style={{ margin: 0, fontSize: 13, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', padding: '8px 10px', borderRadius: 8, lineHeight: 1.5 }}>
-          ⏳ Очаква потвърждение: <strong>{info.pendingEmail}</strong><br />
-          Проверете новия имейл и натиснете линка за потвърждение. Текущият имейл остава активен.
+          {isEn ? '⏳ Pending confirmation:' : '⏳ Очаква потвърждение:'} <strong>{info.pendingEmail}</strong><br />
+          {isEn
+            ? 'Check the new email and use the confirmation link. The current email stays active.'
+            : 'Проверете новия имейл и натиснете линка за потвърждение. Текущият имейл остава активен.'}
         </p>
       ) : null}
       {notice ? (
@@ -180,7 +186,7 @@ export function AccountTabPanel({
       <div style={{ display: 'flex', gap: 6 }}>
         {(['profile', 'email', 'password'] as const).map((tab) => {
           const active = subTab === tab;
-          const label = tab === 'profile' ? 'Име' : tab === 'email' ? 'Имейл' : 'Парола';
+          const label = tab === 'profile' ? (isEn ? 'Name' : 'Име') : tab === 'email' ? (isEn ? 'Email' : 'Имейл') : (isEn ? 'Password' : 'Парола');
           return (
             <button
               key={tab}
@@ -206,14 +212,14 @@ export function AccountTabPanel({
 
       {subTab === 'profile' ? (
         <form onSubmit={(e) => void submitProfile(e)} style={{ display: 'grid', gap: 8 }}>
-          <AdminField label="Име" compact>
+          <AdminField label={isEn ? 'Name' : 'Име'} compact>
             <input
               type="text"
               autoComplete="name"
               value={profileForm.displayName}
               onChange={(e) => setProfileForm({ displayName: e.target.value })}
               style={fieldInp}
-              placeholder="Вашето име"
+              placeholder={isEn ? 'Your name' : 'Вашето име'}
               minLength={2}
               maxLength={80}
               required
@@ -229,12 +235,12 @@ export function AccountTabPanel({
               cursor: busy === 'profile' ? 'wait' : 'pointer',
             }}
           >
-            {busy === 'profile' ? 'Запазване…' : 'Запази името'}
+            {busy === 'profile' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save name' : 'Запази името')}
           </button>
         </form>
       ) : subTab === 'email' ? (
         <form onSubmit={(e) => void submitEmail(e)} style={{ display: 'grid', gap: 8 }}>
-          <AdminField label="Текущ имейл" compact>
+          <AdminField label={isEn ? 'Current email' : 'Текущ имейл'} compact>
             <input
               type="email"
               value={info.loginEmail}
@@ -242,7 +248,7 @@ export function AccountTabPanel({
               style={{ ...fieldInp, color: ADMIN_T.muted, cursor: 'default', background: '#FAFAFA' }}
             />
           </AdminField>
-          <AdminField label="Нов имейл" compact>
+          <AdminField label={isEn ? 'New email' : 'Нов имейл'} compact>
             <input
               type="email"
               autoComplete="email"
@@ -253,7 +259,7 @@ export function AccountTabPanel({
               required
             />
           </AdminField>
-          <AdminField label="Парола за потвърждение" compact>
+          <AdminField label={isEn ? 'Password for confirmation' : 'Парола за потвърждение'} compact>
             <input
               type="password"
               autoComplete="current-password"
@@ -273,14 +279,14 @@ export function AccountTabPanel({
               cursor: busy === 'email' ? 'wait' : 'pointer',
             }}
           >
-            {busy === 'email' ? 'Запазване…' : 'Запази имейла'}
+            {busy === 'email' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save email' : 'Запази имейла')}
           </button>
         </form>
       ) : (
         <form onSubmit={(e) => void submitPassword(e)} style={{ display: 'grid', gap: 8 }}>
           {!info.hasPassword ? (
             <p style={{ margin: 0, fontSize: 12, color: '#92400E' }}>
-              Няма зададена парола.{' '}
+              {isEn ? 'No password is set.' : 'Няма зададена парола.'}{' '}
               <button
                 type="button"
                 onClick={() => void sendResetLink()}
@@ -296,12 +302,12 @@ export function AccountTabPanel({
                   fontSize: 12,
                 }}
               >
-                Изпрати линк
+                {isEn ? 'Send link' : 'Изпрати линк'}
               </button>
             </p>
           ) : null}
           {info.hasPassword ? (
-            <AdminField label="Текуща парола" compact>
+          <AdminField label={isEn ? 'Current password' : 'Текуща парола'} compact>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -312,7 +318,7 @@ export function AccountTabPanel({
               />
             </AdminField>
           ) : null}
-          <AdminField label="Нова парола" compact>
+          <AdminField label={isEn ? 'New password' : 'Нова парола'} compact>
             <input
               type="password"
               autoComplete="new-password"
@@ -323,7 +329,7 @@ export function AccountTabPanel({
               required
             />
           </AdminField>
-          <AdminField label="Потвърди парола" compact>
+          <AdminField label={isEn ? 'Confirm password' : 'Потвърди парола'} compact>
             <input
               type="password"
               autoComplete="new-password"
@@ -344,7 +350,7 @@ export function AccountTabPanel({
                 cursor: busy === 'password' ? 'wait' : 'pointer',
               }}
             >
-              {busy === 'password' ? 'Запазване…' : 'Запази паролата'}
+              {busy === 'password' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save password' : 'Запази паролата')}
             </button>
             <button
               type="button"
@@ -360,7 +366,7 @@ export function AccountTabPanel({
                 cursor: busy === 'reset' ? 'wait' : 'pointer',
               }}
             >
-              {busy === 'reset' ? 'Изпращаме…' : 'Забравена парола?'}
+              {busy === 'reset' ? (isEn ? 'Sending…' : 'Изпращаме…') : (isEn ? 'Forgot password?' : 'Забравена парола?')}
             </button>
           </div>
         </form>

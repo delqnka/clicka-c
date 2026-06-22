@@ -6,6 +6,7 @@ import { ADMIN_DAYS } from '@/components/admin/admin-constants';
 import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
+import { type Locale } from '@/lib/i18n';
 
 type DayKey = (typeof ADMIN_DAYS)[number]['key'];
 
@@ -17,6 +18,7 @@ export function HoursTabPanel({
   btn,
   busyKey,
   saveHours,
+  locale,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -25,7 +27,9 @@ export function HoursTabPanel({
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   busyKey: string;
   saveHours: () => void;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   const [activeDayKey, setActiveDayKey] = useState<DayKey>('monday');
 
   const timeInp = (extra?: CSSProperties): CSSProperties => ({
@@ -75,7 +79,7 @@ export function HoursTabPanel({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {d.closed ? (
-              <span style={{ flex: 1, fontSize: 13, color: ADMIN_T.muted }}>Почивен ден</span>
+              <span style={{ flex: 1, fontSize: 13, color: ADMIN_T.muted }}>{isEn ? 'Day off' : 'Почивен ден'}</span>
             ) : (
               <>
                 <input
@@ -111,7 +115,7 @@ export function HoursTabPanel({
             )}
             <button
               type="button"
-              aria-label={d.closed ? 'Отвори' : 'Затвори'}
+              aria-label={d.closed ? (isEn ? 'Open' : 'Отвори') : (isEn ? 'Close' : 'Затвори')}
               onClick={() =>
                 setSite((p) => ({
                   ...p,
@@ -204,7 +208,7 @@ export function HoursTabPanel({
               />
             </div>
           ) : (
-            <span style={{ fontSize: 12, color: ADMIN_T.subtle }}>Почивен ден</span>
+            <span style={{ fontSize: 12, color: ADMIN_T.subtle }}>{isEn ? 'Day off' : 'Почивен ден'}</span>
           )}
           <label
             style={{
@@ -230,7 +234,7 @@ export function HoursTabPanel({
                 }))
               }
             />
-            Почивен
+            {isEn ? 'Off' : 'Почивен'}
           </label>
         </div>
       </div>
@@ -239,7 +243,7 @@ export function HoursTabPanel({
 
   return (
     <AdminSection
-      title="Работно време"
+      title={isEn ? 'Working hours' : 'Работно време'}
       compact={isMobile}
       action={
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -262,7 +266,7 @@ export function HoursTabPanel({
             }}
           >
             <Plus size={13} strokeWidth={2.25} />
-            Блокиран ден
+            {isEn ? 'Blocked day' : 'Блокиран ден'}
           </button>
           <button
             type="button"
@@ -274,7 +278,7 @@ export function HoursTabPanel({
               cursor: busyKey === 'hours' ? 'wait' : 'pointer',
             }}
           >
-            {busyKey === 'hours' ? 'Запазване…' : 'Запази'}
+            {busyKey === 'hours' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save' : 'Запази')}
           </button>
         </div>
       }
@@ -327,11 +331,11 @@ export function HoursTabPanel({
 
       <div style={{ marginTop: isMobile ? 10 : 12 }}>
         <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>
-          Блокирани дни и часове
+          {isEn ? 'Blocked days and time slots' : 'Блокирани дни и часове'}
         </p>
         <div style={{ display: 'grid', gap: 6 }}>
           {site.bookingBlocks.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>Няма блокирани дни.</p>
+            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>{isEn ? 'There are no blocked days.' : 'Няма блокирани дни.'}</p>
           ) : null}
           {site.bookingBlocks.map((block, i) => (
             <div
@@ -422,7 +426,7 @@ export function HoursTabPanel({
                       }))
                     }
                   />
-                  Цял ден
+                  {isEn ? 'All day' : 'Цял ден'}
                 </label>
                 <button
                   type="button"
@@ -453,10 +457,10 @@ export function HoursTabPanel({
 
       <div style={{ marginTop: isMobile ? 10 : 14, borderTop: `1px solid ${ADMIN_T.border}`, paddingTop: isMobile ? 10 : 14 }}>
         <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>
-          Интервал между часовете
+          {isEn ? 'Time slot interval' : 'Интервал между часовете'}
         </p>
         <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.subtle }}>
-          На какъв интервал се показват свободните часове на клиентите.
+          {isEn ? 'How often available time slots are shown to clients.' : 'На какъв интервал се показват свободните часове на клиентите.'}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {[15, 20, 30, 45, 60].map((min) => (
@@ -478,7 +482,7 @@ export function HoursTabPanel({
                 whiteSpace: 'nowrap',
               }}
             >
-              {min} мин
+              {min} {isEn ? 'min' : 'мин'}
             </button>
           ))}
         </div>
@@ -486,10 +490,10 @@ export function HoursTabPanel({
 
       <div style={{ marginTop: isMobile ? 10 : 14, borderTop: `1px solid ${ADMIN_T.border}`, paddingTop: isMobile ? 10 : 14 }}>
         <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>
-          Прозорец за резервации
+          {isEn ? 'Booking window' : 'Прозорец за резервации'}
         </p>
         <p style={{ margin: '0 0 8px', fontSize: 12, color: ADMIN_T.subtle }}>
-          Колко дни напред могат клиентите да резервират онлайн.
+          {isEn ? 'How many days ahead clients can book online.' : 'Колко дни напред могат клиентите да резервират онлайн.'}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {[14, 30, 60, 90, 180, 365].map((days) => (
@@ -511,7 +515,7 @@ export function HoursTabPanel({
                 whiteSpace: 'nowrap',
               }}
             >
-              {days === 365 ? '1 година' : days === 180 ? '6 месеца' : days === 90 ? '3 месеца' : `${days} дни`}
+              {days === 365 ? (isEn ? '1 year' : '1 година') : days === 180 ? (isEn ? '6 months' : '6 месеца') : days === 90 ? (isEn ? '3 months' : '3 месеца') : `${days} ${isEn ? 'days' : 'дни'}`}
             </button>
           ))}
         </div>

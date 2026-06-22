@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
+import { resolveSalonLocale } from '@/lib/salon-locale';
 import {
   normalizeSalonFaqItems,
   normalizeSalonVisitorInfo,
@@ -41,6 +42,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const next = {
+    language: resolveSalonLocale(typeof body.language === 'string' ? body.language : 'bg'),
     name: typeof body.name === 'string' ? body.name.trim() : '',
     category: typeof body.category === 'string' ? body.category.trim() : '',
     phone: typeof body.phone === 'string' ? body.phone.trim() : '',
@@ -90,16 +92,21 @@ export async function PATCH(request: NextRequest) {
   if (!next.name) {
     return NextResponse.json({ error: 'Името на салона е задължително.' }, { status: 400 });
   }
+  const defaultAbout =
+    next.language === 'en'
+      ? `${next.name} accepts online bookings through its own website.`
+      : `${next.name} предлага онлайн резервации през собствен сайт.`;
 
   await sql`
     UPDATE salons
     SET
       name = ${next.name},
+      language = ${next.language},
       category = ${next.category || null},
       phone = ${next.phone || null},
       city = ${next.city || null},
       address = ${next.address || ''},
-      about = ${next.about || `${next.name} предлага онлайн резервации през собствен сайт.`},
+      about = ${next.about || defaultAbout},
       instagram_username = ${next.instagram || ''},
       facebook_username = ${next.facebook || ''},
       tiktok_username = ${next.tiktok || null},
@@ -128,11 +135,12 @@ export async function PATCH(request: NextRequest) {
     success: true,
     site: {
       name: next.name,
+      language: next.language,
       category: next.category,
       phone: next.phone,
       city: next.city,
       address: next.address,
-      about: next.about || `${next.name} предлага онлайн резервации през собствен сайт.`,
+      about: next.about || defaultAbout,
       instagram: next.instagram,
       facebook: next.facebook,
       tiktok: next.tiktok,

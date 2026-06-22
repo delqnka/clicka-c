@@ -7,6 +7,7 @@ import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminInfoCard, AdminSection } from '@/components/admin/admin-ui';
 import { ResendIntegrationCard } from '@/components/admin/ResendIntegrationCard';
 import type { AdminSitePayload } from '@/lib/admin-site';
+import { type Locale } from '@/lib/i18n';
 
 const TELEGRAM_BOT_USERNAME =
   process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.trim() || 'clicka_booking_bot';
@@ -63,6 +64,7 @@ export function IntegrationsTabPanel({
   calendarStatus,
   loadCalendarStatus,
   onSaveExternalIcsUrl,
+  locale,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -85,29 +87,30 @@ export function IntegrationsTabPanel({
   calendarStatus: CalendarStatus;
   loadCalendarStatus: () => void | Promise<void>;
   onSaveExternalIcsUrl: (url: string) => void | Promise<void>;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   return (
-    <AdminSection title="Интеграции" desc="Telegram, календар и Google отзиви.">
+    <AdminSection title={isEn ? 'Integrations' : 'Интеграции'} desc={isEn ? 'Telegram, calendar and Google reviews.' : 'Telegram, календар и Google отзиви.'}>
       <div style={{ display: 'grid', gap: 10 }}>
         <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'}>
           {site.telegramChatId ? (
             <div style={{ display: 'grid', gap: 6 }}>
               <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
-                Telegram ботът е свързан
+                {isEn ? 'The Telegram bot is connected' : 'Telegram ботът е свързан'}
               </p>
               <details>
                 <summary style={{ fontSize: 13, fontWeight: 600, color: ADMIN_T.text, cursor: 'pointer' }}>
-                  Какво можеш да правиш през бота?
+                  {isEn ? 'What can you do through the bot?' : 'Какво можеш да правиш през бота?'}
                 </summary>
                 <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 6, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.5 }}>
-                  <BulletRow>Получаваш известия за нови резервации, отмени и промени</BulletRow>
-                  <BulletRow>Питаш за резервациите си — „колко часа имам утре", „кой е следващият ми клиент"</BulletRow>
-                  <BulletRow>Виждаш оборот и статистика — „оборот тази седмица", „топ услуги"</BulletRow>
-                  <BulletRow>Потвърждаваш, отменяш или местиш резервации с едно съобщение</BulletRow>
-                  <BulletRow>Добавяш нов клиент и записваш час направо от чата</BulletRow>
-                  <BulletRow>Блокираш часове или цели дни — „зает 14:00-16:00 утре", „почивен ден утре"</BulletRow>
-                  <BulletRow>Изпращаш SMS напомняния на клиенти</BulletRow>
-                  <BulletRow>Управляваш услугите си — добавяне, редакция на цена, изтриване</BulletRow>
+                  <BulletRow>{isEn ? 'Receive notifications for new bookings, cancellations and changes' : 'Получаваш известия за нови резервации, отмени и промени'}</BulletRow>
+                  <BulletRow>{isEn ? 'Ask about your bookings, like "how many appointments do I have tomorrow" or "who is my next client"' : 'Питаш за резервациите си — „колко часа имам утре", „кой е следващият ми клиент"'}</BulletRow>
+                  <BulletRow>{isEn ? 'See revenue and statistics, like "revenue this week" and "top services"' : 'Виждаш оборот и статистика — „оборот тази седмица", „топ услуги"'}</BulletRow>
+                  <BulletRow>{isEn ? 'Confirm, cancel or move bookings with one message' : 'Потвърждаваш, отменяш или местиш резервации с едно съобщение'}</BulletRow>
+                  <BulletRow>{isEn ? 'Add a new client and book an appointment directly from the chat' : 'Добавяш нов клиент и записваш час направо от чата'}</BulletRow>
+                  <BulletRow>{isEn ? 'Block time slots or full days, like "busy 14:00-16:00 tomorrow"' : 'Блокираш часове или цели дни — „зает 14:00-16:00 утре", „почивен ден утре"'}</BulletRow>
+                  <BulletRow>{isEn ? 'Manage your services, including add, edit price and delete' : 'Управляваш услугите си — добавяне, редакция на цена, изтриване'}</BulletRow>
                 </ul>
               </details>
             </div>
@@ -127,9 +130,9 @@ export function IntegrationsTabPanel({
                 <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.038 9.593c-.152.678-.549.843-1.112.524l-3.078-2.268-1.484 1.428c-.164.164-.302.302-.619.302l.221-3.131 5.703-5.152c.248-.221-.054-.344-.383-.123L7.12 14.073l-3.031-.947c-.658-.206-.671-.658.138-.975l11.84-4.564c.548-.197 1.028.134.495.661z"/>
               </svg>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>Свържи Telegram</p>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{isEn ? 'Connect Telegram' : 'Свържи Telegram'}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
-                  Получавай известия за резервации директно в Telegram
+                  {isEn ? 'Receive booking notifications directly in Telegram' : 'Получавай известия за резервации директно в Telegram'}
                 </p>
               </div>
               <button
@@ -155,7 +158,7 @@ export function IntegrationsTabPanel({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {busyKey === 'copied-tg' ? 'Копирано ✓' : 'Свържи →'}
+                {busyKey === 'copied-tg' ? (isEn ? 'Copied ✓' : 'Копирано ✓') : (isEn ? 'Connect →' : 'Свържи →')}
               </button>
             </div>
           )}
@@ -163,9 +166,9 @@ export function IntegrationsTabPanel({
             <p style={{ margin: '8px 0 0', fontSize: 12, color: ADMIN_T.subtle, lineHeight: 1.5 }}>
               {site.onboardingCode
                 ? <>
-                    Бутонът копира кода и отваря {' '}
+                    {isEn ? 'The button copies the code and opens ' : 'Бутонът копира кода и отваря '}
                     <a href={`https://t.me/${TELEGRAM_BOT_USERNAME}`} target="_blank" rel="noreferrer" style={{ color: ADMIN_T.text, fontWeight: 600 }}>@{TELEGRAM_BOT_USERNAME}</a>
-                    {' '}— просто го постави в чата.
+                    {isEn ? ' — just paste it in the chat.' : ' — просто го постави в чата.'}
                     <span style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -191,7 +194,7 @@ export function IntegrationsTabPanel({
                             setTimeout(() => setBusyKey((k) => (k === 'copied-tg-code' ? '' : k)), 2000);
                           }
                         }}
-                        title="Копирай кода"
+                        title={isEn ? 'Copy code' : 'Копирай кода'}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -209,7 +212,7 @@ export function IntegrationsTabPanel({
                       </button>
                     </span>
                   </>
-                : 'Кодът се генерира при активиране на акаунта.'}
+                : (isEn ? 'The code is generated when the account is activated.' : 'Кодът се генерира при активиране на акаунта.')}
             </p>
           )}
         </AdminInfoCard>

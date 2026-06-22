@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
       bookingDetails: {
         salonName: String(salon.name ?? ''),
         salonOwnerName: salon.owner_name ? String(salon.owner_name) : undefined,
+        language: salon.language ? String(salon.language) : undefined,
         clientName,
         clientEmail: '',
         clientPhone,
@@ -146,6 +147,7 @@ export async function POST(req: NextRequest) {
       },
       telegramDetails: {
         salonName: String(salon.name ?? ''),
+        language: salon.language ? String(salon.language) : undefined,
         clientName,
         clientPhone,
         serviceName,

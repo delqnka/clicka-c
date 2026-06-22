@@ -5,22 +5,26 @@ import { ImagePlus, RefreshCw, UserRound } from 'lucide-react';
 import { adminGrid2, ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
+import { type Locale } from '@/lib/i18n';
 
 function SpecialistPhotoUpload({
   photoUrl,
   busy,
   onUpload,
+  locale,
 }: {
   photoUrl: string;
   busy: boolean;
   onUpload: (file: File | null) => void;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   return (
     <div style={{ display: 'inline-flex', position: 'relative' }}>
       {photoUrl ? (
         <img
           src={photoUrl}
-          alt="Специалист"
+          alt={isEn ? 'Specialist' : 'Специалист'}
           style={{
             display: 'block',
             width: 88,
@@ -49,8 +53,8 @@ function SpecialistPhotoUpload({
         </div>
       )}
       <label
-        aria-label="Качи снимка на специалиста"
-        title="Качи снимка"
+        aria-label={isEn ? 'Upload specialist photo' : 'Качи снимка на специалиста'}
+        title={isEn ? 'Upload photo' : 'Качи снимка'}
         style={{
           position: 'absolute',
           right: -2,
@@ -95,6 +99,7 @@ export function SpecialistTabPanel({
   busyKey,
   saveSpecialist,
   onOwnerPhotoUpload,
+  locale,
 }: {
   site: AdminSitePayload;
   setSite: Dispatch<SetStateAction<AdminSitePayload>>;
@@ -102,10 +107,12 @@ export function SpecialistTabPanel({
   busyKey: string;
   saveSpecialist: () => void;
   onOwnerPhotoUpload: (file: File | null) => void;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   return (
     <AdminSection
-      title="Специалист"
+      title={isEn ? 'Specialist' : 'Специалист'}
       action={
         <button
           type="button"
@@ -117,7 +124,7 @@ export function SpecialistTabPanel({
           }}
           disabled={busyKey === 'specialist'}
         >
-          {busyKey === 'specialist' ? 'Запазване…' : 'Запази'}
+          {busyKey === 'specialist' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save' : 'Запази')}
         </button>
       }
     >
@@ -126,13 +133,14 @@ export function SpecialistTabPanel({
           photoUrl={site.ownerPublicPhotoUrl}
           busy={busyKey === 'upload-owner'}
           onUpload={onOwnerPhotoUpload}
+          locale={locale}
         />
       </div>
       <div style={adminGrid2}>
-        <AdminField label="Име">
+        <AdminField label={isEn ? 'Name' : 'Име'}>
           <input value={site.ownerName} onChange={(e) => setSite((p) => ({ ...p, ownerName: e.target.value }))} style={inp} />
         </AdminField>
-        <AdminField label="Роля">
+        <AdminField label={isEn ? 'Role' : 'Роля'}>
           <input
             value={site.ownerPublicRole}
             onChange={(e) => setSite((p) => ({ ...p, ownerPublicRole: e.target.value }))}
@@ -141,12 +149,12 @@ export function SpecialistTabPanel({
         </AdminField>
       </div>
       <div style={{ marginTop: 12 }}>
-        <AdminField label="Био">
+        <AdminField label="Bio">
           <textarea
             value={site.ownerPublicBio}
             onChange={(e) => setSite((p) => ({ ...p, ownerPublicBio: e.target.value }))}
             style={{ ...inp, minHeight: 96, resize: 'vertical' }}
-            placeholder="Кратко представяне на специалиста..."
+            placeholder={isEn ? 'Short specialist introduction...' : 'Кратко представяне на специалиста...'}
           />
         </AdminField>
       </div>

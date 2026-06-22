@@ -6,6 +6,8 @@ import { sql } from '@/lib/db';
 import { BRAND } from '@/lib/brand';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { tryDecryptSecret } from '@/lib/encryption';
+import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
+import type { Locale } from '@/lib/i18n';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -15,9 +17,10 @@ export interface SalonResendConfig {
   from: string;
   /** Whether per-salon credentials were used (vs platform fallback). */
   isCustom: boolean;
+  locale: Locale;
 }
 
-const salonResendCache = new Map<string, { client: Resend | null; from: string; isCustom: boolean; expiresAt: number }>();
+const salonResendCache = new Map<string, { client: Resend | null; from: string; isCustom: boolean; locale: Locale; expiresAt: number }>();
 const SALON_RESEND_TTL_MS = 60_000;
 
 function senderFromSalonName(salonName?: string | null) {
@@ -32,8 +35,8 @@ function extractSenderDomain(email?: string | null): string | null {
   return normalized.slice(atIndex + 1) || null;
 }
 
-function emailTimestamp() {
-  return new Date().toLocaleString('bg-BG');
+function emailTimestamp(locale: Locale) {
+  return new Date().toLocaleString(toLocaleTag(locale));
 }
 
 /**
@@ -50,24 +53,27 @@ export async function getSalonResend(
       client: resend,
       from: senderFromSalonName(fallbackSalonName ?? ''),
       isCustom: false,
+      locale: 'bg',
     };
   }
   const cached = salonResendCache.get(salonId);
   if (cached && cached.expiresAt > Date.now()) {
-    return { client: cached.client, from: cached.from, isCustom: cached.isCustom };
+    return { client: cached.client, from: cached.from, isCustom: cached.isCustom, locale: cached.locale };
   }
   try {
     const rows = (await sql`
-      SELECT name, email_from, email_from_name, resend_api_key_encrypted
+      SELECT name, email_from, email_from_name, resend_api_key_encrypted, language
       FROM salons WHERE id = ${salonId} LIMIT 1
     `) as Array<{
       name: string | null;
       email_from: string | null;
       email_from_name: string | null;
       resend_api_key_encrypted: string | null;
+      language: string | null;
     }>;
     const row = rows[0];
     const salonName = row?.name ?? fallbackSalonName ?? null;
+    const locale = resolveSalonLocale(row?.language);
     const ownKey = tryDecryptSecret(row?.resend_api_key_encrypted);
     let result: SalonResendConfig;
     if (row?.email_from) {
@@ -76,12 +82,14 @@ export async function getSalonResend(
         client: ownKey ? new Resend(ownKey) : resend,
         from: `${fromName} <${row.email_from}>`,
         isCustom: true,
+        locale,
       };
     } else {
       result = {
         client: resend,
         from: senderFromSalonName(salonName ?? ''),
         isCustom: false,
+        locale,
       };
     }
     salonResendCache.set(salonId, { ...result, expiresAt: Date.now() + SALON_RESEND_TTL_MS });
@@ -91,6 +99,7 @@ export async function getSalonResend(
       client: resend,
       from: senderFromSalonName(fallbackSalonName ?? ''),
       isCustom: false,
+      locale: 'bg',
     };
   }
 }
@@ -125,10 +134,10 @@ async function sendResendWithRetry(
   throw lastError;
 }
 
-function formatBgDateDMY(dateStr: string): string {
+function formatDateDMY(dateStr: string, locale: Locale): string {
   const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('bg-BG');
+  return d.toLocaleDateString(toLocaleTag(locale));
 }
 
 export interface RescheduleDetails {
@@ -141,36 +150,39 @@ export interface RescheduleDetails {
   salonName: string;
   salonPhone?: string;
   salonId?: string;
+  language?: string | null;
 }
 
 export async function sendRescheduleNotification(
   clientEmail: string,
   details: RescheduleDetails,
 ): Promise<void> {
-  const oldDateFmt = formatBgDateDMY(details.oldDate);
-  const newDateFmt = formatBgDateDMY(details.newDate);
+  const locale = resolveSalonLocale(details.language);
+  const oldDateFmt = formatDateDMY(details.oldDate, locale);
+  const newDateFmt = formatDateDMY(details.newDate, locale);
   const firstName = details.clientName.split(' ')[0] ?? details.clientName;
   const { client, from } = await getSalonResend(details.salonId, details.salonName);
+  const isEn = locale === 'en';
 
   await sendResendWithRetry({
     from,
     to: clientEmail,
-    subject: `Вашият час беше променен — ${details.salonName}`,
+    subject: isEn ? `Your appointment was rescheduled — ${details.salonName}` : `Вашият час беше променен — ${details.salonName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="margin: 0 0 16px; color: #000;">Вашият час беше преместен</h2>
-        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(firstName)}</strong>!</p>
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Your appointment was rescheduled' : 'Вашият час беше преместен'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(firstName)}</strong>!</p>
         <p style="line-height: 1.7;">
-          Вашият час при <strong>${escapeHtml(details.salonName)}</strong> беше преместен.
+          ${isEn ? `Your appointment at <strong>${escapeHtml(details.salonName)}</strong> has been moved.` : `Вашият час при <strong>${escapeHtml(details.salonName)}</strong> беше преместен.`}
         </p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-          ${renderRow('Стара дата', `${oldDateFmt} в ${details.oldTime}`)}
-          ${renderRow('Нова дата', `${newDateFmt} в ${details.newTime}`)}
-          ${renderRow('Услуга', details.serviceName)}
-          ${details.salonPhone ? renderRow('Телефон на салона', details.salonPhone) : ''}
+          ${renderRow(isEn ? 'Old date' : 'Стара дата', isEn ? `${oldDateFmt} at ${details.oldTime}` : `${oldDateFmt} в ${details.oldTime}`)}
+          ${renderRow(isEn ? 'New date' : 'Нова дата', isEn ? `${newDateFmt} at ${details.newTime}` : `${newDateFmt} в ${details.newTime}`)}
+          ${renderRow(isEn ? 'Service' : 'Услуга', details.serviceName)}
+          ${details.salonPhone ? renderRow(isEn ? 'Salon phone' : 'Телефон на салона', details.salonPhone) : ''}
         </table>
         <p style="margin-top: 20px; line-height: 1.7; color: #555;">
-          Ако имате въпроси, свържете се директно със салона.
+          ${isEn ? 'If you have any questions, please contact the salon directly.' : 'Ако имате въпроси, свържете се директно със салона.'}
         </p>
       </div>
     `,
@@ -201,6 +213,7 @@ export interface BookingDetails {
   amountPaid?: number | null;
   paymentType?: string | null;
   bookingStatus?: 'pending' | 'confirmed';
+  language?: string | null;
 }
 
 function escapeHtml(value: string) {
@@ -225,22 +238,23 @@ export async function sendPasswordChangedNotification(
   email: string,
   context?: SalonEmailContext,
 ): Promise<void> {
-  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
+  const { client, from, locale } = await getSalonResend(context?.salonId, context?.salonName);
+  const isEn = locale === 'en';
   await sendResendWithRetry({
     from,
     to: email,
-    subject: 'Паролата ви беше сменена',
+    subject: isEn ? 'Your password was changed' : 'Паролата ви беше сменена',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #000; margin: 0 0 16px;">Паролата ви беше сменена</h2>
+        <h2 style="color: #000; margin: 0 0 16px;">${isEn ? 'Your password was changed' : 'Паролата ви беше сменена'}</h2>
         <p style="line-height: 1.7;">
-          Паролата за вашия админ акаунт беше успешно сменена.
+          ${isEn ? 'The password for your admin account was changed successfully.' : 'Паролата за вашия админ акаунт беше успешно сменена.'}
         </p>
         <p style="line-height: 1.7;">
-          Ако <strong>не сте направили тази промяна</strong>, сменете паролата си отново възможно най-скоро.
+          ${isEn ? 'If <strong>you did not make this change</strong>, reset your password again as soon as possible.' : 'Ако <strong>не сте направили тази промяна</strong>, сменете паролата си отново възможно най-скоро.'}
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${emailTimestamp()}
+          ${emailTimestamp(locale)}
         </p>
       </div>
     `,
@@ -257,29 +271,21 @@ export async function sendEmailChangeRequestNotification(
   newEmail: string,
   context?: SalonEmailContext,
 ): Promise<void> {
-  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
+  const { client, from, locale } = await getSalonResend(context?.salonId, context?.salonName);
+  const isEn = locale === 'en';
   await sendResendWithRetry({
     from,
     to: oldEmail,
-    subject: 'Заявка за смяна на имейл',
+    subject: isEn ? 'Email change request' : 'Заявка за смяна на имейл',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #000; margin: 0 0 16px;">Заявена смяна на имейл за вход</h2>
-        <p style="line-height: 1.7;">
-          Получихме заявка за смяна на имейла за вход към админ панела ви.
-        </p>
-        <p style="line-height: 1.7;">
-          Новият имейл е: <strong>${escapeHtml(newEmail)}</strong>
-        </p>
-        <p style="line-height: 1.7;">
-          Изпратихме верификационен линк на новия имейл адрес.
-          <strong>Имейлът ви няма да се смени, докато не потвърдите от новия адрес.</strong>
-        </p>
-        <p style="line-height: 1.7;">
-          Ако <strong>не сте направили тази заявка</strong>, сменете паролата си възможно най-скоро.
-        </p>
+        <h2 style="color: #000; margin: 0 0 16px;">${isEn ? 'Admin login email change requested' : 'Заявена смяна на имейл за вход'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'We received a request to change the login email for your admin panel.' : 'Получихме заявка за смяна на имейла за вход към админ панела ви.'}</p>
+        <p style="line-height: 1.7;">${isEn ? 'The new email is:' : 'Новият имейл е:'} <strong>${escapeHtml(newEmail)}</strong></p>
+        <p style="line-height: 1.7;">${isEn ? 'We sent a verification link to the new email address. <strong>Your email will not change until you confirm it from the new address.</strong>' : 'Изпратихме верификационен линк на новия имейл адрес. <strong>Имейлът ви няма да се смени, докато не потвърдите от новия адрес.</strong>'}</p>
+        <p style="line-height: 1.7;">${isEn ? 'If <strong>you did not make this request</strong>, change your password as soon as possible.' : 'Ако <strong>не сте направили тази заявка</strong>, сменете паролата си възможно най-скоро.'}</p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${emailTimestamp()}
+          ${emailTimestamp(locale)}
         </p>
       </div>
     `,
@@ -291,30 +297,28 @@ export async function sendEmailVerificationRequest(
   verifyUrl: string,
   context?: SalonEmailContext,
 ): Promise<void> {
-  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
+  const { client, from, locale } = await getSalonResend(context?.salonId, context?.salonName);
+  const isEn = locale === 'en';
   await sendResendWithRetry({
     from,
     to: newEmail,
-    subject: 'Потвърдете новия си имейл',
+    subject: isEn ? 'Confirm your new email' : 'Потвърдете новия си имейл',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #000; margin: 0 0 16px;">Потвърдете новия си имейл</h2>
-        <p style="line-height: 1.7;">
-          Натиснете бутона по-долу, за да потвърдите този имейл като нов адрес за вход.
-        </p>
+        <h2 style="color: #000; margin: 0 0 16px;">${isEn ? 'Confirm your new email' : 'Потвърдете новия си имейл'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Click the button below to confirm this email as your new login address.' : 'Натиснете бутона по-долу, за да потвърдите този имейл като нов адрес за вход.'}</p>
         <p style="margin: 24px 0;">
           <a href="${verifyUrl}"
              style="display:inline-block;background:#000;color:#fff;text-decoration:none;
                     padding:13px 22px;border-radius:999px;font-weight:700;font-size:15px;">
-            Потвърди имейл →
+            ${isEn ? 'Confirm email →' : 'Потвърди имейл →'}
           </a>
         </p>
         <p style="font-size: 13px; color: #999; line-height: 1.5;">
-          Линкът е валиден <strong>30 минути</strong>.
-          Ако не сте поискали тази смяна, игнорирайте имейла — текущият ви имейл остава непроменен.
+          ${isEn ? 'The link is valid for <strong>30 minutes</strong>. If you did not request this change, ignore the email — your current email remains unchanged.' : 'Линкът е валиден <strong>30 минути</strong>. Ако не сте поискали тази смяна, игнорирайте имейла — текущият ви имейл остава непроменен.'}
         </p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${emailTimestamp()}
+          ${emailTimestamp(locale)}
         </p>
       </div>
     `,
@@ -325,22 +329,19 @@ export async function sendEmailChangedConfirmation(
   newEmail: string,
   context?: SalonEmailContext,
 ): Promise<void> {
-  const { client, from } = await getSalonResend(context?.salonId, context?.salonName);
+  const { client, from, locale } = await getSalonResend(context?.salonId, context?.salonName);
+  const isEn = locale === 'en';
   await sendResendWithRetry({
     from,
     to: newEmail,
-    subject: 'Имейлът ви беше сменен',
+    subject: isEn ? 'Your email was changed' : 'Имейлът ви беше сменен',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #000; margin: 0 0 16px;">Имейлът ви беше успешно сменен</h2>
-        <p style="line-height: 1.7;">
-          Имейлът за вход беше сменен на <strong>${escapeHtml(newEmail)}</strong>.
-        </p>
-        <p style="line-height: 1.7;">
-          Ако <strong>не сте направили тази промяна</strong>, сменете паролата си възможно най-скоро.
-        </p>
+        <h2 style="color: #000; margin: 0 0 16px;">${isEn ? 'Your email was changed successfully' : 'Имейлът ви беше успешно сменен'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Your login email was changed to' : 'Имейлът за вход беше сменен на'} <strong>${escapeHtml(newEmail)}</strong>.</p>
+        <p style="line-height: 1.7;">${isEn ? 'If <strong>you did not make this change</strong>, reset your password as soon as possible.' : 'Ако <strong>не сте направили тази промяна</strong>, сменете паролата си възможно най-скоро.'}</p>
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.5;">
-          ${emailTimestamp()}
+          ${emailTimestamp(locale)}
         </p>
       </div>
     `,
@@ -356,29 +357,28 @@ export async function sendStaffInviteEmail(
   salonId?: string,
 ): Promise<void> {
   const firstName = staffName.split(' ')[0] ?? staffName;
-  const { client, from } = await getSalonResend(salonId, salonName);
+  const { client, from, locale } = await getSalonResend(salonId, salonName);
+  const isEn = locale === 'en';
   await sendResendWithRetry({
     from,
     to: staffEmail,
-    subject: `Добавени сте като служител в ${salonName}`,
+    subject: isEn ? `You were added as a staff member at ${salonName}` : `Добавени сте като служител в ${salonName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="margin: 0 0 16px; color: #000;">Добре дошли в екипа!</h2>
-        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(firstName)}</strong>!</p>
-        <p style="line-height: 1.7;">
-          Бяхте добавени като служител в <strong>${escapeHtml(salonName)}</strong>.
-        </p>
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Welcome to the team!' : 'Добре дошли в екипа!'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(firstName)}</strong>!</p>
+        <p style="line-height: 1.7;">${isEn ? `You were added as a staff member at <strong>${escapeHtml(salonName)}</strong>.` : `Бяхте добавени като служител в <strong>${escapeHtml(salonName)}</strong>.`}</p>
         <p style="line-height: 1.7;">
           За да получавате известия за резервации в Telegram, натиснете бутона по-долу — ботът ще отвори директно с вашия код:
         </p>
         <p style="margin: 20px 0; text-align: center;">
           <a href="https://t.me/${BRAND.telegramBotUsername}?start=${encodeURIComponent(onboardingCode)}" style="display:inline-block;background:#229ED9;color:#fff;font-weight:700;font-size:15px;
                        padding:14px 28px;border-radius:12px;text-decoration:none;">
-            Отвори Telegram асистента
+            ${isEn ? 'Open Telegram assistant' : 'Отвори Telegram асистента'}
           </a>
         </p>
         <p style="font-size: 12px; line-height: 1.6; color: #999; text-align: center;">
-          Ако бутонът не отвори бота автоматично, изпратете ръчно този код:
+          ${isEn ? 'If the button does not open the bot automatically, send this code manually:' : 'Ако бутонът не отвори бота автоматично, изпратете ръчно този код:'}
           <span style="display:inline-block;background:#000;color:#fff;font-weight:700;font-size:14px;
                        letter-spacing:2px;padding:6px 14px;border-radius:8px;margin-top:6px;">
             ${escapeHtml(onboardingCode)}
@@ -391,14 +391,14 @@ export async function sendStaffInviteEmail(
         <p style="margin: 16px 0; text-align: center;">
           <a href="${escapeHtml(portalUrl)}" style="display:inline-block;background:#7C3AED;color:#fff;font-weight:700;font-size:14px;
                        padding:12px 24px;border-radius:10px;text-decoration:none;">
-            Виж моя график
+            ${isEn ? 'View my schedule' : 'Виж моя график'}
           </a>
         </p>
         <p style="font-size: 12px; line-height: 1.6; color: #999; word-break: break-all;">
           Или копирайте линка: ${escapeHtml(portalUrl)}
         </p>
         ` : ''}
-        <p style="line-height: 1.7;">След като се свържете, директно от Telegram ще можете да:</p>
+        <p style="line-height: 1.7;">${isEn ? 'Once connected, from Telegram you will be able to:' : 'След като се свържете, директно от Telegram ще можете да:'}</p>
         <ul style="line-height: 1.8; padding-left: 20px;">
           <li>получавате известия за нови резервации в реално време;</li>
           <li>блокирате часове — напр. <i>„зает 14:00-16:00 утре"</i>;</li>
@@ -422,20 +422,22 @@ export async function sendBookingNotification(
   salonEmail: string,
   booking: BookingDetails
 ): Promise<void> {
-  const formattedDate = formatBgDateDMY(booking.date);
+  const locale = resolveSalonLocale(booking.language);
+  const formattedDate = formatDateDMY(booking.date, locale);
+  const isEn = locale === 'en';
   const ownerGreeting = booking.salonOwnerName?.trim()
-    ? `Здравей, ${escapeHtml(booking.salonOwnerName.trim())}!`
-    : 'Здравей!';
+    ? `${isEn ? 'Hello' : 'Здравей'}, ${escapeHtml(booking.salonOwnerName.trim())}!`
+    : `${isEn ? 'Hello' : 'Здравей'}!`;
   const salonRows = [
-    renderRow('Клиент', booking.clientName),
-    renderRow('Телефон', booking.clientPhone),
-    booking.clientEmail ? renderRow('Имейл', booking.clientEmail) : '',
-    renderRow('Услуга', booking.serviceName),
-    booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
-    booking.servicePrice != null ? renderRow('Цена', formatSalonPrice(booking.servicePrice)) : '',
-    renderRow('Дата', formattedDate),
-    renderRow('Час', booking.time),
-    booking.notes ? renderRow('Бележка', booking.notes) : '',
+    renderRow(isEn ? 'Client' : 'Клиент', booking.clientName),
+    renderRow(isEn ? 'Phone' : 'Телефон', booking.clientPhone),
+    booking.clientEmail ? renderRow(isEn ? 'Email' : 'Имейл', booking.clientEmail) : '',
+    renderRow(isEn ? 'Service' : 'Услуга', booking.serviceName),
+    booking.serviceDuration ? renderRow(isEn ? 'Duration' : 'Продължителност', `${booking.serviceDuration} ${isEn ? 'min' : 'мин'}`) : '',
+    booking.servicePrice != null ? renderRow(isEn ? 'Price' : 'Цена', formatSalonPrice(booking.servicePrice)) : '',
+    renderRow(isEn ? 'Date' : 'Дата', formattedDate),
+    renderRow(isEn ? 'Time' : 'Час', booking.time),
+    booking.notes ? renderRow(isEn ? 'Notes' : 'Бележка', booking.notes) : '',
   ].join('');
 
   const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
@@ -443,13 +445,13 @@ export async function sendBookingNotification(
     from,
     to: salonEmail,
     reply_to: booking.clientEmail || undefined,
-    subject: `Нова резервация от ${booking.clientName}`,
+    subject: isEn ? `New booking from ${booking.clientName}` : `Нова резервация от ${booking.clientName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="margin: 0 0 16px; color: #000;">Нова резервация</h2>
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'New booking' : 'Нова резервация'}</h2>
         <p style="line-height: 1.7;">${ownerGreeting}</p>
         <p style="margin: 0 0 16px; line-height: 1.7;">
-          Имате нова заявка за <strong>${escapeHtml(booking.salonName)}</strong>.
+          ${isEn ? `You have a new request for <strong>${escapeHtml(booking.salonName)}</strong>.` : `Имате нова заявка за <strong>${escapeHtml(booking.salonName)}</strong>.`}
         </p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
           ${salonRows}
@@ -472,24 +474,24 @@ export async function sendGoogleReviewInvitation(
   const directReviewUrl = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(googlePlaceId)}`;
   const reviewHubUrl = `${appBaseUrl}/review/google?placeid=${encodeURIComponent(googlePlaceId)}&salon=${encodeURIComponent(salonName)}${salonSlug ? `&slug=${encodeURIComponent(salonSlug)}` : ''}`;
 
-  const { client, from } = await getSalonResend(salonId, salonName);
+  const { client, from, locale } = await getSalonResend(salonId, salonName);
+  const isEn = locale === 'en';
   await sendResendWithRetry({
     from,
     to: clientEmail,
-    subject: `Как беше при ${escapeHtml(salonName)}? Остави ни отзив`,
+    subject: isEn ? `How was your visit to ${escapeHtml(salonName)}? Leave us a review` : `Как беше при ${escapeHtml(salonName)}? Остави ни отзив`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="margin: 0 0 16px; color: #000;">Благодарим ви!</h2>
-        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(clientName)}</strong>!</p>
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Thank you!' : 'Благодарим ви!'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(clientName)}</strong>!</p>
         <p style="line-height: 1.7;">
-          Радваме се, че посетихте <strong>${escapeHtml(salonName)}</strong>.
-          Ако сте доволни от услугата, ще ни помогнете много с кратък отзив в Google.
+          ${isEn ? `We are glad you visited <strong>${escapeHtml(salonName)}</strong>. If you enjoyed the service, a short Google review would help us a lot.` : `Радваме се, че посетихте <strong>${escapeHtml(salonName)}</strong>. Ако сте доволни от услугата, ще ни помогнете много с кратък отзив в Google.`}
         </p>
         <p style="margin: 24px 0;">
           <a href="${reviewHubUrl}"
              style="display: inline-block; background: #000; color: #fff; padding: 14px 24px;
                     border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 15px;">
-            Остави отзив в Google
+            ${isEn ? 'Leave a Google review' : 'Остави отзив в Google'}
           </a>
         </p>
         <p style="font-size: 14px; line-height: 1.7; color: #555;">
@@ -514,6 +516,8 @@ export async function sendBookingConfirmation(
   clientEmail: string,
   booking: BookingDetails
 ): Promise<void> {
+  const locale = resolveSalonLocale(booking.language);
+  const isEn = locale === 'en';
   const appBaseUrl = booking.salonSlug
     ? getPrimaryPublicUrl({
         slug: booking.salonSlug,
@@ -521,7 +525,7 @@ export async function sendBookingConfirmation(
         domainStatus: booking.salonDomainStatus,
       }).replace(/\/+$/, '')
     : (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
-  const formattedDate = formatBgDateDMY(booking.date);
+  const formattedDate = formatDateDMY(booking.date, locale);
   const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
   const calendarRow: CalendarBookingRow = {
     id: booking.bookingId || `${booking.date}-${booking.time}-${booking.clientEmail || booking.clientPhone}`,
@@ -546,25 +550,25 @@ export async function sendBookingConfirmation(
   const remaining = depositPaid != null && booking.servicePrice != null ? booking.servicePrice - depositPaid : null;
 
   const clientRows = [
-    renderRow('Име', booking.clientName),
-    renderRow('Услуга', booking.serviceName),
-    booking.serviceDuration ? renderRow('Продължителност', `${booking.serviceDuration} мин`) : '',
-    booking.servicePrice != null ? renderRow('Цена', formatSalonPrice(booking.servicePrice)) : '',
-    depositPaid != null ? renderRow('Платен депозит', formatSalonPrice(depositPaid)) : '',
-    remaining != null && remaining > 0 ? renderRow('Доплащане на място', formatSalonPrice(remaining)) : '',
-    renderRow('Дата', formattedDate),
-    renderRow('Час', booking.time),
-    booking.salonPhone ? renderRow('Телефон на салона', booking.salonPhone) : '',
-    booking.salonAddress ? renderRow('Адрес', booking.salonAddress) : '',
-    booking.notes ? renderRow('Бележка', booking.notes) : '',
+    renderRow(isEn ? 'Name' : 'Име', booking.clientName),
+    renderRow(isEn ? 'Service' : 'Услуга', booking.serviceName),
+    booking.serviceDuration ? renderRow(isEn ? 'Duration' : 'Продължителност', `${booking.serviceDuration} ${isEn ? 'min' : 'мин'}`) : '',
+    booking.servicePrice != null ? renderRow(isEn ? 'Price' : 'Цена', formatSalonPrice(booking.servicePrice)) : '',
+    depositPaid != null ? renderRow(isEn ? 'Deposit paid' : 'Платен депозит', formatSalonPrice(depositPaid)) : '',
+    remaining != null && remaining > 0 ? renderRow(isEn ? 'Pay at salon' : 'Доплащане на място', formatSalonPrice(remaining)) : '',
+    renderRow(isEn ? 'Date' : 'Дата', formattedDate),
+    renderRow(isEn ? 'Time' : 'Час', booking.time),
+    booking.salonPhone ? renderRow(isEn ? 'Salon phone' : 'Телефон на салона', booking.salonPhone) : '',
+    booking.salonAddress ? renderRow(isEn ? 'Address' : 'Адрес', booking.salonAddress) : '',
+    booking.notes ? renderRow(isEn ? 'Notes' : 'Бележка', booking.notes) : '',
   ].join('');
   await sendResendWithRetry({
     from,
     to: clientEmail,
     reply_to: booking.salonEmail || undefined,
     subject: (booking.bookingStatus ?? 'confirmed') === 'confirmed'
-      ? `✅ Резервацията ви в ${booking.salonName} е потвърдена`
-      : `Заявка за резервация в ${booking.salonName} – ${formattedDate} ${booking.time}`,
+      ? (isEn ? `✅ Your booking at ${booking.salonName} is confirmed` : `✅ Резервацията ви в ${booking.salonName} е потвърдена`)
+      : (isEn ? `Booking request for ${booking.salonName} – ${formattedDate} ${booking.time}` : `Заявка за резервация в ${booking.salonName} – ${formattedDate} ${booking.time}`),
     attachments: [
       {
         filename: `${(booking.salonName || 'reservation').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'reservation'}-reservation.ics`,
@@ -573,32 +577,32 @@ export async function sendBookingConfirmation(
     ],
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="margin: 0 0 16px; color: #000;">${(booking.bookingStatus ?? 'confirmed') === 'confirmed' ? `✅ Резервацията ви в ${escapeHtml(booking.salonName)} е потвърдена` : 'Получихме вашата заявка'}</h2>
-        <p style="line-height: 1.7;">Здравейте, <strong>${escapeHtml(booking.clientName)}</strong>!</p>
+        <h2 style="margin: 0 0 16px; color: #000;">${(booking.bookingStatus ?? 'confirmed') === 'confirmed' ? (isEn ? `✅ Your booking at ${escapeHtml(booking.salonName)} is confirmed` : `✅ Резервацията ви в ${escapeHtml(booking.salonName)} е потвърдена`) : (isEn ? 'We received your request' : 'Получихме вашата заявка')}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(booking.clientName)}</strong>!</p>
         <p style="line-height: 1.7;">
           ${(booking.bookingStatus ?? 'confirmed') === 'confirmed'
-            ? `Вашият час на <strong>${formattedDate} в ${escapeHtml(booking.time)}</strong> е записан и потвърден.`
-            : `Получихме вашата заявка за <strong>${escapeHtml(booking.salonName)}</strong>. Ще получите потвърждение от салона.`
+            ? (isEn ? `Your appointment for <strong>${formattedDate} at ${escapeHtml(booking.time)}</strong> has been booked and confirmed.` : `Вашият час на <strong>${formattedDate} в ${escapeHtml(booking.time)}</strong> е записан и потвърден.`)
+            : (isEn ? `We received your request for <strong>${escapeHtml(booking.salonName)}</strong>. You will receive a confirmation from the salon.` : `Получихме вашата заявка за <strong>${escapeHtml(booking.salonName)}</strong>. Ще получите потвърждение от салона.`)
           }
         </p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
           ${clientRows}
         </table>
-        <p style="margin-top: 20px; line-height: 1.7; font-weight: 600;">Добави в календара:</p>
+        <p style="margin-top: 20px; line-height: 1.7; font-weight: 600;">${isEn ? 'Add to calendar:' : 'Добави в календара:'}</p>
         <p style="margin: 8px 0 0; line-height: 1.7;">
           <a href="${googleUrl}" style="color: #000; font-weight: 600;">Google Calendar</a>
-          · Прикрепеният .ics файл работи с Apple Calendar и Outlook.
+          · ${isEn ? 'The attached .ics file works with Apple Calendar and Outlook.' : 'Прикрепеният .ics файл работи с Apple Calendar и Outlook.'}
         </p>
         ${booking.bookingId && booking.manageToken ? `
         <p style="margin-top: 20px; line-height: 1.7;">
           <a href="${appBaseUrl}/booking/manage?id=${encodeURIComponent(booking.bookingId)}&token=${encodeURIComponent(booking.manageToken)}"
              style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
                     border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 14px;">
-            Промени или откажи резервацията
+            ${isEn ? 'Change or cancel booking' : 'Промени или откажи резервацията'}
           </a>
         </p>` : `
         <p style="margin-top: 16px; line-height: 1.7;">
-          При нужда от промяна, отговорете директно на този имейл или се свържете със салона.
+          ${isEn ? 'If you need to make a change, reply directly to this email or contact the salon.' : 'При нужда от промяна, отговорете директно на този имейл или се свържете със салона.'}
         </p>`}
       </div>
     `,

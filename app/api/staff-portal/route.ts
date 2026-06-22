@@ -202,6 +202,7 @@ export async function POST(request: NextRequest) {
     salonEmail: salon.email ? String(salon.email) : undefined,
     salonPhone: salon.phone ? String(salon.phone) : undefined,
     salonAddress: [salon.address, salon.city].map((v) => String(v ?? '').trim()).filter(Boolean).join(', ') || undefined,
+    language: salon.language ? String(salon.language) : undefined,
   };
 
   const telegramChatId = String(salon.telegram_chat_id ?? '').trim();
