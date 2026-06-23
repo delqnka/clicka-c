@@ -7,7 +7,7 @@ import {
   useImperativeHandle,
   useMemo,
 } from 'react';
-import { parseSalonServices } from '@/lib/salon-services';
+import { parseSalonServices, localizeService } from '@/lib/salon-services';
 import {
   enrichServiceCategories,
   buildServiceCategoryTabs,
@@ -187,10 +187,18 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
       return 60;
     }, [salon.opening_hours]);
 
+    // ── Locale ────────────────────────────────────────────────────────
+    const providerLocale = normalizeLocale(
+      localeProp ?? (typeof salon.language === 'string' ? salon.language : 'bg'),
+    );
+    const resolvedLocale = localeProp ?? (providerLocale === 'en' ? 'en-US' : 'bg-BG');
+
     // ── Services processing ────────────────────────────────────────────
     const serviceCatalog = useMemo(
-      () => enrichServiceCategories(parseSalonServices(salon.services)) as BookingCatalogService[],
-      [salon.services],
+      () => enrichServiceCategories(
+        parseSalonServices(salon.services).map((s) => localizeService(s, providerLocale))
+      ) as BookingCatalogService[],
+      [salon.services, providerLocale],
     );
 
     const categoryTabs = useMemo(
@@ -219,12 +227,6 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
       }
       return out;
     }, [serviceCatalog]);
-
-    // ── Locale ────────────────────────────────────────────────────────
-    const providerLocale = normalizeLocale(
-      localeProp ?? (typeof salon.language === 'string' ? salon.language : 'bg'),
-    );
-    const resolvedLocale = localeProp ?? (providerLocale === 'en' ? 'en-US' : 'bg-BG');
 
     // ── Derived display props ─────────────────────────────────────────
     const primaryColor = typeof salon.primary_color === 'string' && salon.primary_color

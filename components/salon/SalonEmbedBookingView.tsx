@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import type { getPublicSalonPageData } from '@/lib/public-salon';
-import { parseSalonServices } from '@/lib/salon-services';
+import { parseSalonServices, localizeService } from '@/lib/salon-services';
 import { enrichServiceCategories, buildServiceCategoryTabs } from '@/lib/salon-service-categories';
 import { mergeOpeningHours, getEffectiveHours, type OpeningDayRecord } from '@/lib/salon-opening-hours';
 import { trackBookingCompleted } from '@/lib/tracking-events';
@@ -43,8 +43,10 @@ export function SalonEmbedBookingView({ pageData }: Props) {
   const isEn = salonLocale === 'en';
 
   const serviceCatalog = useMemo(
-    () => enrichServiceCategories(parseSalonServices(salonRecord.services)) as BookingCatalogService[],
-    [salonRecord.services],
+    () => enrichServiceCategories(
+      parseSalonServices(salonRecord.services).map((s) => localizeService(s, salonLocale))
+    ) as BookingCatalogService[],
+    [salonRecord.services, salonLocale],
   );
   const categoryTabs = useMemo(() => buildServiceCategoryTabs(serviceCatalog), [serviceCatalog]);
 

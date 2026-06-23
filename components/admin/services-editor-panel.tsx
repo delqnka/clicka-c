@@ -181,16 +181,27 @@ const ServiceCardRow = memo(function ServiceCardRow({
     >
       {/* Body */}
       <div style={{ padding: '12px 12px 10px' }}>
-        {/* Service name + remove button on same row */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 10 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <FieldLabel>{isEn ? 'Name' : 'Наименование'}</FieldLabel>
-            <input
-              value={draft.name}
-              onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
-              style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
-              placeholder={isEn ? 'e.g. Haircut, Coloring…' : 'Напр. Подстригване, Боядисване…'}
-            />
+        {/* Service names (BG + EN) + remove button */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div>
+              <FieldLabel>Наименование (BG)</FieldLabel>
+              <input
+                value={draft.name}
+                onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
+                style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
+                placeholder="Напр. Подстригване, Боядисване…"
+              />
+            </div>
+            <div>
+              <FieldLabel>Name (EN)</FieldLabel>
+              <input
+                value={(draft as ServiceItem).nameEn ?? ''}
+                onChange={(e) => updateDraft((s) => ({ ...s, nameEn: e.target.value }))}
+                style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
+                placeholder="e.g. Haircut, Coloring…"
+              />
+            </div>
           </div>
           <button
             type="button"
@@ -349,15 +360,27 @@ const ServiceCardRow = memo(function ServiceCardRow({
           </datalist>
         </div>
 
-        {/* Description */}
+        {/* Description (BG) */}
         <div style={{ marginBottom: 6 }}>
-          <FieldLabel>{isEn ? 'Description' : 'Описание'}</FieldLabel>
+          <FieldLabel>Описание (BG)</FieldLabel>
           <input
             value={draft.description ?? ''}
             onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
             style={{ ...fieldInp, color: '#444' }}
-            placeholder={isEn ? 'Short service description (optional)' : 'Кратко описание на услугата (по избор)'}
-            aria-label={isEn ? 'Service description' : 'Описание на услугата'}
+            placeholder="Кратко описание на услугата (по избор)"
+            aria-label="Описание на услугата (BG)"
+          />
+        </div>
+
+        {/* Description (EN) */}
+        <div style={{ marginBottom: 6 }}>
+          <FieldLabel>Description (EN)</FieldLabel>
+          <input
+            value={(draft as ServiceItem).descriptionEn ?? ''}
+            onChange={(e) => updateDraft((s) => ({ ...s, descriptionEn: e.target.value }))}
+            style={{ ...fieldInp, color: '#444' }}
+            placeholder="Short service description (optional)"
+            aria-label="Service description (EN)"
           />
         </div>
 

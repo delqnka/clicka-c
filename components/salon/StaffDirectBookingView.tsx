@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { getPublicSalonPageData } from '@/lib/public-salon';
 import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
 import { buildSalonJsonLd } from '@/lib/seo';
-import { parseSalonServices, type ParsedSalonService } from '@/lib/salon-services';
+import { parseSalonServices, localizeService, type ParsedSalonService } from '@/lib/salon-services';
 import { enrichServiceCategories, buildServiceCategoryTabs } from '@/lib/salon-service-categories';
 import { mergeOpeningHours, getEffectiveHours, type OpeningDayRecord } from '@/lib/salon-opening-hours';
 import { trackBookingCompleted } from '@/lib/tracking-events';
@@ -39,8 +39,8 @@ export function StaffDirectBookingView({ pageData, staff }: Props) {
 
   // Build service catalog filtered to this staff member's services only.
   const allServicesRaw = useMemo(
-    () => parseSalonServices(salonRecord.services),
-    [salonRecord.services],
+    () => parseSalonServices(salonRecord.services).map((s) => localizeService(s, salonLocale)),
+    [salonRecord.services, salonLocale],
   );
   const staffServicesRaw: ParsedSalonService[] = useMemo(
     () => allServicesRaw.filter((s) => staff.serviceIds.includes(s.id)),

@@ -10,7 +10,9 @@ export type CancelPolicyAction = 'full_refund' | 'keep_deposit' | 'keep_full';
 export type ServiceItem = {
   id?: string;
   name: string;
+  nameEn?: string;
   description?: string;
+  descriptionEn?: string;
   category?: string;
   price: number;
   duration_min: number;
@@ -27,7 +29,9 @@ export type ServiceItem = {
 export type ParsedSalonService = {
   id: string;
   name: string;
+  nameEn?: string;
   description?: string;
+  descriptionEn?: string;
   category?: string;
   price?: number;
   duration: number;
@@ -148,7 +152,9 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
     out.push({
       id,
       name,
+      nameEn: String(row.nameEn ?? '').trim() || undefined,
       description: String(row.description ?? '').trim() || undefined,
+      descriptionEn: String(row.descriptionEn ?? '').trim() || undefined,
       category:
         pickFirstNonEmptyString(
           row.category,
@@ -173,6 +179,17 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
   });
 
   return out;
+}
+
+/** Returns a copy of the service with name/description resolved for the given locale. */
+export function localizeService<T extends { name: string; nameEn?: string; description?: string; descriptionEn?: string }>(
+  service: T,
+  locale: string,
+): T {
+  if (locale !== 'en') return service;
+  const name = service.nameEn?.trim() || service.name;
+  const description = service.descriptionEn?.trim() || service.description;
+  return { ...service, name, description };
 }
 
 export function normalizeServices(raw: unknown): ServiceItem[] {
@@ -202,7 +219,9 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
     return {
       id: s.id,
       name: s.name,
+      ...(s.nameEn ? { nameEn: s.nameEn } : {}),
       description: s.description,
+      ...(s.descriptionEn ? { descriptionEn: s.descriptionEn } : {}),
       category: s.category,
       price: basePrice,
       duration_min: baseDuration,
