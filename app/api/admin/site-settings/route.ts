@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest) {
     SET
       name = ${next.name},
       language = ${next.language},
-      category = ${next.category || null},
+      category = ${next.category},
       phone = ${next.phone || null},
       city = ${next.city || null},
       address = ${next.address || ''},
