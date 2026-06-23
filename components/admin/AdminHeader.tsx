@@ -26,6 +26,7 @@ type AdminHeaderProps = {
   onLogout: () => void;
   onTriggerPwaInstall: () => void;
   onOpenNav: () => void;
+  onLocaleChange: (next: Locale) => void;
 };
 
 export function AdminHeader({
@@ -42,8 +43,32 @@ export function AdminHeader({
   onLogout,
   onTriggerPwaInstall,
   onOpenNav,
+  onLocaleChange,
 }: AdminHeaderProps) {
   const isEn = locale === 'en';
+  const langBusy = busyKey === 'locale';
+
+  const langWrapStyle: CSSProperties = {
+    display: 'inline-flex',
+    border: `1px solid ${T.border}`,
+    borderRadius: 999,
+    overflow: 'hidden',
+    background: '#fff',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    flexShrink: 0,
+    opacity: langBusy ? 0.6 : 1,
+  };
+
+  const langBtn = (active: boolean): CSSProperties => ({
+    padding: isMobile ? '6px 10px' : '5px 10px',
+    border: 'none',
+    background: active ? '#111' : 'transparent',
+    color: active ? '#fff' : 'rgba(0,0,0,0.55)',
+    cursor: langBusy ? 'wait' : 'pointer',
+    transition: 'background 0.15s, color 0.15s',
+  });
 
   const smGhostStyle: CSSProperties = {
     display: 'inline-flex',
@@ -181,6 +206,27 @@ export function AdminHeader({
 
         {/* Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 8, flexShrink: 0 }}>
+          <div style={langWrapStyle} role="group" aria-label={isEn ? 'Language' : 'Език'}>
+            <button
+              type="button"
+              onClick={() => !langBusy && locale !== 'bg' && onLocaleChange('bg')}
+              style={langBtn(locale === 'bg')}
+              aria-pressed={locale === 'bg'}
+              disabled={langBusy}
+            >
+              BG
+            </button>
+            <button
+              type="button"
+              onClick={() => !langBusy && locale !== 'en' && onLocaleChange('en')}
+              style={langBtn(locale === 'en')}
+              aria-pressed={locale === 'en'}
+              disabled={langBusy}
+            >
+              EN
+            </button>
+          </div>
+
           {site.siteStatus !== 'active' && (
             <button
               type="button"

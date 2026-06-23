@@ -1,16 +1,7 @@
 import dynamic from 'next/dynamic';
 
-export const LazyBrandsTabPanel = dynamic(
-  () => import('@/components/admin/tabs/brands-tab-panel').then((m) => m.BrandsTabPanel),
-  { ssr: false }
-);
-
 export const LazySalonOffersSection = dynamic(
   () => import('@/components/admin/SalonOffersSection').then((m) => m.SalonOffersSection),
-  { ssr: false }
-);
-export const LazySalonBlogSection = dynamic(
-  () => import('@/components/admin/SalonBlogSection').then((m) => m.SalonBlogSection),
   { ssr: false }
 );
 export const LazySiteTabPanel = dynamic(
@@ -33,19 +24,11 @@ export const LazyIntegrationsTabPanel = dynamic(
   () => import('@/components/admin/tabs/integrations-tab-panel').then((m) => m.IntegrationsTabPanel),
   { ssr: false }
 );
-export const LazyLegalTabPanel = dynamic(
-  () => import('@/components/admin/tabs/legal-tab-panel').then((m) => m.LegalTabPanel),
-  { ssr: false }
-);
 export const LazyPaymentsTabPanel = dynamic(
   () => import('@/components/admin/tabs/payments-tab-panel').then((m) => m.PaymentsTabPanel),
   { ssr: false }
 );
 export const LazyStaffTabPanel = dynamic(
   () => import('@/components/admin/tabs/staff-tab-panel').then((m) => m.StaffTabPanel),
-  { ssr: false }
-);
-export const LazyMarketingTabPanel = dynamic(
-  () => import('@/components/admin/tabs/marketing-tab-panel').then((m) => m.MarketingTabPanel),
   { ssr: false }
 );

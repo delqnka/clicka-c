@@ -1,6 +1,7 @@
 import SalonPublicParity from '@/app/components/SalonPublicParity';
 import { SalonHeroLcp } from '@/components/salon/salon-hero-lcp';
 import { SalonLcpHead } from '@/components/salon/salon-lcp-head';
+import { isCustomSiteBlogEnabled, isCustomSiteBrandsEnabled } from '@/lib/custom-site-features';
 import { buildSalonJsonLd } from '@/lib/seo';
 import type { getPublicSalonPageData } from '@/lib/public-salon';
 import { parseSalonServices } from '@/lib/salon-services';
@@ -72,9 +73,11 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
   const faqItems = normalizeSalonFaqItems(salonRecord.faq_items);
   const visitorInfo = normalizeSalonVisitorInfo(salonRecord.visitor_info);
   const visitorAdditionalInfo = normalizeVisitorAdditionalInfo(salonRecord.visitor_additional_info);
-  const blogSectionTitle = resolveBlogSectionTitle(salonRecord.blog_title);
-  const brandIds = Array.isArray(salonRecord.brand_domains) ? salonRecord.brand_domains.map(String) : [];
-  const brandNames = resolveBrandNames(brandIds);
+  const blogEnabled = isCustomSiteBlogEnabled();
+  const brandsEnabled = isCustomSiteBrandsEnabled();
+  const blogSectionTitle = blogEnabled ? resolveBlogSectionTitle(salonRecord.blog_title) : '';
+  const brandIds = brandsEnabled && Array.isArray(salonRecord.brand_domains) ? salonRecord.brand_domains.map(String) : [];
+  const brandNames = brandsEnabled ? resolveBrandNames(brandIds) : [];
   const workingHours = salonRecord.working_hours as
     | Record<string, { open?: string; close?: string; closed?: boolean }>
     | undefined;
@@ -133,8 +136,8 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
         highlightReviewId={highlightReviewId ?? null}
         tabParam={tabParam ?? null}
         staticMapUrl={pageData.staticMapUrl}
-        publishedBlogCount={pageData.publishedBlogCount}
-        hasPublishedBlogPosts={pageData.hasPublishedBlogPosts}
+        publishedBlogCount={blogEnabled ? pageData.publishedBlogCount : 0}
+        hasPublishedBlogPosts={blogEnabled ? pageData.hasPublishedBlogPosts : false}
         servicesEnriched={servicesEnriched}
         serviceCategories={serviceCategories}
         faqItems={faqItems}

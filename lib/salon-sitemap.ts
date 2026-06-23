@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { sql } from '@/lib/db';
+import { isCustomSiteBlogEnabled } from '@/lib/custom-site-features';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 
 export async function buildSalonSitemapEntries(
@@ -20,6 +21,10 @@ export async function buildSalonSitemapEntries(
       priority: 0.8,
     },
   ];
+
+  if (!isCustomSiteBlogEnabled()) {
+    return entries;
+  }
 
   const blogCount = await sql`
     SELECT COUNT(*)::int AS count

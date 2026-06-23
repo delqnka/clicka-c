@@ -64,6 +64,7 @@ export function IntegrationsTabPanel({
   calendarStatus,
   loadCalendarStatus,
   onSaveExternalIcsUrl,
+  onSaveTracking,
   locale,
 }: {
   site: AdminSitePayload;
@@ -87,13 +88,14 @@ export function IntegrationsTabPanel({
   calendarStatus: CalendarStatus;
   loadCalendarStatus: () => void | Promise<void>;
   onSaveExternalIcsUrl: (url: string) => void | Promise<void>;
+  onSaveTracking: () => void | Promise<void>;
   locale: Locale;
 }) {
   const isEn = locale === 'en';
   return (
     <AdminSection title={isEn ? 'Integrations' : 'Интеграции'} desc={isEn ? 'Telegram, calendar and Google reviews.' : 'Telegram, календар и Google отзиви.'}>
       <div style={{ display: 'grid', gap: 10 }}>
-        <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'}>
+        <AdminInfoCard title="Telegram" status={site.telegramChatId ? 'connected' : 'pending'} locale={locale}>
           {site.telegramChatId ? (
             <div style={{ display: 'grid', gap: 6 }}>
               <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
@@ -217,22 +219,34 @@ export function IntegrationsTabPanel({
           )}
         </AdminInfoCard>
 
-        <AdminInfoCard title="Google Reviews" status={googleReviewsStatus.connected ? 'connected' : 'pending'}>
+        <AdminInfoCard title="Google Reviews" status={googleReviewsStatus.connected ? 'connected' : 'pending'} locale={locale}>
           <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
             {hasGoogleReviewsCandidate
               ? googleReviewsStatus.loading
-                ? 'Проверяваме...'
+                ? (isEn ? 'Checking…' : 'Проверяваме...')
                 : googleReviewsStatus.connected
                   ? googleReviewsStatus.totalCount && googleReviewsStatus.totalCount > 0
-                    ? `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) от общо ${googleReviewsStatus.totalCount} в Google.`
-                    : `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) на сайта.`
+                    ? (isEn
+                      ? `Showing ${googleReviewsStatus.count} reviews (4+ stars) out of ${googleReviewsStatus.totalCount} on Google.`
+                      : `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) от общо ${googleReviewsStatus.totalCount} в Google.`)
+                    : (isEn
+                      ? `Showing ${googleReviewsStatus.count} reviews (4+ stars) on the site.`
+                      : `Показваме ${googleReviewsStatus.count} ревюта (4+ звезди) на сайта.`)
                   : googleReviewsStatus.reason === 'missing_outscraper_key'
-                    ? 'Липсва OUTSCRAPER_API_KEY на сървъра — без него отзивите не се зареждат.'
+                    ? (isEn
+                      ? 'OUTSCRAPER_API_KEY is missing on the server — reviews cannot be loaded without it.'
+                      : 'Липсва OUTSCRAPER_API_KEY на сървъра — без него отзивите не се зареждат.')
                     : googleReviewsStatus.reason === 'outscraper_api_error'
-                      ? 'Outscraper върна грешка. Провери OUTSCRAPER_API_KEY и лимитите на акаунта.'
+                      ? (isEn
+                        ? 'Outscraper returned an error. Check OUTSCRAPER_API_KEY and your account limits.'
+                        : 'Outscraper върна грешка. Провери OUTSCRAPER_API_KEY и лимитите на акаунта.')
                       : googleReviewsStatus.reason === 'outscraper_pending'
-                        ? 'Outscraper още обработва заявката. Изчакай малко и натисни „Обнови статуса".'
-                        : 'Place ID е запазен. Натисни „Извлечи ревютата", за да ги заредим на сайта.'
+                        ? (isEn
+                          ? 'Outscraper is still processing the request. Wait a moment and press "Refresh status".'
+                          : 'Outscraper още обработва заявката. Изчакай малко и натисни „Обнови статуса".')
+                        : (isEn
+                          ? 'Place ID is saved. Press "Fetch reviews" to load them on the site.'
+                          : 'Place ID е запазен. Натисни „Извлечи ревютата", за да ги заредим на сайта.')
               : (
                   <a
                     href={GOOGLE_PLACE_ID_FINDER_URL}
@@ -254,7 +268,9 @@ export function IntegrationsTabPanel({
               }}
             >
               {reviewsFetch.result.success
-                ? `Показваме ${reviewsFetch.result.count ?? 0} ревюта (4+ звезди) на сайта.${Number(reviewsFetch.result.newCount ?? 0) > 0 ? ` Нови: ${reviewsFetch.result.newCount}.` : ' Няма нови ревюта от последното зареждане.'}`
+                ? (isEn
+                  ? `Showing ${reviewsFetch.result.count ?? 0} reviews (4+ stars) on the site.${Number(reviewsFetch.result.newCount ?? 0) > 0 ? ` New: ${reviewsFetch.result.newCount}.` : ' No new reviews since last refresh.'}`
+                  : `Показваме ${reviewsFetch.result.count ?? 0} ревюта (4+ звезди) на сайта.${Number(reviewsFetch.result.newCount ?? 0) > 0 ? ` Нови: ${reviewsFetch.result.newCount}.` : ' Няма нови ревюта от последното зареждане.'}`)
                 : reviewsFetch.result.message}
             </p>
           ) : null}
@@ -273,10 +289,10 @@ export function IntegrationsTabPanel({
                 {reviewsFetch.loading ? (
                   <>
                     <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: -2, animation: 'spin 1s linear infinite' }} />
-                    Извличаме ревютата…
+                    {isEn ? 'Fetching reviews…' : 'Извличаме ревютата…'}
                   </>
                 ) : (
-                  'Извлечи ревютата'
+                  isEn ? 'Fetch reviews' : 'Извлечи ревютата'
                 )}
               </button>
               <button
@@ -289,21 +305,27 @@ export function IntegrationsTabPanel({
                   cursor: googleReviewsStatus.loading ? 'wait' : 'pointer',
                 }}
               >
-                {googleReviewsStatus.loading ? 'Проверяваме…' : 'Обнови статуса'}
+                {googleReviewsStatus.loading
+                  ? (isEn ? 'Checking…' : 'Проверяваме…')
+                  : (isEn ? 'Refresh status' : 'Обнови статуса')}
               </button>
             </div>
           ) : null}
           <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>Намери бизнеса си и избери правилния профил</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
+              {isEn ? 'Find your business and pick the right profile' : 'Намери бизнеса си и избери правилния профил'}
+            </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 value={googleBizQuery}
                 onChange={(e) => setGoogleBizQuery(e.target.value)}
-                placeholder="Напр. Salon Urban Varna"
+                placeholder={isEn ? 'e.g. Salon Urban Varna' : 'Напр. Salon Urban Varna'}
                 style={{ ...inp, fontSize: 13 }}
               />
               <button type="button" onClick={() => void searchGoogleBusinesses()} style={btn('sm-ghost')} disabled={googleBizLoading}>
-                {googleBizLoading ? 'Търсим…' : 'Търси'}
+                {googleBizLoading
+                  ? (isEn ? 'Searching…' : 'Търсим…')
+                  : (isEn ? 'Search' : 'Търси')}
               </button>
             </div>
             {googleBizResults.length > 0 ? (
@@ -320,7 +342,7 @@ export function IntegrationsTabPanel({
                         googlePlaceId: selectedPlaceId,
                         googleMapsUrl: biz.mapsUrl || p.googleMapsUrl,
                       }));
-                      setNotice('Избран е Google бизнес профил. Извличаме ревютата...');
+                      setNotice(isEn ? 'Google Business profile selected. Fetching reviews…' : 'Избран е Google бизнес профил. Извличаме ревютата...');
                       void fetchGoogleReviews({ placeId: selectedPlaceId, mapsUrl: selectedMapsUrl });
                     }}
                     style={{
@@ -333,9 +355,9 @@ export function IntegrationsTabPanel({
                     }}
                   >
                     <div style={{ fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>{biz.name}</div>
-                    <div style={{ fontSize: 12, color: ADMIN_T.muted }}>{biz.address || 'Без адрес'}</div>
+                    <div style={{ fontSize: 12, color: ADMIN_T.muted }}>{biz.address || (isEn ? 'No address' : 'Без адрес')}</div>
                     {biz.businessStatus ? (
-                      <div style={{ fontSize: 11, color: ADMIN_T.subtle, marginTop: 3 }}>Статус: {biz.businessStatus}</div>
+                      <div style={{ fontSize: 11, color: ADMIN_T.subtle, marginTop: 3 }}>{isEn ? 'Status: ' : 'Статус: '}{biz.businessStatus}</div>
                     ) : null}
                   </button>
                 ))}
@@ -347,7 +369,53 @@ export function IntegrationsTabPanel({
           </div>
         </AdminInfoCard>
 
-        <ResendIntegrationCard slug={site.slug} inp={inp} btn={btn} setNotice={setNotice} />
+        <ResendIntegrationCard slug={site.slug} inp={inp} btn={btn} setNotice={setNotice} locale={locale} />
+
+        <AdminInfoCard title={isEn ? 'Analytics & tracking' : 'Анализ и тракинг'} status={site.ga4Id || site.metaPixelId || site.clarityId ? 'connected' : 'pending'} locale={locale}>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
+              {isEn
+                ? 'Optional IDs for GA4, Meta Pixel and Microsoft Clarity on the custom site.'
+                : 'По желание: ID-та за GA4, Meta Pixel и Microsoft Clarity на custom сайта.'}
+            </p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <input
+                value={site.ga4Id}
+                onChange={(e) => setSite((prev) => ({ ...prev, ga4Id: e.target.value.trim() }))}
+                placeholder="G-XXXXXXXXXX"
+                style={{ ...inp, fontSize: 13 }}
+              />
+              <input
+                value={site.metaPixelId}
+                onChange={(e) => setSite((prev) => ({ ...prev, metaPixelId: e.target.value.trim() }))}
+                placeholder={isEn ? 'Meta Pixel ID' : 'Meta Pixel ID'}
+                style={{ ...inp, fontSize: 13 }}
+              />
+              <input
+                value={site.clarityId}
+                onChange={(e) => setSite((prev) => ({ ...prev, clarityId: e.target.value.trim() }))}
+                placeholder={isEn ? 'Clarity Project ID' : 'Clarity Project ID'}
+                style={{ ...inp, fontSize: 13 }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => void onSaveTracking()}
+                disabled={busyKey === 'tracking'}
+                style={{
+                  ...btn('primary'),
+                  opacity: busyKey === 'tracking' ? 0.65 : 1,
+                  cursor: busyKey === 'tracking' ? 'wait' : 'pointer',
+                }}
+              >
+                {busyKey === 'tracking'
+                  ? (isEn ? 'Saving…' : 'Запазване…')
+                  : (isEn ? 'Save tracking IDs' : 'Запази tracking ID-тата')}
+              </button>
+            </div>
+          </div>
+        </AdminInfoCard>
       </div>
     </AdminSection>
   );

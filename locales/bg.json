@@ -152,28 +152,33 @@
     "navigation": "Навигация",
     "tabs": {
       "site": "Сайт",
-      "images": "Снимки",
-      "specialist": "Специалист",
-      "staff": "Служители",
-      "services": "Услуги",
+      "images": "Снимки за сайта",
+      "specialist": "Профил на собственика",
+      "staff": "Екип",
+      "services": "Услуги за резервации",
       "offers": "Оферти",
       "brands": "Брандове",
       "blog": "Блог",
       "hours": "Работно време",
       "bookings": "Резервации",
       "clients": "Клиенти",
-      "domain": "Домейн",
+      "domain": "Собствен домейн",
       "payments": "Плащания",
       "integrations": "Интеграции",
       "marketing": "Маркетинг",
       "legal": "Правни",
-      "account": "Профил"
+      "account": "Акаунт"
     },
     "groups": {
+      "navigation": "Навигация",
       "content": "Съдържание",
       "team": "Екип",
       "settings": "Настройки",
-      "site": "Сайт"
+      "site": "Сайт",
+      "engine": "Резервационен модул",
+      "publicSite": "Публичен сайт",
+      "delivery": "Доставка и домейн",
+      "account": "Акаунт"
     },
     "actions": {
       "save": "Запази",

@@ -10,6 +10,8 @@ import { trackBookingCompleted } from '@/lib/tracking-events';
 import { normalizeBookingBlocks, isDateBlockedAllDay, isBlockedForStartTime } from '@/lib/booking-blocks';
 import { parseTimeToMinutes } from '@/lib/booking-time';
 import type { BookingCatalogService } from '@/lib/booking-modal-catalog';
+import { I18nProvider } from '@/lib/i18n-react';
+import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 
 const SalonBookingModal = dynamic(
   () => import('@/components/salon/SalonBookingModal').then((m) => m.SalonBookingModal),
@@ -36,6 +38,9 @@ export function SalonEmbedBookingView({ pageData }: Props) {
   const salonSlug = pageData.salonSlug;
   const salonName = String(salonRecord.name ?? '');
   const primary = String(salonRecord.primary_color ?? '#000000');
+  const salonLocale = resolveSalonLocale(typeof salonRecord.language === 'string' ? salonRecord.language : 'bg');
+  const bookingLocale = toLocaleTag(salonLocale);
+  const isEn = salonLocale === 'en';
 
   const serviceCatalog = useMemo(
     () => enrichServiceCategories(parseSalonServices(salonRecord.services)) as BookingCatalogService[],
@@ -190,62 +195,65 @@ export function SalonEmbedBookingView({ pageData }: Props) {
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(json.error ?? `Грешка ${res.status}`);
-      const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString('bg-BG', {
+      if (!res.ok) throw new Error(json.error ?? (isEn ? `Error ${res.status}` : `Грешка ${res.status}`));
+      const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(bookingLocale, {
         weekday: 'long', day: 'numeric', month: 'long',
       });
       setSuccessDetails({ serviceName, dateLabel, time: selectedTime });
       trackBookingCompleted({ serviceName, value: totalPrice > 0 ? totalPrice : undefined });
-      setBookingSuccess(`${serviceName} — ${dateLabel} в ${selectedTime} ч.`);
+      setBookingSuccess(isEn ? `${serviceName} — ${dateLabel} at ${selectedTime}` : `${serviceName} — ${dateLabel} в ${selectedTime} ч.`);
     } catch (err) {
-      setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
+      setBookingError(err instanceof Error ? err.message : (isEn ? 'Booking error.' : 'Грешка при резервация.'));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <SalonBookingModal
-      open
-      primaryColor={primary}
-      serviceCatalog={serviceCatalog}
-      services={bookingServices}
-      categoryTabs={categoryTabs}
-      selectedServiceIdxs={serviceIdxs}
-      selectedDate={selectedDate}
-      selectedTime={selectedTime}
-      totalDuration={totalDuration}
-      totalPrice={totalPrice}
-      clientName={clientName}
-      clientPhone={clientPhone}
-      clientEmail={clientEmail}
-      notes={notes}
-      salonName={salonName}
-      termsHref={`/${salonSlug}/terms`}
-      privacyHref={`/${salonSlug}/privacy`}
-      minDate={minDate}
-      maxDate={maxDate}
-      timeSlots={timeSlots}
-      paymentType="none"
-      isSubmitting={submitting}
-      bookingError={bookingError}
-      bookingSuccess={bookingSuccess}
-      bookingSuccessDetails={successDetails}
-      onClose={closeEmbed}
-      onToggleService={(idx) => {
-        setServiceIdxs((prev) => {
-          const has = prev.includes(idx);
-          return has ? prev.filter((x) => x !== idx) : [...prev, idx];
-        });
-        setSelectedTime('');
-      }}
-      onDateChange={(d) => { setSelectedDate(d); setSelectedTime(''); }}
-      onTimeChange={setSelectedTime}
-      onClientNameChange={setClientName}
-      onClientPhoneChange={setClientPhone}
-      onClientEmailChange={setClientEmail}
-      onNotesChange={setNotes}
-      onSubmit={handleSubmit}
-    />
+    <I18nProvider locale={salonLocale}>
+      <SalonBookingModal
+        open
+        primaryColor={primary}
+        locale={bookingLocale}
+        serviceCatalog={serviceCatalog}
+        services={bookingServices}
+        categoryTabs={categoryTabs}
+        selectedServiceIdxs={serviceIdxs}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        totalDuration={totalDuration}
+        totalPrice={totalPrice}
+        clientName={clientName}
+        clientPhone={clientPhone}
+        clientEmail={clientEmail}
+        notes={notes}
+        salonName={salonName}
+        termsHref={`/${salonSlug}/terms`}
+        privacyHref={`/${salonSlug}/privacy`}
+        minDate={minDate}
+        maxDate={maxDate}
+        timeSlots={timeSlots}
+        paymentType="none"
+        isSubmitting={submitting}
+        bookingError={bookingError}
+        bookingSuccess={bookingSuccess}
+        bookingSuccessDetails={successDetails}
+        onClose={closeEmbed}
+        onToggleService={(idx) => {
+          setServiceIdxs((prev) => {
+            const has = prev.includes(idx);
+            return has ? prev.filter((x) => x !== idx) : [...prev, idx];
+          });
+          setSelectedTime('');
+        }}
+        onDateChange={(d) => { setSelectedDate(d); setSelectedTime(''); }}
+        onTimeChange={setSelectedTime}
+        onClientNameChange={setClientName}
+        onClientPhoneChange={setClientPhone}
+        onClientEmailChange={setClientEmail}
+        onNotesChange={setNotes}
+        onSubmit={handleSubmit}
+      />
+    </I18nProvider>
   );
 }

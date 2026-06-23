@@ -54,6 +54,8 @@ import type { SalonFaqItem, SalonVisitorInfo } from '@/lib/salon-visitor-info';
 import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-service-categories';
 import { GOOGLE_REVIEWS_INITIAL_VISIBLE } from '@/lib/google-reviews-limits';
 import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-events';
+import { I18nProvider } from '@/lib/i18n-react';
+import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 
 const SalonAiBotWidget = dynamic(
   () => import('@/components/salon/salon-ai-bot-widget').then((m) => ({ default: m.SalonAiBotWidget })),
@@ -526,6 +528,8 @@ export default function SalonPublicParity({
 
   const salonId = String(rawSalon.id ?? '').trim();
   const name = String(rawSalon.name ?? 'Салон');
+  const salonLocale = resolveSalonLocale(typeof rawSalon.language === 'string' ? rawSalon.language : 'bg');
+  const bookingLocale = toLocaleTag(salonLocale);
   const category = String(rawSalon.category ?? '').trim();
   const description = String(rawSalon.about ?? '').trim();
   const phone = String(rawSalon.phone ?? '').trim();
@@ -2158,62 +2162,65 @@ export default function SalonPublicParity({
       ) : null}
 
       {bookingOpen ? (
-        <SalonBookingModal
-          open
-          primaryColor={primary}
-          serviceCatalog={servicesEnriched}
-          categoryTabs={serviceCategories}
-        services={bookingModalServices}
-        selectedServiceIdxs={bookingServiceIdxs}
-        selectedDate={selectedDate}
-        selectedTime={selectedTime}
-        totalDuration={bookingTotalDuration}
-        totalPrice={bookingTotalPrice}
-        clientName={clientName}
-        clientPhone={clientPhone}
-        clientEmail={clientEmail}
-        notes={notes}
-        salonName={name}
-        termsHref={`${basePath}/terms`}
-        privacyHref={`${basePath}/privacy`}
-        minDate={minDate}
-        maxDate={maxDate}
-        timeSlots={timeSlots}
-        paymentType={selectedBookingServices[0]?.payment_type ?? 'none'}
-        depositAmount={selectedBookingServices[0]?.deposit_amount}
-        cancelPolicyHours={selectedBookingServices[0]?.cancel_policy_hours}
-        cancelPolicyAction={selectedBookingServices[0]?.cancel_policy_action}
-        isSubmitting={isSubmitting}
-        bookingError={bookingError}
-        bookingSuccess={bookingSuccess}
-        bookingSuccessDetails={bookingSuccessDetails}
-        onClose={closeBookingModal}
-        onToggleService={(idx) => {
-          setBookingServiceIdxs((prev) => {
-            const has = prev.includes(idx);
-            const next = has ? prev.filter((x) => x !== idx) : [...prev, idx];
-            return next;
-          });
-          setSelectedTime('');
-        }}
-        onDateChange={(date) => {
-          setSelectedDate(date);
-          setSelectedTime('');
-        }}
-        onTimeChange={setSelectedTime}
-        onClientNameChange={setClientName}
-        onClientPhoneChange={setClientPhone}
-        onClientEmailChange={setClientEmail}
-        onNotesChange={setNotes}
-        onSubmit={submitBooking}
-        staffMembers={staffMembers}
-        selectedStaffMemberId={selectedStaffMemberId}
-        onStaffMemberChange={(id) => {
-          setSelectedStaffMemberId(id);
-          setSelectedDate('');
-          setSelectedTime('');
-        }}
-        />
+        <I18nProvider locale={salonLocale}>
+          <SalonBookingModal
+            open
+            primaryColor={primary}
+            locale={bookingLocale}
+            serviceCatalog={servicesEnriched}
+            categoryTabs={serviceCategories}
+            services={bookingModalServices}
+            selectedServiceIdxs={bookingServiceIdxs}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+            totalDuration={bookingTotalDuration}
+            totalPrice={bookingTotalPrice}
+            clientName={clientName}
+            clientPhone={clientPhone}
+            clientEmail={clientEmail}
+            notes={notes}
+            salonName={name}
+            termsHref={`${basePath}/terms`}
+            privacyHref={`${basePath}/privacy`}
+            minDate={minDate}
+            maxDate={maxDate}
+            timeSlots={timeSlots}
+            paymentType={selectedBookingServices[0]?.payment_type ?? 'none'}
+            depositAmount={selectedBookingServices[0]?.deposit_amount}
+            cancelPolicyHours={selectedBookingServices[0]?.cancel_policy_hours}
+            cancelPolicyAction={selectedBookingServices[0]?.cancel_policy_action}
+            isSubmitting={isSubmitting}
+            bookingError={bookingError}
+            bookingSuccess={bookingSuccess}
+            bookingSuccessDetails={bookingSuccessDetails}
+            onClose={closeBookingModal}
+            onToggleService={(idx) => {
+              setBookingServiceIdxs((prev) => {
+                const has = prev.includes(idx);
+                const next = has ? prev.filter((x) => x !== idx) : [...prev, idx];
+                return next;
+              });
+              setSelectedTime('');
+            }}
+            onDateChange={(date) => {
+              setSelectedDate(date);
+              setSelectedTime('');
+            }}
+            onTimeChange={setSelectedTime}
+            onClientNameChange={setClientName}
+            onClientPhoneChange={setClientPhone}
+            onClientEmailChange={setClientEmail}
+            onNotesChange={setNotes}
+            onSubmit={submitBooking}
+            staffMembers={staffMembers}
+            selectedStaffMemberId={selectedStaffMemberId}
+            onStaffMemberChange={(id) => {
+              setSelectedStaffMemberId(id);
+              setSelectedDate('');
+              setSelectedTime('');
+            }}
+          />
+        </I18nProvider>
       ) : null}
 
       <SalonOfferBookingModal

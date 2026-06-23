@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { T, tokens } from '@/lib/admin-theme';
+import type { Locale } from '@/lib/i18n';
 
 type SidebarTab = {
   id: string;
@@ -22,6 +23,7 @@ type AdminSidebarProps<TId extends string> = {
   activeTab: TId;
   onSwitch: (id: TId) => void;
   t: (key: string) => string;
+  locale?: Locale;
 };
 
 export function AdminSidebar<TId extends string>({
@@ -30,10 +32,12 @@ export function AdminSidebar<TId extends string>({
   activeTab,
   onSwitch,
   t,
+  locale = 'bg',
 }: AdminSidebarProps<TId>) {
+  const isEn = locale === 'en';
   return (
     <aside
-      aria-label="Навигация"
+      aria-label={isEn ? 'Navigation' : 'Навигация'}
       style={{
         width: tokens.layout.sidebarWidth,
         flexShrink: 0,

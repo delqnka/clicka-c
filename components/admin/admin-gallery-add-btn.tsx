@@ -2,21 +2,25 @@
 
 import { Plus, RefreshCw } from 'lucide-react';
 import { useRef } from 'react';
+import type { Locale } from '@/lib/i18n';
 
 type Props = {
   busy: boolean;
   onUpload: (files: FileList | null, input?: HTMLInputElement | null) => void | Promise<void>;
+  locale?: Locale;
 };
 
-export function AdminGalleryAddBtn({ busy, onUpload }: Props) {
+export function AdminGalleryAddBtn({ busy, onUpload, locale = 'bg' }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const isEn = locale === 'en';
+  const label = isEn ? 'Add images' : 'Добави снимки';
 
   return (
     <>
       <button
         type="button"
-        aria-label="Добави снимки"
-        title="Добави снимки"
+        aria-label={label}
+        title={label}
         disabled={busy}
         onClick={() => inputRef.current?.click()}
         style={{

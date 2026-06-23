@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-locale-shared';
+
 export default function AdminError({
   error,
   reset,
@@ -7,6 +10,15 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [isEn, setIsEn] = useState(false);
+
+  useEffect(() => {
+    const cookie = document.cookie
+      .split('; ')
+      .find((part) => part.startsWith(`${ADMIN_LOCALE_COOKIE}=`));
+    setIsEn(cookie?.split('=')[1] === 'en');
+  }, []);
+
   return (
     <div
       style={{
@@ -21,10 +33,10 @@ export default function AdminError({
     >
       <div style={{ maxWidth: 420, textAlign: 'center' }}>
         <h1 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 700, color: '#18181b' }}>
-          Нещо се обърка
+          {isEn ? 'Something went wrong' : 'Нещо се обърка'}
         </h1>
         <p style={{ margin: '0 0 20px', fontSize: 14, color: '#71717a', lineHeight: 1.5 }}>
-          {error.message || 'Грешка при зареждане на админ панела.'}
+          {error.message || (isEn ? 'Error while loading the admin panel.' : 'Грешка при зареждане на админ панела.')}
         </p>
         <button
           type="button"
@@ -40,7 +52,7 @@ export default function AdminError({
             cursor: 'pointer',
           }}
         >
-          Опитай отново
+          {isEn ? 'Try again' : 'Опитай отново'}
         </button>
       </div>
     </div>

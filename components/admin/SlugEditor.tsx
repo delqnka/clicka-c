@@ -4,14 +4,17 @@ import { useState, type CSSProperties } from 'react';
 import { Check, Save } from 'lucide-react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField } from '@/components/admin/admin-ui';
+import type { Locale } from '@/lib/i18n';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,18}[a-z0-9]$|^[a-z0-9]{2,20}$/;
 
-function validate(val: string): string | null {
-  if (!val) return 'Въведи адрес.';
-  if (val.length < 2) return 'Минимум 2 символа.';
-  if (val.length > 20) return 'Максимум 20 символа.';
-  if (!SLUG_RE.test(val)) return 'Само малки букви (a-z), цифри и тирета. Не може да започва или свършва с тире.';
+function validate(val: string, isEn: boolean): string | null {
+  if (!val) return isEn ? 'Enter an address.' : 'Въведи адрес.';
+  if (val.length < 2) return isEn ? 'Minimum 2 characters.' : 'Минимум 2 символа.';
+  if (val.length > 20) return isEn ? 'Maximum 20 characters.' : 'Максимум 20 символа.';
+  if (!SLUG_RE.test(val)) return isEn
+    ? 'Only lowercase letters (a-z), digits, and hyphens. Cannot start or end with a hyphen.'
+    : 'Само малки букви (a-z), цифри и тирета. Не може да започва или свършва с тире.';
   return null;
 }
 
@@ -20,24 +23,27 @@ export function SlugEditor({
   rootDomain,
   inp,
   onSaved,
+  locale = 'bg',
 }: {
   currentSlug: string;
   rootDomain: string;
   inp: CSSProperties;
   onSaved: (newSlug: string) => void;
+  locale?: Locale;
 }) {
+  const isEn = locale === 'en';
   const [value, setValue] = useState(currentSlug);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(true);
 
-  const validationErr = validate(value);
+  const validationErr = validate(value, isEn);
   const changed = value !== currentSlug;
   const canSave = changed && !validationErr && !busy;
 
   async function handleSave() {
     setError('');
-    const err = validate(value);
+    const err = validate(value, isEn);
     if (err) { setError(err); return; }
     setBusy(true);
     try {
@@ -47,11 +53,11 @@ export function SlugEditor({
         body: JSON.stringify({ newSlug: value }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Грешка'); return; }
+      if (!res.ok) { setError(data.error ?? (isEn ? 'Error' : 'Грешка')); return; }
       setSaved(true);
       onSaved(data.newSlug);
     } catch {
-      setError('Мрежова грешка.');
+      setError(isEn ? 'Network error.' : 'Мрежова грешка.');
     } finally {
       setBusy(false);
     }
@@ -61,7 +67,7 @@ export function SlugEditor({
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <AdminField compact label="Адрес на сайта">
+      <AdminField compact label={isEn ? 'Site address' : 'Адрес на сайта'}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -118,7 +124,7 @@ export function SlugEditor({
                 type="button"
                 disabled={!canSave}
                 onClick={handleSave}
-                title="Запази адреса"
+                title={isEn ? 'Save address' : 'Запази адреса'}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: 28, height: 28, borderRadius: '50%',
@@ -145,7 +151,7 @@ export function SlugEditor({
           <>⚠ {validationErr}</>
         ) : (
           <>
-            <span style={{ color: '#a1a1aa' }}>Адрес на сайта:</span>
+            <span style={{ color: '#a1a1aa' }}>{isEn ? 'Site address:' : 'Адрес на сайта:'}</span>
             <span style={{ fontWeight: 600, color: ADMIN_T.text }}>{value || currentSlug}.{rootDomain}</span>
           </>
         )}
@@ -155,12 +161,12 @@ export function SlugEditor({
 
       <details style={{ fontSize: 11, color: '#a1a1aa', lineHeight: 1.6 }}>
         <summary style={{ cursor: 'pointer', listStyle: 'none', color: '#c4c4c8', fontSize: 11 }}>
-          Какво става ако сменя адреса?
+          {isEn ? 'What happens if I change the address?' : 'Какво става ако сменя адреса?'}
         </summary>
         <div style={{ marginTop: 4, display: 'grid', gap: 1, paddingLeft: 4 }}>
-          <p style={{ margin: 0 }}>· Споделените линкове спират да работят</p>
-          <p style={{ margin: 0 }}>· QR кодовете трябва да се генерират наново</p>
-          <p style={{ margin: 0 }}>· Google ще трябва да намери отново сайта ти</p>
+          <p style={{ margin: 0 }}>{isEn ? '· Shared links will stop working' : '· Споделените линкове спират да работят'}</p>
+          <p style={{ margin: 0 }}>{isEn ? '· QR codes need to be regenerated' : '· QR кодовете трябва да се генерират наново'}</p>
+          <p style={{ margin: 0 }}>{isEn ? '· Google will need to re-discover your site' : '· Google ще трябва да намери отново сайта ти'}</p>
         </div>
       </details>
     </div>

@@ -151,18 +151,18 @@
   "adminDashboard": {
     "navigation": "Navigation",
     "tabs": {
-      "site": "Site",
-      "images": "Images",
-      "specialist": "Specialist",
-      "staff": "Staff",
-      "services": "Services",
+      "site": "Website",
+      "images": "Site images",
+      "specialist": "Owner profile",
+      "staff": "Team",
+      "services": "Booking services",
       "offers": "Offers",
       "brands": "Brands",
       "blog": "Blog",
       "hours": "Working hours",
-      "bookings": "Bookings",
+      "bookings": "Booking",
       "clients": "Clients",
-      "domain": "Domain",
+      "domain": "Custom domain",
       "payments": "Payments",
       "integrations": "Integrations",
       "marketing": "Marketing",
@@ -170,10 +170,15 @@
       "account": "Account"
     },
     "groups": {
+      "navigation": "Navigation",
       "content": "Content",
       "team": "Team",
       "settings": "Settings",
-      "site": "Site"
+      "site": "Site",
+      "engine": "Booking engine",
+      "publicSite": "Public site",
+      "delivery": "Delivery",
+      "account": "Account"
     },
     "actions": {
       "save": "Save",

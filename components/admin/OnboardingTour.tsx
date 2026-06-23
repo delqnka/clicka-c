@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { Locale } from '@/lib/i18n';
 
-const STEPS = [
+const STEPS_BG = [
   {
     title: 'Попълни данните за салона',
     desc: 'Добави името, телефона, адреса и кратко описание. Клиентите ще ги виждат на сайта ти.',
@@ -26,7 +27,35 @@ const STEPS = [
   {
     title: 'Готово — сайтът ти е жив!',
     desc: 'Промените се запазват автоматично. Натисни „Публикувай" само ако искаш да обновиш сайта ръчно след редакция.',
-    tab: null,
+    tab: null as string | null,
+  },
+];
+
+const STEPS_EN = [
+  {
+    title: 'Fill in your salon details',
+    desc: 'Add the name, phone, address and a short description. Clients will see them on your site.',
+    tab: 'Site',
+  },
+  {
+    title: 'Upload photos',
+    desc: 'Add photos of your work. The first photo is the site cover.',
+    tab: 'Images',
+  },
+  {
+    title: 'Add services and prices',
+    desc: 'Snap a photo of your price list using the green button — the system reads it automatically and adds the services for you.',
+    tab: 'Services',
+  },
+  {
+    title: 'Connect Telegram',
+    desc: 'In the "Integrations" tab, find the "Telegram" section and tap the button. You will receive bookings directly in Telegram.',
+    tab: 'Integrations',
+  },
+  {
+    title: 'Done — your site is live!',
+    desc: 'Changes are saved automatically. Press "Publish" only if you want to manually refresh the site after edits.',
+    tab: null as string | null,
   },
 ];
 
@@ -34,9 +63,11 @@ const GRAD = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
 const FONT = "var(--font-client-manrope,'Manrope',system-ui,sans-serif)";
 const KEY = 'clicka_onboarding_done';
 
-export function OnboardingTour({ slug, done }: { slug: string; done?: boolean }) {
+export function OnboardingTour({ slug, done, locale = 'bg' }: { slug: string; done?: boolean; locale?: Locale }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
+  const isEn = locale === 'en';
+  const STEPS = isEn ? STEPS_EN : STEPS_BG;
 
   useEffect(() => {
     if (done) return;
@@ -113,7 +144,7 @@ export function OnboardingTour({ slug, done }: { slug: string; done?: boolean })
               background: 'rgba(225,29,72,0.08)',
               color: '#e11d48',
             }}>
-              ТАБ: {current.tab.toUpperCase()}
+              {isEn ? 'TAB' : 'ТАБ'}: {current.tab.toUpperCase()}
             </span>
           </div>
         )}
@@ -162,7 +193,7 @@ export function OnboardingTour({ slug, done }: { slug: string; done?: boolean })
               boxShadow: '0 4px 20px rgba(219,39,119,.25)',
             }}
           >
-            {isLast ? 'Разбрах, да започваме! 🎉' : `Напред (${step + 1}/${STEPS.length})`}
+            {isLast ? (isEn ? "Got it, let's start! 🎉" : 'Разбрах, да започваме! 🎉') : (isEn ? `Next (${step + 1}/${STEPS.length})` : `Напред (${step + 1}/${STEPS.length})`)}
           </button>
 
           <button
@@ -178,7 +209,7 @@ export function OnboardingTour({ slug, done }: { slug: string; done?: boolean })
               fontFamily: FONT,
             }}
           >
-            Пропусни ръководството
+            {isEn ? 'Skip guide' : 'Пропусни ръководството'}
           </button>
         </div>
       </div>

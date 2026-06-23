@@ -3,8 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { resolveAdminGate } from '@/lib/admin-auth';
 import { ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
+import { isCustomSiteBrandsEnabled } from '@/lib/custom-site-features';
 
 export async function POST(req: NextRequest) {
+  if (!isCustomSiteBrandsEnabled()) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const sessionId = cookies().get(ADMIN_COOKIE_NAME)?.value ?? null;
   const gate = await resolveAdminGate({
     slug: headers().get('x-salon-slug'),

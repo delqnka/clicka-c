@@ -2,6 +2,7 @@
 
 import { RefreshCw, ScanLine, X } from 'lucide-react';
 import { useRef } from 'react';
+import type { Locale } from '@/lib/i18n';
 
 type Props = {
   urls: string[];
@@ -13,17 +14,21 @@ type Props = {
   onUpload: (files: FileList | null, input?: HTMLInputElement | null) => void | Promise<void>;
   onRemove: (index: number) => void;
   onReanalyze: () => void;
+  locale?: Locale;
 };
 
 export function AdminPriceListScanBtn({
   busy,
   size = 'md',
   onUpload,
+  locale = 'bg',
 }: {
   busy: boolean;
   size?: 'sm' | 'md';
   onUpload: (files: FileList | null, input?: HTMLInputElement | null) => void | Promise<void>;
+  locale?: Locale;
 }) {
+  const isEn = locale === 'en';
   const inputRef = useRef<HTMLInputElement>(null);
   const dim = size === 'sm' ? 34 : 40;
   const iconSize = size === 'sm' ? 16 : 18;
@@ -32,8 +37,8 @@ export function AdminPriceListScanBtn({
     <>
       <button
         type="button"
-        aria-label="Качи ценоразпис"
-        title="Качи ценоразпис"
+        aria-label={isEn ? 'Upload price list' : 'Качи ценоразпис'}
+        title={isEn ? 'Upload price list' : 'Качи ценоразпис'}
         disabled={busy}
         onClick={() => inputRef.current?.click()}
         style={{
@@ -75,7 +80,9 @@ export function PriceListServicesImport({
   onUpload,
   onRemove,
   onReanalyze,
+  locale = 'bg',
 }: Props) {
+  const isEn = locale === 'en';
   if (urls.length === 0 && !analyzing) {
     return (
       <div
@@ -93,14 +100,16 @@ export function PriceListServicesImport({
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: compact ? 12 : 13, fontWeight: 700, color: '#18181B' }}>Ценоразпис с AI</p>
+          <p style={{ margin: 0, fontSize: compact ? 12 : 13, fontWeight: 700, color: '#18181B' }}>{isEn ? 'AI price list' : 'Ценоразпис с AI'}</p>
           {!compact ? (
             <p style={{ margin: '4px 0 0', fontSize: 12, color: '#71717A', lineHeight: 1.4 }}>
-              Снимай ценоразписа — услугите се добавят автоматично.
+              {isEn
+                ? 'Snap a photo of the price list — services are added automatically.'
+                : 'Снимай ценоразписа — услугите се добавят автоматично.'}
             </p>
           ) : null}
         </div>
-        {compact ? <AdminPriceListScanBtn busy={busy || analyzing} size="sm" onUpload={onUpload} /> : null}
+        {compact ? <AdminPriceListScanBtn busy={busy || analyzing} size="sm" onUpload={onUpload} locale={locale} /> : null}
       </div>
     );
   }
@@ -117,7 +126,7 @@ export function PriceListServicesImport({
         }}
       >
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#18181B' }}>
-          Ценоразпис{urls.length > 0 ? ` · ${urls.length}` : ''}
+          {isEn ? 'Price list' : 'Ценоразпис'}{urls.length > 0 ? ` · ${urls.length}` : ''}
           {analyzing ? ' · AI…' : ''}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -136,10 +145,10 @@ export function PriceListServicesImport({
                 textDecoration: 'underline',
               }}
             >
-              Разчети отново
+              {isEn ? 'Re-scan' : 'Разчети отново'}
             </button>
           ) : null}
-          <AdminPriceListScanBtn busy={busy || analyzing} size={compact ? 'sm' : 'md'} onUpload={onUpload} />
+          <AdminPriceListScanBtn busy={busy || analyzing} size={compact ? 'sm' : 'md'} onUpload={onUpload} locale={locale} />
         </div>
       </div>
 
@@ -165,12 +174,12 @@ export function PriceListServicesImport({
           >
             <img
               src={url}
-              alt={`Ценоразпис ${i + 1}`}
+              alt={isEn ? `Price list ${i + 1}` : `Ценоразпис ${i + 1}`}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
             <button
               type="button"
-              aria-label={`Премахни ценоразпис ${i + 1}`}
+              aria-label={isEn ? `Remove price list ${i + 1}` : `Премахни ценоразпис ${i + 1}`}
               onClick={() => onRemove(i)}
               style={{
                 position: 'absolute',

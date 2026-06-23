@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react';
 import { useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
-import { ADMIN_DAYS } from '@/components/admin/admin-constants';
+import { ADMIN_DAYS, getAdminDays } from '@/components/admin/admin-constants';
 import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
 import type { AdminSitePayload } from '@/lib/admin-site';
@@ -30,6 +30,7 @@ export function HoursTabPanel({
   locale: Locale;
 }) {
   const isEn = locale === 'en';
+  const dayDefs = getAdminDays(locale);
   const [activeDayKey, setActiveDayKey] = useState<DayKey>('monday');
 
   const timeInp = (extra?: CSSProperties): CSSProperties => ({
@@ -63,7 +64,7 @@ export function HoursTabPanel({
   }
 
   function renderDayEditor(dayKey: DayKey, compact?: boolean) {
-    const day = ADMIN_DAYS.find((d) => d.key === dayKey)!;
+    const day = dayDefs.find((d) => d.key === dayKey) ?? ADMIN_DAYS.find((d) => d.key === dayKey)!;
     const d = site.workingHours[dayKey];
 
     if (compact) {
@@ -295,7 +296,7 @@ export function HoursTabPanel({
               scrollbarWidth: 'none',
             }}
           >
-            {ADMIN_DAYS.map((day) => {
+            {dayDefs.map((day) => {
               const selected = activeDayKey === day.key;
               const closed = site.workingHours[day.key].closed;
               return (
@@ -325,7 +326,7 @@ export function HoursTabPanel({
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 6 }}>
-          {ADMIN_DAYS.map((day) => renderDayEditor(day.key))}
+          {dayDefs.map((day) => renderDayEditor(day.key))}
         </div>
       )}
 

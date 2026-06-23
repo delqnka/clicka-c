@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { BlogPostView } from '@/components/salon/blog-post-view';
 import { BlogIndexView } from '@/components/salon/blog-index-view';
+import { isCustomSiteBlogEnabled } from '@/lib/custom-site-features';
 import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { getPublicSalonPageData } from '@/lib/public-salon';
 import { resolveBlogSectionTitle } from '@/lib/salon-blog-shared';
@@ -22,6 +23,7 @@ export type BlogPageContext = {
 };
 
 async function resolveBlogContext(slugParam?: string): Promise<BlogPageContext | null> {
+  if (!isCustomSiteBlogEnabled()) return null;
   const host = headers().get('host');
   const pageData = await getPublicSalonPageData({ slug: slugParam, host });
   if (!pageData) return null;

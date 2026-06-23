@@ -11,3 +11,7 @@ export function toLocaleTag(locale: Locale): string {
 export function isEnglishLocale(value: string | null | undefined): boolean {
   return resolveSalonLocale(value) === 'en';
 }
+
+export function toLocaleLabel(value: string | null | undefined): string {
+  return toLocaleTag(resolveSalonLocale(value));
+}

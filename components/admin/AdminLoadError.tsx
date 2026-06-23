@@ -1,6 +1,9 @@
 'use client';
 
-export function AdminLoadError({ message }: { message: string }) {
+import type { Locale } from '@/lib/i18n';
+
+export function AdminLoadError({ message, locale = 'bg' }: { message: string; locale?: Locale }) {
+  const isEn = locale === 'en';
   return (
     <div
       style={{
@@ -15,10 +18,10 @@ export function AdminLoadError({ message }: { message: string }) {
     >
       <div style={{ maxWidth: 480, textAlign: 'center' }}>
         <h1 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 700, color: '#18181b' }}>
-          Админ панелът не се зареди
+          {isEn ? 'The admin panel did not load' : 'Админ панелът не се зареди'}
         </h1>
         <p style={{ margin: '0 0 20px', fontSize: 14, color: '#71717a', lineHeight: 1.5 }}>
-          {message || 'Възникна грешка при зареждане на данните.'}
+          {message || (isEn ? 'There was an error while loading the data.' : 'Възникна грешка при зареждане на данните.')}
         </p>
         <button
           type="button"
@@ -34,7 +37,7 @@ export function AdminLoadError({ message }: { message: string }) {
             cursor: 'pointer',
           }}
         >
-          Презареди
+          {isEn ? 'Reload' : 'Презареди'}
         </button>
       </div>
     </div>

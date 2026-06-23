@@ -3,6 +3,7 @@
 import { GripVertical, Trash2 } from 'lucide-react';
 import type { CSSProperties, PointerEvent } from 'react';
 import { useCallback, useRef, useState } from 'react';
+import type { Locale } from '@/lib/i18n';
 
 const LONG_PRESS_MS = 420;
 
@@ -25,6 +26,7 @@ type Props = {
   btnSmGhost: BtnStyle;
   onReorder: (images: string[]) => void;
   onRemove: (index: number) => void;
+  locale?: Locale;
 };
 
 export function GalleryReorderGrid({
@@ -34,7 +36,9 @@ export function GalleryReorderGrid({
   btnSmGhost,
   onReorder,
   onRemove,
+  locale = 'bg',
 }: Props) {
+  const isEn = locale === 'en';
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -252,7 +256,7 @@ export function GalleryReorderGrid({
                   borderRadius: isMobile ? 10 : 8,
                   flex: '0 0 auto',
                 }}
-                aria-label="Премахни снимка"
+                aria-label={isEn ? 'Remove image' : 'Премахни снимка'}
                 disabled={isPending}
                 onClick={e => {
                   e.stopPropagation();

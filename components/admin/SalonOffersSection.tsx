@@ -4,6 +4,7 @@ import { Camera, Trash2, X } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { offerSpotsLeft } from '@/lib/salon-offers';
+import type { Locale } from '@/lib/i18n';
 
 function dateInputValue(iso: string | null): string {
   if (!iso) return '';
@@ -30,6 +31,7 @@ type Props = {
   inp: CSSProperties;
   onChange: (offers: AdminSalonOffer[]) => void;
   onUploadImages: (offerIndex: number, files: FileList | null) => void | Promise<void>;
+  locale: Locale;
 };
 
 export function SalonOffersSection({
@@ -39,8 +41,10 @@ export function SalonOffersSection({
   inp,
   onChange,
   onUploadImages,
+  locale,
 }: Props) {
   const [durationDrafts, setDurationDrafts] = useState<Record<number, string>>({});
+  const isEn = locale === 'en';
 
   function updateOffer(index: number, patch: Partial<AdminSalonOffer>) {
     onChange(offers.map((o, i) => (i === index ? { ...o, ...patch } : o)));
@@ -78,7 +82,7 @@ export function SalonOffersSection({
   return (
     <div style={{ display: 'grid', gap: isMobile ? 14 : 12 }}>
       {offers.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 14, color: '#71717A' }}>Няма оферти.</p>
+        <p style={{ margin: 0, fontSize: 14, color: '#71717A' }}>{isEn ? 'No offers.' : 'Няма оферти.'}</p>
       ) : null}
 
       {offers.map((offer, i) => {
@@ -100,7 +104,7 @@ export function SalonOffersSection({
           >
             <button
               type="button"
-              aria-label="Премахни оферта"
+              aria-label={isEn ? 'Remove offer' : 'Премахни оферта'}
               onClick={() => removeOffer(i)}
               style={{
                 position: 'absolute',
@@ -122,21 +126,21 @@ export function SalonOffersSection({
 
             <div style={{ display: 'grid', gap: 10, paddingRight: 32, minWidth: 0 }}>
               <label style={{ display: 'grid', gap: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Заглавие</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Title' : 'Заглавие'}</span>
                 <input
                   style={inp}
                   value={offer.title}
                   onChange={(e) => updateOffer(i, { title: e.target.value })}
-                  placeholder="Напр. -30% подстригване"
+                  placeholder={isEn ? 'e.g. -30% haircut' : 'Напр. -30% подстригване'}
                 />
               </label>
               <label style={{ display: 'grid', gap: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Описание</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Description' : 'Описание'}</span>
                 <textarea
                   style={{ ...inp, minHeight: 72, resize: 'vertical' }}
                   value={offer.description}
                   onChange={(e) => updateOffer(i, { description: e.target.value })}
-                  placeholder="Какво включва офертата"
+                  placeholder={isEn ? 'What the offer includes' : 'Какво включва офертата'}
                 />
               </label>
 
@@ -149,7 +153,7 @@ export function SalonOffersSection({
                 }}
               >
                 <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Валидна от</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Valid from' : 'Валидна от'}</span>
                   <input
                     type="date"
                     style={inp}
@@ -160,7 +164,7 @@ export function SalonOffersSection({
                   />
                 </label>
                 <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Валидна до</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Valid until' : 'Валидна до'}</span>
                   <input
                     type="date"
                     style={inp}
@@ -184,7 +188,7 @@ export function SalonOffersSection({
                     checked={offer.isActive}
                     onChange={(e) => updateOffer(i, { isActive: e.target.checked })}
                   />
-                  Активна
+                  {isEn ? 'Active' : 'Активна'}
                 </label>
               </div>
 
@@ -196,7 +200,7 @@ export function SalonOffersSection({
                 }}
               >
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Отстъпка %</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Discount %' : 'Отстъпка %'}</span>
                   <input
                     type="number"
                     style={inp}
@@ -209,7 +213,7 @@ export function SalonOffersSection({
                   />
                 </label>
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Макс. резервации</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Max bookings' : 'Макс. резервации'}</span>
                   <input
                     type="number"
                     min={1}
@@ -224,7 +228,7 @@ export function SalonOffersSection({
                   />
                 </label>
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Продължителност</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Duration' : 'Продължителност'}</span>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -234,20 +238,20 @@ export function SalonOffersSection({
                     value={durationDisplay(i, offer.durationMin)}
                     onChange={(e) => onDurationChange(i, e.target.value)}
                     onBlur={() => onDurationBlur(i)}
-                    placeholder="мин."
+                    placeholder={isEn ? 'min' : 'мин.'}
                   />
                 </label>
               </div>
 
               {offer.maxClaims != null ? (
                 <p style={{ margin: 0, fontSize: 12, color: '#71717A' }}>
-                  Резервирани: <strong>{offer.totalClaims}</strong> / {offer.maxClaims}
-                  {spots != null ? ` · остават ${spots}` : ''}
+                  {isEn ? 'Booked: ' : 'Резервирани: '}<strong>{offer.totalClaims}</strong> / {offer.maxClaims}
+                  {spots != null ? (isEn ? ` · ${spots} left` : ` · остават ${spots}`) : ''}
                 </p>
               ) : null}
 
               <div style={{ display: 'grid', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Снимки</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Images' : 'Снимки'}</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {offer.images.map((url, imgIdx) => (
                     <div
@@ -264,7 +268,7 @@ export function SalonOffersSection({
                       <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <button
                         type="button"
-                        aria-label="Премахни снимка"
+                        aria-label={isEn ? 'Remove image' : 'Премахни снимка'}
                         onClick={() =>
                           updateOffer(i, {
                             images: offer.images.filter((_, j) => j !== imgIdx),
@@ -291,7 +295,7 @@ export function SalonOffersSection({
                     </div>
                   ))}
                   <label
-                    aria-label="Качи снимки към офертата"
+                    aria-label={isEn ? 'Upload offer images' : 'Качи снимки към офертата'}
                     style={{
                       width: 72,
                       height: 72,

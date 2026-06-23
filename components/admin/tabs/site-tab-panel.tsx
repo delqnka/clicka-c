@@ -117,6 +117,7 @@ export function SiteTabPanel({
           mobile={isMobile}
           green
           compact
+          locale={locale}
           onClick={saveSiteSettings}
         />
       }

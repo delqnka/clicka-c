@@ -8,10 +8,12 @@ import { getBrowserHost, getHostAwareSalonPath } from '@/lib/domain-routing';
 import { loadAdminAccountInfo } from '@/lib/admin-account-load';
 import { loadAdminOffersBySalonId } from '@/lib/admin-offers-load';
 import { loadAdminSiteDataBySlug } from '@/lib/admin-site';
+import { getAdminLocale } from '@/lib/admin-locale';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminEntryPage() {
+  const locale = getAdminLocale();
   const headerStore = headers();
   // browserHost honors X-Forwarded-Host so admin works when a client site
   // (e.g. salonurban.online) proxies /admin/* to this engine deployment.
@@ -70,16 +72,16 @@ export default async function AdminEntryPage() {
       loadAdminAccountInfo(gate.session.ownerId),
     ]);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Грешка при зареждане на салона';
+    const message = err instanceof Error ? err.message : (locale === 'en' ? 'Error while loading the salon' : 'Грешка при зареждане на салона');
     console.error('[admin/page] load failed:', message, err);
-    return <AdminLoadError message={message} />;
+    return <AdminLoadError message={message} locale={locale} />;
   }
 
   if (!site) notFound();
 
   return (
     <>
-    <OnboardingTour slug={gate.salon.slug} done={site.onboardingTourDone || !!site.customDomain} />
+    <OnboardingTour slug={gate.salon.slug} done={site.onboardingTourDone || !!site.customDomain} locale={site.language} />
     <AdminDashboardClient
       slug={gate.salon.slug}
       ownerEmail={gate.session.ownerEmail}

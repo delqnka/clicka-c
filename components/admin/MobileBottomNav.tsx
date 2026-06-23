@@ -3,6 +3,7 @@
 import type { LucideIcon } from 'lucide-react';
 
 import { tokens } from '@/lib/admin-theme';
+import type { Locale } from '@/lib/i18n';
 
 type BottomTab = {
   id: string;
@@ -17,6 +18,7 @@ type MobileBottomNavProps<TId extends string> = {
   sheetOpen: boolean;
   onSwitch: (id: TId) => void;
   t: (key: string) => string;
+  locale?: Locale;
 };
 
 export function MobileBottomNav<TId extends string>({
@@ -25,10 +27,12 @@ export function MobileBottomNav<TId extends string>({
   sheetOpen,
   onSwitch,
   t,
+  locale = 'bg',
 }: MobileBottomNavProps<TId>) {
+  const isEn = locale === 'en';
   return (
     <nav
-      aria-label="Навигация"
+      aria-label={isEn ? 'Navigation' : 'Навигация'}
       style={{
         position: 'fixed',
         left: 0,

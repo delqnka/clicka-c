@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField } from '@/components/admin/admin-ui';
 import { type Locale } from '@/lib/i18n';
@@ -12,7 +12,15 @@ type AccountInfo = {
   pendingEmail?: string | null;
 };
 
-type SubTab = 'profile' | 'email' | 'password';
+type BusinessInfo = {
+  companyName: string;
+  eik: string;
+  managerName: string;
+  address: string;
+  contactEmail: string;
+};
+
+type SubTab = 'profile' | 'business' | 'email' | 'password';
 
 const compactInp = (inp: CSSProperties): CSSProperties => ({
   ...inp,
@@ -39,9 +47,17 @@ export function AccountTabPanel({
   const [subTab, setSubTab] = useState<SubTab>('profile');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [businessLoaded, setBusinessLoaded] = useState(false);
 
   const [profileForm, setProfileForm] = useState({
     displayName: initialAccount.displayName ?? '',
+  });
+  const [businessForm, setBusinessForm] = useState<BusinessInfo>({
+    companyName: '',
+    eik: '',
+    managerName: '',
+    address: '',
+    contactEmail: '',
   });
   const [emailForm, setEmailForm] = useState({ newEmail: '', currentPassword: '' });
   const [passwordForm, setPasswordForm] = useState({
@@ -49,15 +65,42 @@ export function AccountTabPanel({
     newPassword: '',
     confirmPassword: '',
   });
-  const [busy, setBusy] = useState<'profile' | 'email' | 'password' | 'reset' | null>(null);
+  const [busy, setBusy] = useState<'profile' | 'business' | 'email' | 'password' | 'reset' | null>(null);
 
   const fieldInp = compactInp(inp);
+
+  useEffect(() => {
+    if (subTab !== 'business' || businessLoaded) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/admin/legal?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
+        const data = (await res.json().catch(() => ({}))) as { legalInfo?: Partial<BusinessInfo> };
+        if (!res.ok || cancelled) return;
+        const legal = data.legalInfo ?? {};
+        setBusinessForm({
+          companyName: typeof legal.companyName === 'string' ? legal.companyName : '',
+          eik: typeof legal.eik === 'string' ? legal.eik : '',
+          managerName: typeof legal.managerName === 'string' ? legal.managerName : '',
+          address: typeof legal.address === 'string' ? legal.address : '',
+          contactEmail: typeof legal.contactEmail === 'string' ? legal.contactEmail : '',
+        });
+        setBusinessLoaded(true);
+      } catch {
+        // Ignore and allow manual input
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessLoaded, slug, subTab]);
 
   async function submitProfile(e: FormEvent) {
     e.preventDefault();
     setNotice('');
     setError('');
-    setBusy('profile');
+    setBusy('business');
     try {
       const res = await fetch(`/api/admin/account?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH',
@@ -74,6 +117,35 @@ export function AccountTabPanel({
       setProfileForm({ displayName: nextDisplayName });
       onDisplayNameChange?.(nextDisplayName || null);
       setNotice(data.message ?? (isEn ? 'Name updated.' : 'Името е обновено.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : (isEn ? 'Error' : 'Грешка'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function submitBusiness(e: FormEvent) {
+    e.preventDefault();
+    setNotice('');
+    setError('');
+    setBusy('profile');
+    try {
+      const res = await fetch(`/api/admin/legal?slug=${encodeURIComponent(slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          companyName: businessForm.companyName,
+          eik: businessForm.eik,
+          managerName: businessForm.managerName,
+          address: businessForm.address,
+          contactEmail: businessForm.contactEmail,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Error while saving business details' : 'Грешка при запазване на фирмените данни'));
+      setBusinessLoaded(true);
+      setNotice(isEn ? 'Business details updated.' : 'Фирмените данни са обновени.');
     } catch (err) {
       setError(err instanceof Error ? err.message : (isEn ? 'Error' : 'Грешка'));
     } finally {
@@ -184,9 +256,16 @@ export function AccountTabPanel({
       ) : null}
 
       <div style={{ display: 'flex', gap: 6 }}>
-        {(['profile', 'email', 'password'] as const).map((tab) => {
+        {(['profile', 'business', 'email', 'password'] as const).map((tab) => {
           const active = subTab === tab;
-          const label = tab === 'profile' ? (isEn ? 'Name' : 'Име') : tab === 'email' ? (isEn ? 'Email' : 'Имейл') : (isEn ? 'Password' : 'Парола');
+          const label =
+            tab === 'profile'
+              ? (isEn ? 'Name' : 'Име')
+              : tab === 'business'
+                ? (isEn ? 'Business' : 'Фирма')
+                : tab === 'email'
+                  ? (isEn ? 'Email' : 'Имейл')
+                  : (isEn ? 'Password' : 'Парола');
           return (
             <button
               key={tab}
@@ -236,6 +315,67 @@ export function AccountTabPanel({
             }}
           >
             {busy === 'profile' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save name' : 'Запази името')}
+          </button>
+        </form>
+      ) : subTab === 'business' ? (
+        <form onSubmit={(e) => void submitBusiness(e)} style={{ display: 'grid', gap: 8 }}>
+          <AdminField label={isEn ? 'Official company name' : 'Официално име на фирмата'} compact>
+            <input
+              type="text"
+              value={businessForm.companyName}
+              onChange={(e) => setBusinessForm((p) => ({ ...p, companyName: e.target.value }))}
+              style={fieldInp}
+              placeholder={isEn ? 'Example Ltd.' : 'Пример ООД'}
+              required
+            />
+          </AdminField>
+          <AdminField label={isEn ? 'Company ID / VAT' : 'ЕИК / ДДС'} compact>
+            <input
+              type="text"
+              value={businessForm.eik}
+              onChange={(e) => setBusinessForm((p) => ({ ...p, eik: e.target.value }))}
+              style={fieldInp}
+              placeholder={isEn ? '123456789' : '123456789'}
+            />
+          </AdminField>
+          <AdminField label={isEn ? 'Manager / responsible person' : 'Управител / отговорно лице'} compact>
+            <input
+              type="text"
+              value={businessForm.managerName}
+              onChange={(e) => setBusinessForm((p) => ({ ...p, managerName: e.target.value }))}
+              style={fieldInp}
+              placeholder={isEn ? 'Jane Smith' : 'Деляна Иванова'}
+            />
+          </AdminField>
+          <AdminField label={isEn ? 'Registered address' : 'Адрес на фирмата'} compact>
+            <input
+              type="text"
+              value={businessForm.address}
+              onChange={(e) => setBusinessForm((p) => ({ ...p, address: e.target.value }))}
+              style={fieldInp}
+              placeholder={isEn ? '1 Main St, Sofia' : 'гр. София, ул. Пример 1'}
+            />
+          </AdminField>
+          <AdminField label={isEn ? 'Legal contact email' : 'Имейл за правни документи'} compact>
+            <input
+              type="email"
+              value={businessForm.contactEmail}
+              onChange={(e) => setBusinessForm((p) => ({ ...p, contactEmail: e.target.value }))}
+              style={fieldInp}
+              placeholder="info@example.com"
+            />
+          </AdminField>
+          <button
+            type="submit"
+            disabled={busy === 'business'}
+            style={{
+              ...ADMIN_COMPACT_SAVE_BTN,
+              justifySelf: 'start',
+              opacity: busy === 'business' ? 0.7 : 1,
+              cursor: busy === 'business' ? 'wait' : 'pointer',
+            }}
+          >
+            {busy === 'business' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save business details' : 'Запази фирмените данни')}
           </button>
         </form>
       ) : subTab === 'email' ? (

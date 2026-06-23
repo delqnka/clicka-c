@@ -1,8 +1,9 @@
 'use client';
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import type { Locale } from '@/lib/i18n';
 
-type Props = { children: ReactNode };
+type Props = { children: ReactNode; locale?: Locale };
 type State = { error: Error | null };
 
 export class AdminErrorBoundary extends Component<Props, State> {
@@ -17,6 +18,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
   }
 
   render() {
+    const isEn = this.props.locale === 'en';
     if (this.state.error) {
       return (
         <div
@@ -32,10 +34,10 @@ export class AdminErrorBoundary extends Component<Props, State> {
         >
           <div style={{ maxWidth: 420, textAlign: 'center' }}>
             <h1 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 700, color: '#18181b' }}>
-              Грешка в панела
+              {isEn ? 'Panel error' : 'Грешка в панела'}
             </h1>
             <p style={{ margin: '0 0 20px', fontSize: 14, color: '#71717a', lineHeight: 1.5 }}>
-              {this.state.error.message || 'Моля, презареди страницата.'}
+              {this.state.error.message || (isEn ? 'Please reload the page.' : 'Моля, презареди страницата.')}
             </p>
             <button
               type="button"
@@ -54,7 +56,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
                 cursor: 'pointer',
               }}
             >
-              Презареди
+              {isEn ? 'Reload' : 'Презареди'}
             </button>
           </div>
         </div>

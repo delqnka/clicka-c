@@ -1,10 +1,6 @@
 import { sql } from '@/lib/db';
 import crypto from 'crypto';
 import {
-  normalizeLegalInfoFromDb,
-  type LegalInfoStored,
-} from '@/lib/legal-custom-documents';
-import {
   normalizeSalonFaqItems,
   normalizeSalonVisitorInfo,
   normalizeVisitorAdditionalInfo,
@@ -18,8 +14,6 @@ import {
 } from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { ensureAdminSiteSchema } from '@/lib/ensure-admin-site-schema';
-
-export type LegalInfoPayload = LegalInfoStored;
 
 export type WorkingDay = {
   open: string;
@@ -86,13 +80,11 @@ export type AdminSitePayload = {
   telegramChatId: string;
   onboardingCode: string;
   siteStatus: string;
-  legalInfo: LegalInfoStored | null;
   faqItems: SalonFaqItem[];
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
   venueExtras: SalonVenueExtras;
   plan: string;
-  brandIds: string[];
   onboardingTourDone: boolean;
   ga4Id: string;
   metaPixelId: string;
@@ -169,10 +161,9 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       services, working_hours, opening_hours,
       custom_domain, domain_status, domain_config,
       google_place_id, telegram_chat_id, onboarding_code, onboarding_tour_done,
-      site_status, legal_info, latitude, longitude,
+      site_status, latitude, longitude,
       faq_items, visitor_info, visitor_additional_info, venue_extras,
       plan,
-      brand_domains,
       stripe_account_id, stripe_charges_enabled,
       ga4_id, meta_pixel_id, clarity_id
     FROM salons
@@ -243,11 +234,6 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     onboardingCode: String(row.onboarding_code ?? ''),
     onboardingTourDone: row.onboarding_tour_done === true,
     siteStatus: String(row.site_status ?? ''),
-    legalInfo: (() => {
-      const li = row.legal_info;
-      if (!li || typeof li !== 'object') return null;
-      return normalizeLegalInfoFromDb(li);
-    })(),
     faqItems: normalizeSalonFaqItems(row.faq_items),
     visitorInfo: normalizeSalonVisitorInfo(row.visitor_info),
     visitorAdditionalInfo: normalizeVisitorAdditionalInfo(row.visitor_additional_info),
@@ -256,7 +242,6 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       normalizeSalonVisitorInfo(row.visitor_info),
     ),
     plan: String(row.plan ?? 'solo'),
-    brandIds: Array.isArray(row.brand_domains) ? row.brand_domains.map(String) : [],
     ga4Id: String(row.ga4_id ?? ''),
     metaPixelId: String(row.meta_pixel_id ?? ''),
     clarityId: String(row.clarity_id ?? ''),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { BRAND } from '@/lib/brand';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { isCustomSiteBrandsEnabled } from '@/lib/custom-site-features';
 import { normalizeServices } from '@/lib/salon-services';
 import { normalizeSalonFaqItems } from '@/lib/salon-visitor-info';
 import { getBrandsByIds } from '@/lib/brands';
@@ -180,8 +181,8 @@ function buildSystemPrompt(
   } catch { /* ignore */ }
 
   // Brands
-  const brandIds = Array.isArray(salon.brand_domains) ? salon.brand_domains.map(String) : [];
-  const brands = getBrandsByIds(brandIds);
+  const brandIds = isCustomSiteBrandsEnabled() && Array.isArray(salon.brand_domains) ? salon.brand_domains.map(String) : [];
+  const brands = isCustomSiteBrandsEnabled() ? getBrandsByIds(brandIds) : [];
   const brandsText = brands.length > 0 ? brands.map((b) => b.name).join(', ') : '';
 
   // FAQ

@@ -88,6 +88,7 @@ export function PaymentsTabPanel({
           </span>
         }
         status={isFullyConnected ? 'connected' : 'pending'}
+        locale={locale}
       >
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: ADMIN_T.muted, fontSize: 13 }}>

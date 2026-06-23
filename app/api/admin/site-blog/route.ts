@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
+import { isCustomSiteBlogEnabled } from '@/lib/custom-site-features';
 import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
 import { runAfterResponse } from '@/lib/run-after-response';
@@ -129,6 +130,9 @@ async function persistBlogPost(
 }
 
 export async function GET(request: NextRequest) {
+  if (!isCustomSiteBlogEnabled()) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const slug = request.nextUrl.searchParams.get('slug');
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
@@ -141,6 +145,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!isCustomSiteBlogEnabled()) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const slug = request.nextUrl.searchParams.get('slug');
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;

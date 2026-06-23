@@ -111,6 +111,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile, locale }: Props) {
           label={saved ? (isEn ? 'Saved ✓' : 'Запазено ✓') : (isEn ? 'Save' : 'Запази')}
           busy={busy}
           mobile={isMobile}
+          locale={locale}
           onClick={save}
         />
       }

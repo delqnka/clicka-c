@@ -3,6 +3,7 @@
 import { Clock, Plus, Tag, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { AdminSitePayload, ServiceItem } from '@/lib/admin-site';
+import type { Locale } from '@/lib/i18n';
 
 type ThemePalette = {
   text: string;
@@ -92,6 +93,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
   categoryOptions,
   onCommit,
   onRemove,
+  locale,
 }: {
   index: number;
   svc: ServiceItem;
@@ -103,6 +105,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
   categoryOptions: string[];
   onCommit: (index: number, next: ServiceItem) => void;
   onRemove: (index: number) => void;
+  locale: Locale;
 }) {
   const [draft, setDraft] = useState(svc);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -142,8 +145,9 @@ const ServiceCardRow = memo(function ServiceCardRow({
     []
   );
 
+  const isEn = locale === 'en';
   const variants = mapVariants(draft);
-  const categoryLabel = String(draft.category ?? '').trim() || 'Без категория';
+  const categoryLabel = String(draft.category ?? '').trim() || (isEn ? 'Uncategorized' : 'Без категория');
 
   const fieldInp: CSSProperties = {
     ...svcInp,
@@ -180,17 +184,17 @@ const ServiceCardRow = memo(function ServiceCardRow({
         {/* Service name + remove button on same row */}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <FieldLabel>Наименование</FieldLabel>
+            <FieldLabel>{isEn ? 'Name' : 'Наименование'}</FieldLabel>
             <input
               value={draft.name}
               onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
               style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
-              placeholder="Напр. Подстригване, Боядисване…"
+              placeholder={isEn ? 'e.g. Haircut, Coloring…' : 'Напр. Подстригване, Боядисване…'}
             />
           </div>
           <button
             type="button"
-            aria-label="Премахни услуга"
+            aria-label={isEn ? 'Remove service' : 'Премахни услуга'}
             onClick={() => onRemove(index)}
             style={{
               width: 34,
@@ -258,7 +262,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 marginBottom: 2,
               }}
             >
-              Цена
+              {isEn ? 'Price' : 'Цена'}
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
               <input
@@ -276,7 +280,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   padding: '0',
                   fontSize: 28,
                 }}
-                aria-label="Цена в евро"
+                aria-label={isEn ? 'Price in euros' : 'Цена в евро'}
               />
               <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>€</span>
             </div>
@@ -302,7 +306,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
               }}
             >
               <Clock size={11} />
-              Времетраене
+              {isEn ? 'Duration' : 'Времетраене'}
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
               <input
@@ -320,23 +324,23 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   padding: '0',
                   fontSize: 28,
                 }}
-                aria-label="Продължителност в минути"
+                aria-label={isEn ? 'Duration in minutes' : 'Продължителност в минути'}
               />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>мин</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>{isEn ? 'min' : 'мин'}</span>
             </div>
           </div>
         </div>
 
         {/* Category */}
         <div style={{ marginBottom: 8 }}>
-          <FieldLabel>Категория</FieldLabel>
+          <FieldLabel>{isEn ? 'Category' : 'Категория'}</FieldLabel>
           <input
             value={draft.category ?? ''}
             list={`cat-options-${index}`}
             onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
             style={{ ...fieldInp, color: '#444' }}
-            placeholder="Избери или напиши нова…"
-            aria-label="Категория на услугата"
+            placeholder={isEn ? 'Pick or type a new one…' : 'Избери или напиши нова…'}
+            aria-label={isEn ? 'Service category' : 'Категория на услугата'}
           />
           <datalist id={`cat-options-${index}`}>
             {categoryOptions.map((opt) => (
@@ -347,19 +351,19 @@ const ServiceCardRow = memo(function ServiceCardRow({
 
         {/* Description */}
         <div style={{ marginBottom: 6 }}>
-          <FieldLabel>Описание</FieldLabel>
+          <FieldLabel>{isEn ? 'Description' : 'Описание'}</FieldLabel>
           <input
             value={draft.description ?? ''}
             onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
             style={{ ...fieldInp, color: '#444' }}
-            placeholder="Кратко описание на услугата (по избор)"
-            aria-label="Описание на услугата"
+            placeholder={isEn ? 'Short service description (optional)' : 'Кратко описание на услугата (по избор)'}
+            aria-label={isEn ? 'Service description' : 'Описание на услугата'}
           />
         </div>
 
         {/* Payment */}
         <div style={{ marginTop: 8, marginBottom: 4 }}>
-          <FieldLabel>Плащане при резервация</FieldLabel>
+          <FieldLabel>{isEn ? 'Payment on booking' : 'Плащане при резервация'}</FieldLabel>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {(['none', 'deposit', 'full'] as const).map((pt) => (
               <button
@@ -378,13 +382,17 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   transition: 'all 0.15s',
                 }}
               >
-                {pt === 'none' ? 'Без плащане' : pt === 'deposit' ? 'Депозит' : 'Пълна сума'}
+                {pt === 'none'
+                  ? (isEn ? 'No payment' : 'Без плащане')
+                  : pt === 'deposit'
+                  ? (isEn ? 'Deposit' : 'Депозит')
+                  : (isEn ? 'Full amount' : 'Пълна сума')}
               </button>
             ))}
           </div>
           {(draft.payment_type ?? 'none') === 'deposit' && (
             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <FieldLabel>Сума на депозита (€)</FieldLabel>
+              <FieldLabel>{isEn ? 'Deposit amount (€)' : 'Сума на депозита (€)'}</FieldLabel>
               <div style={{ position: 'relative', width: 90 }}>
                 <input
                   type="number"
@@ -393,7 +401,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   onChange={(e) => updateDraft((s) => ({ ...s, deposit_amount: Math.max(1, Number(e.target.value) || 0) }))}
                   style={{ ...fieldInp, paddingRight: 22, width: '100%' }}
                   placeholder="20"
-                  aria-label="Сума на депозита"
+                  aria-label={isEn ? 'Deposit amount' : 'Сума на депозита'}
                 />
                 <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#666', pointerEvents: 'none' }}>€</span>
               </div>
@@ -404,7 +412,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         {/* Cancellation policy — only relevant when payment is collected */}
         {(draft.payment_type === 'deposit' || draft.payment_type === 'full') && (
           <div style={{ marginTop: 12, padding: '12px 14px', background: '#F9FAFB', borderRadius: 10, border: `1px solid ${T.border}` }}>
-            <FieldLabel>Политика при отказване</FieldLabel>
+            <FieldLabel>{isEn ? 'Cancellation policy' : 'Политика при отказване'}</FieldLabel>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
               {([24, 48, 72] as const).map((h) => (
                 <button
@@ -422,10 +430,10 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     cursor: 'pointer',
                   }}
                 >
-                  {h === 24 ? '24 ч.' : h === 48 ? '48 ч.' : '72 ч.'}
+                  {h === 24 ? (isEn ? '24h' : '24 ч.') : h === 48 ? (isEn ? '48h' : '48 ч.') : (isEn ? '72h' : '72 ч.')}
                 </button>
               ))}
-              <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>безплатен прозорец</span>
+              <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>{isEn ? 'free window' : 'безплатен прозорец'}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
               {((['full_refund', 'keep_deposit', 'keep_full'] as const).filter(
@@ -446,10 +454,14 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     cursor: 'pointer',
                   }}
                 >
-                  {action === 'full_refund' ? 'Пълен refund' : action === 'keep_deposit' ? 'Задържи депозит' : 'Без refund'}
+                  {action === 'full_refund'
+                    ? (isEn ? 'Full refund' : 'Пълен refund')
+                    : action === 'keep_deposit'
+                    ? (isEn ? 'Keep deposit' : 'Задържи депозит')
+                    : (isEn ? 'No refund' : 'Без refund')}
                 </button>
               ))}
-              <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>след срока</span>
+              <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>{isEn ? 'after the window' : 'след срока'}</span>
             </div>
           </div>
         )}
@@ -464,7 +476,9 @@ const ServiceCardRow = memo(function ServiceCardRow({
             style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#000' }}
           />
           <label htmlFor="requires_confirmation" style={{ fontSize: 13, color: '#333', cursor: 'pointer' }}>
-            Изисква потвърждение от мен преди клиентът да получи потвърждение
+            {isEn
+              ? 'Requires my confirmation before the client receives a confirmation'
+              : 'Изисква потвърждение от мен преди клиентът да получи потвърждение'}
           </label>
         </div>
 
@@ -485,7 +499,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
             }}
           >
             <Plus size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
-            Варианти{variants.length > 0 ? ` (${variants.length})` : ''}
+            {isEn ? 'Variants' : 'Варианти'}{variants.length > 0 ? ` (${variants.length})` : ''}
           </summary>
           <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
             {variants.map((variant, variantIndex) => (
@@ -508,7 +522,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     })
                   }
                   style={{ ...fieldInp, padding: '5px 8px', fontSize: 12 }}
-                  placeholder="Вариант"
+                  placeholder={isEn ? 'Variant' : 'Вариант'}
                 />
                 <div style={{ position: 'relative' }}>
                   <input
@@ -526,7 +540,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     }
                     style={{ ...fieldInp, padding: '5px 24px 5px 6px', fontSize: 12, fontWeight: 700 }}
                     placeholder="0"
-                    aria-label="Цена"
+                    aria-label={isEn ? 'Price' : 'Цена'}
                   />
                   <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#666', pointerEvents: 'none' }}>€</span>
                 </div>
@@ -546,9 +560,9 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     }
                     style={{ ...fieldInp, padding: '5px 26px 5px 6px', fontSize: 12, fontWeight: 700 }}
                     placeholder="30"
-                    aria-label="Минути"
+                    aria-label={isEn ? 'Minutes' : 'Минути'}
                   />
-                  <span style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: '#666', pointerEvents: 'none' }}>мин</span>
+                  <span style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: '#666', pointerEvents: 'none' }}>{isEn ? 'min' : 'мин'}</span>
                 </div>
                 <button
                   type="button"
@@ -559,7 +573,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                       return { ...serviceRow, variants: nextVariants };
                     })
                   }
-                  aria-label="Премахни вариант"
+                  aria-label={isEn ? 'Remove variant' : 'Премахни вариант'}
                 >
                   <X size={12} />
                 </button>
@@ -593,7 +607,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
               }
             >
               <Plus size={11} />
-              Вариант
+              {isEn ? 'Variant' : 'Вариант'}
             </button>
           </div>
         </details>
@@ -613,6 +627,7 @@ export function ServicesEditorPanel({
   T,
   svcInp,
   btn,
+  locale,
 }: {
   isMobile: boolean;
   showGlobalEmpty: boolean;
@@ -624,7 +639,9 @@ export function ServicesEditorPanel({
   T: ThemePalette;
   svcInp: CSSProperties;
   btn: ButtonFactory;
+  locale: Locale;
 }) {
+  const isEn = locale === 'en';
   const onCommit = useCallback(
     (index: number, next: ServiceItem) => {
       setSite((p) => ({
@@ -644,13 +661,19 @@ export function ServicesEditorPanel({
 
   const hideCategoryBadge = selectedAdminServiceCategory != null;
 
+  const allLabel = isEn ? 'All' : 'Всички';
   const categoryOptions = adminServiceCategories
     .map((c) => c.label)
-    .filter((l) => l && l !== 'Всички');
+    .filter((l) => l && l !== allLabel);
 
   if (showGlobalEmpty) {
     return (
-      <EmptyState title="Няма услуги" desc="Добави първата си услуга от бутона горе." T={T} isMobile={isMobile} />
+      <EmptyState
+        title={isEn ? 'No services' : 'Няма услуги'}
+        desc={isEn ? 'Add your first service using the button above.' : 'Добави първата си услуга от бутона горе.'}
+        T={T}
+        isMobile={isMobile}
+      />
     );
   }
 
@@ -713,13 +736,16 @@ export function ServicesEditorPanel({
           categoryOptions={categoryOptions}
           onCommit={onCommit}
           onRemove={onRemove}
+          locale={locale}
         />
       ))}
 
       {filteredAdminServices.length === 0 ? (
         <EmptyState
-          title="Няма услуги в категорията"
-          desc="Избери друга категория или добави нова услуга в тази категория."
+          title={isEn ? 'No services in this category' : 'Няма услуги в категорията'}
+          desc={isEn
+            ? 'Pick a different category or add a new service to this one.'
+            : 'Избери друга категория или добави нова услуга в тази категория.'}
           T={T}
           isMobile={isMobile}
         />

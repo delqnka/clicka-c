@@ -3,6 +3,7 @@
 import { Check, CheckCircle2, ImagePlus, RefreshCw, Upload } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
+import type { Locale } from '@/lib/i18n';
 
 export function AdminField({
   label,
@@ -113,12 +114,15 @@ export function AdminInfoCard({
   title,
   status,
   children,
+  locale = 'bg',
 }: {
   title: ReactNode;
   status: 'connected' | 'pending';
   children: ReactNode;
+  locale?: Locale;
 }) {
   const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isEn = locale === 'en';
   return (
     <div
       style={{
@@ -156,7 +160,7 @@ export function AdminInfoCard({
             background: status === 'connected' ? '#ECFDF5' : '#F4F4F5',
           }}
         >
-          {status === 'connected' ? 'Свързан' : 'Не е свързан'}
+          {status === 'connected' ? (isEn ? 'Connected' : 'Свързан') : (isEn ? 'Not connected' : 'Не е свързан')}
         </span>
       </div>
       {children}
@@ -170,6 +174,7 @@ export function AdminSaveBtn({
   mobile,
   green = false,
   compact = false,
+  locale = 'bg',
   onClick,
 }: {
   label: string;
@@ -177,8 +182,10 @@ export function AdminSaveBtn({
   mobile: boolean;
   green?: boolean;
   compact?: boolean;
+  locale?: Locale;
   onClick: () => void;
 }) {
+  const isEn = locale === 'en';
   const [saved, setSaved] = useState(false);
   const prevBusy = useRef(busy);
   useEffect(() => {
@@ -223,7 +230,7 @@ export function AdminSaveBtn({
           boxShadow: '0 2px 8px rgba(219,39,119,0.25)',
         }}
       >
-        {busy ? 'Запазване…' : saved ? '✓ Запазено' : label}
+        {busy ? (isEn ? 'Saving…' : 'Запазване…') : saved ? (isEn ? '✓ Saved' : '✓ Запазено') : label}
       </button>
     );
   }
@@ -249,7 +256,7 @@ export function AdminSaveBtn({
         backgroundClip: 'text',
       }}
     >
-      {busy ? 'Запазване…' : saved ? '✓ Запазено' : 'Запази'}
+      {busy ? (isEn ? 'Saving…' : 'Запазване…') : saved ? (isEn ? '✓ Saved' : '✓ Запазено') : (isEn ? 'Save' : 'Запази')}
     </button>
   );
 }
@@ -283,7 +290,8 @@ export function AdminPreviewImg({
   );
 }
 
-function AdminFileUploadBtn({ label, busy, children }: { label: string; busy: boolean; children: ReactNode }) {
+function AdminFileUploadBtn({ label, busy, children, locale = 'bg' }: { label: string; busy: boolean; children: ReactNode; locale?: Locale }) {
+  const isEn = locale === 'en';
   return (
     <label
       style={{
@@ -301,7 +309,7 @@ function AdminFileUploadBtn({ label, busy, children }: { label: string; busy: bo
       }}
     >
       <Upload size={13} />
-      {busy ? 'Качваме…' : label}
+      {busy ? (isEn ? 'Uploading…' : 'Качваме…') : label}
       {children}
     </label>
   );
@@ -345,6 +353,7 @@ export function AdminImageAssetField({
   roundPreview = false,
   onUpload,
   children,
+  locale = 'bg',
 }: {
   label: string;
   uploadLabel: string;
@@ -354,13 +363,14 @@ export function AdminImageAssetField({
   roundPreview?: boolean;
   onUpload: (files: FileList | null) => void;
   children?: ReactNode;
+  locale?: Locale;
 }) {
   const uploadControl = mobile ? (
     <AdminIconUploadBtn label={uploadLabel} busy={busy}>
       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => onUpload(e.target.files)} />
     </AdminIconUploadBtn>
   ) : (
-    <AdminFileUploadBtn label={uploadLabel} busy={busy}>
+    <AdminFileUploadBtn label={uploadLabel} busy={busy} locale={locale}>
       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => onUpload(e.target.files)} />
     </AdminFileUploadBtn>
   );
@@ -400,12 +410,15 @@ export function AdminGalleryDropZone({
   mobile = false,
   onUpload,
   children,
+  locale = 'bg',
 }: {
   busy: boolean;
   mobile?: boolean;
   onUpload: (files: FileList | File[] | null, input?: HTMLInputElement | null) => void | Promise<void>;
   children: ReactNode;
+  locale?: Locale;
 }) {
+  const isEn = locale === 'en';
   const [dragActive, setDragActive] = useState(false);
   const depthRef = useRef(0);
 
@@ -463,7 +476,7 @@ export function AdminGalleryDropZone({
         >
           <Upload size={mobile ? 24 : 28} color={ADMIN_T.text} strokeWidth={1.75} />
           <span style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: ADMIN_T.text }}>
-            {mobile ? 'Пусни тук' : 'Пусни снимките тук'}
+            {mobile ? (isEn ? 'Drop here' : 'Пусни тук') : (isEn ? 'Drop images here' : 'Пусни снимките тук')}
           </span>
           {!mobile ? <span style={{ fontSize: 12, color: ADMIN_T.muted }}>JPG, PNG, WebP, GIF</span> : null}
         </div>

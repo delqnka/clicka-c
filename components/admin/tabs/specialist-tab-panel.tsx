@@ -24,7 +24,7 @@ function SpecialistPhotoUpload({
       {photoUrl ? (
         <img
           src={photoUrl}
-          alt={isEn ? 'Specialist' : 'Специалист'}
+          alt={isEn ? 'Owner' : 'Собственик'}
           style={{
             display: 'block',
             width: 88,
@@ -53,7 +53,7 @@ function SpecialistPhotoUpload({
         </div>
       )}
       <label
-        aria-label={isEn ? 'Upload specialist photo' : 'Качи снимка на специалиста'}
+        aria-label={isEn ? 'Upload owner photo' : 'Качи снимка на собственика'}
         title={isEn ? 'Upload photo' : 'Качи снимка'}
         style={{
           position: 'absolute',
@@ -112,7 +112,7 @@ export function SpecialistTabPanel({
   const isEn = locale === 'en';
   return (
     <AdminSection
-      title={isEn ? 'Specialist' : 'Специалист'}
+      title={isEn ? 'Owner profile' : 'Профил на собственика'}
       action={
         <button
           type="button"
@@ -154,7 +154,7 @@ export function SpecialistTabPanel({
             value={site.ownerPublicBio}
             onChange={(e) => setSite((p) => ({ ...p, ownerPublicBio: e.target.value }))}
             style={{ ...inp, minHeight: 96, resize: 'vertical' }}
-            placeholder={isEn ? 'Short specialist introduction...' : 'Кратко представяне на специалиста...'}
+            placeholder={isEn ? 'Short owner introduction...' : 'Кратко представяне на собственика...'}
           />
         </AdminField>
       </div>

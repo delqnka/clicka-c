@@ -69,6 +69,7 @@ function GalleryGrid({
               btnSmGhost={btn('sm-ghost')}
               onReorder={onReorder}
               onRemove={onRemove}
+              locale={locale}
             />
           </AdminGalleryDropZone>
         </AdminField>
@@ -107,7 +108,7 @@ export function ImagesTabPanel({
   const isEn = locale === 'en';
   return (
     <AdminSection
-      title={isEn ? 'Images' : 'Снимки'}
+      title={isEn ? 'Site images' : 'Снимки за сайта'}
       compact
       action={
         <AdminSaveBtn
@@ -116,6 +117,7 @@ export function ImagesTabPanel({
           mobile={isMobile}
           green
           compact
+          locale={locale}
           onClick={() => void saveImages()}
         />
       }

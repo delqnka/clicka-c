@@ -1,9 +1,9 @@
 import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
 import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
+import { isCustomSiteBlogEnabled } from '@/lib/custom-site-features';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
-import { ensureMarketingSchema } from '@/lib/ensure-marketing-schema';
 import {
   buildStaticMapUrl,
   resolveGooglePlaceId,
@@ -104,6 +104,7 @@ async function fetchPublicSalonPageData({
 
   const salon = rows[0] as Record<string, unknown>;
   const salonId = String(salon.id ?? '');
+  const blogEnabled = isCustomSiteBlogEnabled();
 
   // All secondary fetches run in parallel once we have salonId.
   // Ensures that gate their own table are chained directly with their query
@@ -123,17 +124,19 @@ async function fetchPublicSalonPageData({
       .catch(() => [] as unknown[]),
 
     // Blog: ensure table exists, then check for published posts
-    ensureBlogSchema()
-      .then(() =>
-        sql`
-          SELECT EXISTS (
-            SELECT 1 FROM salon_blog_posts
-            WHERE salon_id = ${salonId} AND status = 'published'
-            LIMIT 1
-          ) AS has_posts
-        `,
-      )
-      .catch(() => [{ has_posts: false }] as unknown[]),
+    blogEnabled
+      ? ensureBlogSchema()
+          .then(() =>
+            sql`
+              SELECT EXISTS (
+                SELECT 1 FROM salon_blog_posts
+                WHERE salon_id = ${salonId} AND status = 'published'
+                LIMIT 1
+              ) AS has_posts
+            `,
+          )
+          .catch(() => [{ has_posts: false }] as unknown[])
+      : Promise.resolve([{ has_posts: false }] as unknown[]),
 
     // Reviews: table always exists — no ensure needed
     sql`
@@ -152,7 +155,6 @@ async function fetchPublicSalonPageData({
   ]);
 
   // Schema-only ensures with no data dependency — fire without blocking
-  void ensureMarketingSchema().catch(() => {});
   void ensureGoogleReviewsSchema().catch(() => {});
 
   const offers = Array.isArray(offersResult) ? offersResult : [];

@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { AdminInfoCard } from '@/components/admin/admin-ui';
 import { ADMIN_T } from '@/components/admin/admin-theme';
+import type { Locale } from '@/lib/i18n';
 
 type Settings = {
   email_from: string | null;
@@ -18,12 +19,15 @@ export function ResendIntegrationCard({
   inp,
   btn,
   setNotice,
+  locale = 'bg',
 }: {
   slug: string;
   inp: CSSProperties;
   btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
   setNotice: (msg: string) => void;
+  locale?: Locale;
 }) {
+  const isEn = locale === 'en';
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [emailFrom, setEmailFrom] = useState('');
@@ -58,7 +62,7 @@ export function ResendIntegrationCard({
 
   async function save() {
     if (!emailFrom.trim()) {
-      setNotice('Попълнете подателя.');
+      setNotice(isEn ? 'Please fill in the sender.' : 'Попълнете подателя.');
       return;
     }
     setSaving(true);
@@ -75,11 +79,11 @@ export function ResendIntegrationCard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setNotice(data.error ?? 'Грешка при запис');
+        setNotice(data.error ?? (isEn ? 'Save error' : 'Грешка при запис'));
       } else {
         setSettings(data.settings);
         setApiKey('');
-        setNotice('Resend настройките са запазени и проверени.');
+        setNotice(isEn ? 'Resend settings saved and verified.' : 'Resend настройките са запазени и проверени.');
       }
     } finally {
       setSaving(false);
@@ -87,7 +91,7 @@ export function ResendIntegrationCard({
   }
 
   async function disconnect() {
-    if (!confirm('Сигурни ли сте? Имейлите ще се изпращат от платформения подател.')) return;
+    if (!confirm(isEn ? 'Are you sure? Emails will be sent from the default sender.' : 'Сигурни ли сте? Имейлите ще се изпращат от платформения подател.')) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/resend-settings?slug=${encodeURIComponent(slug)}`, {
@@ -108,9 +112,9 @@ export function ResendIntegrationCard({
         setUseOwnKey(false);
         setApiKey('');
         setShowAdvanced(false);
-        setNotice('Имейл подателят е изключен. Връщаме се към стандартния подател.');
+        setNotice(isEn ? 'Email sender disconnected. Reverting to the default sender.' : 'Имейл подателят е изключен. Връщаме се към стандартния подател.');
       } else {
-        setNotice('Грешка при изключване');
+        setNotice(isEn ? 'Disconnect error' : 'Грешка при изключване');
       }
     } finally {
       setSaving(false);
@@ -118,27 +122,29 @@ export function ResendIntegrationCard({
   }
 
   return (
-    <AdminInfoCard title="Resend (имейл подател)" status={isConnected ? 'connected' : 'pending'}>
+    <AdminInfoCard title={isEn ? 'Resend (email sender)' : 'Resend (имейл подател)'} status={isConnected ? 'connected' : 'pending'} locale={locale}>
       <div style={{ display: 'grid', gap: 10 }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: ADMIN_T.subtle }}>
-          Използваме един централен Resend акаунт и verified домейните на клиентите. За да
-          изпращате от собствен домейн (например <code>noreply@vashsalon.bg</code>), добавете
-          домейна в централния Resend акаунт и го посочете тук.
+          {isEn ? (
+            <>We use one central Resend account and the verified domains of clients. To send from your own domain (e.g. <code>noreply@yoursalon.com</code>), add the domain to the central Resend account and specify it here.</>
+          ) : (
+            <>Използваме един централен Resend акаунт и verified домейните на клиентите. За да изпращате от собствен домейн (например <code>noreply@vashsalon.bg</code>), добавете домейна в централния Resend акаунт и го посочете тук.</>
+          )}
         </p>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: ADMIN_T.subtle }}>
-          Не е нужен отделен Resend акаунт за този салон. Нужен е само verified домейн в{' '}
+          {isEn ? 'A separate Resend account is not required for this salon. You only need a verified domain at ' : 'Не е нужен отделен Resend акаунт за този салон. Нужен е само verified домейн в '}
           <a href="https://resend.com" target="_blank" rel="noreferrer" style={{ color: ADMIN_T.text }}>
             resend.com
           </a>{' '}
-          и подател от този домейн.
+          {isEn ? 'and a sender from that domain.' : 'и подател от този домейн.'}
         </p>
 
         {loading ? (
-          <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>Зареждане…</p>
+          <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>{isEn ? 'Loading…' : 'Зареждане…'}</p>
         ) : isConnected ? (
           <div style={{ fontSize: 13 }}>
             <div>
-              <strong>Активен подател:</strong>{' '}
+              <strong>{isEn ? 'Active sender:' : 'Активен подател:'}</strong>{' '}
               {settings?.email_from_name ? `${settings.email_from_name} <${settings.email_from}>` : settings?.email_from}
             </div>
             {settings?.resend_domain ? (
@@ -148,52 +154,54 @@ export function ResendIntegrationCard({
             ) : null}
             {settings?.resend_verified_at ? (
               <div style={{ color: ADMIN_T.subtle, marginTop: 4 }}>
-                Проверено: {new Date(settings.resend_verified_at).toLocaleString('bg-BG')}
+                {isEn ? 'Verified: ' : 'Проверено: '}{new Date(settings.resend_verified_at).toLocaleString(isEn ? 'en-US' : 'bg-BG')}
               </div>
             ) : null}
           </div>
         ) : (
           <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>
-            Все още не е зададен собствен имейл подател за този салон.
+            {isEn ? 'No custom email sender has been set for this salon yet.' : 'Все още не е зададен собствен имейл подател за този салон.'}
           </p>
         )}
 
         <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-          <span>Подател (имейл) — от verified домейн в Resend</span>
+          <span>{isEn ? 'Sender (email) — from a verified Resend domain' : 'Подател (имейл) — от verified домейн в Resend'}</span>
           <input
             type="email"
             value={emailFrom}
             onChange={(e) => setEmailFrom(e.target.value)}
-            placeholder="noreply@vashsalon.bg"
+            placeholder={isEn ? 'noreply@yoursalon.com' : 'noreply@vashsalon.bg'}
             style={inp}
           />
         </label>
 
         <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-          <span>Показано име на подателя (опционално)</span>
+          <span>{isEn ? 'Display name (optional)' : 'Показано име на подателя (опционално)'}</span>
           <input
             type="text"
             value={emailFromName}
             onChange={(e) => setEmailFromName(e.target.value)}
-            placeholder="Името на салона"
+            placeholder={isEn ? 'Salon name' : 'Името на салона'}
             style={inp}
           />
         </label>
 
         <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-          <span>Verified domain в Resend</span>
+          <span>{isEn ? 'Verified domain in Resend' : 'Verified domain в Resend'}</span>
           <input
             type="text"
             value={resendDomain}
             onChange={(e) => setResendDomain(e.target.value)}
-            placeholder="vashsalon.bg"
+            placeholder={isEn ? 'yoursalon.com' : 'vashsalon.bg'}
             style={inp}
           />
         </label>
 
         {!settings?.has_global_key && !useOwnKey ? (
           <p style={{ margin: 0, fontSize: 12, color: '#B91C1C' }}>
-            Липсва централен Resend API ключ в engine-а — включи „Имам собствен Resend акаунт" по-долу.
+            {isEn
+              ? 'No central Resend API key in the engine — enable "I have my own Resend account" below.'
+              : 'Липсва централен Resend API ключ в engine-а — включи „Имам собствен Resend акаунт" по-долу.'}
           </p>
         ) : null}
 
@@ -211,7 +219,9 @@ export function ResendIntegrationCard({
             textDecoration: 'underline',
           }}
         >
-          {showAdvanced ? 'Скрий разширени настройки' : 'Имам собствен Resend акаунт →'}
+          {showAdvanced
+            ? (isEn ? 'Hide advanced settings' : 'Скрий разширени настройки')
+            : (isEn ? 'I have my own Resend account →' : 'Имам собствен Resend акаунт →')}
         </button>
 
         {showAdvanced ? (
@@ -222,27 +232,30 @@ export function ResendIntegrationCard({
                 checked={useOwnKey}
                 onChange={(e) => setUseOwnKey(e.target.checked)}
               />
-              <span>Използвай моя собствен Resend API ключ за този салон</span>
+              <span>{isEn ? 'Use my own Resend API key for this salon' : 'Използвай моя собствен Resend API ключ за този салон'}</span>
             </label>
             {useOwnKey ? (
               <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-                <span>Resend API ключ</span>
+                <span>{isEn ? 'Resend API key' : 'Resend API ключ'}</span>
                 <input
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={settings?.uses_own_key ? '••• (вече запазен — въведи нов за смяна)' : 're_xxxxxxxxxxxxxxxxxxxxxxxx'}
+                  placeholder={settings?.uses_own_key ? (isEn ? '••• (already saved — enter a new one to change)' : '••• (вече запазен — въведи нов за смяна)') : 're_xxxxxxxxxxxxxxxxxxxxxxxx'}
                   autoComplete="off"
                   style={{ ...inp, fontFamily: 'monospace' }}
                 />
                 <span style={{ fontSize: 11, color: ADMIN_T.subtle }}>
-                  Записва се encrypted. Verification се прави срещу твоя акаунт.
+                  {isEn
+                    ? 'Stored encrypted. Verification is performed against your account.'
+                    : 'Записва се encrypted. Verification се прави срещу твоя акаунт.'}
                 </span>
               </label>
             ) : (
               <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>
-                По подразбиране ползваме централния engine акаунт — твоят домейн трябва да е добавен там.
-                Включи отметката ако искаш да изпращаш през собствения си Resend акаунт.
+                {isEn
+                  ? 'By default we use the central engine account — your domain must be added there. Check this box if you want to send through your own Resend account.'
+                  : 'По подразбиране ползваме централния engine акаунт — твоят домейн трябва да е добавен там. Включи отметката ако искаш да изпращаш през собствения си Resend акаунт.'}
               </p>
             )}
           </div>
@@ -250,11 +263,13 @@ export function ResendIntegrationCard({
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={save} disabled={saving} style={btn('primary')}>
-            {saving ? 'Запис…' : 'Провери и запази'}
+            {saving
+              ? (isEn ? 'Saving…' : 'Запис…')
+              : (isEn ? 'Verify and save' : 'Провери и запази')}
           </button>
           {isConnected ? (
             <button type="button" onClick={disconnect} disabled={saving} style={btn('danger')}>
-              Изключи
+              {isEn ? 'Disconnect' : 'Изключи'}
             </button>
           ) : null}
         </div>

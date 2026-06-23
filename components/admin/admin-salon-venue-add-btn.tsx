@@ -2,22 +2,26 @@
 
 import { Building2, RefreshCw } from 'lucide-react';
 import { useRef } from 'react';
+import type { Locale } from '@/lib/i18n';
 
 type Props = {
   busy: boolean;
   onUpload: (files: FileList | null, input?: HTMLInputElement | null) => void | Promise<void>;
+  locale?: Locale;
 };
 
 /** Upload button for salon interior / venue photos. */
-export function AdminSalonVenueAddBtn({ busy, onUpload }: Props) {
+export function AdminSalonVenueAddBtn({ busy, onUpload, locale = 'bg' }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const isEn = locale === 'en';
+  const label = isEn ? 'Add salon photos' : 'Добави снимки на салона';
 
   return (
     <>
       <button
         type="button"
-        aria-label="Добави снимки на салона"
-        title="Добави снимки на салона"
+        aria-label={label}
+        title={label}
         disabled={busy}
         onClick={() => inputRef.current?.click()}
         style={{

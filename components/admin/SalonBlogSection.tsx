@@ -4,6 +4,7 @@ import { Camera, Trash2 } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { toBlogSlug } from '@/lib/blog-slug';
 import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
+import type { Locale } from '@/lib/i18n';
 const GRADIENT_PRIMARY: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -33,13 +34,15 @@ type Props = {
   onPublish: (index: number) => void | Promise<void>;
   onUnpublish: (index: number) => void | Promise<void>;
   onActiveIndexChange?: (index: number) => void;
+  locale: Locale;
 };
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale: Locale): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
+  const tag = locale === 'en' ? 'en-US' : 'bg-BG';
+  return d.toLocaleDateString(tag, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function SalonBlogSection({
@@ -56,9 +59,11 @@ export function SalonBlogSection({
   onPublish,
   onUnpublish,
   onActiveIndexChange,
+  locale,
 }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const saving = busyKey === 'blog';
+  const isEn = locale === 'en';
 
   useEffect(() => {
     if (posts.length === 0) {
@@ -119,13 +124,13 @@ export function SalonBlogSection({
     <div style={{ display: 'grid', gap: isMobile ? 16 : 14 }}>
       <label style={{ display: 'grid', gap: 4 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>
-          Име на секцията на сайта
+          {isEn ? 'Section name on the site' : 'Име на секцията на сайта'}
         </span>
         <input
           style={inp}
           value={blogTitle}
           onChange={(e) => onBlogTitleChange(e.target.value)}
-          placeholder="Блог"
+          placeholder={isEn ? 'Blog' : 'Блог'}
           maxLength={60}
         />
       </label>
@@ -139,7 +144,7 @@ export function SalonBlogSection({
             fontSize: 14,
           }}
         >
-          Няма статии.
+          {isEn ? 'No articles.' : 'Няма статии.'}
         </div>
       ) : (
         <>
@@ -154,7 +159,7 @@ export function SalonBlogSection({
           >
             {posts.map((item, index) => {
               const selected = index === activeIndex;
-              const label = item.title.trim() || `Статия ${index + 1}`;
+              const label = item.title.trim() || (isEn ? `Article ${index + 1}` : `Статия ${index + 1}`);
               return (
                 <button
                   key={item.id || `draft-${index}`}
@@ -185,7 +190,9 @@ export function SalonBlogSection({
                     {label}
                   </span>
                   <span style={{ fontSize: 11, color: item.status === 'published' ? '#16A34A' : '#9ca3af' }}>
-                    {item.status === 'published' ? 'Публикувана' : 'Чернова'}
+                    {item.status === 'published'
+                      ? (isEn ? 'Published' : 'Публикувана')
+                      : (isEn ? 'Draft' : 'Чернова')}
                   </span>
                 </button>
               );
@@ -204,18 +211,18 @@ export function SalonBlogSection({
               }}
             >
               <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Заглавие</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Title' : 'Заглавие'}</span>
                 <input
                   style={inp}
                   value={post.title}
                   onChange={(e) => updatePost(activeIndex, { title: e.target.value })}
                   onBlur={() => onTitleBlur(activeIndex)}
-                  placeholder="Заглавие на статията"
+                  placeholder={isEn ? 'Article title' : 'Заглавие на статията'}
                 />
               </label>
 
               <div style={{ display: 'grid', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Снимка на корицата</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Cover image' : 'Снимка на корицата'}</span>
                 <div
                   style={{
                     display: 'grid',
@@ -244,7 +251,7 @@ export function SalonBlogSection({
                       />
                     ) : (
                       <span style={{ fontSize: 12, color: '#9ca3af', padding: 12, textAlign: 'center' }}>
-                        Без снимка
+                        {isEn ? 'No image' : 'Без снимка'}
                       </span>
                     )}
                   </div>
@@ -257,7 +264,9 @@ export function SalonBlogSection({
                     }}
                   >
                     <Camera size={15} />
-                    {post.coverImageUrl ? 'Смени снимката' : 'Качи снимка'}
+                    {post.coverImageUrl
+                      ? (isEn ? 'Change image' : 'Смени снимката')
+                      : (isEn ? 'Upload image' : 'Качи снимка')}
                     <input
                       type="file"
                       accept="image/*"
@@ -274,24 +283,24 @@ export function SalonBlogSection({
               </div>
 
               <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Текст на статията</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>{isEn ? 'Article body' : 'Текст на статията'}</span>
                 <textarea
                   style={textareaStyle}
                   value={post.bodyMarkdown}
                   onChange={(e) => updatePost(activeIndex, { bodyMarkdown: e.target.value })}
-                  placeholder="Пишете тук…"
+                  placeholder={isEn ? 'Write here…' : 'Пишете тук…'}
                 />
               </label>
 
               <label style={{ display: 'grid', gap: 4 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>
-                  Кратко описание <span style={{ fontWeight: 400, color: '#9ca3af' }}>(по избор)</span>
+                  {isEn ? 'Excerpt' : 'Кратко описание'} <span style={{ fontWeight: 400, color: '#9ca3af' }}>{isEn ? '(optional)' : '(по избор)'}</span>
                 </span>
                 <textarea
                   style={{ ...inp, minHeight: 72, resize: 'vertical' }}
                   value={post.excerpt}
                   onChange={(e) => updatePost(activeIndex, { excerpt: e.target.value })}
-                  placeholder="Показва се в списъка със статии"
+                  placeholder={isEn ? 'Shown in the article list' : 'Показва се в списъка със статии'}
                 />
               </label>
 
@@ -317,7 +326,7 @@ export function SalonBlogSection({
                       padding: '6px 12px',
                     }}
                   >
-                    Публикувана{post.publishedAt ? ` · ${formatDate(post.publishedAt)}` : ''}
+                    {isEn ? 'Published' : 'Публикувана'}{post.publishedAt ? ` · ${formatDate(post.publishedAt, locale)}` : ''}
                   </span>
                 ) : (
                   <span
@@ -330,7 +339,7 @@ export function SalonBlogSection({
                       padding: '6px 12px',
                     }}
                   >
-                    Чернова
+                    {isEn ? 'Draft' : 'Чернова'}
                   </span>
                 )}
 
@@ -341,7 +350,9 @@ export function SalonBlogSection({
                     disabled={saving}
                     onClick={() => void onPublish(activeIndex)}
                   >
-                    {saving ? 'Публикуване…' : 'Публикувай'}
+                    {saving
+                      ? (isEn ? 'Publishing…' : 'Публикуване…')
+                      : (isEn ? 'Publish' : 'Публикувай')}
                   </button>
                 ) : (
                   <button
@@ -362,7 +373,7 @@ export function SalonBlogSection({
                     disabled={saving}
                     onClick={() => void onUnpublish(activeIndex)}
                   >
-                    В чернова
+                    {isEn ? 'Move to draft' : 'В чернова'}
                   </button>
                 )}
 
@@ -373,7 +384,7 @@ export function SalonBlogSection({
                     rel="noopener noreferrer"
                     style={{ fontSize: 13, color: '#7C3AED', textDecoration: 'none', marginLeft: 'auto' }}
                   >
-                    Преглед ↗
+                    {isEn ? 'Preview ↗' : 'Преглед ↗'}
                   </a>
                 ) : null}
 
@@ -393,13 +404,13 @@ export function SalonBlogSection({
                   }}
                 >
                   <Trash2 size={14} />
-                  Изтрий
+                  {isEn ? 'Delete' : 'Изтрий'}
                 </button>
               </div>
 
               <details>
                 <summary style={{ fontSize: 13, fontWeight: 600, color: '#18181B', cursor: 'pointer' }}>
-                  URL адрес (по избор)
+                  {isEn ? 'URL slug (optional)' : 'URL адрес (по избор)'}
                 </summary>
                 <label style={{ display: 'grid', gap: 4, marginTop: 10 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B' }}>Slug</span>
@@ -410,7 +421,9 @@ export function SalonBlogSection({
                     placeholder="grizha-za-kosata-zimata"
                   />
                   <span style={{ fontSize: 11, color: '#9ca3af' }}>
-                    SEO заглавие и описание се генерират автоматично при запазване.
+                    {isEn
+                      ? 'SEO title and description are generated automatically on save.'
+                      : 'SEO заглавие и описание се генерират автоматично при запазване.'}
                   </span>
                 </label>
               </details>

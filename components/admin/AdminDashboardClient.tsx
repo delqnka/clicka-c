@@ -6,21 +6,17 @@ import {
   BriefcaseBusiness,
   MessageSquare,
   Plug,
-  Sparkles,
   CalendarClock,
   Clock3,
-  FileText,
   Globe,
   Image as ImageIcon,
   ImagePlus,
-  Newspaper,
   Scissors,
   Tag,
   UserRound,
   UsersRound,
   Users,
   ExternalLink,
-  BarChart3,
   CheckCircle2,
   XCircle,
   RefreshCw,
@@ -39,16 +35,13 @@ import {
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LazyBrandsTabPanel,
   LazyHoursTabPanel,
   LazyImagesTabPanel,
   LazyIntegrationsTabPanel,
-  LazyLegalTabPanel,
   LazyPaymentsTabPanel,
   LazySiteTabPanel,
   LazySpecialistTabPanel,
   LazyStaffTabPanel,
-  LazyMarketingTabPanel,
 } from '@/components/admin/lazy-admin-tabs';
 const AccountTabPanel = dynamic(
   () => import('@/components/admin/tabs/account-tab-panel').then((m) => m.AccountTabPanel),
@@ -64,16 +57,8 @@ const OnboardingChecklist = dynamic(
 );
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer } from '@/lib/salon-offers';
-import {
-  LazySalonOffersSection,
-  LazySalonBlogSection,
-} from '@/components/admin/lazy-admin-tabs';
-import type { AdminSalonBlogPost } from '@/lib/salon-blog-shared';
-import { newEmptyBlogPost } from '@/lib/salon-blog-shared';
-import { ensureUniqueBlogSlug, toBlogSlug } from '@/lib/blog-slug';
-import { withAutoBlogSeoMeta } from '@/lib/blog-seo-meta';
+import { LazySalonOffersSection } from '@/components/admin/lazy-admin-tabs';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
-import { ADMIN_COMPACT_SAVE_BTN } from '@/components/admin/admin-theme';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { getT, type Locale } from '@/lib/i18n';
 import { mapWithConcurrency, prepareImageForUpload } from '@/lib/client-image-prep';
@@ -81,15 +66,9 @@ import { analyzePriceListImages, mergeServiceLists } from '@/lib/price-list-anal
 import {
   extractHostname,
   getHostAwareSalonPath,
-  getLegalDocumentUrl,
-  getPlatformPublicUrl,
   getPrimaryPublicUrl,
-  isSalonCustomDomainLive,
   ROOT_DOMAIN,
-  type LegalDocumentPath,
 } from '@/lib/domain-routing';
-import { defaultLegalInfoStored, type LegalInfoStored } from '@/lib/legal-custom-documents';
-import { LEGAL_DOCUMENT_LABELS } from '@/lib/legal-documents-shared';
 import { formatSalonPrice } from '@/lib/salon-currency';
 import { T, tokens, BOOKING_STATUS_PALETTE } from '@/lib/admin-theme';
 import { AdminHeader } from '@/components/admin/AdminHeader';
@@ -131,36 +110,20 @@ const TABS = [
   { id: 'staff',         labelKey: 'adminDashboard.tabs.staff', Icon: UsersRound },
   { id: 'services',      labelKey: 'adminDashboard.tabs.services', Icon: Scissors },
   { id: 'offers',        labelKey: 'adminDashboard.tabs.offers', Icon: Tag },
-  { id: 'brands',        labelKey: 'adminDashboard.tabs.brands', Icon: Sparkles },
-  { id: 'blog',          labelKey: 'adminDashboard.tabs.blog', Icon: Newspaper },
   { id: 'hours',         labelKey: 'adminDashboard.tabs.hours', Icon: Clock3 },
   { id: 'bookings',      labelKey: 'adminDashboard.tabs.bookings', Icon: CalendarClock },
   { id: 'clients',       labelKey: 'adminDashboard.tabs.clients', Icon: Users },
   { id: 'domain',        labelKey: 'adminDashboard.tabs.domain', Icon: Globe },
   { id: 'payments',      labelKey: 'adminDashboard.tabs.payments', Icon: CreditCard },
   { id: 'integrations',  labelKey: 'adminDashboard.tabs.integrations', Icon: Plug },
-  { id: 'marketing',     labelKey: 'adminDashboard.tabs.marketing', Icon: BarChart3 },
-  { id: 'legal',         labelKey: 'adminDashboard.tabs.legal', Icon: FileText },
   { id: 'account',       labelKey: 'adminDashboard.tabs.account', Icon: KeyRound },
 ] as const;
 
-const TAB_BAR_IDS = new Set<TabId>(['site', 'bookings', 'services', 'images', 'clients']);
-const TAB_BAR_ORDER: TabId[] = ['site', 'bookings', 'services', 'images', 'clients'];
-const TAB_BAR_TABS = TAB_BAR_ORDER.map(id => TABS.find(t => t.id === id)!);
+const WEBSITE_TAB_IDS = ['site', 'images', 'specialist', 'offers', 'domain'] as const;
+const BOOKING_TAB_IDS = ['staff', 'services', 'hours', 'bookings', 'clients'] as const;
+const ACCOUNT_TAB_IDS = ['account', 'payments', 'integrations'] as const;
 
-const SHEET_GROUPS: { labelKey: string; ids: TabId[] }[] = [
-  { labelKey: 'adminDashboard.groups.content', ids: ['offers', 'brands', 'blog'] },
-  { labelKey: 'adminDashboard.groups.team', ids: ['specialist', 'staff'] },
-  { labelKey: 'adminDashboard.groups.settings', ids: ['hours', 'domain', 'payments', 'integrations', 'marketing', 'legal', 'account'] },
-];
-const NAVBAR_TABS = TABS.filter(t => !TAB_BAR_IDS.has(t.id));
-
-const SIDEBAR_GROUPS: { labelKey?: string; ids: TabId[] }[] = [
-  { ids: ['bookings', 'clients'] },
-  { labelKey: 'adminDashboard.groups.site', ids: ['site', 'images', 'services', 'offers', 'brands', 'blog'] },
-  { labelKey: 'adminDashboard.groups.team', ids: ['specialist', 'staff'] },
-  { labelKey: 'adminDashboard.groups.settings', ids: ['hours', 'integrations', 'marketing', 'domain', 'payments', 'legal', 'account'] },
-];
+const TOP_LEVEL_TAB_IDS = ['site', 'bookings', 'account'] as const;
 
 const ICON_GRADIENT = tokens.gradient.brand;
 /** Space for fixed mobile bottom tab bar (bar + safe area + tap margin). */
@@ -265,6 +228,14 @@ type GoogleBusinessCandidate = {
   businessStatus: string;
 };
 
+type TopLevelTabId = (typeof TOP_LEVEL_TAB_IDS)[number];
+
+function topLevelTabFor(tab: TabId): TopLevelTabId {
+  if ((WEBSITE_TAB_IDS as readonly string[]).includes(tab)) return 'site';
+  if ((BOOKING_TAB_IDS as readonly string[]).includes(tab)) return 'bookings';
+  return 'account';
+}
+
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
@@ -361,6 +332,27 @@ export default function AdminDashboardClient({
   const [site, setSite]           = useState(initialSite);
   const locale = site.language as Locale;
   const t = useMemo(() => getT(locale), [locale]);
+  const availableTabs = useMemo(
+    () =>
+      TABS.filter((tab) => {
+        if (tab.id === 'staff' && site.plan !== 'team') return false;
+        return true;
+      }),
+    [site.plan],
+  );
+  const visibleTabs = useMemo(
+    () => TABS.filter((tab) => (TOP_LEVEL_TAB_IDS as readonly string[]).includes(tab.id)),
+    [],
+  );
+  const desktopSidebarGroups = useMemo<{ labelKey?: string; ids: TabId[] }[]>(
+    () => [{ ids: ['site', 'bookings', 'account'] }],
+    [],
+  );
+  const mobileSheetGroups = useMemo<{ labelKey: string; ids: TabId[] }[]>(
+    () => [{ labelKey: 'adminDashboard.groups.navigation', ids: ['site', 'bookings', 'account'] }],
+    [],
+  );
+  const mobileBottomTabs = visibleTabs;
   const siteRef = useRef(site);
   siteRef.current = site;
   const [displayName, setDisplayName] = useState<string | null>(initialAccount?.displayName ?? null);
@@ -369,6 +361,9 @@ export default function AdminDashboardClient({
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('site');
+  const [websiteSubTab, setWebsiteSubTab] = useState<TabId>('site');
+  const [bookingSubTab, setBookingSubTab] = useState<TabId>('bookings');
+  const [accountSubTab, setAccountSubTab] = useState<TabId>('account');
   const [siteNav, setSiteNav] = useState<{ section: string; v: number } | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
   const [error, setError]         = useState('');
@@ -413,16 +408,10 @@ export default function AdminDashboardClient({
   const [pwaOnHomeScreen, setPwaOnHomeScreen] = useState(false);
   const mobileNavSheetRef = useRef<HTMLDivElement>(null);
   const sheetDragRef = useRef({ startY: 0, offset: 0, dragging: false });
-  const [legalInfo, setLegalInfo] = useState<LegalInfoStored>(
-    () => initialSite.legalInfo ?? defaultLegalInfoStored(),
-  );
-  const [legalSaving, setLegalSaving] = useState(false);
-  const [legalNotice, setLegalNotice] = useState('');
   const [navOpen, setNavOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [qrOpen, setQrOpen] = useState(false);
   const [pwaInstallOpen, setPwaInstallOpen] = useState(false);
-  const [blogActiveIndex, setBlogActiveIndex] = useState(0);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [newClientDraft, setNewClientDraft] = useState({ name: '', phone: '' });
@@ -440,12 +429,6 @@ export default function AdminDashboardClient({
   });
   const [offers, setOffers] = useState<AdminSalonOffer[]>(initialOffers);
   const [offersSaved, setOffersSaved] = useState(false);
-  const [blogPosts, setBlogPosts] = useState<AdminSalonBlogPost[]>([]);
-  const [blogSectionTitle, setBlogSectionTitle] = useState('');
-  const [blogLoaded, setBlogLoaded] = useState(false);
-  const blogPostsRef = useRef<AdminSalonBlogPost[]>([]);
-  const blogSaveBusyRef = useRef(false);
-  const blogSaveAgainRef = useRef(false);
   const [priceListUrls, setPriceListUrls] = useState<string[]>([]);
   const [priceListAnalyzing, setPriceListAnalyzing] = useState(false);
   const [portfolioPending, setPortfolioPending] = useState<Set<string>>(() => new Set());
@@ -457,30 +440,37 @@ export default function AdminDashboardClient({
   const deferredBookings = useDeferredValue(bookings);
   const deferredStatusFilter = useDeferredValue(statusFilter);
   const deferredSelectedCalendarDate = useDeferredValue(selectedCalendarDate);
+  const activeTopLevelTab = topLevelTabFor(activeTab);
 
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
   const sitePath      = getHostAwareSalonPath({ host: currentHost, slug });
   const sitePublicUrl = getPrimaryPublicUrl({ slug, customDomain: site.customDomain, domainStatus: site.domainStatus });
   const publicSiteHost = extractHostname(sitePublicUrl);
-  const legalDocLinks: { kind: LegalDocumentPath; url: string }[] = (
-    ['terms', 'privacy', 'cookies'] as const
-  ).map(kind => ({
-    kind,
-    url: getLegalDocumentUrl({
-      slug,
-      customDomain: site.customDomain,
-      domainStatus: site.domainStatus,
-      document: kind,
-    }),
-  }));
+  const websiteSectionTabs = useMemo(
+    () =>
+      availableTabs.filter((tab) => {
+        if (!(WEBSITE_TAB_IDS as readonly string[]).includes(tab.id)) return false;
+        if (tab.id === 'staff' && site.plan !== 'team') return false;
+        return true;
+      }),
+    [availableTabs, site.plan],
+  );
+  const bookingSectionTabs = useMemo(
+    () => availableTabs.filter((tab) => (BOOKING_TAB_IDS as readonly string[]).includes(tab.id) && tab.id !== 'clients'),
+    [availableTabs],
+  );
+  const accountSectionTabs = useMemo(
+    () => availableTabs.filter((tab) => (ACCOUNT_TAB_IDS as readonly string[]).includes(tab.id)),
+    [availableTabs],
+  );
   const claimPath     = getHostAwareSalonPath({ host: currentHost, slug, path: 'claim' });
   const signInPath    = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
   const domainMeta    = getDomainMeta(site);
 
   const servicesUiActive = activeTab === 'services' || serviceModalOpen;
-  const bookingsUiActive = activeTab === 'bookings';
-  const clientsUiActive = activeTab === 'clients';
+  const bookingsUiActive = activeTopLevelTab === 'bookings';
+  const clientsUiActive = activeTopLevelTab === 'bookings';
   const filteredBookings = useMemo(
     () => {
       if (deferredStatusFilter === 'all') return deferredBookings;
@@ -496,15 +486,16 @@ export default function AdminDashboardClient({
     [deferredBookings, deferredStatusFilter]
   );
   const adminServiceCategories = useMemo(() => {
-    if (!servicesUiActive) return [{ id: null as string | null, label: 'Всички' }];
+    const allLabel = locale === 'en' ? 'All' : 'Всички';
+    if (!servicesUiActive) return [{ id: null as string | null, label: allLabel }];
     const set = new Set<string>();
     for (const svc of deferredServices) {
       const cat = String((svc as { category?: string }).category ?? '').trim();
       if (cat) set.add(cat);
     }
-    const categories = [...set].sort((a, b) => a.localeCompare(b, 'bg'));
-    return [{ id: null as string | null, label: 'Всички' }, ...categories.map((c) => ({ id: c, label: c }))];
-  }, [deferredServices, servicesUiActive]);
+    const categories = [...set].sort((a, b) => a.localeCompare(b, locale === 'en' ? 'en' : 'bg'));
+    return [{ id: null as string | null, label: allLabel }, ...categories.map((c) => ({ id: c, label: c }))];
+  }, [deferredServices, servicesUiActive, locale]);
   const filteredAdminServices = useMemo(() => {
     if (!servicesUiActive) return [] as Array<{ svc: (typeof deferredServices)[number]; i: number }>;
     const indexed = deferredServices.map((svc, i) => ({ svc, i }));
@@ -622,16 +613,40 @@ export default function AdminDashboardClient({
     const p = new URLSearchParams(window.location.search);
     let t = p.get('tab');
     if (t === 'notifications') t = 'integrations';
-    if (t && TABS.some(tab => tab.id === t)) {
+    if (t && availableTabs.some(tab => tab.id === t)) {
       setActiveTab(t as TabId);
       return;
     }
     // Restore last visited tab from localStorage (client-only, no SSR)
     try {
       const saved = localStorage.getItem(`admin-tab:${slug}`);
-      if (saved && TABS.some(tab => tab.id === saved)) setActiveTab(saved as TabId);
+      if (saved && availableTabs.some(tab => tab.id === saved)) setActiveTab(saved as TabId);
     } catch { /* ignore */ }
-  }, [slug]);
+  }, [slug, availableTabs]);
+
+  useEffect(() => {
+    if (availableTabs.some((tab) => tab.id === activeTab)) return;
+    setActiveTab('site');
+  }, [activeTab, availableTabs]);
+
+  useEffect(() => {
+    if ((WEBSITE_TAB_IDS as readonly string[]).includes(activeTab)) {
+      setWebsiteSubTab(activeTab);
+      return;
+    }
+    if ((BOOKING_TAB_IDS as readonly string[]).includes(activeTab)) {
+      setBookingSubTab(activeTab);
+      return;
+    }
+    if ((ACCOUNT_TAB_IDS as readonly string[]).includes(activeTab)) {
+      setAccountSubTab(activeTab);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'clients') return;
+    setActiveTab('bookings');
+  }, [activeTab]);
 
   // Trap browser back-swipe without adding a duplicate history entry on load.
   useEffect(() => {
@@ -666,9 +681,9 @@ export default function AdminDashboardClient({
       .catch(() => undefined);
   }, [activeTab, slug]);
 
-  // Load salon_clients (added via Telegram or manually) when clients tab opens
+  // Load salon_clients (added via Telegram or manually) when the booking workspace opens
   useEffect(() => {
-    if (activeTab !== 'clients') return;
+    if (activeTopLevelTab !== 'bookings') return;
     fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string }[] } | null) => {
@@ -686,7 +701,7 @@ export default function AdminDashboardClient({
         })));
       })
       .catch(() => undefined);
-  }, [activeTab, slug]);
+  }, [activeTopLevelTab, slug]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
@@ -707,7 +722,7 @@ export default function AdminDashboardClient({
       setShowInstallButton(false);
       setPwaOnHomeScreen(true);
       try { localStorage.setItem(PWA_HOME_STORAGE_KEY(slug), '1'); } catch { /* ignore */ }
-      setNotice('Приложението е добавено.');
+      setNotice(locale === 'en' ? 'The app was added.' : 'Приложението е добавено.');
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
@@ -827,7 +842,7 @@ export default function AdminDashboardClient({
           body: JSON.stringify({ externalIcsUrl: url }),
         });
         await guardResponse(res);
-        setNotice('Календарният линк е запазен.');
+        setNotice(locale === 'en' ? 'The calendar link was saved.' : 'Календарният линк е запазен.');
         await loadCalendarIntegrationStatus();
       } catch (e) {
         handleErr(e);
@@ -863,7 +878,7 @@ export default function AdminDashboardClient({
       .filter((b) => !b.allDay && b.date >= from && b.date <= to && b.start && b.end)
       .map((b) => ({
         id: `block-${b.date}-${b.start}`,
-        title: b.note || 'Блокиран час',
+        title: b.note || (locale === 'en' ? 'Blocked time' : 'Блокиран час'),
         date: b.date,
         startTime: b.start!,
         endTime: b.end!,
@@ -940,29 +955,6 @@ export default function AdminDashboardClient({
     return () => { cancelled = true; };
   }, [activeTab, staffLoaded, slug]);
 
-  useEffect(() => {
-    if (activeTab !== 'blog') return;
-    if (blogLoaded) return;
-    let cancelled = false;
-    const run = async () => {
-      try {
-        const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`, {
-          cache: 'no-store',
-        });
-        if (!res.ok) return;
-        const data = (await readJson(res)) as { posts?: AdminSalonBlogPost[]; blogTitle?: string };
-        if (cancelled) return;
-        const posts = Array.isArray(data.posts) ? data.posts : [];
-        blogPostsRef.current = posts;
-        setBlogPosts(posts);
-        if (typeof data.blogTitle === 'string') setBlogSectionTitle(data.blogTitle);
-        setBlogLoaded(true);
-      } catch { /* ignore */ }
-    };
-    void run();
-    return () => { cancelled = true; };
-  }, [activeTab, blogLoaded, slug]);
-
   const fetchGoogleReviews = useCallback(async (overrides?: { placeId?: string; mapsUrl?: string }) => {
     const placeId = String(overrides?.placeId ?? site.googlePlaceId).trim();
     const mapsUrl = String(overrides?.mapsUrl ?? site.googleMapsUrl).trim();
@@ -993,22 +985,22 @@ export default function AdminDashboardClient({
         const hint = data.providerHint ? ` [${data.providerHint}]` : '';
         setReviewsFetch({
           loading: false,
-          result: { success: false, message: `${data.message || 'Неуспешно извличане.'}${suffix}${hint}` },
+          result: { success: false, message: `${data.message || (locale === 'en' ? 'Fetch failed.' : 'Неуспешно извличане.')}${suffix}${hint}` },
         });
       }
     } catch {
       setReviewsFetch({
         loading: false,
-        result: { success: false, message: 'Грешка при заявката. Опитай отново.' },
+        result: { success: false, message: locale === 'en' ? 'Request error. Try again.' : 'Грешка при заявката. Опитай отново.' },
       });
     }
-  }, [slug, loadGoogleReviewsStatus, site.googleMapsUrl, site.googlePlaceId]);
+  }, [slug, loadGoogleReviewsStatus, site.googleMapsUrl, site.googlePlaceId, locale]);
 
   const searchGoogleBusinesses = useCallback(async () => {
     const q = googleBizQuery.trim();
     if (!q) {
       setGoogleBizResults([]);
-      setGoogleBizMessage('Въведи име на бизнес, за да търсим.');
+      setGoogleBizMessage(locale === 'en' ? 'Enter a business name to search.' : 'Въведи име на бизнес, за да търсим.');
       return;
     }
     setGoogleBizLoading(true);
@@ -1027,20 +1019,20 @@ export default function AdminDashboardClient({
       setGoogleBizResults(results);
       if (results.length === 0) {
         if (data.reason === 'missing_outscraper_key') {
-          setGoogleBizMessage('Липсва OUTSCRAPER_API_KEY на сървъра.');
+          setGoogleBizMessage(locale === 'en' ? 'OUTSCRAPER_API_KEY is missing on the server.' : 'Липсва OUTSCRAPER_API_KEY на сървъра.');
         } else if (data.reason === 'outscraper_api_error') {
-          setGoogleBizMessage('Outscraper върна грешка. Опитай отново след малко.');
+          setGoogleBizMessage(locale === 'en' ? 'Outscraper returned an error. Try again in a bit.' : 'Outscraper върна грешка. Опитай отново след малко.');
         } else {
-          setGoogleBizMessage('Няма намерени бизнес профили. Пробвай с град или по-точно име.');
+          setGoogleBizMessage(locale === 'en' ? 'No business profiles found. Try a city or a more specific name.' : 'Няма намерени бизнес профили. Пробвай с град или по-точно име.');
         }
       }
     } catch {
       setGoogleBizResults([]);
-      setGoogleBizMessage('Неуспешно търсене в Google. Провери OUTSCRAPER_API_KEY.');
+      setGoogleBizMessage(locale === 'en' ? 'Google search failed. Check OUTSCRAPER_API_KEY.' : 'Неуспешно търсене в Google. Провери OUTSCRAPER_API_KEY.');
     } finally {
       setGoogleBizLoading(false);
     }
-  }, [googleBizQuery, slug]);
+  }, [googleBizQuery, slug, locale]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1065,14 +1057,14 @@ export default function AdminDashboardClient({
   /* ── Handlers ── */
   async function guardResponse(res: Response) {
     const data = await readJson(res);
-    if (res.status === 401 && typeof data.redirectTo === 'string') { window.location.href = data.redirectTo; throw new Error('Пренасочване…'); }
-    if (!res.ok) throw new Error(data.error || 'Възникна грешка.');
+    if (res.status === 401 && typeof data.redirectTo === 'string') { window.location.href = data.redirectTo; throw new Error(locale === 'en' ? 'Redirecting…' : 'Пренасочване…'); }
+    if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Something went wrong.' : 'Възникна грешка.'));
     return data;
   }
 
   function handleErr(err: unknown) {
-    if (err instanceof Error && err.message === 'Пренасочване…') return;
-    setError(err instanceof Error ? err.message : 'Грешка');
+    if (err instanceof Error && (err.message === 'Пренасочване…' || err.message === 'Redirecting…')) return;
+    setError(err instanceof Error ? err.message : (locale === 'en' ? 'Error' : 'Грешка'));
   }
 
   async function publishSite() {
@@ -1081,7 +1073,7 @@ export default function AdminDashboardClient({
       const res = await fetch(`/api/admin/publish?slug=${encodeURIComponent(slug)}`, { method: 'POST' });
       await guardResponse(res);
       setSite(prev => ({ ...prev, siteStatus: 'active' }));
-      setNotice('Сайтът е публикуван успешно!');
+      setNotice(locale === 'en' ? 'The site was published successfully.' : 'Сайтът е публикуван успешно!');
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
@@ -1107,6 +1099,42 @@ export default function AdminDashboardClient({
         }
       }
     }, 1000);
+  }
+
+  async function changeLocale(next: Locale) {
+    if (next === locale || busyKey) return;
+    setError(''); setNotice(''); setBusyKey('locale');
+    try {
+      // The PATCH endpoint replaces all site fields, so include the
+      // full current snapshot with the new language overridden.
+      const res = await fetch(`/api/admin/site-settings?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language: next,
+          name: site.name,
+          category: site.category,
+          phone: site.phone,
+          city: site.city,
+          address: site.address,
+          about: site.about,
+          instagram: site.instagram,
+          facebook: site.facebook,
+          tiktok: site.tiktok,
+          googleMapsUrl: site.googleMapsUrl,
+          googlePlaceId: site.googlePlaceId,
+          latitude: site.latitude,
+          longitude: site.longitude,
+          faqItems: site.faqItems,
+          visitorInfo: site.visitorInfo,
+          visitorAdditionalInfo: site.visitorAdditionalInfo,
+          venueExtras: site.venueExtras,
+        }),
+      });
+      await guardResponse(res);
+      // Reload so admin UI, booking modal, and any salon-language-derived
+      // text re-render against the new locale immediately.
+      window.location.reload();
+    } catch (e) { handleErr(e); setBusyKey(''); }
   }
 
   async function saveSiteSettings() {
@@ -1231,6 +1259,35 @@ export default function AdminDashboardClient({
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
   }
 
+  async function saveTracking() {
+    setError('');
+    setNotice('');
+    setBusyKey('tracking');
+    try {
+      const res = await fetch(`/api/admin/marketing?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ga4Id: site.ga4Id,
+          metaPixelId: site.metaPixelId,
+          clarityId: site.clarityId,
+        }),
+      });
+      const data = await guardResponse(res) as Pick<AdminSitePayload, 'ga4Id' | 'metaPixelId' | 'clarityId'>;
+      setSite((prev) => ({
+        ...prev,
+        ga4Id: data.ga4Id ?? prev.ga4Id,
+        metaPixelId: data.metaPixelId ?? prev.metaPixelId,
+        clarityId: data.clarityId ?? prev.clarityId,
+      }));
+      setNotice(locale === 'en' ? 'Tracking IDs saved.' : 'Tracking ID-тата са запазени.');
+    } catch (e) {
+      handleErr(e);
+    } finally {
+      setBusyKey('');
+    }
+  }
+
   async function connectDomain() {
     setError(''); setNotice(''); setBusyKey('domain');
     try {
@@ -1337,7 +1394,7 @@ export default function AdminDashboardClient({
       });
       const data = await guardResponse(res);
       setSite((prev) => ({ ...prev, ...(data.site as Partial<AdminSitePayload>) }));
-      setNotice('Снимката е запазена.');
+      setNotice(locale === 'en' ? 'The image was saved.' : 'Снимката е запазена.');
     } catch (e) {
       handleErr(e);
       setSite((p) => ({
@@ -1356,7 +1413,7 @@ export default function AdminDashboardClient({
   ) {
     const images = imageFilesFromInput(files);
     if (!images.length) {
-      setError('Моля, избери само изображения (JPG, PNG, WebP, GIF).');
+      setError(locale === 'en' ? 'Please choose image files only (JPG, PNG, WebP, GIF).' : 'Моля, избери само изображения (JPG, PNG, WebP, GIF).');
       return;
     }
 
@@ -1425,8 +1482,8 @@ export default function AdminDashboardClient({
       );
       setNotice(
         uploadedUrls.length === 1
-          ? 'Снимката е качена и запазена.'
-          : `${uploadedUrls.length} снимки са качени и запазени.`,
+          ? (locale === 'en' ? 'The image was uploaded and saved.' : 'Снимката е качена и запазена.')
+          : (locale === 'en' ? `${uploadedUrls.length} images were uploaded and saved.` : `${uploadedUrls.length} снимки са качени и запазени.`),
       );
     } catch (e) {
       handleErr(e);
@@ -1448,7 +1505,7 @@ export default function AdminDashboardClient({
         salonCategory: String(site.category ?? '').trim(),
       });
       if (!extracted.length) {
-        setError('Не открихме услуги на снимката. Опитай с по-ясна снимка.');
+        setError(locale === 'en' ? 'No services were detected in the image. Try a clearer photo.' : 'Не открихме услуги на снимката. Опитай с по-ясна снимка.');
         return;
       }
       const withCategory = extracted.filter((s) => String(s.category ?? '').trim()).length;
@@ -1460,12 +1517,18 @@ export default function AdminDashboardClient({
       });
       const categoryNote =
         withCategory > 0
-          ? ` Категории са разпределени за ${withCategory} от ${extracted.length} услуги.`
+          ? (locale === 'en'
+            ? ` Categories were assigned for ${withCategory} of ${extracted.length} services.`
+            : ` Категории са разпределени за ${withCategory} от ${extracted.length} услуги.`)
           : '';
       setNotice(
         added > 0
-          ? `Добавени ${added} услуги от ценоразписа.${categoryNote} Натисни „Запази".`
-          : `Услугите от ценоразписа вече са в списъка.${categoryNote} Натисни „Запази", ако си правил промени.`,
+          ? (locale === 'en'
+            ? `Added ${added} services from the price list.${categoryNote} Press "Save".`
+            : `Добавени ${added} услуги от ценоразписа.${categoryNote} Натисни „Запази".`)
+          : (locale === 'en'
+            ? `The price list services are already in the list.${categoryNote} Press "Save" if you made changes.`
+            : `Услугите от ценоразписа вече са в списъка.${categoryNote} Натисни „Запази", ако си правил промени.`),
       );
     } catch (e) {
       handleErr(e);
@@ -1520,7 +1583,7 @@ export default function AdminDashboardClient({
           markPwaOnHomeScreen();
           setPwaInstallOpen(false);
           setNavOpen(false);
-          setNotice('Приложението се добавя на екрана.');
+          setNotice(locale === 'en' ? 'The app is being added to your home screen.' : 'Приложението се добавя на екрана.');
           setInstallPromptEvent(null);
         })
         .catch(() => setPwaInstallOpen(true));
@@ -1605,11 +1668,26 @@ export default function AdminDashboardClient({
 
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => {
-    setActiveTab(id);
+    if (id === 'site') {
+      setActiveTab(websiteSubTab);
+    } else if (id === 'bookings') {
+      setActiveTab(bookingSubTab);
+    } else if (id === 'account') {
+      setActiveTab(accountSubTab);
+    } else {
+      setActiveTab(id);
+    }
     setError('');
     setNotice('');
     setNavOpen(false);
-    try { localStorage.setItem(`admin-tab:${slug}`, id); } catch { /* ignore */ }
+    try {
+        const stored =
+        id === 'site' ? websiteSubTab :
+        id === 'bookings' ? bookingSubTab :
+        id === 'account' ? accountSubTab :
+        id;
+      localStorage.setItem(`admin-tab:${slug}`, stored);
+    } catch { /* ignore */ }
   };
   async function saveOffers() {
     setError('');
@@ -1631,140 +1709,6 @@ export default function AdminDashboardClient({
     }
   }
 
-  const patchBlogPost = useCallback((index: number, patch: Partial<AdminSalonBlogPost>) => {
-    const next = blogPostsRef.current.map((p, i) => (i === index ? { ...p, ...patch } : p));
-    blogPostsRef.current = next;
-    setBlogPosts(next);
-    return next;
-  }, []);
-
-  const replaceBlogPosts = useCallback((next: AdminSalonBlogPost[]) => {
-    blogPostsRef.current = next;
-    setBlogPosts(next);
-    return next;
-  }, []);
-
-  function prepareBlogPostsForSave(posts: AdminSalonBlogPost[]): AdminSalonBlogPost[] {
-    const used = new Set<string>();
-    return posts.map((post) => {
-      const withSeo = withAutoBlogSeoMeta(post);
-      const base = withSeo.slug.trim() || toBlogSlug(withSeo.title);
-      const slug = ensureUniqueBlogSlug(base, used);
-      used.add(slug);
-      return { ...withSeo, slug };
-    });
-  }
-
-  async function saveBlogPostsInternal(
-    postsToSave: AdminSalonBlogPost[],
-    opts?: { expectPublished?: boolean },
-  ) {
-    const prepared = prepareBlogPostsForSave(postsToSave);
-    blogPostsRef.current = prepared;
-    setBlogPosts(prepared);
-
-    setError('');
-    setBusyKey('blog');
-    try {
-      const res = await fetch(`/api/admin/site-blog?slug=${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posts: prepared, blogTitle: blogSectionTitle }),
-      });
-      const data = (await guardResponse(res)) as { posts?: AdminSalonBlogPost[]; blogTitle?: string };
-      if (Array.isArray(data.posts)) {
-        blogPostsRef.current = data.posts;
-        setBlogPosts(data.posts);
-      }
-      if (typeof data.blogTitle === 'string') setBlogSectionTitle(data.blogTitle);
-
-      if (opts?.expectPublished) {
-        const wanted = prepared.filter((p) => p.status === 'published');
-        const savedPublished = (data.posts ?? []).filter((p) => p.status === 'published');
-        const ok = wanted.every((post) =>
-          savedPublished.some(
-            (saved) =>
-              (post.id && saved.id === post.id) ||
-              (post.slug && saved.slug === post.slug) ||
-              saved.title === post.title,
-          ),
-        );
-        if (!ok) {
-          throw new Error('Публикацията не се запази. Опитайте отново.');
-        }
-        setNotice('Статията е публикувана.');
-      } else {
-        setNotice('Черновата е запазена.');
-      }
-    } catch (e) {
-      handleErr(e);
-      throw e;
-    } finally {
-      setBusyKey('');
-    }
-  }
-
-  async function flushBlogSave(
-    overridePosts?: AdminSalonBlogPost[],
-    opts?: { expectPublished?: boolean },
-  ) {
-    if (overridePosts) {
-      blogPostsRef.current = overridePosts;
-      setBlogPosts(overridePosts);
-    }
-
-    if (blogSaveBusyRef.current) {
-      blogSaveAgainRef.current = true;
-      return;
-    }
-
-    blogSaveBusyRef.current = true;
-    let expectPublished = opts?.expectPublished ?? false;
-    try {
-      do {
-        blogSaveAgainRef.current = false;
-        await saveBlogPostsInternal(blogPostsRef.current, { expectPublished });
-        expectPublished = false;
-      } while (blogSaveAgainRef.current);
-    } finally {
-      blogSaveBusyRef.current = false;
-    }
-  }
-
-  async function saveBlogDraft(_index: number) {
-    await flushBlogSave();
-  }
-
-  async function publishBlogPost(index: number) {
-    const current = blogPostsRef.current[index];
-    if (!current) return;
-    const next = patchBlogPost(index, {
-      status: 'published',
-      publishedAt: current.publishedAt || new Date().toISOString(),
-    });
-    await flushBlogSave(next, { expectPublished: true });
-  }
-
-  async function unpublishBlogPost(index: number) {
-    const next = patchBlogPost(index, { status: 'draft', publishedAt: null });
-    await flushBlogSave(next);
-  }
-
-  async function handleBlogCoverUpload(postIndex: number, file: File | null) {
-    if (!file) return;
-    setBusyKey(`upload-blog-${postIndex}`);
-    setError('');
-    try {
-      const url = await uploadSingleFile(file);
-      patchBlogPost(postIndex, { coverImageUrl: url });
-      setNotice('Снимката е качена.');
-    } catch (e) {
-      handleErr(e);
-    } finally {
-      setBusyKey('');
-    }
-  }
-
   async function handleOfferImagesUpload(offerIndex: number, files: FileList | null) {
     if (!files?.length) return;
     setBusyKey(`upload-offer-${offerIndex}`);
@@ -1777,7 +1721,9 @@ export default function AdminDashboardClient({
       setOffers((prev) =>
         prev.map((o, i) => (i === offerIndex ? { ...o, images: [...o.images, ...urls] } : o)),
       );
-      setNotice(urls.length === 1 ? 'Снимката е качена.' : `${urls.length} снимки са качени.`);
+      setNotice(urls.length === 1
+        ? (locale === 'en' ? 'The image was uploaded.' : 'Снимката е качена.')
+        : (locale === 'en' ? `${urls.length} images were uploaded.` : `${urls.length} снимки са качени.`));
     } catch (e) {
       handleErr(e);
     } finally {
@@ -1820,27 +1766,6 @@ export default function AdminDashboardClient({
     setServiceModalOpen(false);
   }
 
-  /* ── Save legal info ── */
-  async function saveLegalInfo() {
-    setLegalSaving(true);
-    setLegalNotice('');
-    try {
-      const res = await fetch('/api/admin/legal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, ...legalInfo }),
-      });
-      if (!res.ok) throw new Error('save_failed');
-      const data = (await res.json()) as { legalInfo?: LegalInfoStored };
-      if (data.legalInfo) setLegalInfo(data.legalInfo);
-      setLegalNotice('Запазено успешно.');
-    } catch {
-      setLegalNotice('Грешка при запазване.');
-    } finally {
-      setLegalSaving(false);
-    }
-  }
-
   /* ─── Render ─────────────────────────────────────────── */
   return (
     <div
@@ -1873,7 +1798,7 @@ export default function AdminDashboardClient({
           }} />
           <div style={{ textAlign: 'center', maxWidth: 320, padding: '0 24px' }}>
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#18181b', lineHeight: 1.4 }}>
-              Обновяваме адреса на сайта ти
+              {locale === 'en' ? 'We are updating your site address' : 'Обновяваме адреса на сайта ти'}
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 14, color: '#71717a', lineHeight: 1.5 }}>
               {slugTransition.newSlug}.{ROOT_DOMAIN}
@@ -1903,6 +1828,7 @@ export default function AdminDashboardClient({
         onLogout={logout}
         onTriggerPwaInstall={triggerPwaInstall}
         onOpenNav={() => setNavOpen(true)}
+        onLocaleChange={changeLocale}
       />
 
       {/* ── Mobile bottom sheet nav ───────────────────── */}
@@ -1914,11 +1840,11 @@ export default function AdminDashboardClient({
         onSheetDragStart={onSheetDragStart}
         onSheetDragMove={onSheetDragMove}
         onSheetDragEnd={onSheetDragEnd}
-        groups={SHEET_GROUPS}
-        tabs={TABS}
+        groups={mobileSheetGroups}
+        tabs={visibleTabs}
         sitePlan={site.plan}
-        activeTab={activeTab}
-        onSelectTab={(id) => { setActiveTab(id as TabId); setError(''); setNotice(''); setTimeout(() => setNavOpen(false), 180); }}
+        activeTab={activeTopLevelTab}
+        onSelectTab={(id) => { switchTab(id as TabId); setTimeout(() => setNavOpen(false), 180); }}
         openGroups={openGroups}
         setOpenGroups={setOpenGroups}
         sitePublicUrl={sitePublicUrl}
@@ -2085,11 +2011,12 @@ export default function AdminDashboardClient({
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
           <AdminSidebar
-            groups={SIDEBAR_GROUPS}
-            tabs={TABS}
-            activeTab={activeTab}
+            groups={desktopSidebarGroups}
+            tabs={visibleTabs}
+            activeTab={activeTopLevelTab}
             onSwitch={(id) => switchTab(id as TabId)}
             t={t}
+            locale={locale}
           />
         )}
 
@@ -2111,9 +2038,36 @@ export default function AdminDashboardClient({
           {error  && <Toast tone="error"   onDismiss={() => setError('')}>{error}</Toast>}
           {notice && <Toast tone="success" onDismiss={() => setNotice('')}>{notice}</Toast>}
 
+          {activeTopLevelTab === 'site' ? (
+            <AdminSubnav
+              tabs={websiteSectionTabs}
+              activeTab={activeTab}
+              onSwitch={(id) => switchTab(id)}
+              t={t}
+            />
+          ) : null}
+
+          {activeTopLevelTab === 'bookings' ? (
+            <AdminSubnav
+              tabs={bookingSectionTabs}
+              activeTab={activeTab}
+              onSwitch={(id) => switchTab(id)}
+              t={t}
+            />
+          ) : null}
+
+          {activeTopLevelTab === 'account' ? (
+            <AdminSubnav
+              tabs={accountSectionTabs}
+              activeTab={activeTab}
+              onSwitch={(id) => switchTab(id)}
+              t={t}
+            />
+          ) : null}
+
           {/* ── Onboarding checklist ── */}
           {activeTab === 'site' && (
-            <OnboardingChecklist site={site} onGoToTab={(tab, subtab) => { if (subtab) setSiteNav(prev => ({ section: subtab, v: (prev?.v ?? 0) + 1 })); switchTab(tab as TabId); }} />
+            <OnboardingChecklist site={site} locale={locale} onGoToTab={(tab, subtab) => { if (subtab) setSiteNav(prev => ({ section: subtab, v: (prev?.v ?? 0) + 1 })); switchTab(tab as TabId); }} />
           )}
 
           {/* ── Site URL + QR bar ── */}
@@ -2233,8 +2187,8 @@ export default function AdminDashboardClient({
           {/* ── Услуги ── */}
           {activeTab === 'services' && (
             <Section
-              title={locale === 'en' ? 'Services' : 'Услуги'}
-              desc={isMobile ? undefined : (locale === 'en' ? 'Manage the salon services and categories.' : 'Управлявай услугите и категориите на салона.')}
+              title={locale === 'en' ? 'Booking services' : 'Услуги за резервации'}
+              desc={isMobile ? undefined : (locale === 'en' ? 'Manage the services, durations, prices, and categories used by the booking engine.' : 'Управлявай услугите, времетраенето, цените и категориите, които booking engine-ът използва.')}
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -2280,6 +2234,7 @@ export default function AdminDashboardClient({
                   onUpload={handlePriceListUpload}
                   onRemove={removePriceListAt}
                   onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
+                  locale={locale}
                 />
               </div>
 
@@ -2294,6 +2249,7 @@ export default function AdminDashboardClient({
                 T={T}
                 svcInp={svcInp}
                 btn={btn}
+                locale={locale}
               />
             </Section>
           )}
@@ -2347,81 +2303,7 @@ export default function AdminDashboardClient({
                 inp={inp}
                 onChange={(v) => { setOffersSaved(false); setOffers(v); }}
                 onUploadImages={handleOfferImagesUpload}
-              />
-            </Section>
-          )}
-
-          {activeTab === 'brands' && (
-            <LazyBrandsTabPanel
-              initialBrandIds={site.brandIds}
-              isMobile={isMobile}
-              locale={locale}
-            />
-          )}
-
-          {activeTab === 'blog' && (
-            <Section
-              title={locale === 'en' ? 'Blog' : 'Блог'}
-              compact={isMobile}
-              action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = [newEmptyBlogPost(), ...blogPosts];
-                      blogPostsRef.current = next;
-                      setBlogPosts(next);
-                      setBlogActiveIndex(0);
-                    }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      borderRadius: 8,
-                      border: 'none',
-                      color: '#fff',
-                      background: tokens.color.primary,
-                      padding: '6px 12px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <Plus size={14} strokeWidth={2.25} />
-                    {locale === 'en' ? 'New article' : 'Нова статия'}
-                  </button>
-                  {blogPosts.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => void saveBlogDraft(blogActiveIndex)}
-                      disabled={busyKey === 'blog'}
-                      style={{
-                        ...ADMIN_COMPACT_SAVE_BTN,
-                        opacity: busyKey === 'blog' ? 0.7 : 1,
-                        cursor: busyKey === 'blog' ? 'wait' : 'pointer',
-                      }}
-                    >
-                      {busyKey === 'blog' ? (locale === 'en' ? 'Saving…' : 'Запазване…') : (locale === 'en' ? 'Save' : 'Запази')}
-                    </button>
-                  ) : null}
-                </div>
-              }
-            >
-              <LazySalonBlogSection
-                posts={blogPosts}
-                blogTitle={blogSectionTitle}
-                isMobile={isMobile}
-                busyKey={busyKey}
-                inp={inp}
-                blogPreviewBase={sitePublicUrl.replace(/\/$/, '')}
-                onPatchPost={patchBlogPost}
-                onReplacePosts={replaceBlogPosts}
-                onBlogTitleChange={setBlogSectionTitle}
-                onUploadCover={handleBlogCoverUpload}
-                onPublish={publishBlogPost}
-                onUnpublish={unpublishBlogPost}
-                onActiveIndexChange={setBlogActiveIndex}
+                locale={locale}
               />
             </Section>
           )}
@@ -2449,148 +2331,146 @@ export default function AdminDashboardClient({
 
           {/* ── Резервации ── */}
           {activeTab === 'bookings' && (
-            <Section
-              title={locale === 'en' ? 'Bookings' : 'Резервации'}
-              action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
-                    {bookings.length} {locale === 'en' ? 'total' : 'общо'}
-                  </span>
-                  {!isMobile ? (
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as BookingListFilter)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
-                      <option value="all">{locale === 'en' ? 'All' : 'Всички'}</option>
-                      <option value="upcoming">{locale === 'en' ? 'Upcoming' : 'Предстоящи'}</option>
-                      <option value="pending">{locale === 'en' ? 'Pending' : 'Чакащи'}</option>
-                      <option value="completed">{locale === 'en' ? 'Completed' : 'Завършени'}</option>
-                      <option value="cancelled">{locale === 'en' ? 'Cancelled' : 'Отказани'}</option>
-                    </select>
-                  ) : null}
-                </div>
-              }
-            >
-              <BookingsPanel
-                isMobile={isMobile}
-                bookings={bookings}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
-                calendarMonthLabel={calendarMonthLabel}
-                calendarMeta={calendarMeta}
-                bookingsCountByDate={bookingsCountByDate}
-                externalCalendarByDate={externalCalendarByDate}
-                externalCalendarEvents={externalCalendarEvents}
-                selectedCalendarDate={selectedCalendarDate}
-                setSelectedCalendarDate={setSelectedCalendarDate}
-                setCalendarCursor={setCalendarCursor}
-                visibleBookings={visibleBookings}
-                groupedVisibleBookings={groupedVisibleBookings}
-                updateBookingStatus={updateBookingStatus}
-                inp={inp}
-                btn={btn}
-                T={T}
-              />
-            </Section>
-          )}
+            <div style={{ display: 'grid', gap: 28 }}>
+              <Section
+                title={locale === 'en' ? 'Bookings' : 'Резервации'}
+                action={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
+                      {bookings.length} {locale === 'en' ? 'total' : 'общо'}
+                    </span>
+                    {!isMobile ? (
+                      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as BookingListFilter)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
+                        <option value="all">{locale === 'en' ? 'All' : 'Всички'}</option>
+                        <option value="upcoming">{locale === 'en' ? 'Upcoming' : 'Предстоящи'}</option>
+                        <option value="pending">{locale === 'en' ? 'Pending' : 'Чакащи'}</option>
+                        <option value="completed">{locale === 'en' ? 'Completed' : 'Завършени'}</option>
+                        <option value="cancelled">{locale === 'en' ? 'Cancelled' : 'Отказани'}</option>
+                      </select>
+                    ) : null}
+                  </div>
+                }
+              >
+                <BookingsPanel
+                  isMobile={isMobile}
+                  bookings={bookings}
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  calendarMonthLabel={calendarMonthLabel}
+                  calendarMeta={calendarMeta}
+                  bookingsCountByDate={bookingsCountByDate}
+                  externalCalendarByDate={externalCalendarByDate}
+                  externalCalendarEvents={externalCalendarEvents}
+                  selectedCalendarDate={selectedCalendarDate}
+                  setSelectedCalendarDate={setSelectedCalendarDate}
+                  setCalendarCursor={setCalendarCursor}
+                  visibleBookings={visibleBookings}
+                  groupedVisibleBookings={groupedVisibleBookings}
+                  updateBookingStatus={updateBookingStatus}
+                  inp={inp}
+                  btn={btn}
+                  T={T}
+                  locale={locale}
+                />
+              </Section>
 
-          {/* ── Клиенти ── */}
-          {activeTab === 'clients' && (
-            <Section
-              title={locale === 'en' ? 'Clients' : 'Клиенти'}
-              action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
-                    {(() => {
-                    const bc = clients.filter(c => !hiddenClientKeys.has(c.key));
-                    const names = new Set(bc.map(c => c.name.toLowerCase().trim()));
-                    return bc.length + extraClients.filter(c => !names.has(c.name.toLowerCase().trim())).length;
-                  })()} {locale === 'en' ? 'unique' : 'уникални'}
-                  </span>
-                  <button
-                    type="button"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      borderRadius: 8,
-                      border: 'none',
-                      color: '#fff',
-                      background: tokens.color.primary,
-                      boxShadow: tokens.shadow.primary,
-                      padding: '6px 10px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
-                    onClick={() => { setNewClientDraft({ name: '', phone: '' }); setClientModalOpen(true); }}
-                  >
-                    <Plus size={13} />
-                    {locale === 'en' ? 'Add' : 'Добави'}
-                  </button>
-                </div>
-              }
-            >
-              <ClientsPanel
-                clients={(() => {
-                  const bookingClients = clients.filter(c => !hiddenClientKeys.has(c.key));
-                  const bookingNames = new Set(bookingClients.map(c => c.name.toLowerCase().trim()));
-                  const deduped = extraClients.filter(c => !bookingNames.has(c.name.toLowerCase().trim()));
-                  return [...bookingClients, ...deduped];
-                })()}
-                isMobile={isMobile}
-                T={T}
-                onEdit={async (key, data) => {
-                  if (key.startsWith('sc-')) {
-                    const id = key.slice(3);
-                    await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ id, ...data }),
-                    });
-                    setExtraClients((prev) => prev.map((c) =>
-                      c.key === key ? { ...c, name: data.name, phone: data.phone, email: data.email } : c
-                    ));
-                  } else {
-                    // Booking-derived client — upsert into salon_clients
-                    const r = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ name: data.name, phone: data.phone, email: data.email }),
-                    });
-                    const json = await r.json() as { client?: { id: string } };
-                    if (json.client?.id) {
-                      const newKey = `sc-${json.client.id}`;
-                      const original = clients.find((c) => c.key === key);
-                      setExtraClients((prev) => {
-                        const exists = prev.some((c) => c.key === newKey);
-                        if (exists) return prev.map((c) => c.key === newKey ? { ...c, ...data } : c);
-                        return [...prev, {
-                          key: newKey,
-                          name: data.name,
-                          phone: data.phone,
-                          email: data.email,
-                          visits: original?.visits ?? 0,
-                          totalSpent: original?.totalSpent ?? 0,
-                          lastVisit: original?.lastVisit ?? '',
-                        }];
+              <Section
+                title={locale === 'en' ? 'Clients' : 'Клиенти'}
+                action={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
+                      {(() => {
+                        const bc = clients.filter(c => !hiddenClientKeys.has(c.key));
+                        const names = new Set(bc.map(c => c.name.toLowerCase().trim()));
+                        return bc.length + extraClients.filter(c => !names.has(c.name.toLowerCase().trim())).length;
+                      })()} {locale === 'en' ? 'unique' : 'уникални'}
+                    </span>
+                    <button
+                      type="button"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        borderRadius: 8,
+                        border: 'none',
+                        color: '#fff',
+                        background: tokens.color.primary,
+                        boxShadow: tokens.shadow.primary,
+                        padding: '6px 10px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onClick={() => { setNewClientDraft({ name: '', phone: '' }); setClientModalOpen(true); }}
+                    >
+                      <Plus size={13} />
+                      {locale === 'en' ? 'Add' : 'Добави'}
+                    </button>
+                  </div>
+                }
+              >
+                <ClientsPanel
+                  clients={(() => {
+                    const bookingClients = clients.filter(c => !hiddenClientKeys.has(c.key));
+                    const bookingNames = new Set(bookingClients.map(c => c.name.toLowerCase().trim()));
+                    const deduped = extraClients.filter(c => !bookingNames.has(c.name.toLowerCase().trim()));
+                    return [...bookingClients, ...deduped];
+                  })()}
+                  isMobile={isMobile}
+                  T={T}
+                  onEdit={async (key, data) => {
+                    if (key.startsWith('sc-')) {
+                      const id = key.slice(3);
+                      await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, ...data }),
                       });
+                      setExtraClients((prev) => prev.map((c) =>
+                        c.key === key ? { ...c, name: data.name, phone: data.phone, email: data.email } : c
+                      ));
+                    } else {
+                      const r = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: data.name, phone: data.phone, email: data.email }),
+                      });
+                      const json = await r.json() as { client?: { id: string } };
+                      if (json.client?.id) {
+                        const newKey = `sc-${json.client.id}`;
+                        const original = clients.find((c) => c.key === key);
+                        setExtraClients((prev) => {
+                          const exists = prev.some((c) => c.key === newKey);
+                          if (exists) return prev.map((c) => c.key === newKey ? { ...c, ...data } : c);
+                          return [...prev, {
+                            key: newKey,
+                            name: data.name,
+                            phone: data.phone,
+                            email: data.email,
+                            visits: original?.visits ?? 0,
+                            totalSpent: original?.totalSpent ?? 0,
+                            lastVisit: original?.lastVisit ?? '',
+                          }];
+                        });
+                        setHiddenClientKeys((prev) => new Set([...prev, key]));
+                      }
+                    }
+                  }}
+                  onDelete={(key) => {
+                    if (key.startsWith('sc-')) {
+                      const id = key.slice(3);
+                      fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}&id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+                        .catch(() => undefined);
+                      setExtraClients((prev) => prev.filter((c) => c.key !== key));
+                    } else {
                       setHiddenClientKeys((prev) => new Set([...prev, key]));
                     }
-                  }
-                }}
-                onDelete={(key) => {
-                  // For salon_clients (sc-*) — delete from DB
-                  if (key.startsWith('sc-')) {
-                    const id = key.slice(3);
-                    fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}&id=${encodeURIComponent(id)}`, { method: 'DELETE' })
-                      .catch(() => undefined);
-                    setExtraClients((prev) => prev.filter((c) => c.key !== key));
-                  } else {
-                    // Booking-derived client — hide locally
-                    setHiddenClientKeys((prev) => new Set([...prev, key]));
-                  }
-                }}
-              />
-            </Section>
+                  }}
+                  locale={locale}
+                />
+              </Section>
+            </div>
           )}
 
           {clientModalOpen && (
@@ -2739,21 +2619,6 @@ export default function AdminDashboardClient({
             />
           )}
 
-          {activeTab === 'legal' ? (
-            <LazyLegalTabPanel
-              site={site}
-              legalInfo={legalInfo}
-              setLegalInfo={setLegalInfo}
-              inp={inp}
-              btn={btn}
-              legalSaving={legalSaving}
-              legalNotice={legalNotice}
-              saveLegalInfo={saveLegalInfo}
-              publicSiteHost={publicSiteHost}
-              legalDocLinks={legalDocLinks}
-            />
-          ) : null}
-
           {activeTab === 'account' && initialAccount ? (
             <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} onDisplayNameChange={setDisplayName} locale={locale} />
           ) : null}
@@ -2785,12 +2650,9 @@ export default function AdminDashboardClient({
               calendarStatus={calendarIntegrationStatus}
               loadCalendarStatus={loadCalendarIntegrationStatus}
               onSaveExternalIcsUrl={saveExternalIcsUrl}
+              onSaveTracking={saveTracking}
               locale={locale}
             />
-          ) : null}
-
-          {activeTab === 'marketing' ? (
-            <LazyMarketingTabPanel site={site} setSite={setSite} slug={slug} inp={inp} sitePublicUrl={sitePublicUrl} locale={locale} />
           ) : null}
 
         </main>
@@ -2799,11 +2661,12 @@ export default function AdminDashboardClient({
       {/* ── Mobile bottom tab bar (full-width glass bar) ─ */}
       {isMobile && (
         <MobileBottomNav
-          tabs={TAB_BAR_TABS}
-          activeTab={activeTab}
+          tabs={mobileBottomTabs}
+          activeTab={activeTopLevelTab}
           sheetOpen={navOpen}
           onSwitch={(id) => switchTab(id as TabId)}
           t={t}
+          locale={locale}
         />
       )}
 
@@ -2812,6 +2675,61 @@ export default function AdminDashboardClient({
 }
 
 /* ─── Sub-components ──────────────────────────────────── */
+
+function AdminSubnav({
+  tabs,
+  activeTab,
+  onSwitch,
+  t,
+}: {
+  tabs: readonly { id: string; labelKey: string }[];
+  activeTab: string;
+  onSwitch: (id: TabId) => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        overflowX: 'auto',
+        flexWrap: 'nowrap',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        paddingBottom: 4,
+        marginBottom: 18,
+      }}
+    >
+      {tabs.map((tab) => {
+        const active = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onSwitch(tab.id as TabId)}
+            style={{
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              border: active ? '1px solid #18181B' : `1px solid ${T.border}`,
+              borderRadius: 999,
+              padding: '7px 14px',
+              fontSize: 13,
+              fontWeight: active ? 600 : 500,
+              lineHeight: 1.4,
+              background: active ? '#18181B' : '#fff',
+              color: active ? '#fff' : T.muted,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            {t(tab.labelKey)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function Section({
   title,

@@ -3,10 +3,12 @@
 import { CheckCircle2, Circle, ChevronRight, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { AdminSitePayload, WorkingHours } from '@/lib/admin-site';
+import type { Locale } from '@/lib/i18n';
 
 interface Props {
   site: AdminSitePayload;
   onGoToTab: (tab: string, subtab?: string) => void;
+  locale?: Locale;
 }
 
 const DEFAULT_HOURS: WorkingHours = {
@@ -28,82 +30,86 @@ function hasCustomHours(workingHours: WorkingHours): boolean {
   });
 }
 
-function useOnboardingSteps(site: AdminSitePayload) {
+function useOnboardingSteps(site: AdminSitePayload, locale: Locale) {
+  const isEn = locale === 'en';
   return [
     {
       id: 'domain',
-      label: 'Избери име на сайта',
+      label: isEn ? 'Choose a site name' : 'Избери име на сайта',
       done: true,
       tab: 'site',
       subtab: 'basics',
     },
     {
       id: 'services',
-      label: 'Добави услуги',
+      label: isEn ? 'Add services' : 'Добави услуги',
       done: site.services.length > 0,
       tab: 'services',
     },
     {
       id: 'images',
-      label: 'Качи снимки',
+      label: isEn ? 'Upload images' : 'Качи снимки',
       done: (site.images?.length ?? 0) > 0,
       tab: 'images',
     },
     {
       id: 'bizname',
-      label: 'Добави име на бизнеса',
+      label: isEn ? 'Add the business name' : 'Добави име на бизнеса',
       done: !!site.name && site.name.trim().length > 1,
       tab: 'site',
       subtab: 'basics',
     },
     {
       id: 'specialist',
-      label: site.plan === 'team' ? 'Добави себе си + екипа' : 'Добави себе си',
+      label: site.plan === 'team'
+        ? (isEn ? 'Add yourself + the team' : 'Добави себе си + екипа')
+        : (isEn ? 'Add yourself' : 'Добави себе си'),
       done: !!site.ownerName && site.ownerName.trim().length > 1,
       tab: 'specialist',
     },
     {
       id: 'stripe',
-      label: 'Свържи Stripe за плащания',
+      label: isEn ? 'Connect Stripe for payments' : 'Свържи Stripe за плащания',
       done: !!site.stripeConnected,
       tab: 'payments',
     },
     {
       id: 'address',
-      label: 'Добави локация',
+      label: isEn ? 'Add location' : 'Добави локация',
       done: !!site.address && site.address.trim().length > 3,
       tab: 'site',
       subtab: 'address',
     },
     {
       id: 'hours',
-      label: 'Задай работно време',
+      label: isEn ? 'Set working hours' : 'Задай работно време',
       done: hasCustomHours(site.workingHours),
       tab: 'hours',
     },
     {
       id: 'telegram',
-      label: 'Свържи Telegram',
+      label: isEn ? 'Connect Telegram' : 'Свържи Telegram',
       done: !!site.telegramChatId,
       tab: 'integrations',
     },
     {
       id: 'google',
-      label: 'Свържи Google ревюта',
+      label: isEn ? 'Connect Google reviews' : 'Свържи Google ревюта',
       done: !!site.googlePlaceId && site.googlePlaceId.trim().length > 0,
       tab: 'integrations',
     },
     {
       id: 'customDomain',
-      label: 'Свържи или купи собствен домейн',
+      label: isEn ? 'Connect or buy your own domain' : 'Свържи или купи собствен домейн',
       done: !!site.customDomain && site.customDomain.trim().length > 0,
       tab: 'domain',
     },
   ];
 }
 
-export function OnboardingChecklist({ site, onGoToTab }: Props) {
-  const steps = useOnboardingSteps(site);
+export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
+  const isEn = locale === 'en';
+  const steps = useOnboardingSteps(site, locale);
   const doneCount = steps.filter((s) => s.done).length;
   const total = steps.length;
   const allDone = doneCount === total;
@@ -129,11 +135,11 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: collapsed ? 0 : 10 }}>
         <div>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#1a1a2e', letterSpacing: '-0.01em' }}>
-            Настрой сайта си
+            {isEn ? 'Set up your site' : 'Настрой сайта си'}
           </p>
           {!collapsed && (
             <p style={{ margin: 0, fontSize: 11.5, color: '#6b7280', marginTop: 1 }}>
-              {doneCount} от {total} стъпки завършени
+              {isEn ? `${doneCount} of ${total} steps completed` : `${doneCount} от ${total} стъпки завършени`}
             </p>
           )}
         </div>
@@ -159,7 +165,7 @@ export function OnboardingChecklist({ site, onGoToTab }: Props) {
             }}
           >
             <ChevronDown size={14} style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 200ms ease' }} />
-            {collapsed ? 'Покажи' : 'Скрий'}
+            {collapsed ? (isEn ? 'Show' : 'Покажи') : (isEn ? 'Hide' : 'Скрий')}
           </button>
         </div>
       </div>
