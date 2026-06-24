@@ -6,13 +6,10 @@ import type { CSSProperties } from 'react';
 import { T, tokens } from '@/lib/admin-theme';
 import type { Locale } from '@/lib/i18n';
 
-type Plan = 'team' | 'solo' | string;
-
 type AdminHeaderProps = {
   isMobile: boolean;
   site: {
     name: string | null;
-    plan: Plan;
     siteStatus: string | null;
   };
   slug: string;
