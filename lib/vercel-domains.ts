@@ -207,6 +207,24 @@ function mapDomainStatus({
 }
 
 export async function syncDomainWithVercel(domain: string) {
+  // Vercel preview URLs (`*.vercel.app`) bypass the whole verification flow:
+  // they are not real custom domains, do not go through DNS setup, and
+  // Vercel itself owns those subdomains. Treat them as live immediately so
+  // we never persist a misleading `pending_dns` status for them.
+  const normalizedDomain = domain.trim().toLowerCase();
+  if (/\.vercel\.app$/.test(normalizedDomain)) {
+    return {
+      provider: 'vercel-preview' as const,
+      status: 'active' as const,
+      details: null,
+      dnsInstructions: [],
+      verificationInstructions: [],
+      configuredBy: 'vercel-preview',
+      misconfigured: false,
+      verified: true,
+    };
+  }
+
   const context = getVercelApiContext();
 
   if (!context.token || !context.projectId) {
