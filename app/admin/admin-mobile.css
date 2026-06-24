@@ -7,7 +7,7 @@ html:has(.admin-mobile-root) {
 .admin-mobile-root {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
-  font-family: var(--font-client-manrope, 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif);
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-weight: 400; /* Manrope Regular */
 }
 
@@ -50,21 +50,21 @@ html:has(.admin-mobile-root) {
   }
 }
 
-/* Focus ring — замени черния браузърен outline с нашия градиент */
+/* Focus ring — neutral black outline (matches white-label admin chrome) */
 .admin-mobile-root input:focus,
 .admin-mobile-root textarea:focus,
 .admin-mobile-root select:focus {
   outline: none;
-  border-color: #db2777 !important;
-  box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
+  border-color: #18181B !important;
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12), 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 
 .admin-mobile-root input:focus-visible,
 .admin-mobile-root textarea:focus-visible,
 .admin-mobile-root select:focus-visible {
   outline: none !important;
-  border-color: #db2777 !important;
-  box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
+  border-color: #18181B !important;
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12), 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 
 /* ─── Keyframes (Phase 1: moved from inline <style> in AdminDashboardClient) ─── */

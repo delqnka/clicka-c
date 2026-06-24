@@ -237,11 +237,11 @@ export function AdminHeader({
                 ? '…'
                 : isEn
                 ? isMobile
-                  ? 'Publish'
-                  : 'Publish site'
+                  ? 'Activate'
+                  : 'Activate for public'
                 : isMobile
-                ? 'Публикувай'
-                : 'Публикувай сайта'}
+                ? 'Активирай'
+                : 'Активирай за публика'}
             </button>
           )}
 
