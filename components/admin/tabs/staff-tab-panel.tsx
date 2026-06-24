@@ -199,9 +199,9 @@ function ServiceAssignPanel({
               style={{
                 padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                 cursor: busy ? 'wait' : 'pointer',
-                border: on ? '1.5px solid #7C3AED' : `1px solid ${ADMIN_T.border}`,
+                border: on ? '1.5px solid #000' : `1px solid ${ADMIN_T.border}`,
                 background: on ? '#f5f3ff' : '#fff',
-                color: on ? '#7C3AED' : ADMIN_T.muted,
+                color: on ? '#000' : ADMIN_T.muted,
                 opacity: busy ? 0.6 : 1,
                 transition: 'all 0.12s',
               }}
@@ -254,7 +254,7 @@ function PortalLinkInfo({ member, salonSlug, locale }: { member: StaffMember; sa
       </p>
       {link ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#7C3AED', fontFamily: 'monospace', wordBreak: 'break-all' }}>{link}</span>
+          <span style={{ fontSize: 12, color: '#000', fontFamily: 'monospace', wordBreak: 'break-all' }}>{link}</span>
           <CopyButton value={link} label={isEn ? 'link' : 'линк'} locale={locale} />
         </div>
       ) : null}
@@ -331,7 +331,7 @@ function OnboardingInfo({ member, sitePublicUrl, locale }: { member: StaffMember
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, color: ADMIN_T.muted }}>{isEn ? 'Booking link:' : 'Линк за резервации:'}</span>
-        <span style={{ fontSize: 12, color: '#7C3AED', fontFamily: 'monospace', wordBreak: 'break-all' }}>{bookingUrl}</span>
+        <span style={{ fontSize: 12, color: '#000', fontFamily: 'monospace', wordBreak: 'break-all' }}>{bookingUrl}</span>
         <CopyButton value={bookingUrl} label={isEn ? 'link' : 'линк'} locale={locale} />
       </div>
     </div>
@@ -458,8 +458,8 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
                 borderRadius: 8, border: 'none', color: '#fff',
-                background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
-                boxShadow: '0 4px 12px rgba(124,58,237,0.22)',
+                background: '#000',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.22)',
                 padding: '6px 10px', fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', whiteSpace: 'nowrap',
               }}
@@ -613,7 +613,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
                       >
-                        {expanded ? <ChevronUp size={14} color="#7C3AED" /> : <ChevronDown size={14} color={ADMIN_T.muted} />}
+                        {expanded ? <ChevronUp size={14} color="#000" /> : <ChevronDown size={14} color={ADMIN_T.muted} />}
                       </button>
                       <button
                         type="button"

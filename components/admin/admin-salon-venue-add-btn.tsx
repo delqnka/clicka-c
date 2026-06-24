@@ -29,14 +29,14 @@ export function AdminSalonVenueAddBtn({ busy, onUpload, locale = 'bg' }: Props) 
           height: 40,
           borderRadius: '50%',
           border: 'none',
-          background: busy ? '#c4b5fd' : 'linear-gradient(135deg, #7c3aed, #db2777)',
+          background: busy ? '#c4b5fd' : '#000',
           color: '#fff',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: busy ? 'wait' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 2px 12px rgba(124, 58, 237, 0.35)',
+          boxShadow: '0 2px 12px rgba(0,0,0, 0.35)',
         }}
       >
         {busy ? <RefreshCw size={18} strokeWidth={2} /> : <Building2 size={18} strokeWidth={2.1} />}

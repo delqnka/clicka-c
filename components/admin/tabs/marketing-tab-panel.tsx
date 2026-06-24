@@ -110,7 +110,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl, loc
 
       <AdminSection
         title={<>Google Analytics 4{site.ga4Id ? <span style={{ fontSize: 11, fontWeight: 600, color: '#15803d', background: '#dcfce7', borderRadius: 99, padding: '2px 8px', marginLeft: 6 }}>{isEn ? 'Connected' : 'Настроен'}</span> : null}</>}
-        icon={<BarChart3 size={16} color="#e11d48" />}
+        icon={<BarChart3 size={16} color="#000" />}
         desc=""
       >
         <label style={labelStyle}>Measurement ID</label>

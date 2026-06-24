@@ -175,7 +175,7 @@ export function BrandsTabPanel({ initialBrandIds, isMobile, locale }: Props) {
           </button>
         </div>
         {customError && (
-          <p style={{ fontSize: 12, color: '#e11d48', marginTop: 6, ...font }}>{customError}</p>
+          <p style={{ fontSize: 12, color: '#000', marginTop: 6, ...font }}>{customError}</p>
         )}
       </div>
 

@@ -121,11 +121,11 @@ export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
     <div
       style={{
         background: '#fff',
-        border: '1px solid rgba(219,39,119,0.12)',
+        border: '1px solid rgba(0,0,0,0.12)',
         borderRadius: 16,
         padding: '14px 16px',
         marginBottom: 16,
-        boxShadow: '0 8px 24px rgba(219,39,119,0.1), 0 2px 8px rgba(0,0,0,0.06)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
         fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
       }}
     >
@@ -173,7 +173,7 @@ export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
       <div style={{
         height: 5,
         borderRadius: 999,
-        background: 'rgba(219,39,119,0.12)',
+        background: 'rgba(0,0,0,0.12)',
         marginBottom: 12,
         overflow: 'hidden',
       }}>
@@ -181,7 +181,7 @@ export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
           height: '100%',
           width: `${pct}%`,
           borderRadius: 999,
-          background: 'linear-gradient(90deg, #db2777, #9333ea)',
+          background: '#000',
           transition: 'width 0.4s ease',
         }} />
       </div>
@@ -198,7 +198,7 @@ export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
               alignItems: 'center',
               gap: 10,
               background: '#fff',
-              border: step.done ? '1px solid #f3f4f6' : '1px solid rgba(219,39,119,0.1)',
+              border: step.done ? '1px solid #f3f4f6' : '1px solid rgba(0,0,0,0.1)',
               borderRadius: 9,
               padding: '8px 10px',
               cursor: 'pointer',
@@ -211,7 +211,7 @@ export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
             {step.done ? (
               <CheckCircle2 size={16} style={{ color: '#10b981', flexShrink: 0 }} />
             ) : (
-              <Circle size={16} style={{ color: '#db2777', flexShrink: 0 }} />
+              <Circle size={16} style={{ color: '#000', flexShrink: 0 }} />
             )}
             <span style={{
               flex: 1,
@@ -223,7 +223,7 @@ export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
               {step.label}
             </span>
             {!step.done && (
-              <ChevronRight size={14} style={{ color: '#db2777', flexShrink: 0 }} />
+              <ChevronRight size={14} style={{ color: '#000', flexShrink: 0 }} />
             )}
           </button>
         ))}

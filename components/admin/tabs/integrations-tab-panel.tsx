@@ -124,8 +124,8 @@ export function IntegrationsTabPanel({
               marginTop: 4,
               padding: '14px 18px',
               borderRadius: 16,
-              background: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
-              boxShadow: '0 8px 32px rgba(219,39,119,.35)',
+              background: '#000',
+              boxShadow: '0 8px 32px rgba(0,0,0,.35)',
               color: '#fff',
             }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, opacity: 0.9 }}>
@@ -424,7 +424,7 @@ export function IntegrationsTabPanel({
 function BulletRow({ children }: { children: ReactNode }) {
   return (
     <li style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-      <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: '#a855f7', flexShrink: 0 }} />
+      <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: '#000', flexShrink: 0 }} />
       <span>{children}</span>
     </li>
   );

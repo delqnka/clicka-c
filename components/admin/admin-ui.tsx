@@ -197,7 +197,7 @@ export function AdminSaveBtn({
     prevBusy.current = busy;
   }, [busy]);
 
-  const GRAD = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
+  const GRAD = '#000';
   const gradText: CSSProperties = {
     backgroundImage: GRAD,
     WebkitBackgroundClip: 'text',
@@ -215,7 +215,7 @@ export function AdminSaveBtn({
         title={label}
         style={{
           border: 'none',
-          background: saved ? '#16a34a' : 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+          background: saved ? '#16a34a' : '#000',
           padding: '6px 16px',
           borderRadius: 999,
           cursor: busy ? 'wait' : 'pointer',
@@ -227,7 +227,7 @@ export function AdminSaveBtn({
           alignItems: 'center',
           gap: 4,
           opacity: busy ? 0.7 : 1,
-          boxShadow: '0 2px 8px rgba(219,39,119,0.25)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
         }}
       >
         {busy ? (isEn ? 'Saving…' : 'Запазване…') : saved ? (isEn ? '✓ Saved' : '✓ Запазено') : label}
@@ -250,7 +250,7 @@ export function AdminSaveBtn({
         fontWeight: 700,
         cursor: busy ? 'wait' : 'pointer',
         whiteSpace: 'nowrap',
-        backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+        backgroundImage: '#000',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',

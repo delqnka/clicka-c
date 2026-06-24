@@ -59,7 +59,7 @@ const STEPS_EN = [
   },
 ];
 
-const GRAD = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
+const GRAD = '#000';
 const FONT = "var(--font-client-manrope,'Manrope',system-ui,sans-serif)";
 const KEY = 'clicka_onboarding_done';
 
@@ -141,8 +141,8 @@ export function OnboardingTour({ slug, done, locale = 'bg' }: { slug: string; do
               letterSpacing: '0.05em',
               padding: '3px 10px',
               borderRadius: 99,
-              background: 'rgba(225,29,72,0.08)',
-              color: '#e11d48',
+              background: 'rgba(0,0,0,0.08)',
+              color: '#000',
             }}>
               {isEn ? 'TAB' : 'ТАБ'}: {current.tab.toUpperCase()}
             </span>
@@ -190,7 +190,7 @@ export function OnboardingTour({ slug, done, locale = 'bg' }: { slug: string; do
               fontWeight: 800,
               cursor: 'pointer',
               fontFamily: FONT,
-              boxShadow: '0 4px 20px rgba(219,39,119,.25)',
+              boxShadow: '0 4px 20px rgba(0,0,0,.25)',
             }}
           >
             {isLast ? (isEn ? "Got it, let's start! 🎉" : 'Разбрах, да започваме! 🎉') : (isEn ? `Next (${step + 1}/${STEPS.length})` : `Напред (${step + 1}/${STEPS.length})`)}

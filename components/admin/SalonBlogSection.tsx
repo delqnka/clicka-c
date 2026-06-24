@@ -12,7 +12,7 @@ const GRADIENT_PRIMARY: CSSProperties = {
   borderRadius: 8,
   border: 'none',
   color: '#fff',
-  background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)',
+  background: '#000',
   padding: '6px 12px',
   fontSize: 12,
   fontWeight: 600,
@@ -168,7 +168,7 @@ export function SalonBlogSection({
                   style={{
                     flexShrink: 0,
                     borderRadius: 10,
-                    border: selected ? '2px solid #7C3AED' : '1px solid #e5e7eb',
+                    border: selected ? '2px solid #000' : '1px solid #e5e7eb',
                     background: selected ? '#F5F3FF' : '#fff',
                     padding: '8px 14px',
                     cursor: 'pointer',
@@ -382,7 +382,7 @@ export function SalonBlogSection({
                     href={previewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: '#7C3AED', textDecoration: 'none', marginLeft: 'auto' }}
+                    style={{ fontSize: 13, color: '#000', textDecoration: 'none', marginLeft: 'auto' }}
                   >
                     {isEn ? 'Preview ↗' : 'Преглед ↗'}
                   </a>

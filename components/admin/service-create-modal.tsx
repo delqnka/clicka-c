@@ -224,7 +224,7 @@ export function ServiceCreateModal({
           <button type="button" style={btn('ghost')} onClick={onCancel}>Отказ</button>
           <button
             type="button"
-            style={{ ...btn('primary'), border: 'none', background: 'linear-gradient(135deg, #FF4FD8 0%, #7C3AED 100%)' }}
+            style={{ ...btn('primary'), border: 'none', background: '#000' }}
             onClick={onAdd}
           >
             Добави

@@ -3496,9 +3496,9 @@ function QrModal({ url, salonName, onClose }: { url: string; salonName: string; 
 
     // Pink top accent strip
     const grad = ctx.createLinearGradient(0, 0, W, 120);
-    grad.addColorStop(0, '#e11d48');
-    grad.addColorStop(0.5, '#db2777');
-    grad.addColorStop(1, '#a855f7');
+    grad.addColorStop(0, '#000');
+    grad.addColorStop(0.5, '#000');
+    grad.addColorStop(1, '#000');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, 120);
 
@@ -3524,14 +3524,14 @@ function QrModal({ url, salonName, onClose }: { url: string; salonName: string; 
     ctx.drawImage(qrImg, qrX, 310, qrSize, qrSize);
 
     // URL at bottom
-    ctx.fillStyle = '#db2777';
+    ctx.fillStyle = '#000';
     ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
     ctx.fillText(url.replace('https://', ''), W / 2, 800);
 
     // Bottom gradient line
     const gradLine = ctx.createLinearGradient(80, 0, W - 80, 0);
-    gradLine.addColorStop(0, '#e11d48');
-    gradLine.addColorStop(1, '#a855f7');
+    gradLine.addColorStop(0, '#000');
+    gradLine.addColorStop(1, '#000');
     ctx.strokeStyle = gradLine;
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -3567,7 +3567,7 @@ function QrModal({ url, salonName, onClose }: { url: string; salonName: string; 
         {/* Header gradient band */}
         <div style={{
           width: '100%', padding: '20px 24px 18px',
-          background: 'linear-gradient(135deg, #e11d48 0%, #db2777 50%, #a855f7 100%)',
+          background: '#000',
           textAlign: 'center',
         }}>
           <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>

@@ -159,7 +159,7 @@ export function PaymentsTabPanel({
 function BulletRow({ children }: { children: ReactNode }) {
   return (
     <li style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-      <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: '#a855f7', flexShrink: 0 }} />
+      <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: '#000', flexShrink: 0 }} />
       <span>{children}</span>
     </li>
   );

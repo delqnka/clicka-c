@@ -17,7 +17,7 @@ const SITE_SECTIONS = [
   { id: 'amenities', labelKey: 'adminDashboard.siteTab.sections.amenities', mobileLabelKey: 'adminDashboard.siteTab.sections.amenitiesMobile' },
 ] as const;
 
-const ACTIVE_GRADIENT = 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)';
+const ACTIVE_GRADIENT = '#000';
 
 function siteSectionTabStyle(active: boolean, mobile: boolean): CSSProperties {
   if (mobile) {
@@ -50,7 +50,7 @@ function siteSectionTabStyle(active: boolean, mobile: boolean): CSSProperties {
     WebkitBackgroundClip: active ? 'border-box, text' : undefined,
     backgroundClip: active ? 'border-box, text' : undefined,
     WebkitTextFillColor: active ? 'transparent' : undefined,
-    color: active ? '#e11d48' : ADMIN_T.muted,
+    color: active ? '#000' : ADMIN_T.muted,
     padding: '8px 12px',
     fontSize: 14,
     fontWeight: active ? 600 : 400,
@@ -282,9 +282,9 @@ export function SiteTabPanel({
                 onClick={() => onNavigateToDomain()}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLButtonElement;
-                  el.style.background = 'linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#e11d48,#db2777,#a855f7) border-box';
+                  el.style.background = 'linear-gradient(#fff,#fff) padding-box, #000 border-box';
                   el.style.borderColor = 'transparent';
-                  el.style.boxShadow = '0 2px 10px rgba(219,39,119,0.12)';
+                  el.style.boxShadow = '0 2px 10px rgba(0,0,0,0.12)';
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget as HTMLButtonElement;

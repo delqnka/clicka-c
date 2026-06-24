@@ -227,7 +227,7 @@ export function SalonFaqVisitorFields({
               cursor: 'pointer',
               fontSize: 13,
               fontWeight: 600,
-              backgroundImage: 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)',
+              backgroundImage: '#000',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',

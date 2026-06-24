@@ -274,9 +274,9 @@ export function BookingsPanel({
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '8px 16px', borderRadius: 100, border: 'none',
-                  background: isActive ? 'linear-gradient(135deg,#e11d48,#db2777,#a855f7)' : '#fff',
+                  background: isActive ? '#000' : '#fff',
                   color: isActive ? '#fff' : T.muted,
-                  boxShadow: isActive ? '0 4px 12px rgba(219,39,119,0.25)' : '0 2px 6px rgba(0,0,0,0.06)',
+                  boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.25)' : '0 2px 6px rgba(0,0,0,0.06)',
                   fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: 'pointer',
                   whiteSpace: 'nowrap', flexShrink: 0, WebkitTapHighlightColor: 'transparent',
                 }}
@@ -520,7 +520,7 @@ export function ClientsPanel({
                 setSaving(false);
                 closeEdit();
               }}
-              style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#e11d48,#a855f7)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
+              style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: '#000', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
             >
               {saving ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save' : 'Запази')}
             </button>
@@ -577,7 +577,7 @@ export function ClientsPanel({
               <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
                 {client.name}
                 {client.isNew && client.visits === 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#db2777', background: '#fdf2f8', borderRadius: 4, padding: '2px 6px', lineHeight: 1.4, userSelect: 'none' }}>{isEn ? 'new' : 'нов'}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#000', background: '#f5f5f5', borderRadius: 4, padding: '2px 6px', lineHeight: 1.4, userSelect: 'none' }}>{isEn ? 'new' : 'нов'}</span>
                 )}
               </p>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted }}>
