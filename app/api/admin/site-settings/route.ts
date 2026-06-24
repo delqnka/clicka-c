@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest) {
       language = ${next.language},
       category = ${next.category},
       phone = ${next.phone || ''},
-      city = ${next.city || null},
+      city = ${next.city || ''},
       address = ${next.address || ''},
       about = ${next.about || defaultAbout},
       instagram_username = ${next.instagram || ''},
