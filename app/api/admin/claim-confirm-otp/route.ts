@@ -16,7 +16,7 @@ import {
   getBrowserHost,
   getCustomDomainAdminUrl,
   isPlatformApexHost,
-  isSalonCustomDomainLive,
+  isSalonCustomDomainUsable,
 } from '@/lib/domain-routing';
 
 export async function POST(request: NextRequest) {
@@ -124,8 +124,11 @@ export async function POST(request: NextRequest) {
   // salon's own custom domain (proxied to engine). If the salon has no active
   // custom domain yet, the apex flow has no valid redirect target.
   const browserHost = getBrowserHost(request.headers);
-  const activeCustomDomain = isSalonCustomDomainLive(salon.domainStatus) && salon.customDomain
-    ? salon.customDomain.trim().toLowerCase()
+  const activeCustomDomain = isSalonCustomDomainUsable({
+    customDomain: salon.customDomain,
+    domainStatus: salon.domainStatus,
+  })
+    ? (salon.customDomain ?? '').trim().toLowerCase()
     : null;
   const redirectTo = isPlatformApexHost(browserHost)
     ? activeCustomDomain

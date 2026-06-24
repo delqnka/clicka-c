@@ -8,7 +8,7 @@ import {
   normalizeEmail,
   sha256,
 } from '@/lib/admin-auth';
-import { getCustomDomainAdminUrl } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl, isSalonCustomDomainUsable } from '@/lib/domain-routing';
 import { getSalonResend } from '@/lib/resend';
 
 function buildAdminMagicLink({
@@ -87,18 +87,19 @@ export async function POST(request: NextRequest) {
     : [];
   const hasPassword = !!String((passwordRows[0] as Record<string, unknown> | undefined)?.password_hash ?? '');
 
-  const customDomain =
-    String(salon.domain_status ?? '').toLowerCase() === 'active' &&
-    typeof salon.custom_domain === 'string' &&
-    salon.custom_domain.trim()
-      ? salon.custom_domain.trim().toLowerCase()
-      : null;
+  const rawCustomDomain = typeof salon.custom_domain === 'string' ? salon.custom_domain.trim().toLowerCase() : '';
+  const customDomain = isSalonCustomDomainUsable({
+    customDomain: rawCustomDomain,
+    domainStatus: salon.domain_status as string | null,
+  })
+    ? rawCustomDomain
+    : null;
 
   if (!customDomain) {
     return NextResponse.json(
       {
         error:
-          'Салонът няма активен custom домейн. Първо настрой домейна (domain_status = active) и тогава изпрати magic link.',
+          'Салонът няма custom домейн готов за ползване. Настрой домейна (или Vercel preview URL) и тогава изпрати magic link.',
       },
       { status: 409 },
     );

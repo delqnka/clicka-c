@@ -8,7 +8,7 @@ import {
   deleteStaffMember,
   ensureStaffPortalToken,
 } from '@/lib/staff-members';
-import { isSalonCustomDomainLive } from '@/lib/domain-routing';
+import { isSalonCustomDomainUsable } from '@/lib/domain-routing';
 import { sendStaffInviteEmail } from '@/lib/resend';
 import { runAfterResponse } from '@/lib/run-after-response';
 
@@ -80,8 +80,11 @@ export async function POST(request: NextRequest) {
   if (member.email && member.onboardingCode) {
     const memberEmail = member.email;
     const onboardingCode = member.onboardingCode;
-    const customDomain = isSalonCustomDomainLive(auth.salon.domainStatus) && auth.salon.customDomain
-      ? auth.salon.customDomain.trim().toLowerCase()
+    const customDomain = isSalonCustomDomainUsable({
+      customDomain: auth.salon.customDomain,
+      domainStatus: auth.salon.domainStatus,
+    })
+      ? (auth.salon.customDomain ?? '').trim().toLowerCase()
       : null;
     runAfterResponse(
       (customDomain

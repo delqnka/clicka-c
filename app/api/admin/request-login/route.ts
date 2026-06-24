@@ -8,7 +8,7 @@ import {
   resolveSalonBySlugOrHost,
   sha256,
 } from '@/lib/admin-auth';
-import { getBrowserHost, getCustomDomainAdminUrl, isSalonCustomDomainLive } from '@/lib/domain-routing';
+import { getBrowserHost, getCustomDomainAdminUrl, isSalonCustomDomainUsable } from '@/lib/domain-routing';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { checkCsrfOrigin } from '@/lib/csrf';
 import { getSalonResend } from '@/lib/resend';
@@ -69,12 +69,15 @@ export async function POST(request: NextRequest) {
     VALUES (${salon.salonId}, ${tokenHash}, ${allowedEmail}, ${expiresAt.toISOString()}, null, now())
   `;
 
-  const activeCustomDomain = isSalonCustomDomainLive(salon.domainStatus) && salon.customDomain
-    ? salon.customDomain.trim().toLowerCase()
+  const activeCustomDomain = isSalonCustomDomainUsable({
+    customDomain: salon.customDomain,
+    domainStatus: salon.domainStatus,
+  })
+    ? (salon.customDomain ?? '').trim().toLowerCase()
     : null;
   if (!activeCustomDomain) {
     return NextResponse.json(
-      { error: 'Салонът няма активен custom домейн.' },
+      { error: 'Салонът няма custom домейн готов за ползване.' },
       { status: 409 },
     );
   }

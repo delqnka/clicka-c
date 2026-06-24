@@ -512,25 +512,27 @@ export default function PlatformAdminDashboard({
                                     </>
                                   ),
                                 })}
-                                {actionButton({
-                                  tone: 'dark',
-                                  onClick: () => handleSendInvite(salon.salon_id),
-                                  disabled:
-                                    sendingInvite === salon.salon_id ||
-                                    String(salon.domain_status ?? '').toLowerCase() !== 'active' ||
-                                    !salon.custom_domain,
-                                  className: 'w-full',
-                                  title:
-                                    String(salon.domain_status ?? '').toLowerCase() !== 'active' || !salon.custom_domain
-                                      ? 'Първо настрой custom домейн (domain_status = active)'
+                                {(() => {
+                                  const domainStatus = String(salon.domain_status ?? '').toLowerCase();
+                                  const customDomain = String(salon.custom_domain ?? '').trim().toLowerCase();
+                                  const isVercelPreview = /\.vercel\.app$/.test(customDomain);
+                                  const domainReady = !!customDomain && (domainStatus === 'active' || isVercelPreview);
+                                  return actionButton({
+                                    tone: 'dark',
+                                    onClick: () => handleSendInvite(salon.salon_id),
+                                    disabled: sendingInvite === salon.salon_id || !domainReady,
+                                    className: 'w-full',
+                                    title: !domainReady
+                                      ? 'Първо настрой custom домейн (active) или Vercel preview URL'
                                       : undefined,
-                                  children: (
-                                    <>
-                                      <Mail className="h-4 w-4" />
-                                      {sendingInvite === salon.salon_id ? 'Изпраща…' : 'Изпрати magic link'}
-                                    </>
-                                  ),
-                                })}
+                                    children: (
+                                      <>
+                                        <Mail className="h-4 w-4" />
+                                        {sendingInvite === salon.salon_id ? 'Изпраща…' : 'Изпрати magic link'}
+                                      </>
+                                    ),
+                                  });
+                                })()}
                                 {actionButton({
                                   tone: salon.is_active ? 'danger' : 'ghost',
                                   onClick: () => handleToggleActive(salon.salon_id, salon.is_active),

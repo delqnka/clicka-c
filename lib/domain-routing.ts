@@ -134,6 +134,37 @@ export function isSalonCustomDomainLive(domainStatus?: string | null) {
 }
 
 /**
+ * True for Vercel preview URLs (`*.vercel.app`). Vercel owns these
+ * subdomains and binds them to a specific project, so only the project
+ * owner can route them to our engine — there is no DNS-verification step
+ * to wait for, and they never reach `domain_status = 'active'`.
+ */
+export function isVercelPreviewDomain(domain?: string | null): boolean {
+  const normalized = String(domain ?? '').trim().toLowerCase();
+  return /\.vercel\.app$/.test(normalized);
+}
+
+/**
+ * Whether a salon's custom domain is usable for routing/links/invites.
+ *
+ * Returns true when EITHER the domain has been DNS-verified
+ * (`domain_status` is active/verified/connected) OR it is a Vercel preview
+ * URL (which is inherently trusted — see {@link isVercelPreviewDomain}).
+ *
+ * Use this for any flow that needs a "is this salon's domain ready to be
+ * given to end-clients" decision — sending invites, generating staff
+ * portal links, building the engine→salon redirect base, etc.
+ */
+export function isSalonCustomDomainUsable(params: {
+  customDomain?: string | null;
+  domainStatus?: string | null;
+}): boolean {
+  const domain = String(params.customDomain ?? '').trim().toLowerCase();
+  if (!domain) return false;
+  return isSalonCustomDomainLive(params.domainStatus) || isVercelPreviewDomain(domain);
+}
+
+/**
  * Public URL for a salon page.
  *
  * Returns the salon's own custom-domain origin when the domain is active —

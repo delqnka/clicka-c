@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
-import { isSalonCustomDomainLive } from '@/lib/domain-routing';
+import { isSalonCustomDomainUsable } from '@/lib/domain-routing';
 import {
   ensureStaffPortalToken,
   getStaffMemberById,
@@ -15,8 +15,11 @@ export async function POST(
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  const customDomain = isSalonCustomDomainLive(auth.salon.domainStatus) && auth.salon.customDomain
-    ? auth.salon.customDomain.trim().toLowerCase()
+  const customDomain = isSalonCustomDomainUsable({
+    customDomain: auth.salon.customDomain,
+    domainStatus: auth.salon.domainStatus,
+  })
+    ? (auth.salon.customDomain ?? '').trim().toLowerCase()
     : null;
   if (!customDomain) {
     return NextResponse.json(
