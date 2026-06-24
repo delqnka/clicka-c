@@ -17,18 +17,25 @@ function buildAdminMagicLink({
   token,
   email,
   hasPassword,
+  locale,
 }: {
   base: string;
   slug: string;
   token: string;
   email: string;
   hasPassword: boolean;
+  locale: 'bg' | 'en';
 }) {
+  // `lang` is read by the destination page and locks the UI to the language
+  // the agency picked when sending the invite. No toggle is shown to the
+  // recipient when this parameter is present.
+  const langParam = `&lang=${locale}`;
+
   if (hasPassword) {
-    return `${base}/admin/sign-in?email=${encodeURIComponent(email)}`;
+    return `${base}/admin/sign-in?email=${encodeURIComponent(email)}${langParam}`;
   }
 
-  return `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(slug)}`;
+  return `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(slug)}${langParam}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -124,6 +131,7 @@ export async function POST(request: NextRequest) {
     token,
     email,
     hasPassword,
+    locale,
   });
 
   const { client, from } = await getSalonResend(salonId, String(salon.name ?? ''));

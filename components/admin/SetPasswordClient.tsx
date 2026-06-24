@@ -143,25 +143,26 @@ function SetPasswordForm({ locale }: { locale: Locale }) {
     fontSize: 16,
     boxSizing: 'border-box',
     outline: 'none',
-    fontFamily: 'var(--font-client-manrope, system-ui, sans-serif)',
+    fontFamily: "'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif",
     background: '#fff',
     color: '#111',
     boxShadow: '0 2px 8px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.08)',
   };
 
-  const gradientBtn: React.CSSProperties = {
+  const primaryBtn: React.CSSProperties = {
     width: '100%',
     padding: '11px 16px',
     borderRadius: 999,
     border: 'none',
-    background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
+    background: '#000',
     color: '#fff',
     fontWeight: 800,
     fontSize: 16,
     cursor: loading ? 'not-allowed' : 'pointer',
     opacity: loading ? 0.75 : 1,
     letterSpacing: '-0.01em',
-    transition: 'opacity 0.15s',
+    transition: 'opacity 0.15s, background 0.15s',
+    fontFamily: "'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif",
   };
 
   if (done) {
@@ -177,8 +178,8 @@ function SetPasswordForm({ locale }: { locale: Locale }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
-              boxShadow: '0 8px 24px rgba(219,39,119,0.35)',
+              background: '#000',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
               animation: 'clicka-badge-pop 0.55s cubic-bezier(.21,1.02,.49,1) both',
             }}
           >
@@ -204,16 +205,13 @@ function SetPasswordForm({ locale }: { locale: Locale }) {
           fontSize: 22,
           fontWeight: 900,
           letterSpacing: '-0.03em',
-          backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          color: '#000',
         }}>
           admin
         </span>
       </div>
 
-      <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', backgroundImage: 'linear-gradient(135deg, #e11d48, #db2777, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+      <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', color: '#000' }}>
         {isReset ? t('adminAuth.setPassword.titleReset') : t('adminAuth.setPassword.titleCreate')}
       </h1>
       <p style={{ margin: '0 0 28px', color: 'rgba(0,0,0,0.45)', fontSize: 14, lineHeight: 1.6 }}>
@@ -313,7 +311,7 @@ function SetPasswordForm({ locale }: { locale: Locale }) {
           </div>
         )}
 
-        <button type="submit" disabled={loading} style={gradientBtn}>
+        <button type="submit" disabled={loading} style={primaryBtn}>
           {loading
             ? (isReset ? t('adminAuth.setPassword.submittingReset') : t('adminAuth.setPassword.submittingCreate'))
             : (isReset ? t('adminAuth.setPassword.submitReset') : t('adminAuth.setPassword.submitCreate'))}
@@ -322,7 +320,7 @@ function SetPasswordForm({ locale }: { locale: Locale }) {
 
       <p style={{ marginTop: 20, fontSize: 13, color: 'rgba(0,0,0,0.35)', lineHeight: 1.6, textAlign: 'center' }}>
         {t('adminAuth.setPassword.haveAccount')}{' '}
-        <a href="/admin/sign-in" style={{ color: '#db2777', fontWeight: 600, textDecoration: 'none' }}>
+        <a href="/admin/sign-in" style={{ color: '#000', fontWeight: 700, textDecoration: 'underline' }}>
           {t('adminAuth.setPassword.signInLink')}
         </a>
       </p>
