@@ -1656,12 +1656,25 @@ export default function AdminDashboardClient({
 
   /* ── Nav tab switch ── */
   const switchTab = (id: TabId) => {
-    if (id === 'site') {
-      setActiveTab(websiteSubTab);
-    } else if (id === 'bookings') {
-      setActiveTab(bookingSubTab);
-    } else if (id === 'account') {
-      setActiveTab(accountSubTab);
+    // `id` arrives from two sources: top-level navigation (sidebar / bottom
+    // nav, where the id is a section name like 'bookings') and sub-tab
+    // clicks (AdminSubnav, where the id is a concrete tab like 'staff' or
+    // 'bookings'). The "bookings" section and the "bookings" sub-tab
+    // share an id — so we only restore the last sub-tab when entering a
+    // section from OUTSIDE it. Inside the section, treat the click as a
+    // direct sub-tab selection (otherwise clicking the 'bookings' sub-tab
+    // while already in the bookings section would bounce back to whatever
+    // sub-tab was last active, looking like the click did nothing).
+    const isTopLevelId = (TOP_LEVEL_TAB_IDS as readonly string[]).includes(id);
+    const currentSection = topLevelTabFor(activeTab);
+    const targetSection = topLevelTabFor(id);
+    const enteringFromOutside = isTopLevelId && currentSection !== targetSection;
+
+    if (enteringFromOutside) {
+      if (id === 'site') setActiveTab(websiteSubTab);
+      else if (id === 'bookings') setActiveTab(bookingSubTab);
+      else if (id === 'account') setActiveTab(accountSubTab);
+      else setActiveTab(id);
     } else {
       setActiveTab(id);
     }
