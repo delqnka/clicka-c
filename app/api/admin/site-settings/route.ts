@@ -103,7 +103,7 @@ export async function PATCH(request: NextRequest) {
       name = ${next.name},
       language = ${next.language},
       category = ${next.category},
-      phone = ${next.phone || null},
+      phone = ${next.phone || ''},
       city = ${next.city || null},
       address = ${next.address || ''},
       about = ${next.about || defaultAbout},
