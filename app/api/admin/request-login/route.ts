@@ -8,7 +8,7 @@ import {
   resolveSalonBySlugOrHost,
   sha256,
 } from '@/lib/admin-auth';
-import { getBrowserHost, getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getBrowserHost, getCustomDomainAdminUrl, isSalonCustomDomainLive } from '@/lib/domain-routing';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { checkCsrfOrigin } from '@/lib/csrf';
 import { getSalonResend } from '@/lib/resend';
@@ -69,9 +69,16 @@ export async function POST(request: NextRequest) {
     VALUES (${salon.salonId}, ${tokenHash}, ${allowedEmail}, ${expiresAt.toISOString()}, null, now())
   `;
 
-  const base = salon.customDomain
-    ? getCustomDomainAdminUrl(salon.customDomain)
-    : getPlatformSiteOrigin(salon.slug);
+  const activeCustomDomain = isSalonCustomDomainLive(salon.domainStatus) && salon.customDomain
+    ? salon.customDomain.trim().toLowerCase()
+    : null;
+  if (!activeCustomDomain) {
+    return NextResponse.json(
+      { error: 'Салонът няма активен custom домейн.' },
+      { status: 409 },
+    );
+  }
+  const base = getCustomDomainAdminUrl(activeCustomDomain);
   const resetUrl = `${base}/admin/set-password?token=${encodeURIComponent(token)}&slug=${encodeURIComponent(salon.slug)}&mode=reset`;
 
   const { client, from, locale } = await getSalonResend(salon.salonId, salon.name);

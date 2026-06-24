@@ -1,4 +1,4 @@
-import { VERCEL_SHARED_CNAME, getPlatformSiteHost } from '@/lib/domain-routing';
+import { VERCEL_SHARED_CNAME } from '@/lib/domain-routing';
 
 type VercelDomainConfig = {
   configuredBy?: string | null;
@@ -307,10 +307,6 @@ export async function syncDomainWithVercel(domain: string) {
       verified: false,
     };
   }
-}
-
-export async function ensurePlatformSubdomain(slug: string) {
-  return syncDomainWithVercel(getPlatformSiteHost(slug));
 }
 
 export async function removeProjectDomain(domain: string): Promise<{ ok: boolean }> {

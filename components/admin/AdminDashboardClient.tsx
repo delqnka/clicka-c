@@ -332,14 +332,7 @@ export default function AdminDashboardClient({
   const [site, setSite]           = useState(initialSite);
   const locale = site.language as Locale;
   const t = useMemo(() => getT(locale), [locale]);
-  const availableTabs = useMemo(
-    () =>
-      TABS.filter((tab) => {
-        if (tab.id === 'staff' && site.plan !== 'team') return false;
-        return true;
-      }),
-    [site.plan],
-  );
+  const availableTabs = useMemo(() => TABS, []);
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => (TOP_LEVEL_TAB_IDS as readonly string[]).includes(tab.id)),
     [],
@@ -448,13 +441,8 @@ export default function AdminDashboardClient({
   const sitePublicUrl = getPrimaryPublicUrl({ slug, customDomain: site.customDomain, domainStatus: site.domainStatus });
   const publicSiteHost = extractHostname(sitePublicUrl);
   const websiteSectionTabs = useMemo(
-    () =>
-      availableTabs.filter((tab) => {
-        if (!(WEBSITE_TAB_IDS as readonly string[]).includes(tab.id)) return false;
-        if (tab.id === 'staff' && site.plan !== 'team') return false;
-        return true;
-      }),
-    [availableTabs, site.plan],
+    () => availableTabs.filter((tab) => (WEBSITE_TAB_IDS as readonly string[]).includes(tab.id)),
+    [availableTabs],
   );
   const bookingSectionTabs = useMemo(
     () => availableTabs.filter((tab) => (BOOKING_TAB_IDS as readonly string[]).includes(tab.id) && tab.id !== 'clients'),
@@ -1842,7 +1830,6 @@ export default function AdminDashboardClient({
         onSheetDragEnd={onSheetDragEnd}
         groups={mobileSheetGroups}
         tabs={visibleTabs}
-        sitePlan={site.plan}
         activeTab={activeTopLevelTab}
         onSelectTab={(id) => { switchTab(id as TabId); setTimeout(() => setNavOpen(false), 180); }}
         openGroups={openGroups}
@@ -2178,7 +2165,6 @@ export default function AdminDashboardClient({
               salonSlug={slug}
               sitePublicUrl={sitePublicUrl}
               initialStaff={staffMembers}
-              planLimit={site.plan === 'team' ? 2 : 1}
               salonServices={site.services}
               locale={locale}
             />

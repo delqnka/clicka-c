@@ -11,7 +11,7 @@ import {
   sha256,
   verifyPassword,
 } from '@/lib/admin-auth';
-import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl } from '@/lib/domain-routing';
 import {
   sendEmailChangeRequestNotification,
   sendEmailVerificationRequest,
@@ -220,9 +220,14 @@ export async function PATCH(request: NextRequest) {
       WHERE id = ${auth.session.ownerId}
     `;
 
-    const salonSlug = slug ?? auth.session.salonSlug;
     const customDomain = await getActiveCustomDomain(auth.session.salonId).catch(() => null);
-    const base = customDomain ? getCustomDomainAdminUrl(customDomain) : getPlatformSiteOrigin(salonSlug);
+    if (!customDomain) {
+      return NextResponse.json(
+        { error: 'Промяна на имейл изисква активен custom домейн на салона.' },
+        { status: 409 },
+      );
+    }
+    const base = getCustomDomainAdminUrl(customDomain);
     const verifyUrl = `${base}/api/admin/verify-email?token=${encodeURIComponent(token)}&owner=${encodeURIComponent(auth.session.ownerId)}`;
 
     // Send verification link to new email + notification to old email

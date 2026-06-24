@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
-import { getPlatformPublicUrl } from '@/lib/domain-routing';
+import { isSalonCustomDomainLive } from '@/lib/domain-routing';
 import {
   ensureStaffPortalToken,
   getStaffMemberById,
@@ -15,6 +15,16 @@ export async function POST(
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
+  const customDomain = isSalonCustomDomainLive(auth.salon.domainStatus) && auth.salon.customDomain
+    ? auth.salon.customDomain.trim().toLowerCase()
+    : null;
+  if (!customDomain) {
+    return NextResponse.json(
+      { error: 'Линк за служител може да се създаде само след като custom домейнът на салона е активен.' },
+      { status: 409 },
+    );
+  }
+
   const salonId = auth.salon.salonId;
   const member = await getStaffMemberById(params.id);
   if (!member || member.salonId !== salonId) {
@@ -26,6 +36,6 @@ export async function POST(
     ? await regenerateStaffPortalToken(member.id, salonId)
     : await ensureStaffPortalToken(member.id, salonId);
 
-  const url = `${getPlatformPublicUrl(auth.salon.slug)}/staff-portal?token=${token}`;
+  const url = `https://${customDomain}/staff-portal?token=${token}`;
   return NextResponse.json({ url });
 }

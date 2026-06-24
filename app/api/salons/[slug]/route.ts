@@ -29,8 +29,7 @@ export async function GET(
       images,
       instagram_username, facebook_username, google_maps_url,
       working_hours, opening_hours, services, team,
-      template_id, primary_color, primary_color_light,
-      plan_type
+      template_id, primary_color, primary_color_light
     FROM salons
     WHERE slug = ${slug} AND is_active = true
   `;

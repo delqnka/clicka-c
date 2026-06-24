@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
     if (salonRows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const salon = salonRows[0]!;
-    const isTeamPlan = String(salon.plan ?? '') === 'team';
 
     // Normalize date — AI may generate DD.MM.YYYY or DD/MM/YYYY instead of YYYY-MM-DD
     const normalizeDate = (raw: string): string => {
@@ -50,9 +49,9 @@ export async function POST(req: NextRequest) {
     };
     const normalizedDate = normalizeDate(date);
 
-    // Find staff member by name (team plan only)
+    // Find staff member by name when the AI specified one.
     let staff: { id: string; name: string; role?: string; email?: string; telegram_chat_id?: string } | null = null;
-    if (isTeamPlan && staffName) {
+    if (staffName) {
       const staffRows = await sql`
         SELECT id, name, role, email, telegram_chat_id
         FROM staff_members

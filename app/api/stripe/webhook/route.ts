@@ -1,5 +1,6 @@
-// Handles booking deposit payments only.
-// For subscriptions, domains and SMS packs see /api/webhooks/stripe/route.ts
+// Handles booking deposit payments only — the single allowed money flow:
+// client pays salon via Stripe Connect, never Clicka. No subscriptions, no
+// platform billing of any kind. See docs/project-vision.md.
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import * as Sentry from '@sentry/nextjs';

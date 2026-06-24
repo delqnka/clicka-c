@@ -84,7 +84,6 @@ export type AdminSitePayload = {
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
   venueExtras: SalonVenueExtras;
-  plan: string;
   onboardingTourDone: boolean;
   ga4Id: string;
   metaPixelId: string;
@@ -163,7 +162,6 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       google_place_id, telegram_chat_id, onboarding_code, onboarding_tour_done,
       site_status, latitude, longitude,
       faq_items, visitor_info, visitor_additional_info, venue_extras,
-      plan,
       stripe_account_id, stripe_charges_enabled,
       ga4_id, meta_pixel_id, clarity_id
     FROM salons
@@ -241,7 +239,6 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       parseSalonVenueExtras(row.venue_extras),
       normalizeSalonVisitorInfo(row.visitor_info),
     ),
-    plan: String(row.plan ?? 'solo'),
     ga4Id: String(row.ga4_id ?? ''),
     metaPixelId: String(row.meta_pixel_id ?? ''),
     clarityId: String(row.clarity_id ?? ''),

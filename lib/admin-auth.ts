@@ -6,7 +6,6 @@ import {
   extractHostname,
   getBrowserHost,
   getPlatformSubdomain,
-  getPlatformSiteOrigin,
   getHostAwareSalonPath,
   getCustomDomainAdminUrl,
   isPlatformApexHost,
@@ -577,9 +576,10 @@ export async function generateAdminMagicLink({
   await ensureAdminAuthSchema();
 
   const cleanCustom = (customDomain ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  const base = cleanCustom
-    ? getCustomDomainAdminUrl(cleanCustom)
-    : getPlatformSiteOrigin(slug);
+  if (!cleanCustom) {
+    throw new Error(`generateAdminMagicLink: salon ${slug} has no active custom domain — refusing to mint slug.clicka.bg link.`);
+  }
+  const base = getCustomDomainAdminUrl(cleanCustom);
 
   // If the owner already has a password, send them to sign-in instead of
   // making them set a new one — a login token would be wasted on them anyway.

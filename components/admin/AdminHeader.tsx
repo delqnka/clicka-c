@@ -171,23 +171,6 @@ export function AdminHeader({
           >
             {site.name || slug}
           </span>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: '0.05em',
-              padding: '3px 8px',
-              borderRadius: 999,
-              flexShrink: 0,
-              color: '#fff',
-              background:
-                site.plan === 'team'
-                  ? 'linear-gradient(135deg,#a855f7,#6366f1)'
-                  : 'linear-gradient(135deg,#0071E3,#007AFF,#34AADC)',
-            }}
-          >
-            {site.plan === 'team' ? 'TEAM' : 'SOLO'}
-          </span>
           {!isMobile && (
             <span
               style={{

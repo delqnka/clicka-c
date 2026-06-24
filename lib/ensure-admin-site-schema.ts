@@ -23,7 +23,6 @@ export async function ensureAdminSiteSchema() {
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS visitor_info jsonb NOT NULL DEFAULT '{}'::jsonb;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS visitor_additional_info text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS brand_domains jsonb NOT NULL DEFAULT '[]'::jsonb;
-          ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'solo';
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS stripe_account_id text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS stripe_charges_enabled boolean NOT NULL DEFAULT false;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS ga4_id text;

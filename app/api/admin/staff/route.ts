@@ -6,10 +6,9 @@ import {
   createStaffMember,
   updateStaffMember,
   deleteStaffMember,
-  getStaffLimit,
   ensureStaffPortalToken,
 } from '@/lib/staff-members';
-import { getPlatformPublicUrl } from '@/lib/domain-routing';
+import { isSalonCustomDomainLive } from '@/lib/domain-routing';
 import { sendStaffInviteEmail } from '@/lib/resend';
 import { runAfterResponse } from '@/lib/run-after-response';
 
@@ -60,20 +59,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Името е задължително.' }, { status: 400 });
   }
 
-  // Enforce plan limit
-  const planRows = await sql`SELECT plan FROM salons WHERE slug = ${auth.salon.slug} LIMIT 1`;
-  const plan = String((planRows[0] as { plan: string } | undefined)?.plan ?? 'solo');
-  const limit = getStaffLimit(plan);
-  const existing = await getStaffMembers(salonId);
-  // The is_owner row is not counted against the plan limit.
-  const nonOwnerCount = existing.filter((m) => !m.isOwner).length;
-  if (nonOwnerCount >= limit) {
-    return NextResponse.json(
-      { error: `Планът ${plan.toUpperCase()} поддържа до ${limit} служителя.` },
-      { status: 403 },
-    );
-  }
-
   // Generate unique slug within this salon
   const baseSlug = slugify(body.name.trim());
   let candidateSlug = baseSlug;
@@ -94,13 +79,18 @@ export async function POST(request: NextRequest) {
   if (member.email && member.onboardingCode) {
     const memberEmail = member.email;
     const onboardingCode = member.onboardingCode;
+    const customDomain = isSalonCustomDomainLive(auth.salon.domainStatus) && auth.salon.customDomain
+      ? auth.salon.customDomain.trim().toLowerCase()
+      : null;
     runAfterResponse(
-      ensureStaffPortalToken(member.id, salonId)
-        .then((token) => `${getPlatformPublicUrl(auth.salon.slug)}/staff-portal?token=${token}`)
-        .catch((err) => {
-          console.error('Failed to generate staff portal link:', err);
-          return null;
-        })
+      (customDomain
+        ? ensureStaffPortalToken(member.id, salonId)
+            .then((token) => `https://${customDomain}/staff-portal?token=${token}`)
+            .catch((err) => {
+              console.error('Failed to generate staff portal link:', err);
+              return null;
+            })
+        : Promise.resolve<string | null>(null))
         .then((portalUrl) =>
           sendStaffInviteEmail(memberEmail, member.name, auth.salon.name, onboardingCode, portalUrl, salonId)
         )

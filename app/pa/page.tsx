@@ -18,9 +18,6 @@ export type SalonRow = {
   email: string;
   is_active: boolean;
   site_status: string | null;
-  plan_type: string | null;
-  stripe_session_id: string | null;
-  stripe_customer_id: string | null;
   custom_domain: string | null;
   domain_status: string | null;
   created_at: string;
@@ -40,9 +37,6 @@ async function loadSalons(): Promise<SalonRow[]> {
         s.email,
         s.is_active,
         s.site_status,
-        s.plan_type,
-        s.stripe_session_id,
-        s.stripe_customer_id,
         s.custom_domain,
         s.domain_status,
         s.created_at,
@@ -66,9 +60,6 @@ async function loadSalons(): Promise<SalonRow[]> {
       email: String((r as Record<string, unknown>).email ?? ''),
       is_active: Boolean((r as Record<string, unknown>).is_active),
       site_status: (r as Record<string, unknown>).site_status as string | null,
-      plan_type: (r as Record<string, unknown>).plan_type as string | null,
-      stripe_session_id: (r as Record<string, unknown>).stripe_session_id as string | null,
-      stripe_customer_id: (r as Record<string, unknown>).stripe_customer_id as string | null,
       custom_domain: (r as Record<string, unknown>).custom_domain as string | null,
       domain_status: (r as Record<string, unknown>).domain_status as string | null,
       created_at: String((r as Record<string, unknown>).created_at ?? ''),

@@ -63,6 +63,13 @@ export function getPlatformSubdomain(hostname: string) {
   return subdomain;
 }
 
+/**
+ * Returns the synthetic host string `<slug>.<root>` used ONLY as a stable
+ * cache-tag key for ISR revalidation in `lib/revalidate-salon-public.ts`. It
+ * is never used as a public URL — the engine does not provision per-salon
+ * subdomains. End-user-facing URLs must always come from the salon's own
+ * custom domain via `getCustomDomainOrigin` / `getCustomDomainAdminUrl`.
+ */
 export function getPlatformSiteHost(slug: string) {
   return `${slug}.${ROOT_DOMAIN}`;
 }
@@ -72,26 +79,6 @@ export function getOriginForHost(hostname: string) {
   if (!safeHost) return `https://${ROOT_DOMAIN}`;
   const protocol = safeHost === 'localhost' || safeHost.endsWith('.localhost') ? 'http' : 'https';
   return `${protocol}://${safeHost}`;
-}
-
-export function getPlatformSiteOrigin(slug: string) {
-  return getOriginForHost(getPlatformSiteHost(slug));
-}
-
-export function getPlatformPublicUrl(slug: string) {
-  return getPlatformSiteOrigin(slug);
-}
-
-export function getPlatformClaimUrl(slug: string) {
-  return `${getPlatformSiteOrigin(slug)}/claim`;
-}
-
-export function getPlatformInstantClaimUrl(slug: string) {
-  return `${getOriginForHost(ROOT_DOMAIN)}/${slug}/claim`;
-}
-
-export function getPlatformAdminUrl(slug: string) {
-  return `${getPlatformSiteOrigin(slug)}/admin`;
 }
 
 export function getCustomDomainOrigin(domain: string) {
@@ -146,6 +133,20 @@ export function isSalonCustomDomainLive(domainStatus?: string | null) {
   return status === 'active' || status === 'verified' || status === 'connected';
 }
 
+/**
+ * Public URL for a salon page.
+ *
+ * Returns the salon's own custom-domain origin when the domain is active —
+ * the only URL real end-clients should ever see.
+ *
+ * When no active custom domain exists yet, falls back to an apex path-based
+ * URL (`https://<root>/<slug>`). This is an internal-only construction used
+ * by SEO/sitemap/email helpers so they don't crash on half-provisioned
+ * salons — it is NOT meant to be shared with end-clients and never appears
+ * in a magic link / invite email (those flows block on missing custom
+ * domain). Per `docs/project-vision.md` Clicka does not provision per-salon
+ * subdomains, so the legacy `<slug>.<root>` form is intentionally absent.
+ */
 export function getPrimaryPublicUrl({
   slug,
   customDomain,
@@ -160,7 +161,7 @@ export function getPrimaryPublicUrl({
     return getCustomDomainOrigin(custom);
   }
 
-  return getPlatformPublicUrl(slug);
+  return `${getOriginForHost(ROOT_DOMAIN)}/${slug}`;
 }
 
 export type LegalDocumentPath = 'terms' | 'privacy' | 'cookies';

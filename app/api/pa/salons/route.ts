@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
 import { ensureAdminAuthSchema, generateAdminMagicLink, normalizeEmail } from '@/lib/admin-auth';
-import { ensurePlatformSubdomain, syncDomainWithVercel } from '@/lib/vercel-domains';
+import { syncDomainWithVercel } from '@/lib/vercel-domains';
 import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 
 const TRANSLIT: Record<string, string> = {
@@ -53,9 +53,6 @@ export async function GET(request: NextRequest) {
       s.email,
       s.is_active,
       s.site_status,
-      s.plan_type,
-      s.stripe_session_id,
-      s.stripe_customer_id,
       s.custom_domain,
       s.domain_status,
       s.created_at,
@@ -146,10 +143,6 @@ export async function POST(request: NextRequest) {
     )
   `;
 
-  await ensurePlatformSubdomain(slug).catch((e) =>
-    console.error('[pa/salons POST] ensurePlatformSubdomain failed:', e),
-  );
-
   // If a custom domain was provided, register it with Vercel and persist the
   // verification state so the salon's branded admin URL becomes /admin on that
   // domain as soon as DNS propagates. Failures are non-fatal — agency can
@@ -201,7 +194,6 @@ export async function POST(request: NextRequest) {
         email,
         name,
         ownerName,
-        planType: '',
       });
       inviteSent = true;
     } catch (err) {
@@ -218,29 +210,17 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { salonId, isActive, planType } = body as { salonId?: string; isActive?: boolean; planType?: string | null };
+  const { salonId, isActive } = body as { salonId?: string; isActive?: boolean };
 
   if (!salonId) {
     return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
   }
 
-  if (planType !== undefined) {
-    const allowed = ['solo_bonus_12m', 'solo_bonus_6m', 'team_bonus_12m', 'team_bonus_6m', null];
-    if (!allowed.includes(planType ?? null)) {
-      return NextResponse.json({ error: 'Невалиден план' }, { status: 400 });
-    }
-    await sql`
-      UPDATE salons
-      SET plan_type = ${planType ?? null}, updated_at = now()
-      WHERE CAST(id AS text) = ${salonId}
-    `;
-  } else {
-    await sql`
-      UPDATE salons
-      SET is_active = ${isActive ?? false}, updated_at = now()
-      WHERE CAST(id AS text) = ${salonId}
-    `;
-  }
+  await sql`
+    UPDATE salons
+    SET is_active = ${isActive ?? false}, updated_at = now()
+    WHERE CAST(id AS text) = ${salonId}
+  `;
 
   return NextResponse.json({ ok: true });
 }

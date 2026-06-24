@@ -8,7 +8,7 @@ import {
   normalizeEmail,
   sha256,
 } from '@/lib/admin-auth';
-import { getCustomDomainAdminUrl, getPlatformSiteOrigin } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl } from '@/lib/domain-routing';
 import { getSalonResend } from '@/lib/resend';
 
 function buildAdminMagicLink({
@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
   await ensureAdminAuthSchema();
 
   const body = await request.json().catch(() => ({}));
-  const { salonId, email: rawEmail } = body as { salonId?: string; email?: string };
+  const { salonId, email: rawEmail, locale: rawLocale } = body as {
+    salonId?: string;
+    email?: string;
+    locale?: string;
+  };
+  const locale: 'bg' | 'en' = rawLocale === 'en' ? 'en' : 'bg';
 
   if (!salonId) {
     return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
@@ -52,7 +57,6 @@ export async function POST(request: NextRequest) {
       name,
       email,
       owner_name,
-      plan_type,
       custom_domain,
       domain_status
     FROM salons
@@ -90,7 +94,17 @@ export async function POST(request: NextRequest) {
       ? salon.custom_domain.trim().toLowerCase()
       : null;
 
-  const base = customDomain ? getCustomDomainAdminUrl(customDomain) : getPlatformSiteOrigin(slug);
+  if (!customDomain) {
+    return NextResponse.json(
+      {
+        error:
+          'Салонът няма активен custom домейн. Първо настрой домейна (domain_status = active) и тогава изпрати magic link.',
+      },
+      { status: 409 },
+    );
+  }
+
+  const base = getCustomDomainAdminUrl(customDomain);
   const token = crypto.randomBytes(32).toString('hex');
   const tokenHash = sha256(token);
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -116,34 +130,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, email, magicLink, emailSent: false });
   }
 
-  const displayName = String(salon.name ?? '').trim() || 'твоят салон';
-  const greeting =
-    typeof salon.owner_name === 'string' && salon.owner_name.trim()
-      ? `Здравей, ${salon.owner_name.trim()}!`
-      : 'Здравей!';
+  const ownerName =
+    typeof salon.owner_name === 'string' && salon.owner_name.trim() ? salon.owner_name.trim() : null;
+
+  const copy =
+    locale === 'en'
+      ? {
+          displayName: String(salon.name ?? '').trim() || 'your salon',
+          subject: hasPassword ? 'Sign in to your admin panel' : 'Finish your registration',
+          heading: hasPassword ? 'Sign in to your panel' : 'Finish your registration',
+          greeting: ownerName ? `Hi ${ownerName},` : 'Hi there,',
+          body: (name: string) =>
+            hasPassword
+              ? `Use the button below to sign in to the admin panel for <strong>${name}</strong>.`
+              : `Use the button below to set a password and activate the admin panel for <strong>${name}</strong>.`,
+          cta: hasPassword ? 'Open panel' : 'Set password',
+          addressLabel: 'Panel address',
+        }
+      : {
+          displayName: String(salon.name ?? '').trim() || 'твоят салон',
+          subject: hasPassword ? 'Вход в админ панела' : 'Довърши регистрацията си',
+          heading: hasPassword ? 'Вход в панела' : 'Довърши регистрацията си',
+          greeting: ownerName ? `Здравей, ${ownerName}!` : 'Здравей!',
+          body: (name: string) =>
+            hasPassword
+              ? `Използвай бутона, за да влезеш в админ панела на <strong>${name}</strong>.`
+              : `Използвай бутона, за да зададеш парола и да активираш админ панела на <strong>${name}</strong>.`,
+          cta: hasPassword ? 'Отвори панела' : 'Задай парола',
+          addressLabel: 'Адрес на панела',
+        };
 
   const sendResult = await client.emails
     .send({
       from,
       to: email,
-      subject: hasPassword ? 'Вход в админ панела' : 'Довърши регистрацията си',
+      subject: copy.subject,
       html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #000; margin: 0 0 16px;">${hasPassword ? 'Вход в панела' : 'Довърши регистрацията си'}</h2>
-        <p style="line-height: 1.7;">${greeting}</p>
-        <p style="line-height: 1.7;">
-          ${hasPassword
-            ? `Използвай бутона, за да влезеш в админ панела на <strong>${displayName}</strong>.`
-            : `Използвай бутона, за да зададеш парола и да активираш админ панела на <strong>${displayName}</strong>.`}
-        </p>
+        <h2 style="color: #000; margin: 0 0 16px;">${copy.heading}</h2>
+        <p style="line-height: 1.7;">${copy.greeting}</p>
+        <p style="line-height: 1.7;">${copy.body(copy.displayName)}</p>
         <p style="margin: 24px 0;">
           <a href="${magicLink}"
              style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:14px 24px;border-radius:999px;font-weight:700;font-size:15px;">
-            ${hasPassword ? 'Отвори панела' : 'Задай парола'}
+            ${copy.cta}
           </a>
         </p>
         <p style="line-height: 1.7; color: #6b7280; font-size: 13px;">
-          Адрес на панела: <strong>${base.replace(/^https?:\/\//, '')}/admin</strong>
+          ${copy.addressLabel}: <strong>${customDomain}/admin</strong>
         </p>
       </div>
     `,

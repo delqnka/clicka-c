@@ -8,9 +8,6 @@ export async function ensureStaffSchema() {
     ensurePromise = (async () => {
       await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
 
-      // plan on salons
-      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'solo'`;
-
       // staff_members
       await sql`
         CREATE TABLE IF NOT EXISTS staff_members (

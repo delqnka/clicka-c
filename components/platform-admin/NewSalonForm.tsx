@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getCustomDomainAdminUrl, getPlatformAdminUrl } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl } from '@/lib/domain-routing';
 
 type Result = {
   ok: boolean;
@@ -102,8 +102,7 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
     const normalizedCustomDomain = customDomain.trim().toLowerCase();
     const primaryAdminUrl = normalizedCustomDomain
       ? `${getCustomDomainAdminUrl(normalizedCustomDomain)}/admin`
-      : getPlatformAdminUrl(result.slug);
-    const fallbackAdminUrl = getPlatformAdminUrl(result.slug);
+      : null;
     const statusLabel =
       result.domainStatus === 'active' ? 'активен'
       : result.domainStatus === 'pending_verification' ? 'чака верификация'
@@ -149,15 +148,15 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/35">
             Admin checklist
           </div>
-          <div className="text-xs text-black">
-            Основен admin URL: <span className="font-mono">{primaryAdminUrl.replace(/^https?:\/\//, '')}</span>
-          </div>
-          <div className="text-xs text-black/72">
-            Fallback admin URL: <span className="font-mono">{fallbackAdminUrl.replace(/^https?:\/\//, '')}</span>
-          </div>
-          <div className="text-[11px] leading-relaxed text-black/48">
-            Ако custom домейнът още не е активен, влизай през fallback адреса. Не е нужно да активираш `admin.` поддомейн.
-          </div>
+          {primaryAdminUrl ? (
+            <div className="text-xs text-black">
+              Admin URL: <span className="font-mono">{primaryAdminUrl.replace(/^https?:\/\//, '')}</span>
+            </div>
+          ) : (
+            <div className="text-xs text-black/72">
+              Admin URL ще е достъпен след като custom домейнът се активира. Magic link не се изпраща преди това.
+            </div>
+          )}
         </div>
 
         {result.magicLink ? (

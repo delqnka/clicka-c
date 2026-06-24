@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
-import { ensurePlatformSubdomain } from '@/lib/vercel-domains';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,18}[a-z0-9]$|^[a-z0-9]{2,20}$/;
@@ -57,11 +56,6 @@ export async function PATCH(request: NextRequest) {
     VALUES (${oldSlug}, ${auth.salon.salonId})
     ON CONFLICT (old_slug) DO UPDATE SET salon_id = EXCLUDED.salon_id, changed_at = now()
   `;
-
-  // Register new Vercel subdomain (best-effort)
-  await ensurePlatformSubdomain(newSlug).catch((e) =>
-    console.error('[slug-change] ensurePlatformSubdomain failed:', e),
-  );
 
   // Revalidate public cache for new slug
   deferRevalidateSalonPublicCache({ slug: newSlug });

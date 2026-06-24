@@ -127,14 +127,6 @@ export async function getStaffMemberById(id: string): Promise<StaffMember | null
   return rowToStaffMember(rows[0] as StaffRow);
 }
 
-export function isTeamPlan(plan: string): boolean {
-  return plan === 'team' || plan === 'ekip';
-}
-
-export function getStaffLimit(plan: string): number {
-  return isTeamPlan(plan) ? 2 : 1;
-}
-
 export async function getStaffMemberByPortalToken(token: string): Promise<StaffMember | null> {
   await ensureStaffSchema();
   const rows = await sql`

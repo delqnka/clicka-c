@@ -12,7 +12,6 @@ type Props = {
   salonSlug: string;
   sitePublicUrl: string;
   initialStaff: StaffMember[];
-  planLimit: number;
   salonServices?: ServiceItem[];
   locale: Locale;
 };
@@ -339,7 +338,7 @@ function OnboardingInfo({ member, sitePublicUrl, locale }: { member: StaffMember
   );
 }
 
-export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimit, salonServices = [], locale }: Props) {
+export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonServices = [], locale }: Props) {
   const isEn = locale === 'en';
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
   const [busy, setBusy] = useState<string | null>(null);
@@ -428,7 +427,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
   }, []);
 
   const nonOwners = staff.filter((m) => !m.isOwner);
-  const canAdd = nonOwners.length < planLimit;
+  const canAdd = true;
 
   const inp: React.CSSProperties = {
     width: '100%', padding: '8px 10px', borderRadius: 8,
@@ -450,7 +449,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, planLimi
 
       <AdminSection
         title={isEn ? 'Staff' : 'Служители'}
-        desc={isEn ? `${nonOwners.length} / ${planLimit} staff members (you as owner are not counted here)` : `${nonOwners.length} / ${planLimit} служителя (ти като собственик не влизаш в този брой)`}
+        desc={isEn ? `${nonOwners.length} staff members (you as owner are not counted here)` : `${nonOwners.length} служителя (ти като собственик не влизаш в този брой)`}
         action={
           canAdd ? (
             <button

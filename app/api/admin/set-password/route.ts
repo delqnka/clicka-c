@@ -55,7 +55,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   // Validate token
   const salons = await sql`
-    SELECT CAST(id AS text) AS salon_id, slug, email, name, owner_name, plan_type
+    SELECT CAST(id AS text) AS salon_id, slug, email, name, owner_name
     FROM salons
     WHERE slug = ${slug} AND is_active = true
     LIMIT 1
@@ -125,7 +125,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       email: tokenEmail || salonEmail,
       name: String(salon.name ?? ''),
       ownerName: String(salon.owner_name ?? ''),
-      planType: String(salon.plan_type ?? ''),
     }).catch(() => {});
   }
 

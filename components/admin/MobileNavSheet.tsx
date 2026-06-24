@@ -36,7 +36,6 @@ type MobileNavSheetProps<TId extends string> = {
 
   groups: readonly SheetGroup[];
   tabs: readonly SheetTab[];
-  sitePlan: string;
 
   activeTab: TId;
   onSelectTab: (id: TId) => void;
@@ -62,7 +61,6 @@ export function MobileNavSheet<TId extends string>({
   onSheetDragEnd,
   groups,
   tabs,
-  sitePlan,
   activeTab,
   onSelectTab,
   openGroups,
@@ -184,10 +182,7 @@ export function MobileNavSheet<TId extends string>({
           }}
         >
           {groups.map((group) => {
-            const visibleTabs = tabs.filter(
-              (tt) =>
-                group.ids.includes(tt.id) && (tt.id !== 'staff' || sitePlan === 'team')
-            );
+            const visibleTabs = tabs.filter((tt) => group.ids.includes(tt.id));
             if (visibleTabs.length === 0) return null;
             const groupLabel = t(group.labelKey);
             const isGroupOpen = openGroups.has(groupLabel);

@@ -139,7 +139,7 @@ type StaffSlots = { staffName: string; days: { date: string; slots: string[] }[]
 function buildSystemPrompt(
   salon: Record<string, unknown>,
   staff: StaffRow[],
-  isTeamPlan: boolean,
+  hasStaff: boolean,
   staffSlots: StaffSlots[],
   soloSlots: { date: string; slots: string[] }[],
 ): string {
@@ -243,7 +243,7 @@ function buildSystemPrompt(
 
   const noSlotsMsg = `В момента няма заредени свободни часове — попитай клиента кой ден му е удобен и кажи да се обади на ${phone || 'телефона на салона'} за потвърждение.`;
 
-  const bookingInstructions = isTeamPlan ? `
+  const bookingInstructions = hasStaff ? `
 ЗАПИСВАНЕ ДИРЕКТНО В ЧАТ:
 Записвай клиентите сам — не ги пращай на линкове. Когато клиент иска час, събери стъпка по стъпка (не всичко наведнъж):
 1. Услуга
@@ -401,23 +401,26 @@ export async function POST(req: NextRequest) {
     salon.offers = offersRows;
     const staff = staffRows as (StaffRow & { id: string })[];
 
-    const isTeamPlan = String(salon.plan ?? '') === 'team';
+    // Per-staff scheduling when the salon has staff members; otherwise fall
+    // back to whole-salon free-slot lookup. No plan gating — every salon gets
+    // the full feature set.
+    const hasStaff = staff.length > 0;
     const wh = (salon.working_hours as Record<string, { open?: string; close?: string; closed?: boolean }> | null) ?? {};
     let staffSlots: StaffSlots[] = [];
     let soloSlots: { date: string; slots: string[] }[] = [];
 
-    if (isTeamPlan && staff.length > 0) {
+    if (hasStaff) {
       staffSlots = (await Promise.allSettled(
         staff.map(async (sm) => {
           const days = await getStaffFreeSlots(salonId, sm.id, wh, 60, 14);
           return { staffName: sm.name, days };
         }),
       )).flatMap((r) => r.status === 'fulfilled' ? [r.value] : []);
-    } else if (!isTeamPlan) {
+    } else {
       soloSlots = await getSalonFreeSlots(salonId, wh, 60, 14).catch(() => []);
     }
 
-    const systemPrompt = buildSystemPrompt(salon, staff, isTeamPlan, staffSlots, soloSlots);
+    const systemPrompt = buildSystemPrompt(salon, staff, hasStaff, staffSlots, soloSlots);
 
     const models = ['google/gemini-2.5-flash', 'google/gemini-2.0-flash', 'anthropic/claude-haiku-4-5'];
     const chatMessages = [

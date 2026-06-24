@@ -1,20 +1,20 @@
-import {
-  getCustomDomainAdminUrl,
-  getPlatformAdminUrl,
-  getPlatformPublicUrl,
-} from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl } from '@/lib/domain-routing';
 import { generateAdminMagicLink, getActiveCustomDomain } from '@/lib/admin-auth';
 import { getSalonResend } from '@/lib/resend';
 
-export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; email: string; name: string; ownerName?: string; planType: string }) {
-  const { salonId, slug, email, name, ownerName, planType } = opts;
+export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; email: string; name: string; ownerName?: string }) {
+  const { salonId, slug, email, name, ownerName } = opts;
+  const customDomain = await getActiveCustomDomain(salonId).catch(() => null);
+  if (!customDomain) {
+    console.warn('[site-ready-email] skipped — salon has no active custom domain', { salonId, slug });
+    return;
+  }
   const { client, from, locale } = await getSalonResend(salonId, name);
   if (!client) return;
   const isEn = locale === 'en';
   const greeting = ownerName && ownerName.trim() ? `${isEn ? 'Hello' : 'Здравей'}, ${ownerName.trim()}!` : `${isEn ? 'Hello' : 'Здравей'}!`;
-  const customDomain = await getActiveCustomDomain(salonId).catch(() => null);
-  const publicUrl = customDomain ? `https://${customDomain}` : getPlatformPublicUrl(slug);
-  const adminUrl = customDomain ? `${getCustomDomainAdminUrl(customDomain)}/admin` : getPlatformAdminUrl(slug);
+  const publicUrl = `https://${customDomain}`;
+  const adminUrl = `${getCustomDomainAdminUrl(customDomain)}/admin`;
   const magicLink = await generateAdminMagicLink({
     salonId,
     slug,
@@ -49,7 +49,6 @@ export async function sendSiteReadyEmail(opts: { salonId: string; slug: string; 
         <p style="line-height: 1.7; color: #6b7280; font-size: 13px;">
           ${isEn ? 'Keep this control panel address:' : 'Запомни адреса на твоя контролен панел:'} <strong>${adminUrl.replace(/^https?:\/\//, '')}</strong>
         </p>
-        ${planType === 'custom_domain' ? `<p style="line-height: 1.7;">${isEn ? 'You can connect your custom domain from the “Domain” tab in the panel.' : 'Собственият домейн може да се свърже от таба „Домейн" в панела.'}</p>` : ''}
         <p style="margin-top: 24px; font-size: 13px; color: #999; line-height: 1.6;">
           ${isEn ? 'The link is valid for 24 hours. If you did not order this site, please ignore the email.' : 'Линкът е валиден 24 часа. Ако не сте поръчали сайт, игнорирайте имейла.'}
         </p>

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
   ChevronDown,
-  CreditCard,
   LogOut,
   Mail,
   Search,
@@ -29,18 +28,7 @@ type BookingRow = {
   salon_slug: string;
 };
 
-type PaymentRow = {
-  id: string;
-  amount: number;
-  currency: string;
-  customerEmail: string | null;
-  created: number;
-  flow: string;
-  planType: string | null;
-  salonSlug: string | null;
-};
-
-type Tab = 'salons' | 'bookings' | 'payments';
+type Tab = 'salons' | 'bookings';
 
 type InviteNotice = {
   salonId: string;
@@ -58,10 +46,6 @@ function formatDate(iso: string) {
   return `${day}.${month}.${year}`;
 }
 
-function formatAmount(cents: number, currency: string) {
-  return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
-}
-
 async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text().catch(() => '');
   if (!text) return {};
@@ -70,20 +54,6 @@ async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
   } catch {
     return {};
   }
-}
-
-function planLabel(plan: string | null) {
-  const map: Record<string, string> = {
-    solo: 'Solo',
-    team: 'Екип',
-    solo_bonus_12m: 'Solo 12м',
-    solo_bonus_6m: 'Solo 6м',
-    team_bonus_12m: 'Екип 12м',
-    team_bonus_6m: 'Екип 6м',
-    custom_domain: 'Домейн',
-    sms_pack: 'SMS',
-  };
-  return plan ? (map[plan] ?? plan) : null;
 }
 
 function shellCard(extra = '') {
@@ -171,16 +141,13 @@ export default function PlatformAdminDashboard({
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [sendingInvite, setSendingInvite] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
-  const [settingPlan, setSettingPlan] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [payments, setPayments] = useState<PaymentRow[] | null>(null);
-  const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [totalRevenue, setTotalRevenue] = useState(0);
   const [salonList, setSalonList] = useState<SalonRow[]>(salons);
   const [inviteNotice, setInviteNotice] = useState<InviteNotice | null>(null);
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>(() =>
     Object.fromEntries(salons.map((salon) => [salon.salon_id, salon.email ?? ''])),
   );
+  const [inviteLocale, setInviteLocale] = useState<Record<string, 'bg' | 'en'>>({});
 
   const filteredSalons = useMemo(() => {
     return salonList.filter((salon) => {
@@ -221,10 +188,11 @@ export default function PlatformAdminDashboard({
     setSendingInvite(salonId);
     try {
       const email = (inviteEmails[salonId] ?? '').trim();
+      const locale = inviteLocale[salonId] ?? 'bg';
       const res = await fetch('/api/pa/send-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salonId, email }),
+        body: JSON.stringify({ salonId, email, locale }),
       });
       const data = await readJsonSafe(res);
       if (!res.ok) {
@@ -268,39 +236,6 @@ export default function PlatformAdminDashboard({
     }
   }
 
-  async function handleSetPlan(salonId: string, planType: string | null) {
-    setSettingPlan(salonId);
-    try {
-      const res = await fetch('/api/pa/salons', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salonId, planType }),
-      });
-      if (res.ok) {
-        setSalonList((prev) =>
-          prev.map((salon) =>
-            salon.salon_id === salonId ? { ...salon, plan_type: planType } : salon,
-          ),
-        );
-      }
-    } finally {
-      setSettingPlan(null);
-    }
-  }
-
-  async function handleLoadPayments() {
-    if (payments !== null) return;
-    setPaymentsLoading(true);
-    try {
-      const res = await fetch('/api/pa/payments');
-      const data = await readJsonSafe(res);
-      setPayments(Array.isArray(data.payments) ? (data.payments as PaymentRow[]) : []);
-      setTotalRevenue(typeof data.totalRevenue === 'number' ? data.totalRevenue : 0);
-    } finally {
-      setPaymentsLoading(false);
-    }
-  }
-
   async function handleLogout() {
     setLoggingOut(true);
     await fetch('/api/pa/auth', {
@@ -314,7 +249,6 @@ export default function PlatformAdminDashboard({
   const tabMeta: Array<{ id: Tab; label: string; note: string }> = [
     { id: 'salons', label: 'Салони', note: '' },
     { id: 'bookings', label: 'Резервации', note: '' },
-    { id: 'payments', label: 'Плащания', note: '' },
   ];
 
   return (
@@ -329,10 +263,7 @@ export default function PlatformAdminDashboard({
                   active={tab === item.id}
                   label={item.label}
                   note={item.note}
-                  onClick={() => {
-                    setTab(item.id);
-                    if (item.id === 'payments') void handleLoadPayments();
-                  }}
+                  onClick={() => setTab(item.id)}
                 />
               ))}
             </div>
@@ -363,10 +294,7 @@ export default function PlatformAdminDashboard({
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => {
-                        setTab(item.id);
-                        if (item.id === 'payments') void handleLoadPayments();
-                      }}
+                      onClick={() => setTab(item.id)}
                       className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
                         active
                           ? 'border-black bg-black text-white'
@@ -419,7 +347,6 @@ export default function PlatformAdminDashboard({
                 <div className="space-y-4">
                   {filteredSalons.map((salon) => {
                     const isExpanded = expandedSalon === salon.salon_id;
-                    const plan = planLabel(salon.plan_type);
                     const statusLabel = salon.is_active ? 'Активен' : 'Неактивен';
 
                     return (
@@ -445,11 +372,6 @@ export default function PlatformAdminDashboard({
                                 }`}>
                                   {statusLabel}
                                 </span>
-                                {plan && (
-                                  <span className="rounded-full border border-black/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-black/58">
-                                    {plan}
-                                  </span>
-                                )}
                               </div>
 
                               <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-black/50">
@@ -505,7 +427,29 @@ export default function PlatformAdminDashboard({
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Имейл за magic link</div>
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-xs uppercase tracking-[0.16em] text-black/28">Имейл за magic link</div>
+                                      <div className="inline-flex overflow-hidden rounded-full border border-black/10 text-[10px] font-bold uppercase tracking-[0.14em]">
+                                        {(['bg', 'en'] as const).map((lang) => {
+                                          const active = (inviteLocale[salon.salon_id] ?? 'bg') === lang;
+                                          return (
+                                            <button
+                                              key={lang}
+                                              type="button"
+                                              onClick={() =>
+                                                setInviteLocale((prev) => ({
+                                                  ...prev,
+                                                  [salon.salon_id]: lang,
+                                                }))
+                                              }
+                                              className={`px-2.5 py-1 transition ${active ? 'bg-black text-white' : 'bg-white text-black/55 hover:text-black'}`}
+                                            >
+                                              {lang}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                     <input
                                       type="email"
                                       value={inviteEmails[salon.salon_id] ?? ''}
@@ -534,15 +478,11 @@ export default function PlatformAdminDashboard({
                                 </div>
                                 <div className="space-y-3 text-sm">
                                   <div className="rounded-2xl border border-black/10 px-4 py-3">
-                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Primary admin</div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Admin URL</div>
                                     <div className="mt-1 font-medium text-black">
-                                      {salon.custom_domain ? `${salon.custom_domain}/admin` : `${salon.slug}.clicka.bg/admin`}
-                                    </div>
-                                  </div>
-                                  <div className="rounded-2xl border border-black/10 px-4 py-3">
-                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Fallback</div>
-                                    <div className="mt-1 font-medium text-black">
-                                      {`${salon.slug}.clicka.bg/admin`}
+                                      {salon.custom_domain
+                                        ? `${salon.custom_domain}/admin`
+                                        : <span className="text-black/40">Изисква се custom домейн</span>}
                                     </div>
                                   </div>
                                   <div className="rounded-2xl border border-black/10 px-4 py-3">
@@ -559,7 +499,7 @@ export default function PlatformAdminDashboard({
                               <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
                                 Actions
                               </div>
-                              <div className="grid gap-3 lg:grid-cols-4">
+                              <div className="grid gap-3 lg:grid-cols-3">
                                 {actionButton({
                                   tone: 'green',
                                   onClick: () => handleImpersonate(salon.salon_id),
@@ -575,21 +515,21 @@ export default function PlatformAdminDashboard({
                                 {actionButton({
                                   tone: 'dark',
                                   onClick: () => handleSendInvite(salon.salon_id),
-                                  disabled: sendingInvite === salon.salon_id,
+                                  disabled:
+                                    sendingInvite === salon.salon_id ||
+                                    String(salon.domain_status ?? '').toLowerCase() !== 'active' ||
+                                    !salon.custom_domain,
                                   className: 'w-full',
+                                  title:
+                                    String(salon.domain_status ?? '').toLowerCase() !== 'active' || !salon.custom_domain
+                                      ? 'Първо настрой custom домейн (domain_status = active)'
+                                      : undefined,
                                   children: (
                                     <>
                                       <Mail className="h-4 w-4" />
                                       {sendingInvite === salon.salon_id ? 'Изпраща…' : 'Изпрати magic link'}
                                     </>
                                   ),
-                                })}
-                                {actionButton({
-                                  tone: 'ghost',
-                                  onClick: () => handleSetPlan(salon.salon_id, 'solo_bonus_12m'),
-                                  disabled: settingPlan === salon.salon_id,
-                                  className: 'w-full',
-                                  children: settingPlan === salon.salon_id ? 'Записва…' : 'Solo 12м plan',
                                 })}
                                 {actionButton({
                                   tone: salon.is_active ? 'danger' : 'ghost',
@@ -602,40 +542,6 @@ export default function PlatformAdminDashboard({
                                       : salon.is_active
                                       ? 'Деактивирай'
                                       : 'Активирай',
-                                })}
-                              </div>
-                            </div>
-
-                            <div className="mb-6">
-                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
-                                Bonus plans
-                              </div>
-                              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                                {([
-                                  { value: 'solo_bonus_12m', label: 'Solo · 12 месеца' },
-                                  { value: 'solo_bonus_6m', label: 'Solo · 6 месеца' },
-                                  { value: 'team_bonus_12m', label: 'Екип · 12 месеца' },
-                                  { value: 'team_bonus_6m', label: 'Екип · 6 месеца' },
-                                ] as Array<{ value: string; label: string }>).map((planOption) => {
-                                  const active = salon.plan_type === planOption.value;
-                                  return (
-                                    <button
-                                      key={planOption.value}
-                                      type="button"
-                                      onClick={() => !active && handleSetPlan(salon.salon_id, planOption.value)}
-                                      disabled={settingPlan === salon.salon_id || active}
-                                      className={`rounded-2xl border px-4 py-4 text-left transition ${
-                                        active
-                                          ? 'border-[#15803d] text-[#166534]'
-                                          : 'border-black/10 text-black hover:border-black/25'
-                                      } disabled:opacity-50`}
-                                    >
-                                      <div className="text-sm font-semibold">{planOption.label}</div>
-                                      <div className="mt-2 text-xs text-black/42">
-                                        {active ? 'Текущо избран план' : 'Превключи плана за този салон'}
-                                      </div>
-                                    </button>
-                                  );
                                 })}
                               </div>
                             </div>
@@ -706,93 +612,6 @@ export default function PlatformAdminDashboard({
               </div>
             )}
 
-            {tab === 'payments' && (
-              <div className="p-4 sm:p-6">
-              {paymentsLoading ? (
-                <EmptyState title="Зареждаме плащанията" body="Събираме последните транзакции и total revenue." />
-              ) : payments === null ? (
-                <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-                  <div className={`${shellCard()} p-8`}>
-                    <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
-                      Revenue snapshot
-                    </div>
-                    <div className="max-w-lg text-[2rem] font-semibold leading-tight tracking-[-0.06em] text-black">
-                      Зареди плащанията, за да видиш приходите и последните движения.
-                    </div>
-                    <div className="mt-4 text-sm leading-7 text-black/48">
-                      Този изглед е направен за бърз финансов преглед, не за счетоводен export.
-                    </div>
-                  </div>
-                  <div className={`${shellCard()} flex items-center justify-center p-8`}>
-                    {actionButton({
-                      tone: 'green',
-                      onClick: () => void handleLoadPayments(),
-                      children: (
-                        <>
-                          <CreditCard className="h-4 w-4" />
-                          Зареди плащанията
-                        </>
-                      ),
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                    <div className={`${shellCard()} p-6`}>
-                      <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
-                        Total revenue
-                      </div>
-                      <div className="text-5xl font-semibold tracking-[-0.08em] text-black">
-                        {formatAmount(totalRevenue, 'eur')}
-                      </div>
-                      <div className="mt-3 text-sm text-black/46">
-                        Последни 100 плащания в системата.
-                      </div>
-                    </div>
-                    <div className={`${shellCard()} p-6`}>
-                      <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
-                        Notes
-                      </div>
-                      <div className="space-y-3 text-sm leading-7 text-black/52">
-                        <p>Плащанията тук са за оперативен мониторинг и бърза проверка на plan и customer activity.</p>
-                        <p>Ако искаш по-дълбок finance panel, следващата стъпка е отделен payments workspace с филтри и export.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {payments.length === 0 ? (
-                    <EmptyState
-                      title="Няма плащания"
-                      body="Когато системата получи първите транзакции, те ще се покажат тук."
-                    />
-                  ) : (
-                    <div className="space-y-4">
-                      {payments.map((payment) => (
-                        <article key={payment.id} className={`${shellCard()} p-5 sm:p-6`}>
-                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <div className="text-xl font-semibold tracking-[-0.04em] text-black">
-                                {formatAmount(payment.amount, payment.currency)}
-                              </div>
-                              <div className="mt-2 text-sm leading-6 text-black/52">
-                                {payment.customerEmail ?? 'Без customer email'}
-                                {payment.planType ? ` · ${planLabel(payment.planType)}` : ''}
-                                {payment.salonSlug ? ` · ${payment.salonSlug}` : ''}
-                              </div>
-                            </div>
-                            <div className="text-sm text-black/42">
-                              {formatDate(new Date(payment.created * 1000).toISOString())}
-                            </div>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-              </div>
-            )}
           </main>
         </div>
       </div>

@@ -15,8 +15,8 @@ import {
 import {
   getBrowserHost,
   getCustomDomainAdminUrl,
-  getPlatformAdminUrl,
   isPlatformApexHost,
+  isSalonCustomDomainLive,
 } from '@/lib/domain-routing';
 
 export async function POST(request: NextRequest) {
@@ -121,15 +121,24 @@ export async function POST(request: NextRequest) {
   });
 
   // /[slug]/admin on the apex host always 404s — admin only lives on the
-  // salon's own host: custom domain /admin (proxied to engine) or platform
-  // subdomain /admin. Use the browser-facing host so a proxied request from
-  // the client site stays on '/admin' there.
+  // salon's own custom domain (proxied to engine). If the salon has no active
+  // custom domain yet, the apex flow has no valid redirect target.
   const browserHost = getBrowserHost(request.headers);
+  const activeCustomDomain = isSalonCustomDomainLive(salon.domainStatus) && salon.customDomain
+    ? salon.customDomain.trim().toLowerCase()
+    : null;
   const redirectTo = isPlatformApexHost(browserHost)
-    ? salon.customDomain
-      ? `${getCustomDomainAdminUrl(salon.customDomain)}/admin`
-      : getPlatformAdminUrl(salon.slug)
+    ? activeCustomDomain
+      ? `${getCustomDomainAdminUrl(activeCustomDomain)}/admin`
+      : null
     : '/admin';
+
+  if (redirectTo === null) {
+    return NextResponse.json(
+      { error: 'Салонът няма активен custom домейн.' },
+      { status: 409 },
+    );
+  }
 
   const response = NextResponse.json({ success: true, redirectTo });
   setAdminSessionCookie(response, request, sessionId, sessionExpires);

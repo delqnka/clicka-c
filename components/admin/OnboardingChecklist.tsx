@@ -61,9 +61,7 @@ function useOnboardingSteps(site: AdminSitePayload, locale: Locale) {
     },
     {
       id: 'specialist',
-      label: site.plan === 'team'
-        ? (isEn ? 'Add yourself + the team' : 'Добави себе си + екипа')
-        : (isEn ? 'Add yourself' : 'Добави себе си'),
+      label: isEn ? 'Add yourself and the team' : 'Добави себе си и екипа',
       done: !!site.ownerName && site.ownerName.trim().length > 1,
       tab: 'specialist',
     },
