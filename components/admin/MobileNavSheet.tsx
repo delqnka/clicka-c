@@ -115,7 +115,7 @@ export function MobileNavSheet<TId extends string>({
           background: '#fff',
           borderRadius: '20px 20px 0 0',
           paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
-          fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+          fontFamily: '"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif',
           animation: 'slideUp 280ms cubic-bezier(0.32, 0.72, 0, 1)',
           maxHeight: 'min(92dvh, calc(100dvh - 12px))',
           display: 'flex',
@@ -212,7 +212,7 @@ export function MobileNavSheet<TId extends string>({
                       letterSpacing: '-0.01em',
                       margin: 0,
                       fontFamily:
-                        'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+                        '"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif',
                       color: tokens.color.text,
                     }}
                   >
@@ -268,7 +268,7 @@ export function MobileNavSheet<TId extends string>({
                             textAlign: 'left',
                             WebkitTapHighlightColor: 'transparent',
                             fontFamily:
-                              'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+                              '"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif',
                           }}
                         >
                           <div

@@ -60,7 +60,7 @@ const STEPS_EN = [
 ];
 
 const GRAD = '#000';
-const FONT = "var(--font-client-manrope,'Manrope',system-ui,sans-serif)";
+const FONT = '"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif';
 const KEY = 'clicka_onboarding_done';
 
 export function OnboardingTour({ slug, done, locale = 'bg' }: { slug: string; done?: boolean; locale?: Locale }) {

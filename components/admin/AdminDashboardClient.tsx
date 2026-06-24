@@ -1762,7 +1762,7 @@ export default function AdminDashboardClient({
         minHeight: '100dvh',
         background: T.bg,
         color: T.text,
-        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif)',
+        fontFamily: '"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif',
         WebkitFontSmoothing: 'antialiased',
         position: 'relative',
         touchAction: 'manipulation',
@@ -1993,7 +1993,10 @@ export default function AdminDashboardClient({
       })()}
 
       {/* ── Body layout ───────────────────────────────── */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+      {/* Narrower outer container (1100 vs the old 1280) + tighter main
+          column (760 vs the old 960) so the desktop dashboard reads as a
+          focused workspace instead of edge-to-edge tabs across a 27" screen. */}
+      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
 
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
@@ -2012,7 +2015,7 @@ export default function AdminDashboardClient({
           style={{
             flex: 1,
             minWidth: 0,
-            maxWidth: isMobile ? undefined : 960,
+            maxWidth: isMobile ? undefined : 760,
             marginInline: isMobile ? undefined : 'auto',
             padding: isMobile
               ? `16px 12px ${MOBILE_BOTTOM_INSET} 12px`

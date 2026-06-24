@@ -24,15 +24,16 @@ export const tokens = {
     primaryText: '#FFFFFF',
 
     /**
-     * Brand gradient — pink → magenta → violet.
-     * RESERVED for logo wordmark and mobile nav active state ONLY.
-     * Do not use on CTAs, badges, or section backgrounds.
+     * Accent color — solid neutral black. The previous pink → violet
+     * gradient was a SaaS-era leftover; per docs/project-vision.md the
+     * engine is white-label and must not carry Clicka's own visual
+     * identity into client-owned admin chrome.
      */
     accent: {
-      from: '#E11D48',
-      mid: '#DB2777',
-      to: '#A855F7',
-      solid: '#DB2777',
+      from: '#18181B',
+      mid: '#18181B',
+      to: '#18181B',
+      solid: '#18181B',
     },
 
     success: { bg: '#D1FAE5', text: '#065F46', accent: '#10B981' },
@@ -42,8 +43,8 @@ export const tokens = {
   },
 
   gradient: {
-    /** Logo + brand moments only. See accent policy. */
-    brand: 'linear-gradient(135deg, #E11D48 0%, #DB2777 50%, #A855F7 100%)',
+    /** Reserved for any explicit brand moment. Defaults to flat neutral. */
+    brand: '#18181B',
   },
 
   radius: {

@@ -126,7 +126,7 @@ export function OnboardingChecklist({ site, onGoToTab, locale = 'bg' }: Props) {
         padding: '14px 16px',
         marginBottom: 16,
         boxShadow: '0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
-        fontFamily: 'var(--font-client-manrope, "Manrope", system-ui, sans-serif)',
+        fontFamily: '"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif',
       }}
     >
       {/* Header */}
