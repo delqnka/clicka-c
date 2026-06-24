@@ -123,6 +123,16 @@ export async function POST(request: NextRequest) {
       INSERT INTO admin_login_tokens (salon_id, token_hash, email_norm, expires_at, used_at, created_at)
       VALUES (${salonId}, ${tokenHash}, ${email}, ${expiresAt.toISOString()}, null, now())
     `;
+
+    // Pre-set the salon's UI language to the agency's invite choice so the
+    // admin dashboard renders in that language from first login. We only
+    // override before the owner has claimed the salon — once they have a
+    // password, their own toggle choice is authoritative.
+    await sql`
+      UPDATE salons
+      SET language = ${locale}, updated_at = now()
+      WHERE CAST(id AS text) = ${salonId}
+    `;
   }
 
   const magicLink = buildAdminMagicLink({
