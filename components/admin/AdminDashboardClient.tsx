@@ -407,7 +407,7 @@ export default function AdminDashboardClient({
   const [pwaInstallOpen, setPwaInstallOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
-  const [newClientDraft, setNewClientDraft] = useState({ name: '', phone: '' });
+  const [newClientDraft, setNewClientDraft] = useState({ name: '', phone: '', email: '' });
   const [clientSaving, setClientSaving] = useState(false);
   const [extraClients, setExtraClients] = useState<ClientSummary[]>([]);
   const [hiddenClientKeys, setHiddenClientKeys] = useState<Set<string>>(new Set());
@@ -2391,7 +2391,7 @@ export default function AdminDashboardClient({
                         cursor: 'pointer',
                         whiteSpace: 'nowrap',
                       }}
-                      onClick={() => { setNewClientDraft({ name: '', phone: '' }); setClientModalOpen(true); }}
+                      onClick={() => { setNewClientDraft({ name: '', phone: '', email: '' }); setClientModalOpen(true); }}
                     >
                       <Plus size={13} />
                       {locale === 'en' ? 'Add' : 'Добави'}
@@ -2516,10 +2516,28 @@ export default function AdminDashboardClient({
                     color: '#000',
                   }}
                 />
+                <input
+                  type="email"
+                  placeholder={locale === 'en' ? 'Email (optional)' : 'Имейл (по желание)'}
+                  value={newClientDraft.email}
+                  onChange={(e) => setNewClientDraft((d) => ({ ...d, email: e.target.value }))}
+                  autoComplete="email"
+                  inputMode="email"
+                  style={{
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    color: '#000',
+                  }}
+                />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
                   <button
                     type="button"
-                    onClick={() => setClientModalOpen(false)}
+                    onClick={() => {
+                      setNewClientDraft({ name: '', phone: '', email: '' });
+                      setClientModalOpen(false);
+                    }}
                     style={{
                       border: 'none',
                       background: 'transparent',
@@ -2540,10 +2558,12 @@ export default function AdminDashboardClient({
                       if (!name) return;
                       setClientSaving(true);
                       try {
+                        const phone = newClientDraft.phone.trim();
+                        const email = newClientDraft.email.trim();
                         const res = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ name, phone: newClientDraft.phone.trim() || null }),
+                          body: JSON.stringify({ name, phone: phone || null, email: email || null }),
                         });
                         if (res.ok) {
                           const saved = (await res.json()) as { client?: { id: string } };
@@ -2553,14 +2573,15 @@ export default function AdminDashboardClient({
                             {
                               key: newKey,
                               name,
-                              phone: newClientDraft.phone.trim(),
-                              email: '',
+                              phone,
+                              email,
                               visits: 0,
                               totalSpent: 0,
                               lastVisit: '',
                               isNew: true,
                             },
                           ]);
+                          setNewClientDraft({ name: '', phone: '', email: '' });
                           setClientModalOpen(false);
                         }
                       } finally {
