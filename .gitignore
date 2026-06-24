@@ -32,3 +32,14 @@ plovdiv_salons.pdf
 *_salons*.pdf
 *.mp4
 .env*
+
+# Sibling client repos that may be cloned inside this folder for convenience
+# during development. They have their own GitHub repos and must never be
+# committed here.
+salon-paradise-repo/
+salon-paradise/
+
+# Local AI assistant config (skill definitions, agent settings, Claude CLI
+# settings). Not project code — belongs to the developer's machine.
+.agents/
+.claude/
