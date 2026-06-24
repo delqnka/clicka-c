@@ -269,6 +269,12 @@ export async function resolveSalonBySlugOrHost({
 
   // Only route custom domains that have been verified (domain_status = 'active').
   // This prevents an unverified/squatted domain from intercepting traffic.
+  //
+  // Exception: Vercel preview URLs (`*.vercel.app`) skip the verification
+  // check. They never get `domain_status = 'active'` because they don't go
+  // through the DNS-verification flow — Vercel itself controls those
+  // subdomains, so only the project owner can route them to the engine. The
+  // agency uses them while the real custom domain is still propagating.
   const customRows = includeInactive
     ? await sql`
         SELECT
@@ -281,7 +287,7 @@ export async function resolveSalonBySlugOrHost({
           domain_status
         FROM salons
         WHERE lower(custom_domain) = lower(${candidateHostname})
-          AND domain_status = 'active'
+          AND (domain_status = 'active' OR lower(custom_domain) LIKE '%.vercel.app')
         LIMIT 1
       `
     : await sql`
@@ -296,7 +302,7 @@ export async function resolveSalonBySlugOrHost({
         FROM salons
         WHERE lower(custom_domain) = lower(${candidateHostname})
           AND is_active = true
-          AND domain_status = 'active'
+          AND (domain_status = 'active' OR lower(custom_domain) LIKE '%.vercel.app')
         LIMIT 1
       `;
 
