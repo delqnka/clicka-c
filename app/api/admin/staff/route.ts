@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Generate unique slug within this salon
+  const existing = await getStaffMembers(salonId);
   const baseSlug = slugify(body.name.trim());
   let candidateSlug = baseSlug;
   let attempt = 2;
