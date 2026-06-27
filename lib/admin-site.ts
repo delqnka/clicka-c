@@ -74,8 +74,6 @@ export type AdminSitePayload = {
   bookingAdvanceDays: number;
   slotIntervalMin: number;
   customDomain: string;
-  domainStatus: string;
-  domainConfig: unknown;
   googlePlaceId: string;
   telegramChatId: string;
   onboardingCode: string;
@@ -158,7 +156,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       images,
       owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
       services, working_hours, opening_hours,
-      custom_domain, domain_status, domain_config,
+      custom_domain,
       google_place_id, telegram_chat_id, onboarding_code, onboarding_tour_done,
       site_status, latitude, longitude,
       faq_items, visitor_info, visitor_additional_info, venue_extras,
@@ -225,8 +223,6 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
       return 30;
     })(),
     customDomain: String(row.custom_domain ?? ''),
-    domainStatus: String(row.domain_status ?? ''),
-    domainConfig: row.domain_config ?? null,
     googlePlaceId: String(row.google_place_id ?? ''),
     telegramChatId: String(row.telegram_chat_id ?? ''),
     onboardingCode: String(row.onboarding_code ?? ''),

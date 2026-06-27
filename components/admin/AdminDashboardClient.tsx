@@ -8,7 +8,6 @@ import {
   Plug,
   CalendarClock,
   Clock3,
-  Globe,
   Image as ImageIcon,
   ImagePlus,
   Scissors,
@@ -113,13 +112,12 @@ const TABS = [
   { id: 'hours',         labelKey: 'adminDashboard.tabs.hours', Icon: Clock3 },
   { id: 'bookings',      labelKey: 'adminDashboard.tabs.bookings', Icon: CalendarClock },
   { id: 'clients',       labelKey: 'adminDashboard.tabs.clients', Icon: Users },
-  { id: 'domain',        labelKey: 'adminDashboard.tabs.domain', Icon: Globe },
   { id: 'payments',      labelKey: 'adminDashboard.tabs.payments', Icon: CreditCard },
   { id: 'integrations',  labelKey: 'adminDashboard.tabs.integrations', Icon: Plug },
   { id: 'account',       labelKey: 'adminDashboard.tabs.account', Icon: KeyRound },
 ] as const;
 
-const WEBSITE_TAB_IDS = ['site', 'images', 'specialist', 'offers', 'domain'] as const;
+const WEBSITE_TAB_IDS = ['site', 'images', 'specialist', 'offers'] as const;
 const BOOKING_TAB_IDS = ['staff', 'services', 'hours', 'bookings', 'clients'] as const;
 const ACCOUNT_TAB_IDS = ['account', 'payments', 'integrations'] as const;
 
@@ -246,33 +244,6 @@ async function readJson(res: Response) {
   try { return await res.json(); } catch { return {}; }
 }
 
-type DomainInstruction = { type?: string; host?: string; value?: string; reason?: string | null };
-
-function getDomainMeta(site: AdminSitePayload) {
-  const config = (site.domainConfig ?? {}) as Record<string, unknown>;
-  return {
-    dnsInstructions:          Array.isArray(config.dnsInstructions) ? (config.dnsInstructions as DomainInstruction[]) : [],
-    verificationInstructions: Array.isArray(config.verificationInstructions) ? (config.verificationInstructions as DomainInstruction[]) : [],
-    configuredBy: typeof config.configuredBy === 'string' ? config.configuredBy : '',
-    misconfigured: typeof config.misconfigured === 'boolean' ? config.misconfigured : null,
-    verified: config.verified === true,
-    checkedAt: typeof config.checkedAt === 'string' ? config.checkedAt : '',
-  };
-}
-
-function isPendingDomainStatus(s: string) { return ['pending_dns', 'pending_verification'].includes(s); }
-
-function formatDomainStatus(s: string, locale: Locale = 'bg') {
-  const isEn = locale === 'en';
-  const map: Record<string, string> = {
-    active: isEn ? 'Active' : 'Активен',
-    pending_verification: isEn ? 'Pending verification' : 'Чака верификация',
-    pending_dns: isEn ? 'Pending DNS' : 'Чака DNS',
-    error: isEn ? 'Error' : 'Грешка',
-  };
-  return map[s] ?? s ?? (isEn ? 'Not connected' : 'Не е свързан');
-}
-
 function formatBgDateDMY(dateStr: string) {
   const s = String(dateStr ?? '').trim();
   if (!s) return '';
@@ -395,7 +366,6 @@ export default function AdminDashboardClient({
     () => (selectedCalendarDate ? allExternalEvents.filter((ev) => ev.date === selectedCalendarDate) : []),
     [allExternalEvents, selectedCalendarDate],
   );
-  const [domainInput, setDomainInput] = useState(initialSite.customDomain ?? '');
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton]   = useState(false);
   const [pwaOnHomeScreen, setPwaOnHomeScreen] = useState(false);
@@ -438,7 +408,7 @@ export default function AdminDashboardClient({
   const isMobile = useIsMobileLayout();
   const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
   const sitePath      = getHostAwareSalonPath({ host: currentHost, slug });
-  const sitePublicUrl = getPrimaryPublicUrl({ slug, customDomain: site.customDomain, domainStatus: site.domainStatus });
+  const sitePublicUrl = getPrimaryPublicUrl({ slug, customDomain: site.customDomain });
   const publicSiteHost = extractHostname(sitePublicUrl);
   const websiteSectionTabs = useMemo(
     () => availableTabs.filter((tab) => (WEBSITE_TAB_IDS as readonly string[]).includes(tab.id)),
@@ -454,7 +424,6 @@ export default function AdminDashboardClient({
   );
   const claimPath     = getHostAwareSalonPath({ host: currentHost, slug, path: 'claim' });
   const signInPath    = getHostAwareSalonPath({ host: currentHost, slug, path: 'admin/sign-in' });
-  const domainMeta    = getDomainMeta(site);
 
   const servicesUiActive = activeTab === 'services' || serviceModalOpen;
   const bookingsUiActive = activeTopLevelTab === 'bookings';
@@ -725,13 +694,6 @@ export default function AdminDashboardClient({
       document.body.style.overflow = prevOverflow;
     };
   }, [isMobile, navOpen]);
-
-  useEffect(() => {
-    if (activeTab !== 'domain' || !site.customDomain || !isPendingDomainStatus(site.domainStatus)) return;
-    if (busyKey === 'domain' || busyKey === 'domain-refresh') return;
-    const t = window.setTimeout(() => void refreshDomainStatus(true), 6000);
-    return () => window.clearTimeout(t);
-  }, [activeTab, site.customDomain, site.domainStatus, busyKey]);
 
   const hasGoogleReviewsCandidate = Boolean(
     site.googlePlaceId.trim() || site.googleMapsUrl.trim(),
@@ -1274,53 +1236,6 @@ export default function AdminDashboardClient({
     } finally {
       setBusyKey('');
     }
-  }
-
-  async function connectDomain() {
-    setError(''); setNotice(''); setBusyKey('domain');
-    try {
-      const res = await fetch('/api/domain-connect', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, domain: domainInput }),
-      });
-      const data = await guardResponse(res);
-      setSite(prev => ({ ...prev, customDomain: data.customDomain, domainStatus: data.domainStatus, domainConfig: { dnsInstructions: data.dnsInstructions, verificationInstructions: data.verificationInstructions, configuredBy: data.configuredBy, misconfigured: data.misconfigured, verified: data.verified, provider: data.provider, providerDetails: data.providerDetails, checkedAt: new Date().toISOString() } }));
-      setNotice(data.domainStatus === 'active'
-        ? (locale === 'en' ? 'The domain is active.' : 'Домейнът е активен.')
-        : (locale === 'en' ? 'The domain is saved. Add the DNS records and wait for verification.' : 'Домейнът е записан. Добави DNS записите и изчакай верификация.'));
-    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
-  }
-
-  async function removeDomain() {
-    if (!confirm(locale === 'en' ? 'Are you sure you want to remove the domain?' : 'Сигурен ли си, че искаш да премахнеш домейна?')) return;
-    setError(''); setNotice(''); setBusyKey('domain-remove');
-    try {
-      const res = await fetch('/api/domain-connect', {
-        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug }),
-      });
-      await guardResponse(res);
-      setSite(prev => ({ ...prev, customDomain: '', domainStatus: '', domainConfig: null }));
-      setDomainInput('');
-      setNotice(locale === 'en' ? 'The domain was removed.' : 'Домейнът е премахнат.');
-    } catch (e) { handleErr(e); } finally { setBusyKey(''); }
-  }
-
-  async function refreshDomainStatus(silent = false) {
-    if (!site.customDomain) return;
-    if (!silent) { setError(''); setNotice(''); }
-    setBusyKey('domain-refresh');
-    try {
-      const res = await fetch('/api/domain-connect', {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug }),
-      });
-      const data = await guardResponse(res);
-      setSite(prev => ({ ...prev, customDomain: data.customDomain, domainStatus: data.domainStatus, domainConfig: { dnsInstructions: data.dnsInstructions, verificationInstructions: data.verificationInstructions, configuredBy: data.configuredBy, misconfigured: data.misconfigured, verified: data.verified, provider: data.provider, providerDetails: data.providerDetails, checkedAt: new Date().toISOString() } }));
-      if (!silent) setNotice(data.domainStatus === 'active'
-        ? (locale === 'en' ? 'The domain is active.' : 'Домейнът е активен.')
-        : (locale === 'en' ? 'The status was updated.' : 'Статусът е обновен.'));
-    } catch (e) { if (!silent) handleErr(e); } finally { setBusyKey(''); }
   }
 
   async function logout() {
@@ -2142,7 +2057,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} onNavigateToDomain={() => { setActiveTab('domain'); }} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} locale={locale} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} locale={locale} />
             </>
           )}
 
@@ -2618,28 +2533,6 @@ export default function AdminDashboardClient({
                 </div>
               </div>
             </div>
-          )}
-
-          {/* ── Домейн ── */}
-          {activeTab === 'domain' && (
-            <DomainTab
-              site={site}
-              isMobile={isMobile}
-              domainInput={domainInput}
-              setDomainInput={setDomainInput}
-              domainMeta={domainMeta}
-              busyKey={busyKey}
-              connectDomain={connectDomain}
-              refreshDomainStatus={refreshDomainStatus}
-              removeDomain={removeDomain}
-              inp={inp}
-              btn={btn}
-              locale={locale}
-              onBack={() => {
-                setSiteNav(prev => ({ section: 'address', v: (prev?.v ?? 0) + 1 }));
-                setActiveTab('site');
-              }}
-            />
           )}
 
           {activeTab === 'account' && initialAccount ? (
@@ -3173,319 +3066,6 @@ function Toast({ tone, onDismiss, children }: { tone: 'success' | 'error'; onDis
   );
 }
 
-function StepCard({ step, title, done, children }: { step: number; title: string; done: boolean; children: ReactNode }) {
-  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
-  return (
-    <div style={{
-      border: isMbl ? 'none' : `1px solid ${done ? '#A7F3D0' : T.border}`,
-      borderRadius: isMbl ? 20 : T.radiusLg,
-      background: done ? '#F0FDF4' : '#fff',
-      overflow: 'hidden',
-      boxShadow: isMbl ? '0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)' : 'none',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: isMbl ? '16px 20px' : '14px 18px', borderBottom: `1px solid ${done ? '#A7F3D0' : isMbl ? '#F4F4F5' : T.border}` }}>
-        <div style={{ width: isMbl ? 30 : 26, height: isMbl ? 30 : 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? '#10B981' : T.accent, color: '#fff', fontSize: isMbl ? 13 : 12, fontWeight: 700 }}>
-          {done ? <Check size={14} /> : step}
-        </div>
-        <span style={{ fontSize: isMbl ? 16 : 14, fontWeight: 600, color: T.text }}>{title}</span>
-      </div>
-      <div style={{ padding: isMbl ? '16px 20px' : '14px 18px' }}>{children}</div>
-    </div>
-  );
-}
-
-function DnsRecordCard({ record, copied, onCopy, isVerification = false, locale = 'bg' }: {
-  record: DomainInstruction;
-  copied: string;
-  onCopy: (value: string, key: string) => void;
-  isVerification?: boolean;
-  locale?: Locale;
-}) {
-  const isEn = locale === 'en';
-  const typeLabels: Record<string, string> = isEn
-    ? { CNAME: 'CNAME - points to our server', A: 'A - IP address', TXT: 'TXT - verification text' }
-    : { CNAME: 'CNAME — пренасочване към нашия сървър', A: 'A — IP адрес', TXT: 'TXT — верификационен текст' };
-  const type = String(record.type ?? '').toUpperCase();
-  const host = String(record.host ?? '');
-  const value = String(record.value ?? '');
-  const hostKey = `host-${host}-${value}`;
-  const valueKey = `val-${host}-${value}`;
-
-  return (
-    <div style={{ border: `1px solid ${isVerification ? '#DDD6FE' : T.border}`, borderRadius: T.radiusSm, overflow: 'hidden', background: '#fff' }}>
-      <div style={{ padding: '8px 14px', borderBottom: `1px solid ${isVerification ? '#DDD6FE' : T.border}`, background: isVerification ? '#EDE9FE' : '#fff' }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: isVerification ? '#5B21B6' : T.text }}>
-          {typeLabels[type] ?? type}
-        </span>
-      </div>
-      <div style={{ padding: '12px 14px', display: 'grid', gap: 10 }}>
-        <div>
-          <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Host / Name / Subdomain</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <code style={{ flex: 1, padding: '8px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#007AFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {host || '@'}
-            </code>
-            <button
-              type="button"
-              onClick={() => onCopy(host || '@', hostKey)}
-              style={{ padding: '7px 12px', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, background: '#F0F7FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#007AFF', fontWeight: 600, flexShrink: 0 }}
-            >
-              {copied === hostKey ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
-              {copied === hostKey ? (isEn ? 'Copied' : 'Копирано') : (isEn ? 'Copy' : 'Копирай')}
-            </button>
-          </div>
-        </div>
-        <div>
-          <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Value / Points To</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <code style={{ flex: 1, padding: '8px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, fontSize: 12, fontFamily: 'monospace', fontWeight: 600, color: '#007AFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {value}
-            </code>
-            <button
-              type="button"
-              onClick={() => onCopy(value, valueKey)}
-              style={{ padding: '7px 12px', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, background: '#F0F7FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#007AFF', fontWeight: 600, flexShrink: 0 }}
-            >
-              {copied === valueKey ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
-              {copied === valueKey ? (isEn ? 'Copied' : 'Копирано') : (isEn ? 'Copy' : 'Копирай')}
-            </button>
-          </div>
-        </div>
-        <div>
-          <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TTL</p>
-          <code style={{ display: 'inline-block', padding: '8px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm, fontSize: 13, fontFamily: 'monospace', color: '#007AFF' }}>Automatic</code>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DomainTab({
-  site, isMobile, domainInput, setDomainInput, domainMeta,
-  busyKey, connectDomain, refreshDomainStatus, removeDomain, inp, btn,
-  onBack, locale,
-}: {
-  site: AdminSitePayload;
-  isMobile: boolean;
-  domainInput: string;
-  setDomainInput: (v: string) => void;
-  domainMeta: ReturnType<typeof getDomainMeta>;
-  busyKey: string;
-  connectDomain: () => Promise<void>;
-  refreshDomainStatus: (silent?: boolean) => Promise<void>;
-  removeDomain: () => Promise<void>;
-  inp: CSSProperties;
-  btn: (variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost') => CSSProperties;
-  onBack: () => void;
-  locale: Locale;
-}) {
-  const isEn = locale === 'en';
-  const [copied, setCopied] = useState('');
-
-  function copyVal(value: string, key: string) {
-    navigator.clipboard.writeText(value).catch(() => null);
-    setCopied(key);
-    setTimeout(() => setCopied(k => k === key ? '' : k), 2000);
-  }
-
-  const hasDomain = Boolean(site.customDomain);
-  const isActive = site.domainStatus === 'active';
-  const maxW: CSSProperties = { maxWidth: isMobile ? '100%' : 560 };
-
-  /* ── No domain yet ── connect-only flow ── */
-  if (!hasDomain) {
-    return (
-      <Section title={isEn ? 'Custom domain' : 'Собствен домейн'} desc={isEn ? 'Enter a domain you already bought and we will guide you step by step to connect it.' : 'Въведи домейна, който вече си купил, и ще те преведем стъпка по стъпка как да го свържеш.'}>
-        <div style={{ ...maxW, display: 'grid', gap: 14 }}>
-          <Field label={isEn ? 'Your domain' : 'Твоят домейн'}>
-            <input
-              value={domainInput}
-              onChange={e => setDomainInput(e.target.value)}
-              placeholder="moisalon.com"
-              style={{ ...inp, width: '100%' }}
-              onKeyDown={e => { if (e.key === 'Enter' && domainInput.trim()) void connectDomain(); }}
-            />
-          </Field>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" onClick={onBack} style={{ ...btn('ghost'), flex: '0 0 auto' }}>
-              {isEn ? '← Back' : '← Назад'}
-            </button>
-            <button
-              type="button"
-              style={{ ...btn('primary'), flex: 1, opacity: (busyKey === 'domain' || !domainInput.trim()) ? 0.5 : 1 }}
-              disabled={busyKey === 'domain' || !domainInput.trim()}
-              onClick={() => void connectDomain()}
-            >
-              {busyKey === 'domain' ? (isEn ? 'Checking…' : 'Проверяваме…') : (isEn ? 'Continue →' : 'Напред →')}
-            </button>
-          </div>
-        </div>
-      </Section>
-    );
-  }
-
-  /* ── Active domain ── */
-  if (isActive) {
-    return (
-      <Section title={isEn ? 'Custom domain' : 'Собствен домейн'} desc={isEn ? 'The domain is active and connected to your site.' : 'Домейнът е активен и свързан към твоя сайт.'}>
-        <div style={{ ...maxW, display: 'grid', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: T.radiusLg }}>
-            <CheckCircle2 size={22} style={{ color: '#10B981', flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#065F46' }}>{isEn ? 'The domain is connected successfully' : 'Домейнът е свързан успешно'}</p>
-              <p style={{ margin: '2px 0 0', fontSize: 13, color: '#047857', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.customDomain}</p>
-            </div>
-            <a href={`https://${site.customDomain}`} target="_blank" rel="noreferrer" style={{ ...btn('sm-ghost'), textDecoration: 'none', flexShrink: 0 }}>
-              <ExternalLink size={13} />
-              {!isMobile && (isEn ? 'Open' : 'Отвори')}
-            </a>
-          </div>
-          <button
-            type="button"
-            style={{ ...btn('ghost'), color: '#EF4444', borderColor: '#FECACA', justifyContent: 'flex-start' }}
-            onClick={() => void removeDomain()}
-            disabled={busyKey === 'domain-remove'}
-          >
-            <Trash2 size={14} />
-            {busyKey === 'domain-remove' ? (isEn ? 'Removing…' : 'Премахваме…') : (isEn ? 'Remove domain' : 'Премахни домейна')}
-          </button>
-        </div>
-      </Section>
-    );
-  }
-
-  /* ── Pending: show step-by-step DNS guide ── */
-  // Show only the primary record of each type (dedupe by type to avoid confusion)
-  const instructionsByType = new Map<string, DomainInstruction>();
-  for (const ins of domainMeta.dnsInstructions) {
-    const type = String(ins.type ?? '').toUpperCase();
-    if (!instructionsByType.has(type)) instructionsByType.set(type, ins);
-  }
-  const instructions = Array.from(instructionsByType.values());
-  const verifications = domainMeta.verificationInstructions;
-  const isPending = isPendingDomainStatus(site.domainStatus ?? '');
-
-  return (
-    <Section
-      title={isEn ? 'Finish connecting the domain' : 'Свърши свързването на домейна'}
-      desc={isEn ? `Follow the steps below for ${site.customDomain}` : `Следвай стъпките по-долу за ${site.customDomain}`}
-    >
-      <div style={{ ...maxW, display: 'grid', gap: 14 }}>
-
-        {/* Domain + status bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusLg }}>
-          <Globe size={15} style={{ color: T.muted, flexShrink: 0 }} />
-          <span style={{ fontSize: 14, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.customDomain}</span>
-          <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', fontWeight: 600, flexShrink: 0 }}>
-            {formatDomainStatus(site.domainStatus ?? '', locale)}
-          </span>
-          <button type="button" style={{ ...btn('sm-ghost'), padding: '5px 8px', flexShrink: 0 }} onClick={() => void removeDomain()} disabled={busyKey === 'domain-remove'} title={isEn ? 'Remove domain' : 'Премахни домейна'}>
-            <Trash2 size={13} style={{ color: '#EF4444' }} />
-          </button>
-        </div>
-
-        {/* Step 1 */}
-        <StepCard step={1} title={isEn ? 'Log in to your domain registrar' : 'Влез при регистратора на домейна'} done={false}>
-          <p style={{ margin: 0, fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            {isEn
-              ? 'Go to the website where you bought the domain, sign in to your account, and open the domain management area.'
-              : 'Отиди на сайта, от който си купил домейна (Register.bg, Superhosting.bg, GoDaddy и др.). Влез в акаунта си и намери управлението на домейна.'}
-          </p>
-        </StepCard>
-
-        {/* Step 2 */}
-        <StepCard step={2} title={isEn ? 'Find the DNS settings' : 'Намери DNS настройките'} done={false}>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            {isEn ? 'Look for a section or button named ' : 'Търси раздел или бутон с някое от тези имена: '}
-            <strong style={{ color: T.text }}>DNS Settings</strong>,{' '}
-            <strong style={{ color: T.text }}>Manage DNS</strong> {isEn ? 'or' : 'или'}{' '}
-            <strong style={{ color: T.text }}>Zone Editor</strong>.
-            {isEn ? ' You will see a table with DNS records like this:' : ' Ще видиш таблица с DNS записи — ето как изглежда:'}
-          </p>
-          <img
-            src="/dns-example.png"
-            alt={isEn ? 'Example DNS records' : 'Пример за DNS записи'}
-            style={{ width: '100%', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, marginBottom: 12, display: 'block' }}
-          />
-          <div style={{ padding: '10px 14px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: T.radiusSm }}>
-            <p style={{ margin: 0, fontSize: 13, color: '#92400E', lineHeight: 1.7 }}>
-              <strong style={{ color: '#7C2D12' }}>{isEn ? 'Important' : '⚠️ Важно'}</strong>{' '}
-              {isEn
-                ? 'If there is already a '
-                : '— ако вече има '}
-              <strong>{isEn ? 'CNAME for "www"' : 'CNAME с „www"'}</strong> {isEn ? 'or' : 'или'} <strong>{isEn ? 'A record for "@"' : 'A запис с „@"'}</strong>{isEn ? ', delete it before adding the new one.' : ', изтрий ги преди да добавяш новите.'}
-            </p>
-          </div>
-        </StepCard>
-
-        {/* Step 3 */}
-        <StepCard step={3} title={isEn ? 'Add the two DNS records' : 'Добави двата DNS записа'} done={false}>
-          <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            {isEn ? 'Click "Add Record" and add both records below. Use the copy button so nothing is mistyped:' : 'Натисни „Add Record" и добави и двата записа по-долу. Използвай бутона „Копирай" за да не сбъркаш:'}
-          </p>
-
-          {instructions.length > 0 ? (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {instructions.map((ins, i) => (
-                <DnsRecordCard key={i} record={ins} copied={copied} onCopy={copyVal} locale={locale} />
-              ))}
-            </div>
-          ) : (
-            <div style={{ padding: '12px 14px', background: '#F4F4F5', borderRadius: T.radiusSm, fontSize: 13, color: T.muted }}>
-              {isEn ? 'Loading instructions…' : 'Инструкциите се зареждат…'}
-            </div>
-          )}
-
-          {verifications.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: T.muted, lineHeight: 1.7 }}>
-                {isEn ? 'Also add the verification record below. It is needed only once to confirm domain ownership:' : 'Освен горния запис, добави и верификационен запис (нужен е еднократно, за да потвърдим собствеността на домейна):'}
-              </p>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {verifications.map((v, i) => (
-                  <DnsRecordCard key={i} record={v} copied={copied} onCopy={copyVal} isVerification locale={locale} />
-                ))}
-              </div>
-            </div>
-          )}
-        </StepCard>
-
-        {/* Step 4 */}
-        <StepCard step={4} title={isEn ? 'Wait and check' : 'Изчакай и провери'} done={false}>
-          <p style={{ margin: '0 0 14px', fontSize: 13, color: T.muted, lineHeight: 1.75 }}>
-            {isEn ? 'Changes usually propagate within ' : 'Промените се разпространяват обикновено между '}
-            <strong style={{ color: T.text }}>{isEn ? '15 minutes and 24 hours' : '15 мин. и 24 часа'}</strong>.
-            {isEn ? ' We check automatically and will let you know when it is ready. You can also check manually:' : ' Ние проверяваме автоматично — ще те уведомим щом е готово. Можеш и ръчно:'}
-          </p>
-          <button
-            type="button"
-            style={btn('ghost')}
-            onClick={() => void refreshDomainStatus()}
-            disabled={busyKey === 'domain-refresh' || busyKey === 'domain'}
-          >
-            <RefreshCw
-              size={14}
-              style={busyKey === 'domain-refresh' ? { animation: 'spin 1s linear infinite' } : undefined}
-            />
-            {busyKey === 'domain-refresh' ? (isEn ? 'Checking…' : 'Проверяваме…') : (isEn ? 'Check now' : 'Провери сега')}
-          </button>
-          {isPending && (
-            <p style={{ margin: '10px 0 0', fontSize: 12, color: T.subtle, lineHeight: 1.5 }}>
-              {isEn ? 'We are checking automatically. The page will refresh when the domain is connected.' : 'Проверяваме автоматично. Страницата ще се обнови при успешно свързване.'}
-            </p>
-          )}
-          <div style={{ marginTop: 16, padding: '10px 12px', background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: T.radiusSm }}>
-            <p style={{ margin: 0, fontSize: 12, color: '#1E40AF', lineHeight: 1.6 }}>
-              <strong style={{ color: '#1E3A8A' }}>{isEn ? 'Browser says "Not secure"?' : 'ℹ Браузърът казва „Not secure"?'} </strong>
-              {isEn ? 'This is normal. The SSL certificate is issued automatically up to 30 minutes after the DNS records are in place. You do not need to do anything.' : 'Нормално е — SSL сертификатът се издава автоматично до 30 мин. след DNS. Не правиш нищо.'}
-            </p>
-          </div>
-        </StepCard>
-
-      </div>
-    </Section>
-  );
-}
 
 /* ── QR Modal ─────────────────────────────────────────────── */
 function QrModal({ url, salonName, onClose }: { url: string; salonName: string; onClose: () => void }) {

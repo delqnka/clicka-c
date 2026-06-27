@@ -64,8 +64,7 @@ export async function POST(request: NextRequest) {
       name,
       email,
       owner_name,
-      custom_domain,
-      domain_status
+      custom_domain
     FROM salons
     WHERE CAST(id AS text) = ${salonId}
     LIMIT 1

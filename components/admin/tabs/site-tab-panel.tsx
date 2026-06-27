@@ -79,7 +79,6 @@ export function SiteTabPanel({
   currentSlug,
   rootDomain,
   onSlugSaved,
-  onNavigateToDomain,
   initialSection,
   siteNavVersion,
   locale,
@@ -94,7 +93,6 @@ export function SiteTabPanel({
   currentSlug: string;
   rootDomain: string;
   onSlugSaved: (newSlug: string) => void;
-  onNavigateToDomain?: () => void;
   initialSection?: SiteSectionId;
   siteNavVersion?: number;
   locale: Locale;
@@ -264,52 +262,6 @@ export function SiteTabPanel({
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#047857' }}>{t('adminDashboard.siteTab.connectedDomain')}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 13, color: '#065f46' }}>{site.customDomain}</p>
               </div>
-              {onNavigateToDomain && (
-                <button
-                  type="button"
-                  onClick={() => onNavigateToDomain()}
-                  style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: 12, color: '#047857', fontWeight: 600, cursor: 'pointer', flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
-                >
-                  {t('adminDashboard.siteTab.manage')}
-                </button>
-              )}
-            </div>
-          )}
-          {onNavigateToDomain && !site.customDomain && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${ADMIN_T.border}` }}>
-              <button
-                type="button"
-                onClick={() => onNavigateToDomain()}
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  el.style.background = 'linear-gradient(#fff,#fff) padding-box, #000 border-box';
-                  el.style.borderColor = 'transparent';
-                  el.style.boxShadow = '0 2px 10px rgba(0,0,0,0.12)';
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  el.style.background = '#fff';
-                  el.style.borderColor = ADMIN_T.border;
-                  el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-                }}
-                style={{
-                  textAlign: 'left', width: '100%', padding: '13px 15px',
-                  border: `1px solid ${ADMIN_T.border}`, borderRadius: 12, cursor: 'pointer',
-                  background: '#fff',
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                  transition: 'box-shadow 150ms',
-                }}
-              >
-                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>🔗</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>{t('adminDashboard.siteTab.connectOwnDomain')}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: ADMIN_T.muted, lineHeight: 1.45 }}>
-                    {t('adminDashboard.siteTab.connectOwnDomainHint')}
-                  </p>
-                </div>
-                <span style={{ color: ADMIN_T.subtle, fontSize: 16, flexShrink: 0 }}>›</span>
-              </button>
             </div>
           )}
         </>

@@ -32,7 +32,6 @@ async function resolveBlogContext(slugParam?: string): Promise<BlogPageContext |
   const homeUrl = getPrimaryPublicUrl({
     slug: pageData.salonSlug,
     customDomain: String(salon.custom_domain ?? ''),
-    domainStatus: String(salon.domain_status ?? ''),
   });
 
   return {

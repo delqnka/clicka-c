@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
     const onboardingCode = member.onboardingCode;
     const customDomain = isSalonCustomDomainUsable({
       customDomain: auth.salon.customDomain,
-      domainStatus: auth.salon.domainStatus,
     })
       ? (auth.salon.customDomain ?? '').trim().toLowerCase()
       : null;

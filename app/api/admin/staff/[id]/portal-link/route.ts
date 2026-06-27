@@ -17,7 +17,6 @@ export async function POST(
 
   const customDomain = isSalonCustomDomainUsable({
     customDomain: auth.salon.customDomain,
-    domainStatus: auth.salon.domainStatus,
   })
     ? (auth.salon.customDomain ?? '').trim().toLowerCase()
     : null;

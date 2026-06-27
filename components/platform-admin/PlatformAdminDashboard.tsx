@@ -260,15 +260,14 @@ export default function PlatformAdminDashboard({
         return;
       }
       const newDomain = typeof data.customDomain === 'string' ? data.customDomain : customDomain;
-      const newStatus = typeof data.domainStatus === 'string' ? data.domainStatus : 'requested';
       setSalonList((prev) =>
         prev.map((s) =>
-          s.salon_id === salonId ? { ...s, custom_domain: newDomain || null, domain_status: newDomain ? newStatus : null } : s,
+          s.salon_id === salonId ? { ...s, custom_domain: newDomain || null } : s,
         ),
       );
       setDomainNotice((prev) => ({
         ...prev,
-        [salonId]: { tone: 'success', message: newDomain ? `Домейнът е запазен (${newStatus}).` : 'Домейнът е премахнат.' },
+        [salonId]: { tone: 'success', message: newDomain ? 'Домейнът е запазен.' : 'Домейнът е премахнат.' },
       }));
     } finally {
       setSavingDomain(null);
@@ -547,12 +546,6 @@ export default function PlatformAdminDashboard({
                                       {salon.custom_domain
                                         ? `${salon.custom_domain}/admin`
                                         : <span className="text-black/40">Изисква се custom домейн</span>}
-                                    </div>
-                                  </div>
-                                  <div className="rounded-2xl border border-black/10 px-4 py-3">
-                                    <div className="text-xs uppercase tracking-[0.16em] text-black/28">Domain status</div>
-                                    <div className="mt-1 font-medium text-black">
-                                      {salon.domain_status || 'Няма custom domain'}
                                     </div>
                                   </div>
                                 </div>

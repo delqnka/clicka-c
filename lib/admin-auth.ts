@@ -31,7 +31,6 @@ export type SalonLookupRow = {
   email: string;
   isActive: boolean;
   customDomain: string | null;
-  domainStatus: string | null;
 };
 
 export type OwnerRow = {
@@ -170,10 +169,6 @@ export async function ensureAdminAuthSchema() {
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS tiktok_username text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS custom_domain text`;
-      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_status text`;
-      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_verified_at timestamptz`;
-      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_last_checked_at timestamptz`;
-      await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS domain_config jsonb`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS owner_public_bio text`;
       await sql`ALTER TABLE salons ADD COLUMN IF NOT EXISTS venue_extras jsonb`;
       // Per-salon Resend (db/migration-salon-resend.sql) — fold into auto-schema
@@ -222,8 +217,7 @@ export async function resolveSalonBySlugOrHost({
             name,
             email,
             is_active,
-            custom_domain,
-            domain_status
+            custom_domain
           FROM salons
           WHERE slug = ${safeSlug}
           LIMIT 1
@@ -235,8 +229,7 @@ export async function resolveSalonBySlugOrHost({
             name,
             email,
             is_active,
-            custom_domain,
-            domain_status
+            custom_domain
           FROM salons
           WHERE slug = ${safeSlug} AND is_active = true
           LIMIT 1
@@ -251,7 +244,6 @@ export async function resolveSalonBySlugOrHost({
         email: String(row.email ?? ''),
         isActive: row.is_active === true,
         customDomain: typeof row.custom_domain === 'string' ? row.custom_domain : null,
-        domainStatus: typeof row.domain_status === 'string' ? row.domain_status : null,
       };
     }
   }
@@ -267,14 +259,8 @@ export async function resolveSalonBySlugOrHost({
     ? stripAdminSubdomain(hostname)
     : hostname;
 
-  // Only route custom domains that have been verified (domain_status = 'active').
-  // This prevents an unverified/squatted domain from intercepting traffic.
-  //
-  // Exception: Vercel preview URLs (`*.vercel.app`) skip the verification
-  // check. They never get `domain_status = 'active'` because they don't go
-  // through the DNS-verification flow — Vercel itself controls those
-  // subdomains, so only the project owner can route them to the engine. The
-  // agency uses them while the real custom domain is still propagating.
+  // DNS is set up manually by the agency, so any salon with a matching
+  // custom_domain is routable.
   const customRows = includeInactive
     ? await sql`
         SELECT
@@ -283,11 +269,9 @@ export async function resolveSalonBySlugOrHost({
           name,
           email,
           is_active,
-          custom_domain,
-          domain_status
+          custom_domain
         FROM salons
         WHERE lower(custom_domain) = lower(${candidateHostname})
-          AND (domain_status = 'active' OR lower(custom_domain) LIKE '%.vercel.app')
         LIMIT 1
       `
     : await sql`
@@ -297,12 +281,10 @@ export async function resolveSalonBySlugOrHost({
           name,
           email,
           is_active,
-          custom_domain,
-          domain_status
+          custom_domain
         FROM salons
         WHERE lower(custom_domain) = lower(${candidateHostname})
           AND is_active = true
-          AND (domain_status = 'active' OR lower(custom_domain) LIKE '%.vercel.app')
         LIMIT 1
       `;
 
@@ -322,7 +304,6 @@ export async function resolveSalonBySlugOrHost({
     email: String(row.email ?? ''),
     isActive: row.is_active === true,
     customDomain: typeof row.custom_domain === 'string' ? row.custom_domain : null,
-    domainStatus: typeof row.domain_status === 'string' ? row.domain_status : null,
   };
 }
 
@@ -543,21 +524,19 @@ export function setAdminSessionCookie(response: NextResponse, request: NextReque
 }
 
 /**
- * Returns the salon's custom domain only if it's marked active. Use as the
- * `customDomain` hint for generateAdminMagicLink so login links land on the
- * branded host whenever possible.
+ * Returns the salon's custom domain if set. Use as the `customDomain` hint
+ * for generateAdminMagicLink so login links land on the branded host.
  */
 export async function getActiveCustomDomain(salonId: string): Promise<string | null> {
   const rows = await sql`
-    SELECT custom_domain, domain_status
+    SELECT custom_domain
     FROM salons
     WHERE CAST(id AS text) = ${salonId}
     LIMIT 1
   `;
   if (rows.length === 0) return null;
-  const row = rows[0] as { custom_domain: string | null; domain_status: string | null };
-  if (row.domain_status !== 'active' || !row.custom_domain) return null;
-  return row.custom_domain;
+  const row = rows[0] as { custom_domain: string | null };
+  return row.custom_domain || null;
 }
 
 export async function generateAdminMagicLink({

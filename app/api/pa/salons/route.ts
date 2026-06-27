@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
 import { ensureAdminAuthSchema, generateAdminMagicLink, normalizeEmail } from '@/lib/admin-auth';
-import { syncDomainWithVercel } from '@/lib/vercel-domains';
 import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 
 const TRANSLIT: Record<string, string> = {
@@ -54,7 +53,6 @@ export async function GET(request: NextRequest) {
       s.is_active,
       s.site_status,
       s.custom_domain,
-      s.domain_status,
       s.created_at,
       s.updated_at,
       o.email AS owner_email,
@@ -128,7 +126,7 @@ export async function POST(request: NextRequest) {
       working_hours, services,
       template_id, primary_color, primary_color_light,
       is_active, site_status,
-      custom_domain, domain_status,
+      custom_domain,
       onboarding_code, owner_name
     ) VALUES (
       ${salonId}, ${slug}, ${name}, ${''}, ${''}, ${email},
@@ -138,44 +136,10 @@ export async function POST(request: NextRequest) {
       ${JSON.stringify(DEFAULT_HOURS)}::jsonb, ${'[]'}::jsonb,
       ${1}, ${'#111111'}, ${'#f3f4f6'},
       true, ${'setup'},
-      ${customDomain}, ${customDomain ? 'requested' : null},
+      ${customDomain},
       ${crypto.randomBytes(4).toString('hex').toUpperCase()}, ${ownerName}
     )
   `;
-
-  // If a custom domain was provided, register it with Vercel and persist the
-  // verification state so the salon's branded admin URL becomes /admin on that
-  // domain as soon as DNS propagates. Failures are non-fatal — agency can
-  // retry later.
-  let domainStatus: string | null = customDomain ? 'requested' : null;
-  if (customDomain) {
-    try {
-      const provider = await syncDomainWithVercel(customDomain);
-      const configJson = JSON.stringify({
-        provider: provider.provider,
-        dnsInstructions: provider.dnsInstructions,
-        verificationInstructions: provider.verificationInstructions,
-        configuredBy: provider.configuredBy,
-        misconfigured: provider.misconfigured,
-        verified: provider.verified,
-        providerDetails: provider.details,
-        checkedAt: new Date().toISOString(),
-      });
-      const isActive = provider.status === 'active';
-      await sql`
-        UPDATE salons SET
-          domain_status = ${provider.status},
-          domain_last_checked_at = now(),
-          domain_verified_at = CASE WHEN ${isActive} THEN now() ELSE NULL END,
-          domain_config = ${configJson}::jsonb,
-          updated_at = now()
-        WHERE id = ${salonId}
-      `;
-      domainStatus = provider.status;
-    } catch (err) {
-      console.error('[pa/salons POST] syncDomainWithVercel failed:', err);
-    }
-  }
 
   const magicLink = await generateAdminMagicLink({
     salonId,
@@ -201,7 +165,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, salonId, slug, magicLink, domainStatus, inviteSent });
+  return NextResponse.json({ ok: true, salonId, slug, magicLink, inviteSent });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -232,45 +196,11 @@ export async function PATCH(request: NextRequest) {
     await sql`
       UPDATE salons
       SET custom_domain = ${customDomain},
-          domain_status = ${customDomain ? 'requested' : null},
-          domain_last_checked_at = null,
-          domain_verified_at = null,
-          domain_config = null,
           updated_at = now()
       WHERE CAST(id AS text) = ${salonId}
     `;
 
-    let domainStatus: string | null = customDomain ? 'requested' : null;
-    if (customDomain) {
-      try {
-        const provider = await syncDomainWithVercel(customDomain);
-        const configJson = JSON.stringify({
-          provider: provider.provider,
-          dnsInstructions: provider.dnsInstructions,
-          verificationInstructions: provider.verificationInstructions,
-          configuredBy: provider.configuredBy,
-          misconfigured: provider.misconfigured,
-          verified: provider.verified,
-          providerDetails: provider.details,
-          checkedAt: new Date().toISOString(),
-        });
-        const isActive = provider.status === 'active';
-        await sql`
-          UPDATE salons SET
-            domain_status = ${provider.status},
-            domain_last_checked_at = now(),
-            domain_verified_at = CASE WHEN ${isActive} THEN now() ELSE NULL END,
-            domain_config = ${configJson}::jsonb,
-            updated_at = now()
-          WHERE CAST(id AS text) = ${salonId}
-        `;
-        domainStatus = provider.status;
-      } catch (err) {
-        console.error('[pa/salons PATCH] syncDomainWithVercel failed:', err);
-      }
-    }
-
-    return NextResponse.json({ ok: true, customDomain, domainStatus });
+    return NextResponse.json({ ok: true, customDomain });
   }
 
   // isActive toggle path

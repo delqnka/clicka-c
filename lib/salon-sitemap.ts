@@ -7,10 +7,9 @@ export async function buildSalonSitemapEntries(
   salonId: string,
   slug: string,
   customDomain: string,
-  domainStatus: string,
   updatedAt?: Date | null,
 ): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = getPrimaryPublicUrl({ slug, customDomain, domainStatus });
+  const baseUrl = getPrimaryPublicUrl({ slug, customDomain });
   const lastModified = updatedAt ?? new Date();
 
   const entries: MetadataRoute.Sitemap = [

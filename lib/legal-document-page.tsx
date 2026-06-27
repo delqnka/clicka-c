@@ -25,7 +25,6 @@ export function buildLegalInfo(
     getPrimaryPublicUrl({
       slug: salonSlug,
       customDomain: String(salon.custom_domain ?? ''),
-      domainStatus: String(salon.domain_status ?? ''),
     }),
   );
 
@@ -80,7 +79,6 @@ export async function renderLegalDocumentPage({
   const homeUrl = getPrimaryPublicUrl({
     slug: pageData.salonSlug,
     customDomain: String(salon.custom_domain ?? ''),
-    domainStatus: String(salon.domain_status ?? ''),
   });
 
   const customHtml = getCustomDocumentHtml(stored, kind);

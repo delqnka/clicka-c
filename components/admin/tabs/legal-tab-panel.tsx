@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
-import { isSalonCustomDomainLive, type LegalDocumentPath } from '@/lib/domain-routing';
+import type { LegalDocumentPath } from '@/lib/domain-routing';
 import { getLegalDocumentLabels } from '@/lib/legal-documents-shared';
 import type { LegalInfoStored } from '@/lib/legal-custom-documents';
 import type { AdminSitePayload } from '@/lib/admin-site';
@@ -120,7 +120,7 @@ export function LegalTabPanel({
           <p style={{ margin: 0, fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.6 }}>
             {isEn ? 'After saving, the documents are public on ' : 'След запазване документите са публични на '}
             <strong style={{ color: ADMIN_T.text }}>{publicSiteHost}</strong>
-            {isSalonCustomDomainLive(site.domainStatus) ? (isEn ? ' (your connected domain)' : ' (свързаният ти домейн)') : ''}:
+            {site.customDomain ? (isEn ? ' (your connected domain)' : ' (свързаният ти домейн)') : ''}:
           </p>
           <ul style={{ margin: '8px 0 0', paddingLeft: 0, listStyle: 'none', fontSize: 13, color: ADMIN_T.muted, lineHeight: 1.85 }}>
             {legalDocLinks.map(({ kind, url }) => (

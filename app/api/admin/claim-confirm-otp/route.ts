@@ -126,7 +126,6 @@ export async function POST(request: NextRequest) {
   const browserHost = getBrowserHost(request.headers);
   const activeCustomDomain = isSalonCustomDomainUsable({
     customDomain: salon.customDomain,
-    domainStatus: salon.domainStatus,
   })
     ? (salon.customDomain ?? '').trim().toLowerCase()
     : null;

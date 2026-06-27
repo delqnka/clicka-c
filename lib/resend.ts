@@ -193,7 +193,6 @@ export interface BookingDetails {
   salonId?: string;
   salonSlug?: string;
   salonCustomDomain?: string | null;
-  salonDomainStatus?: string | null;
   bookingId?: string;
   manageToken?: string;
   clientName: string;
@@ -522,7 +521,6 @@ export async function sendBookingConfirmation(
     ? getPrimaryPublicUrl({
         slug: booking.salonSlug,
         customDomain: booking.salonCustomDomain,
-        domainStatus: booking.salonDomainStatus,
       }).replace(/\/+$/, '')
     : (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
   const formattedDate = formatDateDMY(booking.date, locale);

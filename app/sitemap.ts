@@ -22,7 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (salon) {
     const salonRows = await sql`
-      SELECT custom_domain, domain_status, updated_at
+      SELECT custom_domain, updated_at
       FROM salons
       WHERE CAST(id AS text) = ${salon.salonId}
       LIMIT 1
@@ -32,7 +32,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       salon.salonId,
       salon.slug,
       String(row.custom_domain ?? salon.customDomain ?? ''),
-      String(row.domain_status ?? salon.domainStatus ?? ''),
       row.updated_at ? new Date(String(row.updated_at)) : null,
     );
   }

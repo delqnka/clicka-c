@@ -19,7 +19,6 @@ export type SalonRow = {
   is_active: boolean;
   site_status: string | null;
   custom_domain: string | null;
-  domain_status: string | null;
   created_at: string;
   updated_at: string | null;
   owner_email: string | null;
@@ -38,7 +37,6 @@ async function loadSalons(): Promise<SalonRow[]> {
         s.is_active,
         s.site_status,
         s.custom_domain,
-        s.domain_status,
         s.created_at,
         s.updated_at,
         o.email AS owner_email,
@@ -61,7 +59,6 @@ async function loadSalons(): Promise<SalonRow[]> {
       is_active: Boolean((r as Record<string, unknown>).is_active),
       site_status: (r as Record<string, unknown>).site_status as string | null,
       custom_domain: (r as Record<string, unknown>).custom_domain as string | null,
-      domain_status: (r as Record<string, unknown>).domain_status as string | null,
       created_at: String((r as Record<string, unknown>).created_at ?? ''),
       updated_at: (r as Record<string, unknown>).updated_at as string | null,
       owner_email: (r as Record<string, unknown>).owner_email as string | null,

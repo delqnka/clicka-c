@@ -128,40 +128,18 @@ export function getHostAwareSalonPath({
   return normalizedPath ? `/${normalizedPath}` : '/';
 }
 
-export function isSalonCustomDomainLive(domainStatus?: string | null) {
-  const status = String(domainStatus ?? '').trim().toLowerCase();
-  return status === 'active' || status === 'verified' || status === 'connected';
-}
-
 /**
- * True for Vercel preview URLs (`*.vercel.app`). Vercel owns these
- * subdomains and binds them to a specific project, so only the project
- * owner can route them to our engine — there is no DNS-verification step
- * to wait for, and they never reach `domain_status = 'active'`.
- */
-export function isVercelPreviewDomain(domain?: string | null): boolean {
-  const normalized = String(domain ?? '').trim().toLowerCase();
-  return /\.vercel\.app$/.test(normalized);
-}
-
-/**
- * Whether a salon's custom domain is usable for routing/links/invites.
+ * Whether a salon has a usable custom domain.
  *
- * Returns true when EITHER the domain has been DNS-verified
- * (`domain_status` is active/verified/connected) OR it is a Vercel preview
- * URL (which is inherently trusted — see {@link isVercelPreviewDomain}).
- *
- * Use this for any flow that needs a "is this salon's domain ready to be
- * given to end-clients" decision — sending invites, generating staff
- * portal links, building the engine→salon redirect base, etc.
+ * Clicka is a white-label engine, not a SaaS — DNS is set up manually by
+ * the agency. There is no automated verification step, so the presence of
+ * `custom_domain` is the only signal that matters.
  */
 export function isSalonCustomDomainUsable(params: {
   customDomain?: string | null;
-  domainStatus?: string | null;
 }): boolean {
   const domain = String(params.customDomain ?? '').trim().toLowerCase();
-  if (!domain) return false;
-  return isSalonCustomDomainLive(params.domainStatus) || isVercelPreviewDomain(domain);
+  return Boolean(domain);
 }
 
 /**
@@ -181,17 +159,12 @@ export function isSalonCustomDomainUsable(params: {
 export function getPrimaryPublicUrl({
   slug,
   customDomain,
-  domainStatus,
 }: {
   slug: string;
   customDomain?: string | null;
-  domainStatus?: string | null;
 }) {
   const custom = String(customDomain ?? '').trim();
-  if (custom && isSalonCustomDomainLive(domainStatus)) {
-    return getCustomDomainOrigin(custom);
-  }
-
+  if (custom) return getCustomDomainOrigin(custom);
   return `${getOriginForHost(ROOT_DOMAIN)}/${slug}`;
 }
 
@@ -209,14 +182,12 @@ export function getSalonHomeLegalRewritePath(pathname: string): string | null {
 export function getLegalDocumentUrl({
   slug,
   customDomain,
-  domainStatus,
   document,
 }: {
   slug: string;
   customDomain?: string | null;
-  domainStatus?: string | null;
   document: LegalDocumentPath;
 }) {
-  const origin = getPrimaryPublicUrl({ slug, customDomain, domainStatus });
+  const origin = getPrimaryPublicUrl({ slug, customDomain });
   return `${origin}/${document}`;
 }

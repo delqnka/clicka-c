@@ -8,7 +8,6 @@ type Result = {
   salonId: string;
   slug: string;
   magicLink: string | null;
-  domainStatus: string | null;
   inviteSent: boolean;
 };
 
@@ -103,15 +102,6 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
     const primaryAdminUrl = normalizedCustomDomain
       ? `${getCustomDomainAdminUrl(normalizedCustomDomain)}/admin`
       : null;
-    const statusLabel =
-      result.domainStatus === 'active' ? 'активен'
-      : result.domainStatus === 'pending_verification' ? 'чака верификация'
-      : result.domainStatus === 'pending_dns' ? 'чака DNS'
-      : result.domainStatus === 'requested' ? 'заявен'
-      : result.domainStatus ?? 'без домейн';
-    const statusColor =
-      result.domainStatus === 'active' ? 'text-emerald-700 bg-emerald-50'
-      : 'text-amber-700 bg-amber-50';
 
     return (
       <div className="space-y-4 rounded-[28px] border border-[#bbf7d0] bg-white p-5 shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
@@ -131,12 +121,6 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
 
         <div className="grid gap-1.5 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-black/55">DNS статус:</span>
-            <span className={`px-2 py-0.5 rounded font-semibold ${statusColor}`}>
-              {statusLabel}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
             <span className="text-black/55">Onboarding имейл:</span>
             <span className={`px-2 py-0.5 rounded font-semibold ${result.inviteSent ? 'text-emerald-700 bg-emerald-100' : 'text-black/60 bg-white border border-black/10'}`}>
               {result.inviteSent ? 'изпратен' : 'не е изпратен'}
@@ -154,7 +138,7 @@ export function NewSalonForm({ onCreated }: { onCreated?: () => void }) {
             </div>
           ) : (
             <div className="text-xs text-black/72">
-              Admin URL ще е достъпен след като custom домейнът се активира. Magic link не се изпраща преди това.
+              Admin URL ще е достъпен след като се запише custom домейн на салона.
             </div>
           )}
         </div>

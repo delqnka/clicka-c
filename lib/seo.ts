@@ -111,7 +111,6 @@ export function buildSalonPageMetadata(
   const canonicalUrl = getPrimaryPublicUrl({
     slug,
     customDomain: String(salon.custom_domain ?? ''),
-    domainStatus: String(salon.domain_status ?? ''),
   });
 
   const siteName = String(salon.name ?? '').trim() || title;
@@ -162,7 +161,6 @@ export function buildSalonJsonLd(
   const url = getPrimaryPublicUrl({
     slug,
     customDomain: String(salon.custom_domain ?? ''),
-    domainStatus: String(salon.domain_status ?? ''),
   });
 
   const schemaType = CATEGORY_SCHEMA_MAP[category] || 'BeautySalon';
@@ -260,7 +258,6 @@ function salonPublicBaseUrl(salon: Record<string, unknown>, slug: string): strin
   return getPrimaryPublicUrl({
     slug,
     customDomain: String(salon.custom_domain ?? ''),
-    domainStatus: String(salon.domain_status ?? ''),
   });
 }
 

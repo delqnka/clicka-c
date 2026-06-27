@@ -10,7 +10,7 @@ import { sql } from '@/lib/db';
  *   - https://*.<ROOT_DOMAIN>  (BRAND apex + subdomains)
  *   - http://localhost:*       (local dev)
  *   - http://*.localhost   (local dev with subdomains)
- *   - verified custom domains (domain_status = 'active' in DB)
+ *   - any salon custom_domain saved in the DB
  *
  * Requests with no Origin header are allowed only when they also have no
  * Cookie header (server-to-server calls like Stripe webhooks).

@@ -71,7 +71,6 @@ export async function POST(request: NextRequest) {
 
   const activeCustomDomain = isSalonCustomDomainUsable({
     customDomain: salon.customDomain,
-    domainStatus: salon.domainStatus,
   })
     ? (salon.customDomain ?? '').trim().toLowerCase()
     : null;
