@@ -4,12 +4,39 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import type { Locale } from '@/lib/i18n';
 
 type Props = { children: ReactNode; locale?: Locale };
-type State = { error: Error | null };
+type State = { error: Error | null; runtimeErrors: string[] };
 
 export class AdminErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, runtimeErrors: [] };
 
-  static getDerivedStateFromError(error: Error): State {
+  private onWindowError = (ev: ErrorEvent) => {
+    const msg = `${ev.message}${ev.filename ? `  @ ${ev.filename}:${ev.lineno}:${ev.colno}` : ''}`;
+    this.setState((s) => ({ runtimeErrors: [...s.runtimeErrors, msg].slice(-5) }));
+  };
+
+  private onUnhandledRejection = (ev: PromiseRejectionEvent) => {
+    const reason: unknown = ev.reason;
+    let msg: string;
+    if (reason instanceof Error) msg = `Unhandled: ${reason.message}\n${reason.stack ?? ''}`;
+    else msg = `Unhandled: ${String(reason)}`;
+    this.setState((s) => ({ runtimeErrors: [...s.runtimeErrors, msg].slice(-5) }));
+  };
+
+  componentDidMount() {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('error', this.onWindowError);
+      window.addEventListener('unhandledrejection', this.onUnhandledRejection);
+    }
+  }
+
+  componentWillUnmount() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('error', this.onWindowError);
+      window.removeEventListener('unhandledrejection', this.onUnhandledRejection);
+    }
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
@@ -19,6 +46,41 @@ export class AdminErrorBoundary extends Component<Props, State> {
 
   render() {
     const isEn = this.props.locale === 'en';
+    const runtimeBanner = this.state.runtimeErrors.length > 0 ? (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 2147483647,
+          background: '#dc2626',
+          color: '#fff',
+          padding: '10px 14px',
+          fontSize: 12,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          maxHeight: '40vh',
+          overflow: 'auto',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+          whiteSpace: 'pre-wrap',
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>
+          [admin runtime error]{' '}
+          <button
+            type="button"
+            onClick={() => this.setState({ runtimeErrors: [] })}
+            style={{ marginLeft: 8, background: '#fff', color: '#dc2626', border: 'none', padding: '2px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+          >
+            dismiss
+          </button>
+        </div>
+        {this.state.runtimeErrors.map((m, i) => (
+          <div key={i} style={{ marginBottom: 6, borderTop: i ? '1px solid rgba(255,255,255,0.3)' : 'none', paddingTop: i ? 6 : 0 }}>{m}</div>
+        ))}
+      </div>
+    ) : null;
+
     if (this.state.error) {
       return (
         <div
@@ -62,6 +124,11 @@ export class AdminErrorBoundary extends Component<Props, State> {
         </div>
       );
     }
-    return this.props.children;
+    return (
+      <>
+        {runtimeBanner}
+        {this.props.children}
+      </>
+    );
   }
 }
