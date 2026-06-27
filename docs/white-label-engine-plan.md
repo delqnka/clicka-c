@@ -27,7 +27,7 @@ frontend code. They use Clicka only through backend APIs.
    - `NEXT_PUBLIC_ENGINE_URL`
    - `NEXT_PUBLIC_SALON_SLUG`
    - `NEXT_PUBLIC_SITE_URL`
-4. Mount `BookingProvider` from `@clicka/booking`.
+4. Mount `BookingProvider` from `@clicka1/booking`.
 5. Put `BookingButton` or `data-clicka-book` on the public CTA buttons.
 6. The custom site reads only versioned public endpoints when custom UI is needed.
 

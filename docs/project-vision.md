@@ -107,7 +107,7 @@ Stripe се използва само за:
 Основната цел е:
 
 ```tsx
-import { BookingWidget } from '@clicka/booking';
+import { BookingWidget } from '@clicka1/booking';
 
 <BookingWidget salonSlug="paradise" />
 ```

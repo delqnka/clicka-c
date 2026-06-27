@@ -1,5 +1,5 @@
 /**
- * @clicka/booking-sdk — typed client for the public booking API.
+ * @clicka1/booking-sdk — typed client for the public booking API.
  *
  * Used by external white-label frontends to talk to a Clicka engine deploy
  * (Clicka.bg or any other branded instance). All requests include the

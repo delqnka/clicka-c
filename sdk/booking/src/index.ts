@@ -1,10 +1,10 @@
 /**
- * Public SDK surface for `@clicka/booking`.
+ * Public SDK surface for `@clicka1/booking`.
  *
  * Recommended (Tier 1) integration:
  *
- *   import { BookingProvider, BookingButton } from '@clicka/booking';
- *   import '@clicka/booking/styles.css';
+ *   import { BookingProvider, BookingButton } from '@clicka1/booking';
+ *   import '@clicka1/booking/styles.css';
  *
  *   <BookingProvider salonSlug="urban-by-delyana">
  *     <App />
@@ -23,7 +23,7 @@
  *
  * Advanced — raw widget without provider:
  *
- *   import { BookingWidget } from '@clicka/booking';
+ *   import { BookingWidget } from '@clicka1/booking';
  */
 export { BookingProvider, BookingContext } from '@/components/booking/BookingProvider';
 export type { BookingContextValue, BookingProviderProps } from '@/components/booking/BookingProvider';

@@ -1,17 +1,17 @@
-# @clicka/booking-sdk
+# @clicka1/booking-sdk
 
 Типизиран клиент за публичното `v1` API на Clicka booking engine. Ползва се от
 white-label custom фронтенди (paradise.bg, hairandart.bg, …) за да резервират
 часове срещу централния engine deploy.
 
 Ако целта е най-бързо свързване на сайт за 5 минути, ползвай
-`@clicka/booking`, не този пакет. `@clicka/booking-sdk` е за случаите, в които
+`@clicka1/booking`, не този пакет. `@clicka1/booking-sdk` е за случаите, в които
 съзнателно правим custom booking UI.
 
 ## Инсталиране
 
 ```bash
-npm install @clicka/booking-sdk
+npm install @clicka1/booking-sdk
 ```
 
 (пакетът е workspace-local; за публикуване в private npm registry виж раздел
@@ -20,7 +20,7 @@ npm install @clicka/booking-sdk
 ## Бърз старт
 
 ```ts
-import { createBookingClient } from '@clicka/booking-sdk';
+import { createBookingClient } from '@clicka1/booking-sdk';
 
 const client = createBookingClient({
   engineUrl: 'https://www.clicka.bg',
@@ -77,4 +77,4 @@ Engine-ът enforce-ва ключа когато `REQUIRE_PUBLIC_API_KEY=1` е �
 
 Не карай Claude, Cursor или друг AI да генерира собствен booking form, ако не е
 абсолютно нужно. За standard salon сайт е по-добре AI-то да прави само
-маркетинг страниците и бутоните, а booking flow-ът да остане в `@clicka/booking`.
+маркетинг страниците и бутоните, а booking flow-ът да остане в `@clicka1/booking`.

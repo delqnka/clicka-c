@@ -24,7 +24,7 @@ Target shape:
 
 ```text
 client-site repo
-  -> @clicka/booking SDK
+  -> @clicka1/booking SDK
   -> engine public API
   -> branded admin on /admin
 ```
@@ -147,7 +147,7 @@ This keeps the engine out of the role of public marketing site.
 
 There are two valid ways to connect a new salon site.
 
-### Option A: Use `@clicka/booking`
+### Option A: Use `@clicka1/booking`
 
 Best for:
 
@@ -159,7 +159,7 @@ Best for:
 Install:
 
 ```bash
-npm install @clicka/booking
+npm install @clicka1/booking
 ```
 
 Use this exact pattern:
@@ -167,8 +167,8 @@ Use this exact pattern:
 ```tsx
 'use client';
 
-import { BookingProvider, BookingButton } from '@clicka/booking';
-import '@clicka/booking/styles.css';
+import { BookingProvider, BookingButton } from '@clicka1/booking';
+import '@clicka1/booking/styles.css';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -406,7 +406,7 @@ Use this exact order.
 7. Add `NEXT_PUBLIC_ENGINE_URL`.
 8. Add `NEXT_PUBLIC_SALON_SLUG`.
 9. Add `NEXT_PUBLIC_SITE_URL` if checkout redirects are needed.
-10. Integrate `@clicka/booking` or custom public API calls.
+10. Integrate `@clicka1/booking` or custom public API calls.
 11. Add `/booking/success`.
 12. Add `/booking/cancel`.
 13. Point the public domain to the custom site project.

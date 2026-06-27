@@ -202,17 +202,20 @@
         "addressMobile": "Адрес / WWW",
         "about": "За салона",
         "faq": "FAQ",
-        "amenities": "Допълнителна",
-        "amenitiesMobile": "Доп. информация"
+        "amenities": "Удобства",
+        "amenitiesMobile": "Удобства"
       },
       "fields": {
         "salonName": "Име на салона",
-        "category": "Категория",
         "phone": "Телефон",
         "email": "Имейл",
         "city": "Град",
         "language": "Език",
-        "address": "Адрес"
+        "address": "Адрес",
+        "heroTitle": "Заглавие на началната страница",
+        "heroTitleHint": "По избор. Ако оставиш празно, ще се покаже името на салона.",
+        "heroSubtitle": "Подзаглавие / tagline",
+        "heroSubtitleHint": "Кратък текст под заглавието (напр. „Красота, която те кара да се чувстваш у дома\")."
       },
       "languageOptions": {
         "bg": "Български",

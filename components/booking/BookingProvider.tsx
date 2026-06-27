@@ -123,6 +123,7 @@ function resolveEngine(prop?: string): string {
     prop ||
     readGlobalString('__CLICKA_ENGINE_URL') ||
     readMeta('clicka:engine') ||
+    readEnv('NEXT_PUBLIC_ENGINE_URL') ||
     readEnv('NEXT_PUBLIC_CLICKA_ENGINE') ||
     readEnv('NEXT_PUBLIC_CLICKA_API_URL') ||
     // Canonical host (with www). The bare clicka.bg returns a 308 redirect
@@ -194,7 +195,7 @@ export function BookingProvider({
   useEffect(() => {
     if (!slug) {
       console.error(
-        '[@clicka/booking] BookingProvider has no salon slug. Pass `salonSlug` ' +
+        '[@clicka1/booking] BookingProvider has no salon slug. Pass `salonSlug` ' +
           'or set NEXT_PUBLIC_SALON_SLUG / <meta name="clicka:salon"> / ' +
           'window.__CLICKA_SALON_SLUG.',
       );
@@ -216,7 +217,7 @@ export function BookingProvider({
       .catch((e: unknown) => {
         if (cancelled) return;
         const err = e instanceof Error ? e : new Error(String(e));
-        console.error('[@clicka/booking] salon fetch failed:', err);
+        console.error('[@clicka1/booking] salon fetch failed:', err);
         setError(err);
       });
     return () => {

@@ -12,7 +12,7 @@ export function useBooking(): BookingContextValue {
   const ctx = useContext(BookingContext);
   if (!ctx) {
     throw new Error(
-      '[@clicka/booking] useBooking() must be called inside <BookingProvider>.',
+      '[@clicka1/booking] useBooking() must be called inside <BookingProvider>.',
     );
   }
   return ctx;

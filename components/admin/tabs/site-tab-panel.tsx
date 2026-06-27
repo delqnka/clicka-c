@@ -182,9 +182,6 @@ export function SiteTabPanel({
           <AdminField compact label={t('adminDashboard.siteTab.fields.salonName')}>
             <input value={site.name} onChange={(e) => setSite((p) => ({ ...p, name: e.target.value }))} style={fieldInp} />
           </AdminField>
-          <AdminField compact label={t('adminDashboard.siteTab.fields.category')}>
-            <input value={site.category} onChange={(e) => setSite((p) => ({ ...p, category: e.target.value }))} style={fieldInp} />
-          </AdminField>
           <AdminField compact label={t('adminDashboard.siteTab.fields.phone')}>
             <input value={site.phone} onChange={(e) => setSite((p) => ({ ...p, phone: e.target.value }))} style={fieldInp} type="tel" inputMode="tel" />
           </AdminField>
@@ -270,11 +267,32 @@ export function SiteTabPanel({
 
       {section === 'about' ? (
         <div style={{ display: 'grid', gap: 10 }}>
+          <AdminField compact label={t('adminDashboard.siteTab.fields.heroTitle')}>
+            <input
+              value={site.heroTitle}
+              onChange={(e) => setSite((p) => ({ ...p, heroTitle: e.target.value }))}
+              placeholder={site.name}
+              style={fieldInp}
+            />
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: ADMIN_T.muted, lineHeight: 1.4 }}>
+              {t('adminDashboard.siteTab.fields.heroTitleHint')}
+            </p>
+          </AdminField>
+          <AdminField compact label={t('adminDashboard.siteTab.fields.heroSubtitle')}>
+            <input
+              value={site.heroSubtitle}
+              onChange={(e) => setSite((p) => ({ ...p, heroSubtitle: e.target.value }))}
+              style={fieldInp}
+            />
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: ADMIN_T.muted, lineHeight: 1.4 }}>
+              {t('adminDashboard.siteTab.fields.heroSubtitleHint')}
+            </p>
+          </AdminField>
           <AdminField compact label={t('adminDashboard.siteTab.sections.about')}>
             <textarea
               value={site.about}
               onChange={(e) => setSite((p) => ({ ...p, about: e.target.value }))}
-              style={{ ...fieldInp, minHeight: 96, resize: 'vertical', lineHeight: 1.5 }}
+              style={{ ...fieldInp, minHeight: 180, resize: 'vertical', lineHeight: 1.5 }}
             />
           </AdminField>
           <SalonFaqVisitorFields
@@ -323,6 +341,36 @@ export function SiteTabPanel({
           onChangeAdditionalInfo={(visitorAdditionalInfo) => setSite((p) => ({ ...p, visitorAdditionalInfo }))}
           onChangeVenueExtras={(venueExtras) => setSite((p) => ({ ...p, venueExtras }))}
         />
+      ) : null}
+
+      {isMobile ? (
+        <div
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            marginTop: 16,
+            marginLeft: -12,
+            marginRight: -12,
+            padding: '10px 12px',
+            background: 'rgba(255,255,255,0.96)',
+            backdropFilter: 'saturate(180%) blur(10px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(10px)',
+            borderTop: `1px solid ${ADMIN_T.border}`,
+            zIndex: 20,
+          }}
+        >
+          <AdminSaveBtn
+            label={t('adminDashboard.actions.save')}
+            busy={busyKey === 'site'}
+            mobile
+            green
+            compact
+            locale={locale}
+            onClick={saveSiteSettings}
+          />
+        </div>
       ) : null}
     </AdminSection>
   );

@@ -530,7 +530,8 @@ export default function SalonPublicParity({
   const name = String(rawSalon.name ?? 'Салон');
   const salonLocale = resolveSalonLocale(typeof rawSalon.language === 'string' ? rawSalon.language : 'bg');
   const bookingLocale = toLocaleTag(salonLocale);
-  const category = String(rawSalon.category ?? '').trim();
+  const heroTitle = String(rawSalon.hero_title ?? '').trim() || name;
+  const heroSubtitle = String(rawSalon.hero_subtitle ?? '').trim();
   const description = String(rawSalon.about ?? '').trim();
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
@@ -1429,8 +1430,8 @@ export default function SalonPublicParity({
           <div className="min-w-0">
             <div className="flex flex-wrap items-start justify-between gap-4 pb-5 lg:pb-0">
               <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{name}</h1>
-                {category ? <p className="salon-text-light text-sm lg:mt-2">{category}</p> : null}
+                <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{heroTitle}</h1>
+                {heroSubtitle ? <p className="salon-text-light text-sm lg:mt-2">{heroSubtitle}</p> : null}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm salon-text-muted">
                   {headerGoogleRating != null && (
                     <button

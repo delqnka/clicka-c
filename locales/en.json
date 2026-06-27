@@ -202,17 +202,20 @@
         "addressMobile": "Address / WWW",
         "about": "About",
         "faq": "FAQ",
-        "amenities": "Additional",
-        "amenitiesMobile": "More info"
+        "amenities": "Amenities",
+        "amenitiesMobile": "Amenities"
       },
       "fields": {
         "salonName": "Salon name",
-        "category": "Category",
         "phone": "Phone",
         "email": "Email",
         "city": "City",
         "language": "Language",
-        "address": "Address"
+        "address": "Address",
+        "heroTitle": "Hero title",
+        "heroTitleHint": "Optional. If left blank, the salon name will be shown.",
+        "heroSubtitle": "Hero subtitle / tagline",
+        "heroSubtitleHint": "A short line under the title (e.g. \"Beauty that feels like home\")."
       },
       "languageOptions": {
         "bg": "Bulgarian",

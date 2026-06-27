@@ -244,16 +244,16 @@ export function AdminSaveBtn({
         display: 'inline-flex',
         alignItems: 'center',
         border: 'none',
-        background: 'none',
-        padding: '4px 8px',
+        background: saved ? '#16a34a' : '#000',
+        padding: '7px 16px',
+        borderRadius: 999,
         fontSize: 13,
         fontWeight: 700,
+        color: '#fff',
         cursor: busy ? 'wait' : 'pointer',
         whiteSpace: 'nowrap',
-        backgroundImage: '#000',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
+        opacity: busy ? 0.7 : 1,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
       }}
     >
       {busy ? (isEn ? 'Saving…' : 'Запазване…') : saved ? (isEn ? '✓ Saved' : '✓ Запазено') : (isEn ? 'Save' : 'Запази')}

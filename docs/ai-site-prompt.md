@@ -14,7 +14,7 @@ Important architecture rules:
 4. Booking must be handled by the existing Clicka SDK integration.
 5. The site must include clear CTA buttons like "Резервирай", "Запази час", "Book now".
 6. Every booking CTA should either:
-   - use a `BookingButton` component from `@clicka/booking`, or
+   - use a `BookingButton` component from `@clicka1/booking`, or
    - keep the existing visual button markup and add `data-clicka-book`
 7. Add one root `BookingProvider` near the top of the app tree.
 8. Read these env vars:
@@ -33,8 +33,8 @@ Important architecture rules:
 
 Implementation target:
 
-- Use `@clicka/booking`
-- Import `@clicka/booking/styles.css`
+- Use `@clicka1/booking`
+- Import `@clicka1/booking/styles.css`
 - Mount `<BookingProvider />` once
 - Use `BookingButton` or `data-clicka-book` on CTA buttons
 - Keep the rest of the site custom
@@ -53,8 +53,8 @@ Success means:
 ```tsx
 'use client';
 
-import { BookingProvider, BookingButton } from '@clicka/booking';
-import '@clicka/booking/styles.css';
+import { BookingProvider, BookingButton } from '@clicka1/booking';
+import '@clicka1/booking/styles.css';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (

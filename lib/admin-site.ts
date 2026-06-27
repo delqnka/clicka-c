@@ -56,6 +56,8 @@ export type AdminSitePayload = {
   city: string;
   address: string;
   about: string;
+  heroTitle: string;
+  heroSubtitle: string;
   instagram: string;
   facebook: string;
   tiktok: string;
@@ -151,6 +153,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
   const rows = await sql`
     SELECT
       slug, name, category, phone, email, city, address, about,
+      hero_title, hero_subtitle,
       language,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       images,
@@ -187,6 +190,8 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     city: String(row.city ?? ''),
     address: String(row.address ?? ''),
     about: String(row.about ?? ''),
+    heroTitle: String(row.hero_title ?? ''),
+    heroSubtitle: String(row.hero_subtitle ?? ''),
     instagram: String(row.instagram_username ?? ''),
     facebook: String(row.facebook_username ?? ''),
     tiktok: String(row.tiktok_username ?? ''),

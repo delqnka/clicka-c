@@ -1,0 +1,16 @@
+{
+  "name": "@clicka1/clicka",
+  "version": "0.1.4",
+  "description": "CLI for onboarding client websites to Clicka booking.",
+  "type": "module",
+  "bin": {
+    "clicka1": "./bin/clicka.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
