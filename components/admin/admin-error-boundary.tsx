@@ -22,10 +22,34 @@ export class AdminErrorBoundary extends Component<Props, State> {
     this.setState((s) => ({ runtimeErrors: [...s.runtimeErrors, msg].slice(-5) }));
   };
 
+  private onAnyClick = (ev: MouseEvent) => {
+    const target = ev.target as Element | null;
+    if (!target) return;
+    const desc = (el: Element) => {
+      const tag = el.tagName.toLowerCase();
+      const id = el.id ? `#${el.id}` : '';
+      const cls = typeof el.className === 'string' && el.className ? `.${el.className.split(/\s+/).filter(Boolean).slice(0, 3).join('.')}` : '';
+      const txt = (el.textContent ?? '').trim().slice(0, 30);
+      return `${tag}${id}${cls}${txt ? ` "${txt}"` : ''}`;
+    };
+    const path: string[] = [];
+    let cur: Element | null = target;
+    let depth = 0;
+    while (cur && depth < 6) {
+      path.push(desc(cur));
+      cur = cur.parentElement;
+      depth++;
+    }
+    const top = document.elementFromPoint(ev.clientX, ev.clientY);
+    const msg = `CLICK @ (${ev.clientX},${ev.clientY})\ntopmost: ${top ? desc(top) : '<none>'}\nevent.target chain:\n  ${path.join('\n  ')}`;
+    this.setState((s) => ({ runtimeErrors: [...s.runtimeErrors, msg].slice(-3) }));
+  };
+
   componentDidMount() {
     if (typeof window !== 'undefined') {
       window.addEventListener('error', this.onWindowError);
       window.addEventListener('unhandledrejection', this.onUnhandledRejection);
+      window.addEventListener('click', this.onAnyClick, true);
     }
   }
 
@@ -33,6 +57,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
     if (typeof window !== 'undefined') {
       window.removeEventListener('error', this.onWindowError);
       window.removeEventListener('unhandledrejection', this.onUnhandledRejection);
+      window.removeEventListener('click', this.onAnyClick, true);
     }
   }
 
