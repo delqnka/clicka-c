@@ -406,7 +406,15 @@ export default function AdminDashboardClient({
   const activeTopLevelTab = topLevelTabFor(activeTab);
 
   const isMobile = useIsMobileLayout();
-  const currentHost   = typeof window !== 'undefined' ? window.location.host : null;
+  // Read window.location.host inside an effect so SSR and the first client
+  // render produce identical HTML. Reading it directly during render makes
+  // server output (null) diverge from client output (real host), which React
+  // 18 treats as a hydration mismatch and bails out of hydrating the entire
+  // subtree — that breaks every onClick on the dashboard.
+  const [currentHost, setCurrentHost] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined') setCurrentHost(window.location.host);
+  }, []);
   const sitePath      = getHostAwareSalonPath({ host: currentHost, slug });
   const sitePublicUrl = getPrimaryPublicUrl({ slug, customDomain: site.customDomain });
   const publicSiteHost = extractHostname(sitePublicUrl);
