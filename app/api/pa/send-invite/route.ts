@@ -94,20 +94,11 @@ export async function POST(request: NextRequest) {
     : [];
   const hasPassword = !!String((passwordRows[0] as Record<string, unknown> | undefined)?.password_hash ?? '');
 
-  const rawCustomDomain = typeof salon.custom_domain === 'string' ? salon.custom_domain.trim().toLowerCase() : '';
-  const customDomain = isSalonCustomDomainUsable({
-    customDomain: rawCustomDomain,
-    domainStatus: salon.domain_status as string | null,
-  })
-    ? rawCustomDomain
-    : null;
+  const customDomain = typeof salon.custom_domain === 'string' ? salon.custom_domain.trim().toLowerCase() : '';
 
   if (!customDomain) {
     return NextResponse.json(
-      {
-        error:
-          'Салонът няма custom домейн готов за ползване. Настрой домейна (или Vercel preview URL) и тогава изпрати magic link.',
-      },
+      { error: 'Салонът няма custom домейн. Запиши домейн и тогава изпрати magic link.' },
       { status: 409 },
     );
   }

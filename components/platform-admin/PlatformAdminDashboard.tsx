@@ -577,18 +577,14 @@ export default function PlatformAdminDashboard({
                                   ),
                                 })}
                                 {(() => {
-                                  const domainStatus = String(salon.domain_status ?? '').toLowerCase();
-                                  const customDomain = String(salon.custom_domain ?? '').trim().toLowerCase();
-                                  const isVercelPreview = /\.vercel\.app$/.test(customDomain);
-                                  const domainReady = !!customDomain && (domainStatus === 'active' || isVercelPreview);
+                                  const customDomain = String(salon.custom_domain ?? '').trim();
+                                  const hasDomain = !!customDomain;
                                   return actionButton({
                                     tone: 'dark',
                                     onClick: () => handleSendInvite(salon.salon_id),
-                                    disabled: sendingInvite === salon.salon_id || !domainReady,
+                                    disabled: sendingInvite === salon.salon_id || !hasDomain,
                                     className: 'w-full',
-                                    title: !domainReady
-                                      ? 'Първо настрой custom домейн (active) или Vercel preview URL'
-                                      : undefined,
+                                    title: !hasDomain ? 'Първо запиши custom домейн' : undefined,
                                     children: (
                                       <>
                                         <Mail className="h-4 w-4" />
