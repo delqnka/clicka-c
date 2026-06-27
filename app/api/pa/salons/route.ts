@@ -210,12 +210,70 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { salonId, isActive } = body as { salonId?: string; isActive?: boolean };
+  const { salonId, isActive, customDomain: rawCustomDomain } = body as {
+    salonId?: string;
+    isActive?: boolean;
+    customDomain?: string;
+  };
 
   if (!salonId) {
     return NextResponse.json({ error: 'Липсва salonId' }, { status: 400 });
   }
 
+  // Domain update path
+  if (rawCustomDomain !== undefined) {
+    const domainInput = rawCustomDomain.trim().toLowerCase();
+    const DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
+    if (domainInput && !DOMAIN_RE.test(domainInput)) {
+      return NextResponse.json({ error: 'Невалиден домейн' }, { status: 400 });
+    }
+    const customDomain = domainInput || null;
+
+    await sql`
+      UPDATE salons
+      SET custom_domain = ${customDomain},
+          domain_status = ${customDomain ? 'requested' : null},
+          domain_last_checked_at = null,
+          domain_verified_at = null,
+          domain_config = null,
+          updated_at = now()
+      WHERE CAST(id AS text) = ${salonId}
+    `;
+
+    let domainStatus: string | null = customDomain ? 'requested' : null;
+    if (customDomain) {
+      try {
+        const provider = await syncDomainWithVercel(customDomain);
+        const configJson = JSON.stringify({
+          provider: provider.provider,
+          dnsInstructions: provider.dnsInstructions,
+          verificationInstructions: provider.verificationInstructions,
+          configuredBy: provider.configuredBy,
+          misconfigured: provider.misconfigured,
+          verified: provider.verified,
+          providerDetails: provider.details,
+          checkedAt: new Date().toISOString(),
+        });
+        const isActive = provider.status === 'active';
+        await sql`
+          UPDATE salons SET
+            domain_status = ${provider.status},
+            domain_last_checked_at = now(),
+            domain_verified_at = CASE WHEN ${isActive} THEN now() ELSE NULL END,
+            domain_config = ${configJson}::jsonb,
+            updated_at = now()
+          WHERE CAST(id AS text) = ${salonId}
+        `;
+        domainStatus = provider.status;
+      } catch (err) {
+        console.error('[pa/salons PATCH] syncDomainWithVercel failed:', err);
+      }
+    }
+
+    return NextResponse.json({ ok: true, customDomain, domainStatus });
+  }
+
+  // isActive toggle path
   await sql`
     UPDATE salons
     SET is_active = ${isActive ?? false}, updated_at = now()

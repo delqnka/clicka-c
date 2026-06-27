@@ -148,6 +148,11 @@ export default function PlatformAdminDashboard({
     Object.fromEntries(salons.map((salon) => [salon.salon_id, salon.email ?? ''])),
   );
   const [inviteLocale, setInviteLocale] = useState<Record<string, 'bg' | 'en'>>({});
+  const [domainInputs, setDomainInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(salons.map((salon) => [salon.salon_id, salon.custom_domain ?? ''])),
+  );
+  const [savingDomain, setSavingDomain] = useState<string | null>(null);
+  const [domainNotice, setDomainNotice] = useState<Record<string, { tone: 'success' | 'error'; message: string }>>({});
 
   const filteredSalons = useMemo(() => {
     return salonList.filter((salon) => {
@@ -233,6 +238,40 @@ export default function PlatformAdminDashboard({
       }
     } finally {
       setToggling(null);
+    }
+  }
+
+  async function handleSaveDomain(salonId: string) {
+    setSavingDomain(salonId);
+    setDomainNotice((prev) => ({ ...prev, [salonId]: undefined as unknown as { tone: 'success' | 'error'; message: string } }));
+    try {
+      const customDomain = (domainInputs[salonId] ?? '').trim().toLowerCase();
+      const res = await fetch('/api/pa/salons', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salonId, customDomain }),
+      });
+      const data = await readJsonSafe(res);
+      if (!res.ok) {
+        setDomainNotice((prev) => ({
+          ...prev,
+          [salonId]: { tone: 'error', message: typeof data.error === 'string' ? data.error : 'Грешка при запис.' },
+        }));
+        return;
+      }
+      const newDomain = typeof data.customDomain === 'string' ? data.customDomain : customDomain;
+      const newStatus = typeof data.domainStatus === 'string' ? data.domainStatus : 'requested';
+      setSalonList((prev) =>
+        prev.map((s) =>
+          s.salon_id === salonId ? { ...s, custom_domain: newDomain || null, domain_status: newDomain ? newStatus : null } : s,
+        ),
+      );
+      setDomainNotice((prev) => ({
+        ...prev,
+        [salonId]: { tone: 'success', message: newDomain ? `Домейнът е запазен (${newStatus}).` : 'Домейнът е премахнат.' },
+      }));
+    } finally {
+      setSavingDomain(null);
     }
   }
 
@@ -420,10 +459,35 @@ export default function PlatformAdminDashboard({
                                     <div className="text-xs uppercase tracking-[0.16em] text-black/28">Slug</div>
                                     <div className="mt-1 text-sm font-medium text-black">{salon.slug}</div>
                                   </div>
-                                  <div>
+                                  <div className="sm:col-span-2">
                                     <div className="text-xs uppercase tracking-[0.16em] text-black/28">Домейн</div>
-                                    <div className="mt-1 text-sm font-medium text-black">
-                                      {salon.custom_domain || 'Няма custom domain'}
+                                    {domainNotice[salon.salon_id] && (
+                                      <div className={`mt-1 mb-2 rounded-xl border px-3 py-2 text-xs ${
+                                        domainNotice[salon.salon_id].tone === 'success'
+                                          ? 'border-[#bbf7d0] text-[#166534]'
+                                          : 'border-[#fecaca] text-[#b91c1c]'
+                                      }`}>
+                                        {domainNotice[salon.salon_id].message}
+                                      </div>
+                                    )}
+                                    <div className="mt-1 flex gap-2">
+                                      <input
+                                        type="text"
+                                        value={domainInputs[salon.salon_id] ?? ''}
+                                        onChange={(e) =>
+                                          setDomainInputs((prev) => ({ ...prev, [salon.salon_id]: e.target.value }))
+                                        }
+                                        placeholder="example.com"
+                                        className="min-h-[40px] w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-sm font-medium text-black outline-none focus:border-black/24"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSaveDomain(salon.salon_id)}
+                                        disabled={savingDomain === salon.salon_id}
+                                        className="inline-flex min-h-[40px] shrink-0 items-center rounded-full border border-black bg-black px-4 text-xs font-semibold text-white transition hover:bg-black/88 disabled:opacity-40"
+                                      >
+                                        {savingDomain === salon.salon_id ? 'Запис…' : 'Запази'}
+                                      </button>
                                     </div>
                                   </div>
                                   <div>
