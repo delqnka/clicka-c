@@ -67,7 +67,6 @@ async function isVerifiedCustomDomain(origin: string): Promise<boolean> {
       const rows = await sql`
         SELECT 1 FROM salons
         WHERE lower(custom_domain) = lower(${candidate})
-          AND domain_status = 'active'
         LIMIT 1
       `;
       if (rows.length > 0) return true;
