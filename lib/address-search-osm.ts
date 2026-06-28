@@ -23,7 +23,7 @@ export async function searchOsmAddresses(query: string): Promise<OsmAddressResul
   const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=bg&q=${encodeURIComponent(q)}`;
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'clicka.bg/1.0 (https://clicka.bg; contact: hello@clicka.bg)',
+      'User-Agent': 'alternine/1.0 (https://app.alternine.co; contact: support@alternine.co)',
       Accept: 'application/json',
     },
     cache: 'no-store',

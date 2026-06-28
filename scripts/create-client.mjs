@@ -76,7 +76,7 @@ function normalizeEmail(e) {
   return e.trim().toLowerCase();
 }
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'clicka.bg';
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'app.alternine.co';
 
 function getPlatformSiteOrigin(salonSlug) {
   return `https://${salonSlug}.${ROOT_DOMAIN}`;

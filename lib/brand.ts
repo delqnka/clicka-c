@@ -4,7 +4,8 @@
  * All email senders, footers, cookie names, support contacts, and ICS domains
  * read from here so the engine can be white-labeled by setting env vars.
  *
- * Defaults to Clicka.bg for backward compatibility on the canonical deployment.
+ * Defaults to Alternine branding for backward compatibility on the current
+ * canonical deployment.
  */
 
 function env(key: string): string | undefined {
@@ -13,26 +14,26 @@ function env(key: string): string | undefined {
 }
 
 export const BRAND = {
-  /** Brand display name used in copy and email subjects. e.g. "Clicka.bg" */
-  name: env('BRAND_NAME') ?? 'Clicka.bg',
+  /** Brand display name used in copy and email subjects. e.g. "Alternine" */
+  name: env('BRAND_NAME') ?? 'Alternine',
 
-  /** Short brand name for places that need it. e.g. "Clicka" */
-  shortName: env('BRAND_SHORT_NAME') ?? 'Clicka',
+  /** Short brand name for places that need it. e.g. "Alternine" */
+  shortName: env('BRAND_SHORT_NAME') ?? 'Alternine',
 
-  /** Marketing site URL — used in email footers. e.g. "https://clicka.bg" */
-  siteUrl: env('BRAND_SITE_URL') ?? 'https://clicka.bg',
+  /** Marketing / engine site URL — used in email footers. */
+  siteUrl: env('BRAND_SITE_URL') ?? 'https://app.alternine.co',
 
   /** Apex domain — used for ICS UIDs, cookies, internal references. */
-  domain: env('BRAND_DOMAIN') ?? 'clicka.bg',
+  domain: env('BRAND_DOMAIN') ?? 'app.alternine.co',
 
   /** Default sender email for transactional messages. */
-  senderEmail: env('BRAND_SENDER_EMAIL') ?? 'noreply@clicka.bg',
+  senderEmail: env('BRAND_SENDER_EMAIL') ?? 'noreply@alternine.co',
 
   /** Display name shown in the From header. */
-  senderName: env('BRAND_SENDER_NAME') ?? 'Clicka.bg',
+  senderName: env('BRAND_SENDER_NAME') ?? 'Alternine',
 
   /** Support contact shown in emails and legal pages. */
-  supportEmail: env('BRAND_SUPPORT_EMAIL') ?? 'support@clicka.bg',
+  supportEmail: env('BRAND_SUPPORT_EMAIL') ?? 'support@alternine.co',
 
   /** Cookie name for the admin session. */
   adminCookieName: env('BRAND_ADMIN_COOKIE') ?? 'clicka_admin_session',

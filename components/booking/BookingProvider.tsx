@@ -46,7 +46,7 @@ export type BookingProviderProps = {
    * 2. `<meta name="clicka:engine" content="...">`
    * 3. `process.env.NEXT_PUBLIC_CLICKA_ENGINE`
    * 4. `process.env.NEXT_PUBLIC_CLICKA_API_URL`
-   * 5. Default: `https://clicka.bg`
+   * 5. Default: `https://app.alternine.co`
    */
   engineUrl?: string;
   /**
@@ -126,10 +126,10 @@ function resolveEngine(prop?: string): string {
     readEnv('NEXT_PUBLIC_ENGINE_URL') ||
     readEnv('NEXT_PUBLIC_CLICKA_ENGINE') ||
     readEnv('NEXT_PUBLIC_CLICKA_API_URL') ||
-    // Canonical host (with www). The bare clicka.bg returns a 308 redirect
+    // Canonical engine host. Avoid bare-domain redirects in cross-origin fetches
     // which kills cross-origin fetches because the redirect response itself
     // carries no CORS headers — browsers reject the whole chain.
-    'https://www.clicka.bg'
+    'https://app.alternine.co'
   );
 }
 
