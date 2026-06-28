@@ -590,21 +590,25 @@ export async function sendBookingConfirmation(
         </p>
         ${booking.bookingId && booking.manageToken ? (() => {
           const manageUrl = `${appBaseUrl}/booking/manage?id=${encodeURIComponent(booking.bookingId)}&token=${encodeURIComponent(booking.manageToken)}`;
-          // `&` must be `&amp;` inside an HTML attribute — Gmail mobile breaks
-          // taps on links with unescaped ampersands. Plain-text fallback below
-          // helps clients that still mishandle the styled button.
           const hrefSafe = manageUrl.replace(/&/g, '&amp;');
+          // Bulletproof table-based button — iOS Mail and Gmail mobile drop
+          // taps on padded inline-block anchors but respect <table> + bgcolor.
           return `
-        <p style="margin-top: 20px; line-height: 1.7; text-align: center;">
-          <a href="${hrefSafe}" target="_blank" rel="noopener"
-             style="display: inline-block; background: #000; color: #fff; padding: 14px 28px;
-                    border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 15px;">
-            ${isEn ? 'Change or cancel booking' : 'Промени или откажи резервацията'}
-          </a>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 24px auto;">
+          <tr>
+            <td align="center" bgcolor="#000000" style="border-radius: 999px;">
+              <a href="${hrefSafe}"
+                 style="display: inline-block; padding: 14px 28px; font-family: Arial, sans-serif; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 999px;">
+                ${isEn ? 'Change or cancel booking' : 'Промени или откажи резервацията'}
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin: 12px 0 0; font-size: 12px; color: #666; line-height: 1.5; text-align: center;">
+          ${isEn ? 'If the button does not open, copy this link:' : 'Ако бутонът не отваря, копирайте този линк:'}
         </p>
-        <p style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5; word-break: break-all; text-align: center;">
-          ${isEn ? 'If the button does not open, copy this link:' : 'Ако бутонът не отваря, копирайте този линк:'}<br />
-          <a href="${hrefSafe}" style="color: #888;">${manageUrl}</a>
+        <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; word-break: break-all; text-align: center;">
+          <a href="${hrefSafe}" style="color: #000;">${manageUrl}</a>
         </p>`;
         })() : `
         <p style="margin-top: 16px; line-height: 1.7;">
