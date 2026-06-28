@@ -6,6 +6,13 @@ import type { Locale } from '@/lib/i18n';
 type Props = { children: ReactNode; locale?: Locale };
 type State = { error: Error | null; runtimeErrors: string[] };
 
+const runtimeBannerEnabled =
+  process.env.NODE_ENV !== 'production' ||
+  process.env.NEXT_PUBLIC_ADMIN_RUNTIME_DEBUG === '1';
+const clickTraceEnabled =
+  process.env.NODE_ENV !== 'production' &&
+  process.env.NEXT_PUBLIC_ADMIN_RUNTIME_DEBUG === '1';
+
 export class AdminErrorBoundary extends Component<Props, State> {
   state: State = { error: null, runtimeErrors: [] };
 
@@ -46,18 +53,22 @@ export class AdminErrorBoundary extends Component<Props, State> {
   };
 
   componentDidMount() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && runtimeBannerEnabled) {
       window.addEventListener('error', this.onWindowError);
       window.addEventListener('unhandledrejection', this.onUnhandledRejection);
-      window.addEventListener('click', this.onAnyClick, true);
+      if (clickTraceEnabled) {
+        window.addEventListener('click', this.onAnyClick, true);
+      }
     }
   }
 
   componentWillUnmount() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && runtimeBannerEnabled) {
       window.removeEventListener('error', this.onWindowError);
       window.removeEventListener('unhandledrejection', this.onUnhandledRejection);
-      window.removeEventListener('click', this.onAnyClick, true);
+      if (clickTraceEnabled) {
+        window.removeEventListener('click', this.onAnyClick, true);
+      }
     }
   }
 
@@ -71,7 +82,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
 
   render() {
     const isEn = this.props.locale === 'en';
-    const runtimeBanner = this.state.runtimeErrors.length > 0 ? (
+    const runtimeBanner = runtimeBannerEnabled && this.state.runtimeErrors.length > 0 ? (
       <div
         style={{
           position: 'fixed',
