@@ -133,7 +133,7 @@ export type BookingWidgetProps = {
   /**
    * Origin of the booking engine API.
    * Set this when the client site is a SEPARATE repo from the engine.
-   * Example: 'https://engine.clicka.bg'
+   * Example: 'https://app.alternine.co'
    * Leave empty (default) when the site runs inside the engine repo.
    */
   engineUrl?: string;
@@ -156,4 +156,3 @@ export type BookingWidgetProps = {
     payload?: { serviceName?: string; value?: number; currency?: string },
   ) => void;
 };
-

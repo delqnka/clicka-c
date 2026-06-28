@@ -83,7 +83,7 @@ Supported engine env names:
 Recommended client-site envs:
 
 ```bash
-NEXT_PUBLIC_ENGINE_URL=https://www.clicka.bg
+NEXT_PUBLIC_ENGINE_URL=https://app.alternine.co
 NEXT_PUBLIC_SALON_SLUG=diworks
 NEXT_PUBLIC_SITE_URL=https://diworks.example
 ```
@@ -98,7 +98,7 @@ import '@clicka1/booking/styles.css';
 
 export function Root({ children }: { children: React.ReactNode }) {
   return (
-    <BookingProvider salonSlug="my-salon" engineUrl="https://www.clicka.bg">
+    <BookingProvider salonSlug="my-salon" engineUrl="https://app.alternine.co">
       {children}
       <BookingButton>Book now</BookingButton>
     </BookingProvider>

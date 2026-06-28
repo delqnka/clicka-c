@@ -98,7 +98,7 @@ function ensureEnvExample(rootDir) {
 
   const existing = readFileSafe(envPath) || '';
   const linesToAdd = [
-    'NEXT_PUBLIC_ENGINE_URL=https://www.clicka.bg',
+    'NEXT_PUBLIC_ENGINE_URL=https://app.alternine.co',
     'NEXT_PUBLIC_SALON_SLUG=your-salon-slug',
     'NEXT_PUBLIC_SITE_URL=https://example.com',
   ];

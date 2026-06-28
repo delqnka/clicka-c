@@ -81,7 +81,7 @@ After `npm run build`, inspect the route table in the terminal output for `/admi
 **Measure a live salon:**
 
 ```bash
-LIGHTHOUSE_URL=https://your-salon.clicka.bg node scripts/perf-report.mjs
+LIGHTHOUSE_URL=https://your-salon.example.com node scripts/perf-report.mjs
 ```
 
 Or Chrome DevTools → Performance / Lighthouse on mobile throttling.

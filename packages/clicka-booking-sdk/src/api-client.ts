@@ -7,7 +7,7 @@
  *
  * Example:
  *   const client = createBookingClient({
- *     engineUrl: 'https://clicka.bg',
+ *     engineUrl: 'https://app.alternine.co',
  *     apiKey: process.env.CLICKA_API_KEY!,
  *     salonSlug: 'paradise',
  *   });
@@ -26,7 +26,7 @@ import type {
 } from './types';
 
 export type BookingClientConfig = {
-  /** Engine origin, e.g. "https://clicka.bg". No trailing slash required. */
+  /** Engine origin, e.g. "https://app.alternine.co". No trailing slash required. */
   engineUrl: string;
   /** Public API key issued for this salon. Format: pk_live_… */
   apiKey: string;

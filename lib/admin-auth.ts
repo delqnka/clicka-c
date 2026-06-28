@@ -207,6 +207,64 @@ export async function resolveSalonBySlugOrHost({
 }): Promise<SalonLookupRow | null> {
   await ensureAdminAuthSchema();
 
+  const hostname = extractHostname(host);
+  if (hostname && !isPlatformHost(hostname)) {
+    const candidateHostname = isAdminSubdomainHost(hostname)
+      ? stripAdminSubdomain(hostname)
+      : hostname;
+
+    // On branded client domains, the browser-facing host is the durable
+    // source of truth. This avoids stale x-salon-slug headers or old query
+    // params breaking admin after a slug rename.
+    const customRows = includeInactive
+      ? await sql`
+          SELECT
+            CAST(id AS text) AS salon_id,
+            slug,
+            name,
+            email,
+            is_active,
+            custom_domain
+          FROM salons
+          WHERE lower(custom_domain) = lower(${candidateHostname})
+          LIMIT 1
+        `
+      : await sql`
+          SELECT
+            CAST(id AS text) AS salon_id,
+            slug,
+            name,
+            email,
+            is_active,
+            custom_domain
+          FROM salons
+          WHERE lower(custom_domain) = lower(${candidateHostname})
+            AND is_active = true
+          LIMIT 1
+        `;
+
+    if (customRows.length > 0) {
+      const row = customRows[0] as Record<string, unknown>;
+      return {
+        salonId: String(row.salon_id ?? ''),
+        slug: String(row.slug ?? ''),
+        name: String(row.name ?? 'Салон'),
+        email: String(row.email ?? ''),
+        isActive: row.is_active === true,
+        customDomain: typeof row.custom_domain === 'string' ? row.custom_domain : null,
+      };
+    }
+
+    if (candidateHostname.startsWith('www.')) {
+      const bareMatch = await resolveSalonBySlugOrHost({
+        slug,
+        host: candidateHostname.slice(4),
+        includeInactive,
+      });
+      if (bareMatch) return bareMatch;
+    }
+  }
+
   const safeSlug = String(slug ?? '').trim();
   if (safeSlug) {
     const rows = includeInactive
@@ -248,63 +306,12 @@ export async function resolveSalonBySlugOrHost({
     }
   }
 
-  const hostname = extractHostname(host);
   const subdomain = getPlatformSubdomain(hostname);
   if (subdomain) {
     return resolveSalonBySlugOrHost({ slug: subdomain, includeInactive });
   }
   if (!hostname || isPlatformHost(hostname)) return null;
-
-  const candidateHostname = isAdminSubdomainHost(hostname)
-    ? stripAdminSubdomain(hostname)
-    : hostname;
-
-  // DNS is set up manually by the agency, so any salon with a matching
-  // custom_domain is routable.
-  const customRows = includeInactive
-    ? await sql`
-        SELECT
-          CAST(id AS text) AS salon_id,
-          slug,
-          name,
-          email,
-          is_active,
-          custom_domain
-        FROM salons
-        WHERE lower(custom_domain) = lower(${candidateHostname})
-        LIMIT 1
-      `
-    : await sql`
-        SELECT
-          CAST(id AS text) AS salon_id,
-          slug,
-          name,
-          email,
-          is_active,
-          custom_domain
-        FROM salons
-        WHERE lower(custom_domain) = lower(${candidateHostname})
-          AND is_active = true
-        LIMIT 1
-      `;
-
-  if (customRows.length === 0 && candidateHostname.startsWith('www.')) {
-    return resolveSalonBySlugOrHost({
-      host: candidateHostname.slice(4),
-      includeInactive,
-    });
-  }
-  if (customRows.length === 0) return null;
-
-  const row = customRows[0] as Record<string, unknown>;
-  return {
-    salonId: String(row.salon_id ?? ''),
-    slug: String(row.slug ?? ''),
-    name: String(row.name ?? 'Салон'),
-    email: String(row.email ?? ''),
-    isActive: row.is_active === true,
-    customDomain: typeof row.custom_domain === 'string' ? row.custom_domain : null,
-  };
+  return null;
 }
 
 export async function getPrimaryOwnerForSalon(salonId: string): Promise<OwnerRow | null> {
@@ -501,7 +508,7 @@ export async function destroyAllOtherOwnerSessions(ownerId: string, currentSessi
 
 export function setAdminSessionCookie(response: NextResponse, request: NextRequest, sessionId: string, expiresAt: Date) {
   // When a client site (e.g. salonurban.online) proxies /admin/* to the
-  // engine, the engine sees host=clicka.bg but the browser is still at the
+  // engine, the engine sees its own host but the browser is still at the
   // salon's custom domain. Use the browser-facing host to decide cookie Domain
   // so the Set-Cookie lands on a host the browser will actually send back.
   const browserHost = getBrowserHost(request.headers) || request.nextUrl.hostname;
@@ -516,7 +523,7 @@ export function setAdminSessionCookie(response: NextResponse, request: NextReque
     secure: request.nextUrl.protocol === 'https:',
     path: '/',
     expires: expiresAt,
-    // Apex + salon subdomains share via .clicka.bg. For custom domains
+    // Root-domain paths share the platform cookie scope. For custom domains
     // (incl. proxied via X-Forwarded-Host) omit Domain so the cookie binds
     // to the exact host the browser sees — otherwise the Set-Cookie is rejected.
     domain: isPlatformHost ? `.${ROOT_DOMAIN}` : undefined,
@@ -562,7 +569,7 @@ export async function generateAdminMagicLink({
 
   const cleanCustom = (customDomain ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   if (!cleanCustom) {
-    throw new Error(`generateAdminMagicLink: salon ${slug} has no active custom domain — refusing to mint slug.clicka.bg link.`);
+    throw new Error(`generateAdminMagicLink: salon ${slug} has no active custom domain — refusing to mint fallback root-domain admin link.`);
   }
   const base = getCustomDomainAdminUrl(cleanCustom);
 

@@ -45,7 +45,7 @@ Salon fetch failed: HTTP 404
 Във Vercel:
 
 ```bash
-NEXT_PUBLIC_ENGINE_URL=https://www.clicka.bg
+NEXT_PUBLIC_ENGINE_URL=https://app.alternine.co
 NEXT_PUBLIC_SALON_SLUG=diworks
 NEXT_PUBLIC_SITE_URL=https://clientdomain.com
 ```

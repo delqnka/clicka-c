@@ -51,7 +51,7 @@ import '@clicka1/booking/styles.css';
 And:
 
 ```tsx
-<BookingProvider salonSlug="diworks" engineUrl="https://www.clicka.bg">
+<BookingProvider salonSlug="diworks" engineUrl="https://app.alternine.co">
   <BookingButton service="free-call">Book a Free Call</BookingButton>
 </BookingProvider>
 ```
@@ -61,7 +61,7 @@ And:
 For pure HTML sites, keep a separate static embed target such as:
 
 ```text
-https://www.clicka.bg/sdk/booking.js
+https://app.alternine.co/sdk/booking.js
 ```
 
 That layer is complementary to the React package, not a replacement for the

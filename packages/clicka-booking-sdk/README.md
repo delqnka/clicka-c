@@ -23,7 +23,7 @@ npm install @clicka1/booking-sdk
 import { createBookingClient } from '@clicka1/booking-sdk';
 
 const client = createBookingClient({
-  engineUrl: 'https://www.clicka.bg',
+  engineUrl: 'https://app.alternine.co',
   apiKey:    process.env.CLICKA_API_KEY!,   // pk_live_…
   salonSlug: 'paradise',
 });

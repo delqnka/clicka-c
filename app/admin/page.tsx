@@ -20,7 +20,6 @@ export default async function AdminEntryPage() {
   const browserHost = getBrowserHost(headerStore);
   const sessionId = cookies().get(ADMIN_COOKIE_NAME)?.value ?? null;
   const gate = await resolveAdminGate({
-    slug: headerStore.get('x-salon-slug'),
     host: browserHost,
     sessionId,
   });

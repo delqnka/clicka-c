@@ -66,6 +66,8 @@ import {
   extractHostname,
   getHostAwareSalonPath,
   getPrimaryPublicUrl,
+  getCustomDomainAdminUrl,
+  isPlatformApexHost,
   ROOT_DOMAIN,
 } from '@/lib/domain-routing';
 import { formatSalonPrice } from '@/lib/salon-currency';
@@ -1038,8 +1040,19 @@ export default function AdminDashboardClient({
   const [slugTransition, setSlugTransition] = useState<{ newSlug: string; newHost: string } | null>(null);
 
   function handleSlugSaved(newSlug: string) {
-    const newHost = `${newSlug}.${ROOT_DOMAIN}`;
-    const targetUrl = `https://${newHost}/admin`;
+    const customDomain = String(site.customDomain ?? '').trim();
+    const currentHostname = extractHostname(currentHost);
+    const currentOrigin =
+      typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : `https://${ROOT_DOMAIN}`;
+
+    const targetUrl = customDomain
+      ? `${getCustomDomainAdminUrl(customDomain)}/admin`
+      : `${currentOrigin}${getHostAwareSalonPath({
+          host: currentHostname || ROOT_DOMAIN,
+          slug: newSlug,
+          path: 'admin',
+        })}`;
+    const newHost = customDomain || (isPlatformApexHost(currentHostname) ? ROOT_DOMAIN : currentHostname || ROOT_DOMAIN);
     setSlugTransition({ newSlug, newHost });
 
     let attempts = 0;

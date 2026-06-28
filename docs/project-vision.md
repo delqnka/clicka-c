@@ -114,7 +114,7 @@ import { BookingWidget } from '@clicka1/booking';
 
 Booking системата трябва да бъде reusable module. Не трябва да зависи от:
 
-- clicka.bg
+- a fixed platform domain
 - iframe routing
 - `/{slug}/book`
 - marketing pages
@@ -126,7 +126,7 @@ Iframe widget е допустим само като fallback за WordPress ил
 
 Клиентът не трябва да вижда:
 
-- clicka.bg
+- platform branding or root-domain URLs
 - Clicka branding
 - Clicka emails
 - Clicka URLs

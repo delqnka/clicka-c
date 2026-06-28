@@ -5,7 +5,7 @@ type MaybeHost = string | null | undefined;
 // Root domain is derived from BRAND config (which itself reads BRAND_DOMAIN env).
 // NEXT_PUBLIC_ROOT_DOMAIN takes precedence so the value is available client-side
 // in middleware/edge code without the BRAND import. Falls back to BRAND.domain
-// (which falls back to 'clicka.bg' only on the canonical deploy).
+// (which otherwise falls back to the BRAND.domain value).
 export const ROOT_DOMAIN =
   String(process.env.NEXT_PUBLIC_ROOT_DOMAIN || process.env.CLICKA_ROOT_DOMAIN || BRAND.domain)
     .trim()
@@ -178,7 +178,7 @@ export function getSalonHomeLegalRewritePath(pathname: string): string | null {
   return `/salon-home${pathname}`;
 }
 
-/** Публичен URL на правен документ (собствен домейн или slug.clicka.bg). */
+/** Публичен URL на правен документ (собствен домейн или root-domain fallback path). */
 export function getLegalDocumentUrl({
   slug,
   customDomain,

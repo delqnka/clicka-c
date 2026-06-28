@@ -4,7 +4,7 @@
  *
  * Usage:
  *   node scripts/perf-report.mjs
- *   LIGHTHOUSE_URL=https://your-salon.clicka.bg node scripts/perf-report.mjs
+ *   LIGHTHOUSE_URL=https://your-salon.example.com node scripts/perf-report.mjs
  */
 
 import { execSync } from 'node:child_process';
@@ -44,7 +44,7 @@ if (lighthouseUrl) {
   }
 } else {
   console.log('\n3) Lighthouse skipped. Set LIGHTHOUSE_URL to run e.g.:');
-  console.log('   LIGHTHOUSE_URL=https://example.clicka.bg node scripts/perf-report.mjs\n');
+  console.log('   LIGHTHOUSE_URL=https://example.com node scripts/perf-report.mjs\n');
 }
 
 console.log('4) Real-user Web Vitals: enable Vercel Speed Insights or add web-vitals in production.\n');
