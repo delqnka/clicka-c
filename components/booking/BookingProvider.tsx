@@ -50,6 +50,11 @@ export type BookingProviderProps = {
    */
   engineUrl?: string;
   /**
+   * Public API key used for white-label engine access.
+   * If omitted, the provider tries env/meta/global fallbacks.
+   */
+  apiKey?: string;
+  /**
    * BCP-47 locale. If omitted, the provider derives it from
    * `<html lang>`, then `<body data-lang>`, then `navigator.language`,
    * defaulting to `bg-BG`.
@@ -133,6 +138,16 @@ function resolveEngine(prop?: string): string {
   );
 }
 
+function resolveApiKey(prop?: string): string | undefined {
+  return (
+    prop ||
+    readGlobalString('__CLICKA_BOOKING_API_KEY') ||
+    readMeta('clicka:api-key') ||
+    readEnv('NEXT_PUBLIC_BOOKING_API_KEY') ||
+    readEnv('NEXT_PUBLIC_CLICKA_BOOKING_API_KEY')
+  );
+}
+
 function resolveLocale(prop?: string): string {
   if (prop) return prop;
   if (typeof document !== 'undefined') {
@@ -160,6 +175,7 @@ export function BookingProvider({
   children,
   salonSlug,
   engineUrl,
+  apiKey,
   locale,
   successUrl,
   cancelUrl,
@@ -172,6 +188,7 @@ export function BookingProvider({
 }: BookingProviderProps) {
   const slug = useMemo(() => resolveSlug(salonSlug), [salonSlug]);
   const resolvedEngineUrl = useMemo(() => resolveEngine(engineUrl), [engineUrl]);
+  const resolvedApiKey = useMemo(() => resolveApiKey(apiKey), [apiKey]);
   const resolvedLocale = useMemo(() => resolveLocale(locale), [locale]);
   const resolvedSuccessUrl = useMemo(
     () => successUrl ?? defaultReturnUrl('booked'),
@@ -203,7 +220,10 @@ export function BookingProvider({
     }
     let cancelled = false;
     const url = `${resolvedEngineUrl.replace(/\/$/, '')}/api/public/v1/salons/${encodeURIComponent(slug)}`;
-    fetch(url, { cache: 'no-store' })
+    fetch(url, {
+      cache: 'no-store',
+      headers: resolvedApiKey ? { 'X-API-Key': resolvedApiKey } : undefined,
+    })
       .then((r) => {
         if (!r.ok) throw new Error(`Salon fetch failed: HTTP ${r.status}`);
         return r.json();
@@ -223,7 +243,7 @@ export function BookingProvider({
     return () => {
       cancelled = true;
     };
-  }, [resolvedEngineUrl, slug]);
+  }, [resolvedApiKey, resolvedEngineUrl, slug]);
 
   // ── Public open/close ──────────────────────────────────────────────────
   const open = useCallback(
@@ -303,6 +323,7 @@ export function BookingProvider({
         slug={slug}
         salon={salon}
         engineUrl={resolvedEngineUrl}
+        apiKey={resolvedApiKey}
         locale={resolvedLocale}
         successUrl={resolvedSuccessUrl}
         cancelUrl={resolvedCancelUrl}

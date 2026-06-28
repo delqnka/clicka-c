@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { POST as createCheckout } from '@/app/api/stripe/booking-checkout/route';
+import { POST as createCheckout } from '@/app/api/public/booking-checkout/route';
 
 const PUBLIC_CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
 } as const;
 
 export async function OPTIONS() {
@@ -14,9 +14,8 @@ export async function OPTIONS() {
 /**
  * POST /api/public/v1/salons/:slug/booking-checkout
  *
- * Forwards to the internal Stripe Connect checkout handler, pinning salonSlug
- * to the URL path so the SDK consumer can't spoof it via the body.
- * Accepts `successUrl` / `cancelUrl` for white-label redirects.
+ * Delegates to the secure public checkout route, pinning salonSlug to the URL
+ * path so the SDK consumer can't spoof it via the body.
  */
 export async function POST(
   request: NextRequest,
@@ -34,7 +33,7 @@ export async function POST(
   const body = { ...incoming, salonSlug: params.slug };
 
   const url = new URL(request.url);
-  url.pathname = '/api/stripe/booking-checkout';
+  url.pathname = '/api/public/booking-checkout';
 
   const forwarded = new Request(url, {
     method: 'POST',

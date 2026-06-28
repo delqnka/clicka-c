@@ -31,6 +31,7 @@ export function useBookingFlow({
   bookingAdvanceDays,
   bookingServices,
   engineUrl = '',
+  apiKey,
   successUrl,
   cancelUrl,
   locale = 'bg-BG',
@@ -39,6 +40,13 @@ export function useBookingFlow({
   const t = useT();
   const api = engineUrl.replace(/\/$/, '');
   const slugPath = `/api/public/v1/salons/${encodeURIComponent(slug)}`;
+  const requestHeaders = useMemo(
+    () => ({
+      'Content-Type': 'application/json',
+      ...(apiKey ? { 'X-API-Key': apiKey } : {}),
+    }),
+    [apiKey],
+  );
 
   // ── Modal visibility ─────────────────────────────────────────────────
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -83,13 +91,16 @@ export function useBookingFlow({
   useEffect(() => {
     if (!bookingOpen || staffFetchedRef.current) return;
     staffFetchedRef.current = true;
-    fetch(`${api}${slugPath}/staff`, { cache: 'no-store' })
+    fetch(`${api}${slugPath}/staff`, {
+      cache: 'no-store',
+      headers: requestHeaders,
+    })
       .then((r) => r.json())
       .then((d: { staff?: PublicStaffMember[] }) => {
         if (Array.isArray(d.staff)) setStaffMembers(d.staff);
       })
       .catch(() => {});
-  }, [bookingOpen, slug]);
+  }, [api, bookingOpen, requestHeaders, slugPath]);
 
   // ── Fetch occupied slots whenever date or staff changes ──────────────
   useEffect(() => {
@@ -100,7 +111,7 @@ export function useBookingFlow({
       : '';
     fetch(
       `${api}${slugPath}/slots?date=${encodeURIComponent(selectedDate)}${staffParam}`,
-      { cache: 'no-store' },
+      { cache: 'no-store', headers: requestHeaders },
     )
       .then((r) => r.json())
       .then((d: { occupied?: Array<{ time?: string; duration?: number }> }) => {
@@ -118,7 +129,7 @@ export function useBookingFlow({
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [slug, selectedDate, selectedStaffMemberId]);
+  }, [api, requestHeaders, selectedDate, selectedStaffMemberId, slugPath]);
 
   // ── Derived: selected service objects ────────────────────────────────
   const selectedServices = useMemo<BookingServiceItem[]>(
@@ -271,7 +282,7 @@ export function useBookingFlow({
     try {
       const res = await fetch(`${api}${slugPath}/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: requestHeaders,
         body: JSON.stringify({
           clientName:         clientName.trim(),
           clientPhone:        clientPhone.trim(),
@@ -304,7 +315,7 @@ export function useBookingFlow({
       if (requiresPayment && bookingId) {
         const payRes = await fetch(`${api}${slugPath}/booking-checkout`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: requestHeaders,
           body: JSON.stringify({
             bookingId,
             salonSlug: slug,
@@ -344,10 +355,9 @@ export function useBookingFlow({
       setIsSubmitting(false);
     }
   }, [
-    slug, selectedServices, clientName, clientPhone, clientEmail,
-    selectedDate, selectedTime, notes,
-    totalDuration, totalPrice, selectedStaffMemberId, markSlotOccupied,
-    successUrl, cancelUrl, locale, onEvent,
+    api, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, notes,
+    onEvent, requestHeaders, selectedDate, selectedServices, selectedStaffMemberId, selectedTime,
+    slug, slugPath, successUrl, t, totalDuration, totalPrice,
   ]);
 
   return {

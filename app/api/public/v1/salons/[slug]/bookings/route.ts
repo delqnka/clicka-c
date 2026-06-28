@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { POST as createBooking } from '@/app/api/bookings/route';
+import { POST as createBooking } from '@/app/api/public/bookings/route';
 
 const PUBLIC_CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
 } as const;
 
 export async function OPTIONS() {
@@ -14,23 +14,30 @@ export async function OPTIONS() {
 /**
  * POST /api/public/v1/salons/:slug/bookings
  *
- * Public anonymous booking creation. Body shape unchanged from internal
- * POST /api/bookings — slug is taken from the URL path.
+ * Public booking creation for the SDK.
+ *
+ * Delegates to the secure public route and forces the path slug to win over
+ * any body-provided slug.
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: { slug: string } },
 ) {
-  const rawBody = await request.text();
+  const incoming = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!incoming) {
+    return NextResponse.json(
+      { error: 'Invalid JSON body' },
+      { status: 400, headers: PUBLIC_CORS },
+    );
+  }
 
   const url = new URL(request.url);
-  url.pathname = '/api/bookings';
-  url.searchParams.set('slug', params.slug);
+  url.pathname = '/api/public/bookings';
 
   const forwarded = new Request(url, {
     method: 'POST',
     headers: request.headers,
-    body: rawBody,
+    body: JSON.stringify({ ...incoming, salonSlug: params.slug }),
   }) as NextRequest;
 
   const upstream = await createBooking(forwarded);

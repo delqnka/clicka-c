@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GET as getBookings } from '@/app/api/bookings/route';
+import { GET as getSlots } from '@/app/api/public/salons/[slug]/slots/route';
 
 const PUBLIC_CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
 } as const;
 
 export async function OPTIONS() {
@@ -14,8 +14,7 @@ export async function OPTIONS() {
 /**
  * GET /api/public/v1/salons/:slug/slots?date=YYYY-MM-DD&staffMemberId=…
  *
- * Returns the same `{ occupied: [{ time, duration }] }` shape the BookingWidget
- * already consumes. Anonymous, CORS-open, no API key required.
+ * Wraps the secure slots route and keeps the legacy SDK response shape.
  */
 export async function GET(
   request: NextRequest,
@@ -30,20 +29,7 @@ export async function GET(
     );
   }
 
-  const url = new URL(request.url);
-  url.pathname = '/api/bookings';
-  url.searchParams.set('public', '1');
-  url.searchParams.set('slug', params.slug);
-  url.searchParams.set('date', date);
-  const staffMemberId = sourceUrl.searchParams.get('staffMemberId');
-  if (staffMemberId) url.searchParams.set('staffMemberId', staffMemberId);
-
-  const forwarded = new Request(url, {
-    method: 'GET',
-    headers: request.headers,
-  }) as NextRequest;
-
-  const upstream = await getBookings(forwarded);
+  const upstream = await getSlots(request, { params });
   if (!upstream) {
     return NextResponse.json(
       { error: 'Slots service unavailable' },

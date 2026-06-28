@@ -40,6 +40,7 @@ type InnerProps = {
   serviceCatalog: BookingCatalogService[];
   categoryTabs: ReturnType<typeof buildServiceCategoryTabs>;
   engineUrl: string;
+  apiKey?: string;
   primaryColor: string;
   accentGradient?: string;
   successUrl?: string;
@@ -65,6 +66,7 @@ function BookingWidgetInner({
   serviceCatalog,
   categoryTabs,
   engineUrl,
+  apiKey,
   primaryColor,
   accentGradient,
   successUrl,
@@ -83,6 +85,7 @@ function BookingWidgetInner({
     bookingAdvanceDays,
     bookingServices,
     engineUrl,
+    apiKey,
     successUrl,
     cancelUrl,
     locale,
@@ -150,7 +153,7 @@ function BookingWidgetInner({
 // ── Public component ───────────────────────────────────────────────────────────
 
 export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>(
-  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, basePath = '', engineUrl = '', accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
+  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, basePath = '', engineUrl = '', apiKey, accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
 
     // ── Opening hours ──────────────────────────────────────────────────
     const openingHours = useMemo(
@@ -246,6 +249,7 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
           serviceCatalog={serviceCatalog}
           categoryTabs={categoryTabs}
           engineUrl={engineUrl}
+          apiKey={apiKey}
           primaryColor={primaryColor}
           accentGradient={accentGradient}
           successUrl={successUrl}

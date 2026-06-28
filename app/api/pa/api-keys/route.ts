@@ -1,9 +1,10 @@
 /**
  * Platform-admin endpoints for managing public_api_keys.
  *
- *   GET  /api/pa/api-keys?salonId=<id>  → list keys for a salon (metadata only)
- *   POST /api/pa/api-keys               → issue a new key (plaintext shown ONCE)
- *   DELETE /api/pa/api-keys?id=<keyId>  → revoke a key
+ *   GET    /api/pa/api-keys?salonId=<id>  → list keys for a salon (metadata only)
+ *   POST   /api/pa/api-keys               → issue a new key (plaintext shown ONCE)
+ *   PATCH  /api/pa/api-keys               → restore a revoked key
+ *   DELETE /api/pa/api-keys?id=<keyId>    → revoke a key
  *
  * The plaintext key is never stored or retrievable after the POST response.
  */
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
     salonId?: string;
     label?: string;
     scopes?: string[];
+    replaceActive?: boolean;
   };
 
   const salonId = (body.salonId ?? '').trim();
@@ -81,8 +83,18 @@ export async function POST(request: NextRequest) {
   }
 
   const label = (body.label ?? '').trim().slice(0, 80) || null;
+  const replaceActive = body.replaceActive === true;
 
   const { plaintext, hash, prefix } = generateApiKey();
+
+  if (replaceActive) {
+    await sql`
+      UPDATE public_api_keys
+      SET revoked_at = now()
+      WHERE salon_id = ${salonId}
+        AND revoked_at IS NULL
+    `;
+  }
 
   const inserted = (await sql`
     INSERT INTO public_api_keys (salon_id, key_prefix, key_hash, label, scopes)
@@ -96,6 +108,7 @@ export async function POST(request: NextRequest) {
     prefix,
     label,
     scopes,
+    replacedActive: replaceActive,
     createdAt: inserted[0]?.created_at,
   });
 }
@@ -114,6 +127,36 @@ export async function DELETE(request: NextRequest) {
     UPDATE public_api_keys
     SET revoked_at = now()
     WHERE id::text = ${keyId} AND revoked_at IS NULL
+  `;
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(request: NextRequest) {
+  if (!(await isPlatformAdminRequest(request))) {
+    return NextResponse.json({ error: 'Нямате достъп' }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => ({})) as {
+    id?: string;
+    action?: string;
+  };
+
+  const keyId = (body.id ?? '').trim();
+  const action = (body.action ?? '').trim();
+
+  if (!keyId) {
+    return NextResponse.json({ error: 'Липсва id' }, { status: 400 });
+  }
+
+  if (action !== 'restore') {
+    return NextResponse.json({ error: 'Невалидно действие' }, { status: 400 });
+  }
+
+  await sql`
+    UPDATE public_api_keys
+    SET revoked_at = NULL
+    WHERE id::text = ${keyId} AND revoked_at IS NOT NULL
   `;
 
   return NextResponse.json({ ok: true });

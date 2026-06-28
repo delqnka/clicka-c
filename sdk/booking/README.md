@@ -45,6 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <BookingProvider
       salonSlug={process.env.NEXT_PUBLIC_SALON_SLUG}
       engineUrl={process.env.NEXT_PUBLIC_ENGINE_URL}
+      apiKey={process.env.NEXT_PUBLIC_BOOKING_API_KEY}
       successUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/success`}
       cancelUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/booking/cancel`}
     >
@@ -84,6 +85,7 @@ Recommended client-site envs:
 
 ```bash
 NEXT_PUBLIC_ENGINE_URL=https://app.alternine.co
+NEXT_PUBLIC_BOOKING_API_KEY=pk_live_xxxxxxxxxxxxxxxxxxxxx
 NEXT_PUBLIC_SALON_SLUG=diworks
 NEXT_PUBLIC_SITE_URL=https://diworks.example
 ```
@@ -98,7 +100,11 @@ import '@clicka1/booking/styles.css';
 
 export function Root({ children }: { children: React.ReactNode }) {
   return (
-    <BookingProvider salonSlug="my-salon" engineUrl="https://app.alternine.co">
+    <BookingProvider
+      salonSlug="my-salon"
+      engineUrl="https://app.alternine.co"
+      apiKey={process.env.NEXT_PUBLIC_BOOKING_API_KEY}
+    >
       {children}
       <BookingButton>Book now</BookingButton>
     </BookingProvider>
@@ -121,6 +127,7 @@ If you already have your own button markup, keep it and add the attribute:
 | --- | --- | --- |
 | `salonSlug?` | `string` | Salon tenant slug. Falls back to env, meta tag, or `window` globals. |
 | `engineUrl?` | `string` | Clicka engine origin. Falls back to env, meta tag, or `window` globals. |
+| `apiKey?` | `string` | Public API key. Falls back to env, meta tag, or `window` globals. |
 | `locale?` | `string` | BCP-47 locale. Defaults from `<html lang>`, then browser locale. |
 | `successUrl?` | `string` | Stripe success redirect on the client-owned site. |
 | `cancelUrl?` | `string` | Stripe cancel redirect on the client-owned site. |

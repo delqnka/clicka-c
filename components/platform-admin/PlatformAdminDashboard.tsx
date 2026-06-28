@@ -606,7 +606,11 @@ export default function PlatformAdminDashboard({
                                 <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">
                                   API keys
                                 </div>
-                                <ApiKeysPanel salonId={salon.salon_id} />
+                                <ApiKeysPanel
+                                  salonId={salon.salon_id}
+                                  salonSlug={salon.slug}
+                                  customDomain={salon.custom_domain}
+                                />
                               </div>
                               <div className={shellCard('p-5 shadow-none')}>
                                 <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/32">

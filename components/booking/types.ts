@@ -50,6 +50,8 @@ export type UseBookingFlowOptions = {
   bookingServices: BookingServiceItem[];
   /** Engine origin for cross-domain API calls (Variant B separate repos). */
   engineUrl?: string;
+  /** Optional public API key sent as `X-API-Key` to the engine. */
+  apiKey?: string;
   /**
    * Absolute URL Stripe should redirect to after a successful payment.
    * Default: engine origin `/booking/success` (do NOT rely on this in a white-label client site).
@@ -137,6 +139,8 @@ export type BookingWidgetProps = {
    * Leave empty (default) when the site runs inside the engine repo.
    */
   engineUrl?: string;
+  /** Optional public API key sent as `X-API-Key` to the engine. */
+  apiKey?: string;
   /** CSS gradient string for accent fills. Defaults to a solid gradient from primaryColor. */
   accentGradient?: string;
   /**
