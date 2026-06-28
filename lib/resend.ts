@@ -588,14 +588,25 @@ export async function sendBookingConfirmation(
           <a href="${googleUrl}" style="color: #000; font-weight: 600;">Google Calendar</a>
           · ${isEn ? 'The attached .ics file works with Apple Calendar and Outlook.' : 'Прикрепеният .ics файл работи с Apple Calendar и Outlook.'}
         </p>
-        ${booking.bookingId && booking.manageToken ? `
-        <p style="margin-top: 20px; line-height: 1.7;">
-          <a href="${appBaseUrl}/booking/manage?id=${encodeURIComponent(booking.bookingId)}&token=${encodeURIComponent(booking.manageToken)}"
-             style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
-                    border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 14px;">
+        ${booking.bookingId && booking.manageToken ? (() => {
+          const manageUrl = `${appBaseUrl}/booking/manage?id=${encodeURIComponent(booking.bookingId)}&token=${encodeURIComponent(booking.manageToken)}`;
+          // `&` must be `&amp;` inside an HTML attribute — Gmail mobile breaks
+          // taps on links with unescaped ampersands. Plain-text fallback below
+          // helps clients that still mishandle the styled button.
+          const hrefSafe = manageUrl.replace(/&/g, '&amp;');
+          return `
+        <p style="margin-top: 20px; line-height: 1.7; text-align: center;">
+          <a href="${hrefSafe}" target="_blank" rel="noopener"
+             style="display: inline-block; background: #000; color: #fff; padding: 14px 28px;
+                    border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 15px;">
             ${isEn ? 'Change or cancel booking' : 'Промени или откажи резервацията'}
           </a>
-        </p>` : `
+        </p>
+        <p style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5; word-break: break-all; text-align: center;">
+          ${isEn ? 'If the button does not open, copy this link:' : 'Ако бутонът не отваря, копирайте този линк:'}<br />
+          <a href="${hrefSafe}" style="color: #888;">${manageUrl}</a>
+        </p>`;
+        })() : `
         <p style="margin-top: 16px; line-height: 1.7;">
           ${isEn ? 'If you need to make a change, reply directly to this email or contact the salon.' : 'При нужда от промяна, отговорете директно на този имейл или се свържете със салона.'}
         </p>`}
