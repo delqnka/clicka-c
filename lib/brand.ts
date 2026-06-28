@@ -27,7 +27,7 @@ export const BRAND = {
   domain: env('BRAND_DOMAIN') ?? 'app.alternine.co',
 
   /** Default sender email for transactional messages. */
-  senderEmail: env('BRAND_SENDER_EMAIL') ?? 'noreply@alternine.co',
+  senderEmail: env('BRAND_SENDER_EMAIL') ?? 'noreply@mail.alternine.co',
 
   /** Display name shown in the From header. */
   senderName: env('BRAND_SENDER_NAME') ?? 'Alternine',
