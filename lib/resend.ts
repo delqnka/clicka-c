@@ -4,7 +4,6 @@ import { formatSalonPrice } from '@/lib/salon-currency';
 import { sleep } from '@/lib/http-retry';
 import { sql } from '@/lib/db';
 import { BRAND } from '@/lib/brand';
-import { getPrimaryPublicUrl } from '@/lib/domain-routing';
 import { tryDecryptSecret } from '@/lib/encryption';
 import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 import type { Locale } from '@/lib/i18n';
@@ -517,12 +516,10 @@ export async function sendBookingConfirmation(
 ): Promise<void> {
   const locale = resolveSalonLocale(booking.language);
   const isEn = locale === 'en';
-  const appBaseUrl = booking.salonSlug
-    ? getPrimaryPublicUrl({
-        slug: booking.salonSlug,
-        customDomain: booking.salonCustomDomain,
-      }).replace(/\/+$/, '')
-    : (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
+  // Manage page (`/booking/manage`) lives only on the engine, so the manage
+  // link must always use the engine origin — never the salon's custom domain,
+  // which routes to the client's marketing site and has no /booking/manage.
+  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || BRAND.siteUrl).replace(/\/+$/, '');
   const formattedDate = formatDateDMY(booking.date, locale);
   const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
   const calendarRow: CalendarBookingRow = {
