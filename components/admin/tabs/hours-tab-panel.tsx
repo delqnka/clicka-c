@@ -170,14 +170,15 @@ export function HoursTabPanel({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '120px 1fr auto',
+            gridTemplateColumns: isMobile ? '1fr' : '120px 1fr auto',
             gap: 8,
-            alignItems: 'center',
+            alignItems: isMobile ? 'stretch' : 'center',
+            minWidth: 0,
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 500 }}>{day.label}</span>
           {!d.closed ? (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
               <input
                 type="time"
                 value={d.open}
@@ -190,7 +191,7 @@ export function HoursTabPanel({
                     },
                   }))
                 }
-                style={timeInp({ width: 108, flex: 'none' })}
+                style={timeInp({ width: isMobile ? undefined : 108, flex: isMobile ? 1 : 'none' })}
               />
               <span style={{ color: ADMIN_T.muted, fontSize: 12 }}>–</span>
               <input
@@ -205,7 +206,7 @@ export function HoursTabPanel({
                     },
                   }))
                 }
-                style={timeInp({ width: 108, flex: 'none' })}
+                style={timeInp({ width: isMobile ? undefined : 108, flex: isMobile ? 1 : 'none' })}
               />
             </div>
           ) : (

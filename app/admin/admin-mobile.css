@@ -44,6 +44,16 @@ body:has(.admin-mobile-root) {
     min-width: 0;
   }
 
+  .admin-mobile-root main,
+  .admin-mobile-root section,
+  .admin-mobile-root form,
+  .admin-mobile-root nav,
+  .admin-mobile-root article,
+  .admin-mobile-root aside,
+  .admin-mobile-root div {
+    min-width: 0;
+  }
+
   .admin-mobile-root img,
   .admin-mobile-root svg,
   .admin-mobile-root video,
@@ -56,7 +66,16 @@ body:has(.admin-mobile-root) {
   .admin-mobile-root select {
     font-size: 16px !important;
     line-height: 1.35;
+    width: 100%;
+    min-width: 0;
     max-width: 100%;
+  }
+
+  .admin-mobile-root p,
+  .admin-mobile-root span,
+  .admin-mobile-root label,
+  .admin-mobile-root li {
+    overflow-wrap: anywhere;
   }
 
   .admin-mobile-root input[type='time'],

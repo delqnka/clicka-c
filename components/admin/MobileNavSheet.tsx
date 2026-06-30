@@ -112,6 +112,8 @@ export function MobileNavSheet<TId extends string>({
           right: 0,
           bottom: 0,
           zIndex: 56,
+          width: '100%',
+          maxWidth: '100vw',
           background: '#fff',
           borderRadius: '20px 20px 0 0',
           paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
@@ -123,6 +125,7 @@ export function MobileNavSheet<TId extends string>({
           boxShadow: '0 -12px 40px rgba(0,0,0,0.12)',
           pointerEvents: 'auto',
           touchAction: 'pan-y',
+          boxSizing: 'border-box',
         }}
       >
         {/* Drag handle */}
@@ -176,6 +179,7 @@ export function MobileNavSheet<TId extends string>({
             WebkitOverflowScrolling: 'touch',
             flex: '1 1 auto',
             minHeight: 0,
+            minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
@@ -293,6 +297,10 @@ export function MobileNavSheet<TId extends string>({
                               letterSpacing: '-0.01em',
                               color: tokens.color.text,
                               flex: 1,
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             {label}
@@ -407,6 +415,7 @@ export function MobileNavSheet<TId extends string>({
             display: 'flex',
             gap: 8,
             alignItems: 'center',
+            minWidth: 0,
           }}
         >
           <a
@@ -416,6 +425,7 @@ export function MobileNavSheet<TId extends string>({
             onClick={onClose}
             style={{
               flex: 1,
+              minWidth: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

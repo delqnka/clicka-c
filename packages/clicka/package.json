@@ -1,6 +1,6 @@
 {
   "name": "@clicka1/clicka",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CLI for onboarding client websites to Clicka booking.",
   "type": "module",
   "bin": {

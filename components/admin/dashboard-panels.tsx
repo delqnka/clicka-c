@@ -68,6 +68,7 @@ type BookingsPanelProps = {
 
 const CALENDAR_DAY_NAMES_BG = ['ПОН', 'ВТ', 'СР', 'ЧЕТ', 'ПЕТ', 'СЪБ', 'НЕД'] as const;
 const CALENDAR_DAY_NAMES_EN = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
+const MOBILE_CALENDAR_COLUMNS = 'repeat(7, calc((100% - 24px) / 7))';
 
 type StatusEntry = { label: string; text: string; dot: string; border: string };
 function statusCfg(locale: Locale): Record<BookingStatus, StatusEntry> {
@@ -293,14 +294,16 @@ export function BookingsPanel({
         style={{
           marginBottom: 14,
           border: 'none',
-          borderRadius: isMobile ? 18 : 14,
+          borderRadius: isMobile ? 16 : 14,
           background: T.surface,
-          padding: isMobile ? '12px 10px 10px' : '14px 16px',
+          padding: isMobile ? '12px 8px 10px' : '14px 16px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05)',
           width: '100%',
+          maxWidth: '100%',
           minWidth: 0,
           overflow: 'hidden',
           boxSizing: 'border-box',
+          contain: 'layout paint',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -337,19 +340,23 @@ export function BookingsPanel({
           style={{
             marginTop: isMobile ? 8 : 10,
             display: 'grid',
-            gridTemplateColumns: 'repeat(7, minmax(0,1fr))',
+            gridTemplateColumns: isMobile ? MOBILE_CALENDAR_COLUMNS : 'repeat(7, minmax(0,1fr))',
             gap: isMobile ? 4 : 6,
             width: '100%',
+            maxWidth: '100%',
             minWidth: 0,
+            overflow: 'hidden',
+            justifyContent: 'center',
+            boxSizing: 'border-box',
           }}
         >
           {CALENDAR_DAY_NAMES.map((day) => (
-            <div key={day} style={{ textAlign: 'center', fontSize: isMobile ? 10 : 11, color: T.subtle, fontWeight: 700, minWidth: 0 }}>
+            <div key={day} style={{ textAlign: 'center', fontSize: isMobile ? 9 : 11, color: T.subtle, fontWeight: 700, minWidth: 0, lineHeight: 1.2 }}>
               {day}
             </div>
           ))}
           {Array.from({ length: calendarMeta.mondayFirstOffset }).map((_, i) => (
-            <div key={`offset-${i}`} />
+            <div key={`offset-${i}`} style={{ minWidth: 0 }} />
           ))}
           {Array.from({ length: calendarMeta.daysInMonth }).map((_, i) => {
             const day = i + 1;
@@ -366,18 +373,25 @@ export function BookingsPanel({
                 onClick={() => setSelectedCalendarDate(active ? null : key)}
                 style={{
                   border: hasExternal && !hasClicka ? '2px solid #FB923C' : 'none',
-                  borderRadius: 12,
-                  minHeight: isMobile ? 36 : 42,
+                  borderRadius: isMobile ? 10 : 12,
+                  minHeight: isMobile ? 0 : 42,
+                  aspectRatio: isMobile ? '1 / 1' : undefined,
                   background: active ? T.accent : hasClicka ? '#4F46E5' : hasExternal ? '#FFF7ED' : '#F4F4F5',
                   color: active || hasClicka ? '#fff' : hasExternal ? '#9A3412' : T.text,
-                  fontSize: isMobile ? 12 : 13,
+                  fontSize: isMobile ? 11 : 13,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  padding: isMobile ? '4px 2px' : '6px 4px',
+                  padding: isMobile ? 2 : '6px 4px',
                   minWidth: 0,
+                  maxWidth: '100%',
                   width: '100%',
                   boxSizing: 'border-box',
                   lineHeight: 1.1,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
                 <div>{day}</div>
@@ -537,7 +551,7 @@ export function ClientsPanel({
         onClick={closeEdit}
       >
         <div
-          style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 12 }}
+          style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360, maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' }}
           onClick={(e) => e.stopPropagation()}
         >
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#000' }}>{isEn ? 'Edit client' : 'Редактирай клиент'}</h3>
@@ -551,7 +565,7 @@ export function ClientsPanel({
               style={{ border: `1px solid ${T.border}`, borderRadius: 8, padding: '10px 12px', fontSize: 14, color: '#000' }}
             />
           ))}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
             <button
               type="button"
               disabled={saving || !editDraft.name.trim()}
@@ -561,7 +575,7 @@ export function ClientsPanel({
                 setSaving(false);
                 closeEdit();
               }}
-              style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: '#000', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
+              style={{ flex: '1 1 150px', padding: '10px 12px', borderRadius: 8, border: 'none', background: '#000', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
             >
               {saving ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save' : 'Запази')}
             </button>
@@ -611,17 +625,20 @@ export function ClientsPanel({
             padding: isMobile ? '16px 18px' : '14px 16px',
             background: '#fff',
             boxShadow: '0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.07)',
+            minWidth: 0,
+            maxWidth: '100%',
+            overflow: 'hidden',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
-                {client.name}
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start', justifyContent: 'space-between', gap: isMobile ? 12 : 12, minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+              <p style={{ margin: 0, fontSize: isMobile ? 16 : 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{client.name}</span>
                 {client.isNew && client.visits === 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#000', background: '#f5f5f5', borderRadius: 4, padding: '2px 6px', lineHeight: 1.4, userSelect: 'none' }}>{isEn ? 'new' : 'нов'}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#000', background: '#f5f5f5', borderRadius: 4, padding: '2px 6px', lineHeight: 1.4, userSelect: 'none', flexShrink: 0 }}>{isEn ? 'new' : 'нов'}</span>
                 )}
               </p>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted }}>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
                 {client.phone || (isEn ? 'No phone' : 'Няма телефон')}
                 {client.email ? ` · ${client.email}` : ''}
               </p>
@@ -629,20 +646,20 @@ export function ClientsPanel({
                 {isEn ? 'Last booking: ' : 'Последна резервация: '}{client.lastVisit ? new Date(client.lastVisit).toLocaleString(isEn ? 'en-US' : 'bg-BG', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
               </p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
-              <div style={{ textAlign: 'right' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0, minWidth: 0 }}>
+              <div style={{ textAlign: isMobile ? 'left' : 'right', minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 12, color: T.subtle }}>{isEn ? 'Visits' : 'Посещения'}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>{client.visits}</p>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: T.muted }}>
                   {formatSalonPrice(client.totalSpent)}
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 4, marginTop: isMobile ? 0 : 4, marginLeft: isMobile ? 'auto' : 0, flexShrink: 0 }}>
                 {onEdit && confirmKey !== client.key && (
                   <button
                     type="button"
                     onClick={() => openEdit(client)}
-                    style={{ fontSize: 13, color: T.subtle, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}
+                    style={{ fontSize: 13, color: T.subtle, background: 'transparent', border: 'none', cursor: 'pointer', padding: isMobile ? 8 : '2px 4px', lineHeight: 1, minWidth: isMobile ? 36 : undefined, minHeight: isMobile ? 36 : undefined }}
                     title={isEn ? 'Edit' : 'Редактирай'}
                   >
                     ✏️
@@ -651,7 +668,7 @@ export function ClientsPanel({
                 {/* Delete */}
                 {onDelete && (
                   confirmKey === client.key ? (
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <button
                         type="button"
                         onClick={() => { onDelete(client.key); setConfirmKey(null); }}
@@ -671,7 +688,7 @@ export function ClientsPanel({
                     <button
                       type="button"
                       onClick={() => setConfirmKey(client.key)}
-                      style={{ fontSize: 13, color: T.subtle, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}
+                      style={{ fontSize: 13, color: T.subtle, background: 'transparent', border: 'none', cursor: 'pointer', padding: isMobile ? 8 : '2px 4px', lineHeight: 1, minWidth: isMobile ? 36 : undefined, minHeight: isMobile ? 36 : undefined }}
                       title={isEn ? 'Delete client' : 'Изтрий клиент'}
                     >
                       🗑

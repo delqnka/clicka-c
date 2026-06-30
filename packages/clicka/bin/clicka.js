@@ -99,6 +99,7 @@ function ensureEnvExample(rootDir) {
   const existing = readFileSafe(envPath) || '';
   const linesToAdd = [
     'NEXT_PUBLIC_ENGINE_URL=https://app.alternine.co',
+    'NEXT_PUBLIC_BOOKING_API_KEY=pk_live_your_public_api_key',
     'NEXT_PUBLIC_SALON_SLUG=your-salon-slug',
     'NEXT_PUBLIC_SITE_URL=https://example.com',
   ];
@@ -154,6 +155,7 @@ export function ClickaProvider({ children }${childType}) {
     <BookingProvider
       salonSlug={process.env.NEXT_PUBLIC_SALON_SLUG}
       engineUrl={process.env.NEXT_PUBLIC_ENGINE_URL}
+      apiKey={process.env.NEXT_PUBLIC_BOOKING_API_KEY}
       successUrl={buildReturnUrl('/booking/success')}
       cancelUrl={buildReturnUrl('/booking/cancel')}
     >
@@ -232,8 +234,9 @@ function runInit(targetDir, skipInstall) {
   log('');
   log('Next steps:');
   log('1. Fill in NEXT_PUBLIC_SALON_SLUG with the salon slug created from /pa.');
-  log('2. Fill in NEXT_PUBLIC_SITE_URL with the client site domain.');
-  log('3. Add `data-clicka-book` to existing CTA buttons or import BookingButton from @clicka1/booking.');
+  log('2. Fill in NEXT_PUBLIC_BOOKING_API_KEY with the public key issued from /pa.');
+  log('3. Fill in NEXT_PUBLIC_SITE_URL with the client site domain.');
+  log('4. Add `data-clicka-book` to existing CTA buttons or import BookingButton from @clicka1/booking.');
 }
 
 function main() {

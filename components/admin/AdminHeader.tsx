@@ -229,6 +229,10 @@ export function AdminHeader({
                 letterSpacing: '-0.01em',
                 boxShadow: tokens.shadow.primary,
                 opacity: busyKey === 'publish' ? 0.7 : 1,
+                maxWidth: isMobile ? 104 : undefined,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
                 transition:
                   'transform 160ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease',
               }}

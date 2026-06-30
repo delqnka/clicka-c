@@ -69,6 +69,7 @@ export function ServiceCreateModal({
         style={{
           position: 'relative',
           width: '100%',
+          minWidth: 0,
           maxWidth: 520,
           maxHeight: isMobile ? 'min(92dvh, 100%)' : 'calc(100dvh - 32px)',
           display: 'flex',
@@ -88,7 +89,7 @@ export function ServiceCreateModal({
             overflowY: 'auto',
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
-            padding: 16,
+            padding: isMobile ? '16px 14px' : 16,
           }}
         >
           <p id="add-service-modal-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>
@@ -132,13 +133,16 @@ export function ServiceCreateModal({
                     key={`new-service-variant-${idx}`}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: isMobile ? 'minmax(0, 1fr) 72px 72px auto' : '1fr 90px 90px auto',
+                      gridTemplateColumns: isMobile ? 'minmax(0, 1fr) minmax(0, 1fr) 40px' : '1fr 90px 90px auto',
+                      gridTemplateAreas: isMobile
+                        ? '"label label label" "price duration remove"'
+                        : undefined,
                       gap: 6,
                       alignItems: 'center',
+                      minWidth: 0,
                     }}
                   >
                     <input
-                      style={inp}
                       value={variant.label}
                       onChange={(e) =>
                         setNewServiceDraft((prev) => ({
@@ -147,10 +151,12 @@ export function ServiceCreateModal({
                         }))
                       }
                       placeholder="Име на вариант"
+                      aria-label="Име на вариант"
+                      style={{ ...inp, ...(isMobile ? { gridArea: 'label' } : {}) }}
                     />
                     <input
                       type="number"
-                      style={inp}
+                      style={{ ...inp, ...(isMobile ? { gridArea: 'price' } : {}) }}
                       value={variant.price}
                       onChange={(e) =>
                         setNewServiceDraft((prev) => ({
@@ -164,7 +170,7 @@ export function ServiceCreateModal({
                     />
                     <input
                       type="number"
-                      style={inp}
+                      style={{ ...inp, ...(isMobile ? { gridArea: 'duration' } : {}) }}
                       value={variant.duration_min}
                       onChange={(e) =>
                         setNewServiceDraft((prev) => ({
@@ -178,7 +184,11 @@ export function ServiceCreateModal({
                     />
                     <button
                       type="button"
-                      style={{ ...btn('ghost'), padding: '6px 8px' }}
+                      style={{
+                        ...btn('ghost'),
+                        padding: '6px 8px',
+                        ...(isMobile ? { gridArea: 'remove', width: 40, minWidth: 40, height: 40 } : {}),
+                      }}
                       onClick={() =>
                         setNewServiceDraft((prev) => ({
                           ...prev,
@@ -221,15 +231,16 @@ export function ServiceCreateModal({
             padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
             borderTop: `1px solid ${T.border}`,
             display: 'flex',
+            flexWrap: isMobile ? 'wrap' : 'nowrap',
             justifyContent: 'flex-end',
             gap: 8,
             background: '#fff',
           }}
         >
-          <button type="button" style={btn('ghost')} onClick={onCancel}>Отказ</button>
+          <button type="button" style={{ ...btn('ghost'), ...(isMobile ? { flex: '1 1 130px' } : {}) }} onClick={onCancel}>Отказ</button>
           <button
             type="button"
-            style={{ ...btn('primary'), border: 'none', background: '#000' }}
+            style={{ ...btn('primary'), border: 'none', background: '#000', ...(isMobile ? { flex: '1 1 130px' } : {}) }}
             onClick={onAdd}
           >
             Добави

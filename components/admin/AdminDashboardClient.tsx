@@ -279,7 +279,7 @@ function ymdKey(year: number, monthIndex: number, day: number) {
 const CALENDAR_DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 
 function useIsMobileLayout(bp = 768) {
-  const [m, setM] = useState(false);
+  const [m, setM] = useState(true);
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${bp - 1}px)`);
     const fn = () => setM(mq.matches);
@@ -388,6 +388,7 @@ export default function AdminDashboardClient({
   const [newClientDraft, setNewClientDraft] = useState({ name: '', phone: '', email: '' });
   const [clientSaving, setClientSaving] = useState(false);
   const [extraClients, setExtraClients] = useState<ClientSummary[]>([]);
+  const [extraClientsLoaded, setExtraClientsLoaded] = useState(false);
   const [hiddenClientKeys, setHiddenClientKeys] = useState<Set<string>>(new Set());
   const [selectedAdminServiceCategory, setSelectedAdminServiceCategory] = useState<string | null>(null);
   const [newServiceDraft, setNewServiceDraft] = useState({
@@ -654,12 +655,16 @@ export default function AdminDashboardClient({
       .catch(() => undefined);
   }, [activeTab, slug]);
 
-  // Load salon_clients (added via Telegram or manually) when the booking workspace opens
+  // Load manually added salon_clients after the main bookings view is already interactive.
   useEffect(() => {
-    if (activeTopLevelTab !== 'bookings') return;
-    fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`)
+    if (activeTab !== 'bookings') return;
+    if (extraClientsLoaded) return;
+    const ctrl = new AbortController();
+    const timeout = window.setTimeout(() => {
+      fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, { signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : null)
       .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string }[] } | null) => {
+        setExtraClientsLoaded(true);
         if (!data?.clients?.length) return;
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
         setExtraClients(data.clients.map((c) => ({
@@ -673,8 +678,15 @@ export default function AdminDashboardClient({
           isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
         })));
       })
-      .catch(() => undefined);
-  }, [activeTopLevelTab, slug]);
+      .catch(() => {
+        if (!ctrl.signal.aborted) setExtraClientsLoaded(true);
+      });
+    }, 350);
+    return () => {
+      window.clearTimeout(timeout);
+      ctrl.abort();
+    };
+  }, [activeTab, extraClientsLoaded, slug]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
@@ -1720,6 +1732,7 @@ export default function AdminDashboardClient({
       className="admin-mobile-root"
       style={{
         minHeight: '100dvh',
+        width: '100%',
         background: T.bg,
         color: T.text,
         fontFamily: '"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif',
@@ -1843,6 +1856,7 @@ export default function AdminDashboardClient({
                 boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
                 maxHeight: 'min(85dvh, 520px)',
                 overflowY: 'auto',
+                boxSizing: 'border-box',
               }}
             >
               <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>
@@ -1960,7 +1974,20 @@ export default function AdminDashboardClient({
       {/* Narrower outer container (1100 vs the old 1280) + tighter main
           column (760 vs the old 960) so the desktop dashboard reads as a
           focused workspace instead of edge-to-edge tabs across a 27" screen. */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1, width: '100%', minWidth: 0 }}>
+      <div
+        style={{
+          maxWidth: isMobile ? '100vw' : 1100,
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'flex-start',
+          position: 'relative',
+          zIndex: 1,
+          width: '100%',
+          minWidth: 0,
+          overflowX: isMobile ? 'clip' : undefined,
+          boxSizing: 'border-box',
+        }}
+      >
 
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (
@@ -2147,7 +2174,7 @@ export default function AdminDashboardClient({
               desc={isMobile ? undefined : (locale === 'en' ? 'Manage the services, durations, prices, and categories used by the booking engine.' : 'Управлявай услугите, времетраенето, цените и категориите, които booking engine-ът използва.')}
               compact={isMobile}
               action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 6, flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined }}>
                   <button
                     type="button"
                     style={{
@@ -2215,7 +2242,7 @@ export default function AdminDashboardClient({
               title={locale === 'en' ? 'Offers' : 'Оферти'}
               compact={isMobile}
               action={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 6, flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined }}>
                   <button
                     type="button"
                     onClick={() => setOffers((prev) => [newEmptyOffer(), ...prev])}
@@ -2291,8 +2318,8 @@ export default function AdminDashboardClient({
               <Section
                 title={locale === 'en' ? 'Bookings' : 'Резервации'}
                 action={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#000', minWidth: 0 }}>
                       {bookings.length} {locale === 'en' ? 'total' : 'общо'}
                     </span>
                     {!isMobile ? (
@@ -2333,8 +2360,8 @@ export default function AdminDashboardClient({
               <Section
                 title={locale === 'en' ? 'Clients' : 'Клиенти'}
                 action={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#000' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#000', minWidth: 0 }}>
                       {(() => {
                         const bc = clients.filter(c => !hiddenClientKeys.has(c.key));
                         const names = new Set(bc.map(c => c.name.toLowerCase().trim()));
@@ -2450,9 +2477,12 @@ export default function AdminDashboardClient({
                   padding: 20,
                   width: '100%',
                   maxWidth: 360,
+                  maxHeight: 'calc(100dvh - 32px)',
+                  overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 12,
+                  boxSizing: 'border-box',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -2498,7 +2528,7 @@ export default function AdminDashboardClient({
                     color: '#000',
                   }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -2513,6 +2543,7 @@ export default function AdminDashboardClient({
                       fontWeight: 600,
                       cursor: 'pointer',
                       padding: '8px 12px',
+                      flex: isMobile ? '1 1 120px' : undefined,
                     }}
                   >
                     {locale === 'en' ? 'Cancel' : 'Отказ'}
@@ -2565,6 +2596,7 @@ export default function AdminDashboardClient({
                       cursor: 'pointer',
                       padding: '8px 16px',
                       opacity: !newClientDraft.name.trim() || clientSaving ? 0.6 : 1,
+                      flex: isMobile ? '1 1 120px' : undefined,
                     }}
                   >
                     {clientSaving ? (locale === 'en' ? 'Saving…' : 'Записване…') : (locale === 'en' ? 'Save' : 'Запази')}
@@ -2699,7 +2731,7 @@ function Section({
   children: ReactNode;
   compact?: boolean;
 }) {
-  const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMbl = useIsMobileLayout();
   const shouldWrapHeader = isMbl || !compact;
   return (
     <div style={{ animation: 'slideInUp 300ms ease' }}>

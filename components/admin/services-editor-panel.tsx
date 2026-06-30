@@ -155,6 +155,8 @@ const ServiceCardRow = memo(function ServiceCardRow({
     fontSize: 13,
     borderRadius: 8,
     width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
     boxSizing: 'border-box',
   };
 
@@ -174,6 +176,8 @@ const ServiceCardRow = memo(function ServiceCardRow({
         background: '#fff',
         boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
         overflow: 'hidden',
+        minWidth: 0,
+        maxWidth: '100%',
       }}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flushCommit();
@@ -390,7 +394,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         )}
 
         {/* Payment */}
-        <div style={{ marginTop: 8, marginBottom: 4 }}>
+        <div style={{ marginTop: 8, marginBottom: 4, minWidth: 0 }}>
           <FieldLabel>{isEn ? 'Payment on booking' : 'Плащане при резервация'}</FieldLabel>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {(['none', 'deposit', 'full'] as const).map((pt) => (
@@ -419,9 +423,9 @@ const ServiceCardRow = memo(function ServiceCardRow({
             ))}
           </div>
           {(draft.payment_type ?? 'none') === 'deposit' && (
-            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ marginTop: 8, display: 'flex', alignItems: isMobile ? 'stretch' : 'center', gap: 6, flexDirection: isMobile ? 'column' : 'row', minWidth: 0 }}>
               <FieldLabel>{isEn ? 'Deposit amount (€)' : 'Сума на депозита (€)'}</FieldLabel>
-              <div style={{ position: 'relative', width: 90 }}>
+              <div style={{ position: 'relative', width: isMobile ? '100%' : 90, minWidth: 0 }}>
                 <input
                   type="number"
                   min={1}
@@ -495,7 +499,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         )}
 
         {/* Requires confirmation */}
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
           <input
             type="checkbox"
             id="requires_confirmation"
@@ -503,7 +507,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
             onChange={(e) => updateDraft((s) => ({ ...s, requires_confirmation: e.target.checked || undefined }))}
             style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#000' }}
           />
-          <label htmlFor="requires_confirmation" style={{ fontSize: 13, color: '#333', cursor: 'pointer' }}>
+          <label htmlFor="requires_confirmation" style={{ fontSize: 13, color: '#333', cursor: 'pointer', lineHeight: 1.45, minWidth: 0 }}>
             {isEn
               ? 'Requires my confirmation before the client receives a confirmation'
               : 'Изисква потвърждение от мен преди клиентът да получи потвърждение'}
@@ -524,6 +528,8 @@ const ServiceCardRow = memo(function ServiceCardRow({
               alignItems: 'center',
               gap: 4,
               padding: '4px 0',
+              maxWidth: '100%',
+              overflowWrap: 'anywhere',
             }}
           >
             <Plus size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
@@ -535,9 +541,13 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 key={`variant-${index}-${variantIndex}`}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? 'minmax(0, 1fr) 72px 72px 28px' : '1fr 70px 60px 28px',
+                  gridTemplateColumns: isMobile ? 'minmax(0, 1fr) minmax(0, 1fr) 32px' : '1fr 70px 60px 28px',
+                  gridTemplateAreas: isMobile
+                    ? '"label label label" "price duration remove"'
+                    : undefined,
                   gap: 5,
                   alignItems: 'center',
+                  minWidth: 0,
                 }}
               >
                 <input
@@ -549,10 +559,10 @@ const ServiceCardRow = memo(function ServiceCardRow({
                       return { ...serviceRow, variants: prevVariants };
                     })
                   }
-                  style={{ ...fieldInp, padding: '5px 8px', fontSize: 12 }}
+                  style={{ ...fieldInp, padding: '5px 8px', fontSize: 12, ...(isMobile ? { gridArea: 'label' } : {}) }}
                   placeholder={isEn ? 'Variant' : 'Вариант'}
                 />
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', ...(isMobile ? { gridArea: 'price', minWidth: 0 } : {}) }}>
                   <input
                     type="number"
                     value={variant.price}
@@ -572,7 +582,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   />
                   <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#666', pointerEvents: 'none' }}>€</span>
                 </div>
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', ...(isMobile ? { gridArea: 'duration', minWidth: 0 } : {}) }}>
                   <input
                     type="number"
                     value={Number(variant.duration ?? draft.duration_min ?? 30)}
@@ -594,7 +604,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 </div>
                 <button
                   type="button"
-                  style={{ ...btn('ghost'), padding: 4, minWidth: 28, width: 28, height: 28 }}
+                  style={{ ...btn('ghost'), padding: 4, minWidth: isMobile ? 32 : 28, width: isMobile ? 32 : 28, height: isMobile ? 32 : 28, ...(isMobile ? { gridArea: 'remove' } : {}) }}
                   onClick={() =>
                     updateDraft((serviceRow) => {
                       const nextVariants = mapVariants(serviceRow).filter((_, idx) => idx !== variantIndex);
@@ -706,7 +716,7 @@ export function ServicesEditorPanel({
   }
 
   return (
-    <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+    <div style={{ display: 'grid', gap: isMobile ? 10 : 8, minWidth: 0, maxWidth: '100%' }}>
       {adminServiceCategories.length > 1 ? (
         <div
           style={{
@@ -719,6 +729,7 @@ export function ServicesEditorPanel({
             msOverflowStyle: 'none',
             paddingBottom: 2,
             marginBottom: 2,
+            maxWidth: '100%',
           }}
         >
           {adminServiceCategories.map((cat) => {
