@@ -30,6 +30,7 @@ type ToolStatus = {
 
 export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl, locale }: Props) {
   const isEn = locale === 'en';
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [ga4Id, setGa4Id] = useState(site.ga4Id ?? '');
   const [metaPixelId, setMetaPixelId] = useState(site.metaPixelId ?? '');
   const [clarityId, setClarityId] = useState(site.clarityId ?? '');
@@ -177,7 +178,7 @@ export function MarketingTabPanel({ site, setSite, slug, inp, sitePublicUrl, loc
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ADMIN_T.text }}>
             {isEn ? 'Automatic events' : 'Автоматични събития'}
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 8 : '4px 24px' }}>
             {[
               ['Meta Pixel', 'Schedule, BookingCompleted, Lead, PageView'],
               ['GA4', 'booking_started, booking_completed (+value), generate_lead'],

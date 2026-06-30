@@ -50,16 +50,17 @@ export function AdminSection({
   icon?: ReactNode;
 }) {
   const isMbl = typeof window !== 'undefined' && window.innerWidth < 768;
+  const shouldWrapHeader = isMbl || !compact;
   return (
     <div style={{ animation: 'slideInUp 300ms ease' }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: compact ? 'center' : 'flex-start',
+          alignItems: shouldWrapHeader ? 'flex-start' : 'center',
           gap: compact ? 10 : 16,
           marginBottom: isMbl ? (compact ? 12 : 18) : compact ? 10 : 18,
-          flexWrap: compact ? 'nowrap' : 'wrap',
+          flexWrap: shouldWrapHeader ? 'wrap' : 'nowrap',
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -85,7 +86,7 @@ export function AdminSection({
             </p>
           ) : null}
         </div>
-        {action ? <div style={{ flexShrink: 0, marginLeft: 'auto' }}>{action}</div> : null}
+        {action ? <div style={{ flexShrink: 0, marginLeft: shouldWrapHeader ? 0 : 'auto', width: isMbl ? '100%' : undefined }}>{action}</div> : null}
       </div>
       {children}
     </div>

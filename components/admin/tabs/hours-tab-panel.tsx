@@ -247,7 +247,7 @@ export function HoursTabPanel({
       title={isEn ? 'Working hours' : 'Работно време'}
       compact={isMobile}
       action={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           <button
             type="button"
             onClick={addBookingBlock}

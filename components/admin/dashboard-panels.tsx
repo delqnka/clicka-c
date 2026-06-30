@@ -295,19 +295,56 @@ export function BookingsPanel({
           border: 'none',
           borderRadius: isMobile ? 18 : 14,
           background: T.surface,
-          padding: isMobile ? '14px 14px 12px' : '14px 16px',
+          padding: isMobile ? '12px 10px 10px' : '14px 16px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05)',
+          width: '100%',
+          minWidth: 0,
+          overflow: 'hidden',
+          boxSizing: 'border-box',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <button type="button" onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} style={{ ...btn('ghost'), padding: '6px 10px' }}>←</button>
-          <p style={{ margin: 0, fontSize: isMobile ? 15 : 14, fontWeight: 700, textTransform: 'capitalize' }}>{calendarMonthLabel}</p>
-          <button type="button" onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} style={{ ...btn('ghost'), padding: '6px 10px' }}>→</button>
+          <button
+            type="button"
+            onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+            style={{ ...btn('ghost'), padding: isMobile ? '5px 8px' : '6px 10px', minWidth: 0 }}
+          >
+            ←
+          </button>
+          <p
+            style={{
+              margin: 0,
+              fontSize: isMobile ? 14 : 14,
+              fontWeight: 700,
+              textTransform: 'capitalize',
+              textAlign: 'center',
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
+            {calendarMonthLabel}
+          </p>
+          <button
+            type="button"
+            onClick={() => setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+            style={{ ...btn('ghost'), padding: isMobile ? '5px 8px' : '6px 10px', minWidth: 0 }}
+          >
+            →
+          </button>
         </div>
 
-        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
+        <div
+          style={{
+            marginTop: isMobile ? 8 : 10,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, minmax(0,1fr))',
+            gap: isMobile ? 4 : 6,
+            width: '100%',
+            minWidth: 0,
+          }}
+        >
           {CALENDAR_DAY_NAMES.map((day) => (
-            <div key={day} style={{ textAlign: 'center', fontSize: 11, color: T.subtle, fontWeight: 700 }}>
+            <div key={day} style={{ textAlign: 'center', fontSize: isMobile ? 10 : 11, color: T.subtle, fontWeight: 700, minWidth: 0 }}>
               {day}
             </div>
           ))}
@@ -330,19 +367,23 @@ export function BookingsPanel({
                 style={{
                   border: hasExternal && !hasClicka ? '2px solid #FB923C' : 'none',
                   borderRadius: 12,
-                  minHeight: 42,
+                  minHeight: isMobile ? 36 : 42,
                   background: active ? T.accent : hasClicka ? '#4F46E5' : hasExternal ? '#FFF7ED' : '#F4F4F5',
                   color: active || hasClicka ? '#fff' : hasExternal ? '#9A3412' : T.text,
-                  fontSize: 13,
+                  fontSize: isMobile ? 12 : 13,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  padding: '6px 4px',
+                  padding: isMobile ? '4px 2px' : '6px 4px',
+                  minWidth: 0,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  lineHeight: 1.1,
                 }}
               >
                 <div>{day}</div>
-                {hasClicka ? <div style={{ fontSize: 10, opacity: 0.85 }}>{count}</div> : null}
+                {hasClicka ? <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>{count}</div> : null}
                 {!hasClicka && hasExternal ? (
-                  <div style={{ fontSize: 10, opacity: 0.85 }}>•</div>
+                  <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>•</div>
                 ) : null}
               </button>
             );
