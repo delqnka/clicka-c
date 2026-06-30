@@ -1979,12 +1979,15 @@ export default function AdminDashboardClient({
           style={{
             flex: 1,
             minWidth: 0,
-            maxWidth: isMobile ? undefined : 760,
+            maxWidth: isMobile ? '100%' : 760,
+            width: isMobile ? '100%' : undefined,
             marginInline: isMobile ? undefined : 'auto',
             padding: isMobile
               ? `16px 12px ${MOBILE_BOTTOM_INSET} 12px`
               : '32px 40px 56px',
             scrollPaddingBottom: isMobile ? MOBILE_BOTTOM_INSET : undefined,
+            overflowX: isMobile ? 'hidden' : undefined,
+            boxSizing: 'border-box',
           }}
         >
 
