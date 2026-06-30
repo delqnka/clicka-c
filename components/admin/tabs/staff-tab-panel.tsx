@@ -339,6 +339,7 @@ function OnboardingInfo({ member, sitePublicUrl, locale }: { member: StaffMember
 }
 
 export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonServices = [], locale }: Props) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const isEn = locale === 'en';
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
   const [busy, setBusy] = useState<string | null>(null);
@@ -498,7 +499,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
               display: 'grid', gap: 10,
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>{isEn ? 'Name *' : 'Име *'}</label>
                 <input
@@ -520,7 +521,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                 />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => { setAddOpen(false); setAddName(''); setAddEmail(''); }}

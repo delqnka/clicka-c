@@ -112,7 +112,7 @@ export function ServiceCreateModal({
               <label style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Описание</label>
               <input style={inp} value={newServiceDraft.description} onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Цена (€)</label>
                 <input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} />
@@ -130,7 +130,12 @@ export function ServiceCreateModal({
                 {newServiceDraft.variants.map((variant, idx) => (
                   <div
                     key={`new-service-variant-${idx}`}
-                    style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px auto', gap: 6, alignItems: 'center' }}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? 'minmax(0, 1fr) 72px 72px auto' : '1fr 90px 90px auto',
+                      gap: 6,
+                      alignItems: 'center',
+                    }}
                   >
                     <input
                       style={inp}

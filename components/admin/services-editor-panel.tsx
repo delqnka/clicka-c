@@ -254,7 +254,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
             gap: 8,
             marginBottom: 10,
           }}
@@ -535,7 +535,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 key={`variant-${index}-${variantIndex}`}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 70px 60px 28px',
+                  gridTemplateColumns: isMobile ? 'minmax(0, 1fr) 72px 72px 28px' : '1fr 70px 60px 28px',
                   gap: 5,
                   alignItems: 'center',
                 }}

@@ -2,6 +2,11 @@
 
 html:has(.admin-mobile-root) {
   background: #ffffff;
+  overflow-x: clip;
+}
+
+body:has(.admin-mobile-root) {
+  overflow-x: clip;
 }
 
 .admin-mobile-root {
@@ -9,6 +14,9 @@ html:has(.admin-mobile-root) {
   -webkit-text-size-adjust: 100%;
   font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-weight: 400; /* Manrope Regular */
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* Admin secondary text defaults to Light */
@@ -25,11 +33,30 @@ html:has(.admin-mobile-root) {
 }
 
 @media (max-width: 767px) {
+  .admin-mobile-root,
+  .admin-mobile-root *,
+  .admin-mobile-root *::before,
+  .admin-mobile-root *::after {
+    box-sizing: border-box;
+  }
+
+  .admin-mobile-root > * {
+    min-width: 0;
+  }
+
+  .admin-mobile-root img,
+  .admin-mobile-root svg,
+  .admin-mobile-root video,
+  .admin-mobile-root canvas {
+    max-width: 100%;
+  }
+
   .admin-mobile-root input,
   .admin-mobile-root textarea,
   .admin-mobile-root select {
     font-size: 16px !important;
     line-height: 1.35;
+    max-width: 100%;
   }
 
   .admin-mobile-root input[type='time'],
