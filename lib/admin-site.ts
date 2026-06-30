@@ -1,5 +1,7 @@
+import { unstable_cache } from 'next/cache';
 import { sql } from '@/lib/db';
 import crypto from 'crypto';
+import { adminSiteCacheTag } from '@/lib/revalidate-admin-site';
 import {
   normalizeSalonFaqItems,
   normalizeSalonVisitorInfo,
@@ -148,7 +150,7 @@ export async function loadAdminImageFieldsBySlug(slug: string): Promise<AdminIma
   };
 }
 
-export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
+async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
   await ensureAdminSiteSchema();
   const rows = await sql`
     SELECT
@@ -244,6 +246,26 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
     metaPixelId: String(row.meta_pixel_id ?? ''),
     clarityId: String(row.clarity_id ?? ''),
   };
+}
+
+/**
+ * Cached admin site payload. Tagged with `admin-site:${slug}` so any
+ * salon-save route can drop the cache via `revalidateAdminSiteCache(slug)`
+ * (already wired through `revalidateSalonPublicCache`). 60s revalidate
+ * acts as a backstop for mutations that bypass the helper.
+ */
+export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload | null> {
+  const safeSlug = String(slug ?? '').trim();
+  if (!safeSlug) return null;
+  const cached = unstable_cache(
+    () => fetchAdminSiteDataBySlug(safeSlug),
+    ['admin-site', safeSlug],
+    {
+      tags: [adminSiteCacheTag(safeSlug)],
+      revalidate: 60,
+    },
+  );
+  return cached();
 }
 
 export async function loadBookingsBySalonId(salonId: string, limit = 200): Promise<BookingRecord[]> {

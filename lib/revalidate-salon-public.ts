@@ -1,5 +1,6 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { extractHostname, getPlatformSiteHost, isPlatformApexHost } from '@/lib/domain-routing';
+import { adminSiteCacheTag } from '@/lib/revalidate-admin-site';
 
 export type SalonCacheIdentity = {
   slug: string;
@@ -14,6 +15,7 @@ export function revalidateSalonPublicCache({ slug, customDomain }: SalonCacheIde
   revalidateTag(`salon-public-${safeSlug}`);
   revalidateTag(`salon-public-${getPlatformSiteHost(safeSlug)}`);
   revalidateTag(`salon-blog-${safeSlug}`);
+  revalidateTag(adminSiteCacheTag(safeSlug));
   revalidatePath(`/${safeSlug}`);
   revalidatePath(`/${safeSlug}/blog`);
 

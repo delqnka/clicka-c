@@ -73,9 +73,15 @@ import {
 import { formatSalonPrice } from '@/lib/salon-currency';
 import { T, tokens, BOOKING_STATUS_PALETTE } from '@/lib/admin-theme';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { MobileBottomNav } from '@/components/admin/MobileBottomNav';
-import { MobileNavSheet } from '@/components/admin/MobileNavSheet';
+const AdminSidebar = dynamic(
+  () => import('@/components/admin/AdminSidebar').then((m) => m.AdminSidebar),
+  { ssr: false }
+);
+const MobileNavSheet = dynamic(
+  () => import('@/components/admin/MobileNavSheet').then((m) => m.MobileNavSheet),
+  { ssr: false }
+);
 const BookingsPanel = dynamic(
   () => import('@/components/admin/dashboard-panels').then((m) => m.BookingsPanel),
   { ssr: false }
@@ -875,7 +881,8 @@ export default function AdminDashboardClient({
   }, [activeTab, loadGoogleReviewsStatus, loadCalendarIntegrationStatus]);
 
   useEffect(() => {
-    if (bookingsLoaded && activeTab !== 'bookings') return;
+    if (bookingsLoaded) return;
+    if (activeTopLevelTab !== 'bookings') return;
     let cancelled = false;
     const run = async () => {
       try {
@@ -893,7 +900,7 @@ export default function AdminDashboardClient({
     };
     void run();
     return () => { cancelled = true; };
-  }, [bookingsLoaded, activeTab, slug]);
+  }, [bookingsLoaded, activeTopLevelTab, slug]);
 
   useEffect(() => {
     if (activeTab !== 'staff') return;
@@ -1719,6 +1726,8 @@ export default function AdminDashboardClient({
         WebkitFontSmoothing: 'antialiased',
         position: 'relative',
         touchAction: 'manipulation',
+        overflowX: 'hidden',
+        maxWidth: '100vw',
       }}
     >
       {/* ── Slug transition overlay ──────────────────── */}
@@ -1773,26 +1782,28 @@ export default function AdminDashboardClient({
       />
 
       {/* ── Mobile bottom sheet nav ───────────────────── */}
-      <MobileNavSheet
-        open={isMobile && navOpen}
-        onClose={() => setNavOpen(false)}
-        sheetRef={mobileNavSheetRef}
-        sheetDragRef={sheetDragRef}
-        onSheetDragStart={onSheetDragStart}
-        onSheetDragMove={onSheetDragMove}
-        onSheetDragEnd={onSheetDragEnd}
-        groups={mobileSheetGroups}
-        tabs={visibleTabs}
-        activeTab={activeTopLevelTab}
-        onSelectTab={(id) => { switchTab(id as TabId); setTimeout(() => setNavOpen(false), 180); }}
-        openGroups={openGroups}
-        setOpenGroups={setOpenGroups}
-        sitePublicUrl={sitePublicUrl}
-        locale={locale}
-        pwaOnHomeScreen={pwaOnHomeScreen}
-        onTriggerPwaInstall={triggerPwaInstall}
-        t={t}
-      />
+      {isMobile && navOpen && (
+        <MobileNavSheet
+          open
+          onClose={() => setNavOpen(false)}
+          sheetRef={mobileNavSheetRef}
+          sheetDragRef={sheetDragRef}
+          onSheetDragStart={onSheetDragStart}
+          onSheetDragMove={onSheetDragMove}
+          onSheetDragEnd={onSheetDragEnd}
+          groups={mobileSheetGroups}
+          tabs={visibleTabs}
+          activeTab={activeTopLevelTab}
+          onSelectTab={(id) => { switchTab(id as TabId); setTimeout(() => setNavOpen(false), 180); }}
+          openGroups={openGroups}
+          setOpenGroups={setOpenGroups}
+          sitePublicUrl={sitePublicUrl}
+          locale={locale}
+          pwaOnHomeScreen={pwaOnHomeScreen}
+          onTriggerPwaInstall={triggerPwaInstall}
+          t={t}
+        />
+      )}
 
       {pwaInstallOpen && (() => {
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
@@ -1949,7 +1960,7 @@ export default function AdminDashboardClient({
       {/* Narrower outer container (1100 vs the old 1280) + tighter main
           column (760 vs the old 960) so the desktop dashboard reads as a
           focused workspace instead of edge-to-edge tabs across a 27" screen. */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'flex-start', position: 'relative', zIndex: 1, width: '100%', minWidth: 0 }}>
 
         {/* ── Sidebar (desktop) ─────────────────────── */}
         {!isMobile && (

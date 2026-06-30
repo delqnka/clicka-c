@@ -2,8 +2,20 @@ import { sql } from '@/lib/db';
 
 let ensurePromise: Promise<void> | null = null;
 
-/** Ensures every salons column read by loadAdminSiteDataBySlug exists. */
+const AUTO_MIGRATE =
+  process.env.NODE_ENV !== 'production' ||
+  process.env.ADMIN_AUTO_MIGRATE === '1';
+
+/**
+ * Ensures every salons column read by loadAdminSiteDataBySlug exists.
+ *
+ * In production this is a no-op — the canonical migration lives at
+ * `db/migration-admin-site-schema.sql` and must be applied during deploy.
+ * In dev/preview (or when ADMIN_AUTO_MIGRATE=1) we keep auto-migrating so
+ * local schemas don't drift.
+ */
 export async function ensureAdminSiteSchema() {
+  if (!AUTO_MIGRATE) return;
   if (!ensurePromise) {
     ensurePromise = (async () => {
       await sql`
