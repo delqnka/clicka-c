@@ -1022,7 +1022,7 @@ export default function AdminDashboardClient({
   }, []);
 
   useEffect(() => {
-    if (!serviceModalOpen) return;
+    if (!serviceModalOpen || isMobile) return;
     const prevBodyOverflow = document.body.style.overflow;
     const prevHtmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -1031,7 +1031,7 @@ export default function AdminDashboardClient({
       document.body.style.overflow = prevBodyOverflow;
       document.documentElement.style.overflow = prevHtmlOverflow;
     };
-  }, [serviceModalOpen]);
+  }, [serviceModalOpen, isMobile]);
 
   /* ── Handlers ── */
   async function guardResponse(res: Response) {
