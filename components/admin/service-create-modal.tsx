@@ -53,7 +53,10 @@ export function ServiceCreateModal({
         position: 'fixed',
         inset: 0,
         zIndex: 70,
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        overscrollBehaviorY: 'contain',
+        WebkitOverflowScrolling: 'touch',
         display: 'flex',
         alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
@@ -71,13 +74,14 @@ export function ServiceCreateModal({
           width: '100%',
           minWidth: 0,
           maxWidth: 520,
-          maxHeight: isMobile ? 'min(92dvh, 100%)' : 'calc(100dvh - 32px)',
+          maxHeight: isMobile ? 'min(100dvh - 8px, 100%)' : 'calc(100dvh - 32px)',
           display: 'flex',
           flexDirection: 'column',
           borderRadius: isMobile ? '20px 20px 0 0' : 16,
           background: '#fff',
           border: `1px solid ${T.border}`,
           overflow: 'hidden',
+          touchAction: 'pan-y',
           ...(isMobile ? { marginTop: 'auto' } : {}),
         }}
         onClick={(e) => e.stopPropagation()}
@@ -89,7 +93,8 @@ export function ServiceCreateModal({
             overflowY: 'auto',
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
-            padding: isMobile ? '16px 14px' : 16,
+            padding: isMobile ? '16px 14px 24px' : 16,
+            touchAction: 'pan-y',
           }}
         >
           <p id="add-service-modal-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>
@@ -228,6 +233,8 @@ export function ServiceCreateModal({
         <div
           style={{
             flexShrink: 0,
+            position: 'sticky',
+            bottom: 0,
             padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
             borderTop: `1px solid ${T.border}`,
             display: 'flex',
