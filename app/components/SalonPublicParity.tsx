@@ -56,6 +56,7 @@ import { GOOGLE_REVIEWS_INITIAL_VISIBLE } from '@/lib/google-reviews-limits';
 import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-events';
 import { I18nProvider } from '@/lib/i18n-react';
 import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
+import type { SiteContent } from '@/lib/site-content';
 
 const SalonAiBotWidget = dynamic(
   () => import('@/components/salon/salon-ai-bot-widget').then((m) => ({ default: m.SalonAiBotWidget })),
@@ -136,6 +137,7 @@ export type SalonPublicParityProps = {
   openingHoursMerged: OpeningDayRecord;
   bookingBlocks: BookingBlock[];
   publicTeamMembers: Array<{ id: string; name: string; role: string; bio: string; photoUrl: string }>;
+  siteContent: SiteContent;
 };
 
 function wireMediaUri(raw: string | null | undefined): string {
@@ -508,6 +510,7 @@ export default function SalonPublicParity({
   openingHoursMerged,
   bookingBlocks,
   publicTeamMembers,
+  siteContent,
   children,
 }: SalonPublicParityProps & { children?: ReactNode }) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
@@ -532,7 +535,7 @@ export default function SalonPublicParity({
   const bookingLocale = toLocaleTag(salonLocale);
   const heroTitle = String(rawSalon.hero_title ?? '').trim() || name;
   const heroSubtitle = String(rawSalon.hero_subtitle ?? '').trim();
-  const description = String(rawSalon.about ?? '').trim();
+  const description = String(rawSalon.about ?? '').trim() || siteContent.reformer.body;
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
   const address = String(rawSalon.address ?? '').trim();
@@ -1489,7 +1492,10 @@ export default function SalonPublicParity({
               }}
               className="scroll-mt-24 pt-7"
             >
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">За салона</h2>
+              <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.reformer.title}</h2>
+              {siteContent.reformer.subtitle ? (
+                <p className="mt-2 text-sm text-[#404040]">{siteContent.reformer.subtitle}</p>
+              ) : null}
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#1a1a1a]">
                 {descriptionExpanded
                   ? description || 'Няма добавено описание.'
@@ -1505,6 +1511,83 @@ export default function SalonPublicParity({
                   {descriptionExpanded ? 'Свий' : 'Прочети още'}
                 </button>
               ) : null}
+
+              <div className="mt-6 grid gap-6">
+                <div>
+                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.benefits.title}</h3>
+                  {siteContent.benefits.intro ? (
+                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.benefits.intro}</p>
+                  ) : null}
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {siteContent.benefits.items.map((item) => (
+                      <article key={item.id} className="rounded-2xl border border-black/10 bg-[#fafaf8] p-4">
+                        <p className="text-sm font-semibold text-[#1a1a1a]">{item.title}</p>
+                        {item.text ? (
+                          <p className="mt-2 text-sm leading-relaxed text-[#404040]">{item.text}</p>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.audience.title}</h3>
+                  {siteContent.audience.intro ? (
+                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.audience.intro}</p>
+                  ) : null}
+                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {siteContent.audience.items.map((item, index) => (
+                      <li key={`${item}-${index}`} className="rounded-full border border-black/10 px-3 py-2 text-sm text-[#1a1a1a]">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  {siteContent.audience.outro ? (
+                    <p className="mt-3 text-sm leading-relaxed text-[#404040]">{siteContent.audience.outro}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.whyChooseUs.title}</h3>
+                  {siteContent.whyChooseUs.intro ? (
+                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.whyChooseUs.intro}</p>
+                  ) : null}
+                  <ul className="mt-3 grid gap-2">
+                    {siteContent.whyChooseUs.items.map((item, index) => (
+                      <li key={`${item}-${index}`} className="flex items-start gap-2 text-sm text-[#1a1a1a]">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--salon-primary)]" aria-hidden />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {siteContent.whyChooseUs.outro ? (
+                    <p className="mt-3 text-sm leading-relaxed text-[#404040]">{siteContent.whyChooseUs.outro}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.pricing.title}</h3>
+                  {siteContent.pricing.intro ? (
+                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.pricing.intro}</p>
+                  ) : null}
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    {siteContent.pricing.items.map((item) => (
+                      <article key={item.id} className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-semibold text-[#1a1a1a]">{item.name}</p>
+                          {item.price ? <span className="text-sm text-[color:var(--salon-primary)]">{item.price}</span> : null}
+                        </div>
+                        {item.text ? (
+                          <p className="mt-2 text-sm leading-relaxed text-[#404040]">{item.text}</p>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                  {siteContent.pricing.note ? (
+                    <p className="mt-3 text-xs leading-relaxed text-[#666]">{siteContent.pricing.note}</p>
+                  ) : null}
+                </div>
+              </div>
             </section>
 
             <div className="-mx-4 mt-6 border-b border-black/10 bg-white px-4 py-1 lg:static lg:z-0 lg:mx-0 lg:border-b lg:border-t lg:border-black/10 lg:bg-transparent lg:px-0 lg:py-2">
@@ -1744,7 +1827,13 @@ export default function SalonPublicParity({
                   sectionRefs.current.portfolio = el;
                 }}
               >
-                <h2 className="text-lg font-semibold text-[#1a1a1a]">Портфолио</h2>
+                <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.gallery.title}</h2>
+                {siteContent.gallery.subtitle ? (
+                  <p className="mt-2 text-sm text-[#404040]">{siteContent.gallery.subtitle}</p>
+                ) : null}
+                {siteContent.gallery.body ? (
+                  <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.gallery.body}</p>
+                ) : null}
                 <div className="mt-3 grid gap-2">
                   <div className="grid grid-cols-2 gap-2">
                     {portfolioDisplay.slice(0, 2).map((uri, idx) => (
@@ -1804,7 +1893,13 @@ export default function SalonPublicParity({
                 sectionRefs.current.team = el;
               }}
             >
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">{publicTeamSectionLabel}</h2>
+              <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.instructors.title || publicTeamSectionLabel}</h2>
+              {siteContent.instructors.subtitle ? (
+                <p className="mt-2 text-sm text-[#404040]">{siteContent.instructors.subtitle}</p>
+              ) : null}
+              {siteContent.instructors.body ? (
+                <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.instructors.body}</p>
+              ) : null}
               {publicTeamMembers.length > 0 ? (
                 <TeamMembersRow members={publicTeamMembers} optimizedSrc={optimizedSrc} />
               ) : (
@@ -1905,6 +2000,21 @@ export default function SalonPublicParity({
             {brandNames.length > 0 && (
               <SalonBrandsSection brandNames={brandNames} />
             )}
+
+            <section className="pt-10">
+              <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.contact.title}</h2>
+              {siteContent.contact.subtitle ? (
+                <p className="mt-2 text-sm text-[#404040]">{siteContent.contact.subtitle}</p>
+              ) : null}
+              {siteContent.contact.body ? (
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#404040]">{siteContent.contact.body}</p>
+              ) : null}
+              <div className="mt-4 grid gap-2 text-sm text-[#1a1a1a]">
+                {address ? <p>{address}{city ? `, ${city}` : ''}</p> : null}
+                {phone ? <p>{phone}</p> : null}
+                {String(rawSalon.email ?? '').trim() ? <p>{String(rawSalon.email ?? '').trim()}</p> : null}
+              </div>
+            </section>
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
               <DeferredSection className="pt-10" minHeight={220}>

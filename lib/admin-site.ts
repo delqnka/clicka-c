@@ -16,6 +16,7 @@ import {
 } from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { ensureAdminSiteSchema } from '@/lib/ensure-admin-site-schema';
+import { normalizeSiteContent, type SiteContent } from '@/lib/site-content';
 
 export type WorkingDay = {
   open: string;
@@ -90,6 +91,7 @@ export type AdminSitePayload = {
   ga4Id: string;
   metaPixelId: string;
   clarityId: string;
+  siteContent: SiteContent;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -157,6 +159,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
       slug, name, category, phone, email, city, address, about,
       hero_title, hero_subtitle,
       language,
+      site_content,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       images,
       owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
@@ -175,6 +178,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
   if (rows.length === 0) return null;
   const row = rows[0] as Record<string, unknown>;
   const normalizedServices = normalizeServices(row.services);
+  const language = resolveSalonLocale(String(row.language ?? 'bg'));
 
   if (!row.onboarding_code) {
     const code = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -184,7 +188,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
 
   return {
     slug: String(row.slug ?? ''),
-    language: resolveSalonLocale(String(row.language ?? 'bg')),
+    language,
     name: String(row.name ?? ''),
     category: String(row.category ?? ''),
     phone: String(row.phone ?? ''),
@@ -245,6 +249,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
     ga4Id: String(row.ga4_id ?? ''),
     metaPixelId: String(row.meta_pixel_id ?? ''),
     clarityId: String(row.clarity_id ?? ''),
+    siteContent: normalizeSiteContent(row.site_content, language),
   };
 }
 

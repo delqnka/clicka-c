@@ -37,6 +37,7 @@ export async function GET(
       CAST(id AS text) AS id,
       slug, name, category, phone, email,
       city, address, about,
+      site_content,
       images,
       instagram_username, facebook_username, google_maps_url,
       working_hours, opening_hours, services, team,

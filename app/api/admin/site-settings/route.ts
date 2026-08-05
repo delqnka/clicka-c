@@ -15,6 +15,7 @@ import {
   type SalonVenueExtras,
 } from '@/lib/salon-venue-extras';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
+import { normalizeSiteContent } from '@/lib/site-content';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -89,6 +90,7 @@ export async function PATCH(request: NextRequest) {
             parseSalonVenueExtras(null),
             normalizeSalonVisitorInfo(body.visitorInfo),
           ),
+    siteContent: normalizeSiteContent(body.siteContent, resolveSalonLocale(typeof body.language === 'string' ? body.language : 'bg')),
   };
 
   if (!next.name) {
@@ -126,6 +128,7 @@ export async function PATCH(request: NextRequest) {
       visitor_info = ${JSON.stringify(next.visitorInfo)}::jsonb,
       visitor_additional_info = ${next.visitorAdditionalInfo || null},
       venue_extras = ${JSON.stringify(next.venueExtras)}::jsonb,
+      site_content = ${JSON.stringify(next.siteContent)}::jsonb,
       updated_at = now()
     WHERE slug = ${auth.salon.slug}
   `;
@@ -162,6 +165,7 @@ export async function PATCH(request: NextRequest) {
       visitorInfo: next.visitorInfo,
       visitorAdditionalInfo: next.visitorAdditionalInfo,
       venueExtras: next.venueExtras,
+      siteContent: next.siteContent,
     },
   });
 }

@@ -1108,6 +1108,7 @@ export default function AdminDashboardClient({
           visitorInfo: site.visitorInfo,
           visitorAdditionalInfo: site.visitorAdditionalInfo,
           venueExtras: site.venueExtras,
+          siteContent: site.siteContent,
         }),
       });
       await guardResponse(res);
@@ -1143,6 +1144,7 @@ export default function AdminDashboardClient({
           visitorInfo: site.visitorInfo,
           visitorAdditionalInfo: site.visitorAdditionalInfo,
           venueExtras: site.venueExtras,
+          siteContent: site.siteContent,
         }),
       });
       const data = await guardResponse(res) as { site: Partial<AdminSitePayload> };
@@ -2111,7 +2113,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} locale={locale} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'content' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} locale={locale} />
             </>
           )}
 

@@ -8,11 +8,17 @@ import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fiel
 import { SlugEditor } from '@/components/admin/SlugEditor';
 import type { AdminSitePayload } from '@/lib/admin-site';
 import { getT, type Locale } from '@/lib/i18n';
+import type {
+  SiteContent,
+  SiteContentBenefitItem,
+  SiteContentPriceItem,
+} from '@/lib/site-content';
 
 const SITE_SECTIONS = [
   { id: 'basics', labelKey: 'adminDashboard.siteTab.sections.basics', mobileLabelKey: 'adminDashboard.siteTab.sections.basics' },
   { id: 'address', labelKey: 'adminDashboard.siteTab.sections.address', mobileLabelKey: 'adminDashboard.siteTab.sections.addressMobile' },
   { id: 'about', labelKey: 'adminDashboard.siteTab.sections.about', mobileLabelKey: 'adminDashboard.siteTab.sections.about' },
+  { id: 'content', labelKey: 'adminDashboard.siteTab.sections.content', mobileLabelKey: 'adminDashboard.siteTab.sections.content' },
   { id: 'faq', labelKey: 'adminDashboard.siteTab.sections.faq', mobileLabelKey: 'adminDashboard.siteTab.sections.faq' },
   { id: 'amenities', labelKey: 'adminDashboard.siteTab.sections.amenities', mobileLabelKey: 'adminDashboard.siteTab.sections.amenitiesMobile' },
 ] as const;
@@ -68,6 +74,193 @@ const compactGrid: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
   gap: 8,
 };
+
+const sectionCardStyle: CSSProperties = {
+  display: 'grid',
+  gap: 10,
+  padding: 14,
+  border: `1px solid ${ADMIN_T.border}`,
+  borderRadius: 14,
+  background: '#fff',
+};
+
+const itemRowStyle: CSSProperties = {
+  display: 'grid',
+  gap: 8,
+  padding: 12,
+  border: `1px solid ${ADMIN_T.border}`,
+  borderRadius: 12,
+  background: '#fafafa',
+};
+
+function updateSiteContent(
+  setSite: Dispatch<SetStateAction<AdminSitePayload>>,
+  updater: (prev: SiteContent) => SiteContent,
+) {
+  setSite((prev) => ({
+    ...prev,
+    siteContent: updater(prev.siteContent),
+  }));
+}
+
+function StringListEditor({
+  label,
+  items,
+  inputStyle,
+  onChange,
+}: {
+  label: string;
+  items: string[];
+  inputStyle: CSSProperties;
+  onChange: (items: string[]) => void;
+}) {
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted }}>{label}</p>
+        <button
+          type="button"
+          onClick={() => onChange([...items, ''])}
+          style={{ border: `1px solid ${ADMIN_T.border}`, borderRadius: 999, background: '#fff', padding: '6px 10px', fontSize: 12, cursor: 'pointer' }}
+        >
+          + Добави
+        </button>
+      </div>
+      {items.map((item, index) => (
+        <div key={`${label}-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+          <input
+            value={item}
+            onChange={(e) => onChange(items.map((row, rowIndex) => (rowIndex === index ? e.target.value : row)))}
+            style={inputStyle}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(items.filter((_, rowIndex) => rowIndex !== index))}
+            style={{ border: `1px solid ${ADMIN_T.border}`, borderRadius: 10, background: '#fff', padding: '0 10px', fontSize: 12, cursor: 'pointer' }}
+          >
+            Изтрий
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BenefitItemsEditor({
+  items,
+  inputStyle,
+  onChange,
+}: {
+  items: SiteContentBenefitItem[];
+  inputStyle: CSSProperties;
+  onChange: (items: SiteContentBenefitItem[]) => void;
+}) {
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted }}>Ползи</p>
+        <button
+          type="button"
+          onClick={() => onChange([...items, { id: `benefit-${Date.now()}`, title: '', text: '' }])}
+          style={{ border: `1px solid ${ADMIN_T.border}`, borderRadius: 999, background: '#fff', padding: '6px 10px', fontSize: 12, cursor: 'pointer' }}
+        >
+          + Добави полза
+        </button>
+      </div>
+      {items.map((item, index) => (
+        <div key={item.id || `benefit-${index}`} style={itemRowStyle}>
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto' }}>
+            <input
+              value={item.title}
+              onChange={(e) =>
+                onChange(items.map((row, rowIndex) => (rowIndex === index ? { ...row, title: e.target.value } : row)))
+              }
+              placeholder="Заглавие"
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              onClick={() => onChange(items.filter((_, rowIndex) => rowIndex !== index))}
+              style={{ border: `1px solid ${ADMIN_T.border}`, borderRadius: 10, background: '#fff', padding: '0 10px', fontSize: 12, cursor: 'pointer' }}
+            >
+              Изтрий
+            </button>
+          </div>
+          <textarea
+            value={item.text}
+            onChange={(e) =>
+              onChange(items.map((row, rowIndex) => (rowIndex === index ? { ...row, text: e.target.value } : row)))
+            }
+            placeholder="Кратко описание"
+            style={{ ...inputStyle, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PriceItemsEditor({
+  items,
+  inputStyle,
+  onChange,
+}: {
+  items: SiteContentPriceItem[];
+  inputStyle: CSSProperties;
+  onChange: (items: SiteContentPriceItem[]) => void;
+}) {
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted }}>Цени и пакети</p>
+        <button
+          type="button"
+          onClick={() => onChange([...items, { id: `price-${Date.now()}`, name: '', price: '', text: '' }])}
+          style={{ border: `1px solid ${ADMIN_T.border}`, borderRadius: 999, background: '#fff', padding: '6px 10px', fontSize: 12, cursor: 'pointer' }}
+        >
+          + Добави пакет
+        </button>
+      </div>
+      {items.map((item, index) => (
+        <div key={item.id || `price-${index}`} style={itemRowStyle}>
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1.3fr 0.7fr auto' }}>
+            <input
+              value={item.name}
+              onChange={(e) =>
+                onChange(items.map((row, rowIndex) => (rowIndex === index ? { ...row, name: e.target.value } : row)))
+              }
+              placeholder="Име на пакет"
+              style={inputStyle}
+            />
+            <input
+              value={item.price}
+              onChange={(e) =>
+                onChange(items.map((row, rowIndex) => (rowIndex === index ? { ...row, price: e.target.value } : row)))
+              }
+              placeholder="Цена"
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              onClick={() => onChange(items.filter((_, rowIndex) => rowIndex !== index))}
+              style={{ border: `1px solid ${ADMIN_T.border}`, borderRadius: 10, background: '#fff', padding: '0 10px', fontSize: 12, cursor: 'pointer' }}
+            >
+              Изтрий
+            </button>
+          </div>
+          <textarea
+            value={item.text}
+            onChange={(e) =>
+              onChange(items.map((row, rowIndex) => (rowIndex === index ? { ...row, text: e.target.value } : row)))
+            }
+            placeholder="Описание"
+            style={{ ...inputStyle, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function SiteTabPanel({
   site,
@@ -308,6 +501,225 @@ export function SiteTabPanel({
             onChangeAdditionalInfo={(visitorAdditionalInfo) => setSite((p) => ({ ...p, visitorAdditionalInfo }))}
             onChangeVenueExtras={(venueExtras) => setSite((p) => ({ ...p, venueExtras }))}
           />
+        </div>
+      ) : null}
+
+      {section === 'content' ? (
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Reformer Pilates</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.reformer.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, reformer: { ...prev.reformer, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Подзаглавие">
+              <input
+                value={site.siteContent.reformer.subtitle}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, reformer: { ...prev.reformer, subtitle: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Описание">
+              <textarea
+                value={site.siteContent.reformer.body}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, reformer: { ...prev.reformer, body: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 120, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Ползи</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.benefits.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, benefits: { ...prev.benefits, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Увод">
+              <textarea
+                value={site.siteContent.benefits.intro}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, benefits: { ...prev.benefits, intro: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+            <BenefitItemsEditor
+              items={site.siteContent.benefits.items}
+              inputStyle={fieldInp}
+              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, benefits: { ...prev.benefits, items } }))}
+            />
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>За кого е подходящ</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.audience.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Увод">
+              <textarea
+                value={site.siteContent.audience.intro}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, intro: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+            <StringListEditor
+              label="Подходящо за"
+              items={site.siteContent.audience.items}
+              inputStyle={fieldInp}
+              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, items } }))}
+            />
+            <AdminField compact label="Заключение">
+              <textarea
+                value={site.siteContent.audience.outro}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, outro: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Защо да изберат вас</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.whyChooseUs.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Увод">
+              <textarea
+                value={site.siteContent.whyChooseUs.intro}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, intro: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+            <StringListEditor
+              label="Причини"
+              items={site.siteContent.whyChooseUs.items}
+              inputStyle={fieldInp}
+              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, items } }))}
+            />
+            <AdminField compact label="Заключение">
+              <textarea
+                value={site.siteContent.whyChooseUs.outro}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, outro: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Цени и пакети</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.pricing.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Увод">
+              <textarea
+                value={site.siteContent.pricing.intro}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, intro: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+            <PriceItemsEditor
+              items={site.siteContent.pricing.items}
+              inputStyle={fieldInp}
+              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, items } }))}
+            />
+            <AdminField compact label="Бележка">
+              <textarea
+                value={site.siteContent.pricing.note}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, note: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 72, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Инструктори</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.instructors.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, instructors: { ...prev.instructors, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Подзаглавие">
+              <input
+                value={site.siteContent.instructors.subtitle}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, instructors: { ...prev.instructors, subtitle: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Описание">
+              <textarea
+                value={site.siteContent.instructors.body}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, instructors: { ...prev.instructors, body: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 100, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Галерия</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.gallery.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, gallery: { ...prev.gallery, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Подзаглавие">
+              <input
+                value={site.siteContent.gallery.subtitle}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, gallery: { ...prev.gallery, subtitle: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Описание">
+              <textarea
+                value={site.siteContent.gallery.body}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, gallery: { ...prev.gallery, body: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 100, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Контакти</p>
+            <AdminField compact label="Заглавие">
+              <input
+                value={site.siteContent.contact.title}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, contact: { ...prev.contact, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Подзаглавие">
+              <input
+                value={site.siteContent.contact.subtitle}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, contact: { ...prev.contact, subtitle: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Описание">
+              <textarea
+                value={site.siteContent.contact.body}
+                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, contact: { ...prev.contact, body: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 100, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
         </div>
       ) : null}
 

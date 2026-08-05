@@ -12,6 +12,7 @@ import { getBrandsByIds } from '@/lib/brands';
 import { mergeOpeningHours } from '@/lib/salon-opening-hours';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { getStaffMembers } from '@/lib/staff-members';
+import { normalizeSiteContent } from '@/lib/site-content';
 
 type SalonPageData = NonNullable<Awaited<ReturnType<typeof getPublicSalonPageData>>>;
 
@@ -92,6 +93,10 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
   const ownerRole = String(salonRecord.owner_public_role ?? '').trim();
   const ownerPhoto = String(salonRecord.owner_public_photo_url ?? '').trim();
   const ownerBio = String(salonRecord.owner_public_bio ?? '').trim();
+  const siteContent = normalizeSiteContent(
+    salonRecord.site_content,
+    String(salonRecord.language ?? 'bg').startsWith('en') ? 'en' : 'bg',
+  );
 
   // Load active staff members from staff_members table
   const salonId = String(salonRecord.id ?? '');
@@ -148,6 +153,7 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
         openingHoursMerged={openingHoursMerged}
         bookingBlocks={bookingBlocks}
         publicTeamMembers={publicTeamMembers}
+        siteContent={siteContent}
       >
         {lcp ? <SalonHeroLcp src={lcp.src} alt={lcp.alt} /> : null}
       </SalonPublicParity>

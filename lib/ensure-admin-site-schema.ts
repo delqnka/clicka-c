@@ -44,6 +44,7 @@ export async function ensureAdminSiteSchema() {
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS email_from_name text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_domain text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_verified_at timestamptz;
+          ALTER TABLE salons ADD COLUMN IF NOT EXISTS site_content jsonb NOT NULL DEFAULT '{}'::jsonb;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS hero_title text;
           ALTER TABLE salons ADD COLUMN IF NOT EXISTS hero_subtitle text;
         END $$
