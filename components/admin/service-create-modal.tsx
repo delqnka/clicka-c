@@ -1,6 +1,7 @@
 'use client';
 
 import { Plus, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -44,6 +45,54 @@ export function ServiceCreateModal({
   onCancel: () => void;
   onAdd: () => void;
 }) {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return;
+
+    const root = document.documentElement;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyWidth = document.body.style.width;
+    const previousBodyTop = document.body.style.top;
+    const previousHtmlOverflow = root.style.overflow;
+    const scrollY = window.scrollY;
+
+    const setModalHeight = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      root.style.setProperty('--admin-service-modal-height', `${height}px`);
+    };
+
+    setModalHeight();
+    window.visualViewport?.addEventListener('resize', setModalHeight);
+    window.visualViewport?.addEventListener('scroll', setModalHeight);
+    window.addEventListener('resize', setModalHeight);
+
+    root.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+
+    if (isMobile) {
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+    }
+
+    scrollAreaRef.current?.scrollTo({ top: 0 });
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', setModalHeight);
+      window.visualViewport?.removeEventListener('scroll', setModalHeight);
+      window.removeEventListener('resize', setModalHeight);
+      root.style.removeProperty('--admin-service-modal-height');
+      root.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.width = previousBodyWidth;
+      document.body.style.top = previousBodyTop;
+      if (isMobile) window.scrollTo(0, scrollY);
+    };
+  }, [open, isMobile]);
+
   if (!open) return null;
 
   return (
@@ -53,12 +102,9 @@ export function ServiceCreateModal({
         position: 'fixed',
         inset: 0,
         zIndex: 70,
-        overflowX: 'hidden',
-        overflowY: 'auto',
-        overscrollBehaviorY: 'contain',
-        WebkitOverflowScrolling: 'touch',
+        overflow: 'hidden',
         display: 'flex',
-        alignItems: isMobile ? 'flex-end' : 'center',
+        alignItems: isMobile ? 'stretch' : 'center',
         justifyContent: 'center',
         padding: isMobile ? 0 : 16,
       }}
@@ -74,26 +120,29 @@ export function ServiceCreateModal({
           width: '100%',
           minWidth: 0,
           maxWidth: 520,
-          maxHeight: isMobile ? 'min(100dvh - 8px, 100%)' : 'calc(100dvh - 32px)',
+          height: isMobile ? 'var(--admin-service-modal-height, 100dvh)' : undefined,
+          maxHeight: isMobile ? 'var(--admin-service-modal-height, 100dvh)' : 'calc(100dvh - 32px)',
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: isMobile ? '20px 20px 0 0' : 16,
+          borderRadius: isMobile ? 0 : 16,
           background: '#fff',
-          border: `1px solid ${T.border}`,
+          border: isMobile ? 'none' : `1px solid ${T.border}`,
           overflow: 'hidden',
           touchAction: 'pan-y',
-          ...(isMobile ? { marginTop: 'auto' } : {}),
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div
+          ref={scrollAreaRef}
           style={{
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
-            padding: isMobile ? '16px 14px 24px' : 16,
+            padding: isMobile
+              ? 'calc(16px + env(safe-area-inset-top, 0px)) 14px 24px'
+              : 16,
             touchAction: 'pan-y',
           }}
         >
@@ -102,12 +151,22 @@ export function ServiceCreateModal({
           </p>
           <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
             <div>
-              <label style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Име</label>
-              <input style={inp} value={newServiceDraft.name} onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))} />
+              <label htmlFor="new-service-name" style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Име</label>
+              <input
+                id="new-service-name"
+                name="new-service-name"
+                autoComplete="off"
+                style={inp}
+                value={newServiceDraft.name}
+                onChange={(e) => setNewServiceDraft((p) => ({ ...p, name: e.target.value }))}
+              />
             </div>
             <div>
-              <label style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Категория</label>
+              <label htmlFor="new-service-category" style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Категория</label>
               <input
+                id="new-service-category"
+                name="new-service-category"
+                autoComplete="off"
                 style={inp}
                 value={newServiceDraft.category}
                 list="service-category-options"
@@ -115,17 +174,44 @@ export function ServiceCreateModal({
               />
             </div>
             <div>
-              <label style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Описание</label>
-              <input style={inp} value={newServiceDraft.description} onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))} />
+              <label htmlFor="new-service-description" style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Описание</label>
+              <input
+                id="new-service-description"
+                name="new-service-description"
+                autoComplete="off"
+                style={inp}
+                value={newServiceDraft.description}
+                onChange={(e) => setNewServiceDraft((p) => ({ ...p, description: e.target.value }))}
+              />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Цена (€)</label>
-                <input type="number" style={inp} value={newServiceDraft.price} onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))} />
+                <label htmlFor="new-service-price" style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Цена (€)</label>
+                <input
+                  id="new-service-price"
+                  name="new-service-price"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  autoComplete="off"
+                  style={inp}
+                  value={newServiceDraft.price}
+                  onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
+                />
               </div>
               <div>
-                <label style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Мин</label>
-                <input type="number" style={inp} value={newServiceDraft.duration_min} onChange={(e) => setNewServiceDraft((p) => ({ ...p, duration_min: Number(e.target.value) || 30 }))} />
+                <label htmlFor="new-service-duration" style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Мин</label>
+                <input
+                  id="new-service-duration"
+                  name="new-service-duration"
+                  type="number"
+                  inputMode="numeric"
+                  min={5}
+                  autoComplete="off"
+                  style={inp}
+                  value={newServiceDraft.duration_min}
+                  onChange={(e) => setNewServiceDraft((p) => ({ ...p, duration_min: Number(e.target.value) || 30 }))}
+                />
               </div>
             </div>
             <div>
@@ -148,6 +234,8 @@ export function ServiceCreateModal({
                     }}
                   >
                     <input
+                      name={`new-service-variant-label-${idx}`}
+                      autoComplete="off"
                       value={variant.label}
                       onChange={(e) =>
                         setNewServiceDraft((prev) => ({
@@ -161,6 +249,10 @@ export function ServiceCreateModal({
                     />
                     <input
                       type="number"
+                      name={`new-service-variant-price-${idx}`}
+                      inputMode="decimal"
+                      min={0}
+                      autoComplete="off"
                       style={{ ...inp, ...(isMobile ? { gridArea: 'price' } : {}) }}
                       value={variant.price}
                       onChange={(e) =>
@@ -172,9 +264,14 @@ export function ServiceCreateModal({
                         }))
                       }
                       placeholder="€"
+                      aria-label="Цена на вариант"
                     />
                     <input
                       type="number"
+                      name={`new-service-variant-duration-${idx}`}
+                      inputMode="numeric"
+                      min={5}
+                      autoComplete="off"
                       style={{ ...inp, ...(isMobile ? { gridArea: 'duration' } : {}) }}
                       value={variant.duration_min}
                       onChange={(e) =>
@@ -186,6 +283,7 @@ export function ServiceCreateModal({
                         }))
                       }
                       placeholder="мин"
+                      aria-label="Минути на вариант"
                     />
                     <button
                       type="button"
@@ -233,8 +331,6 @@ export function ServiceCreateModal({
         <div
           style={{
             flexShrink: 0,
-            position: 'sticky',
-            bottom: 0,
             padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
             borderTop: `1px solid ${T.border}`,
             display: 'flex',

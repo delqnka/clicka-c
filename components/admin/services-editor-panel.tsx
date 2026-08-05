@@ -66,20 +66,24 @@ function EmptyState({
   );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        display: 'block',
-        fontSize: 11,
-        fontWeight: 600,
-        color: '#000',
-        marginBottom: 3,
-      }}
-    >
-      {children}
-    </span>
-  );
+function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+  const style: CSSProperties = {
+    display: 'block',
+    fontSize: 11,
+    fontWeight: 600,
+    color: '#000',
+    marginBottom: 3,
+  };
+
+  if (htmlFor) {
+    return (
+      <label htmlFor={htmlFor} style={style}>
+        {children}
+      </label>
+    );
+  }
+
+  return <span style={style}>{children}</span>;
 }
 
 const ServiceCardRow = memo(function ServiceCardRow({
@@ -148,6 +152,13 @@ const ServiceCardRow = memo(function ServiceCardRow({
   const isEn = locale === 'en';
   const variants = mapVariants(draft);
   const categoryLabel = String(draft.category ?? '').trim() || (isEn ? 'Uncategorized' : 'Без категория');
+  const fieldPrefix = `service-${svc.id ?? index}`;
+  const nameId = `${fieldPrefix}-name-bg`;
+  const nameEnId = `${fieldPrefix}-name-en`;
+  const categoryId = `${fieldPrefix}-category`;
+  const descriptionId = `${fieldPrefix}-description-bg`;
+  const descriptionEnId = `${fieldPrefix}-description-en`;
+  const requiresConfirmationId = `${fieldPrefix}-requires-confirmation`;
 
   const fieldInp: CSSProperties = {
     ...svcInp,
@@ -189,8 +200,11 @@ const ServiceCardRow = memo(function ServiceCardRow({
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div>
-              <FieldLabel>{isEn ? 'Name' : 'Наименование (BG)'}</FieldLabel>
+              <FieldLabel htmlFor={nameId}>{isEn ? 'Name' : 'Наименование (BG)'}</FieldLabel>
               <input
+                id={nameId}
+                name={nameId}
+                autoComplete="off"
                 value={draft.name}
                 onChange={(e) => updateDraft((s) => ({ ...s, name: e.target.value }))}
                 style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
@@ -200,8 +214,11 @@ const ServiceCardRow = memo(function ServiceCardRow({
             {/* EN translation — shown only on BG sites */}
             {!isEn && (
               <div>
-                <FieldLabel>Name (EN) — optional</FieldLabel>
+                <FieldLabel htmlFor={nameEnId}>Name (EN) — optional</FieldLabel>
                 <input
+                  id={nameEnId}
+                  name={nameEnId}
+                  autoComplete="off"
                   value={(draft as ServiceItem).nameEn ?? ''}
                   onChange={(e) => updateDraft((s) => ({ ...s, nameEn: e.target.value }))}
                   style={{ ...fieldInp, fontWeight: 600, fontSize: 14, color: '#000' }}
@@ -248,7 +265,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 padding: '3px 8px',
               }}
             >
-              <Tag size={10} />
+              <Tag size={10} aria-hidden="true" />
               {categoryLabel}
             </span>
           </div>
@@ -323,7 +340,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 marginBottom: 2,
               }}
             >
-              <Clock size={11} />
+              <Clock size={11} aria-hidden="true" />
               {isEn ? 'Duration' : 'Времетраене'}
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
@@ -351,8 +368,11 @@ const ServiceCardRow = memo(function ServiceCardRow({
 
         {/* Category */}
         <div style={{ marginBottom: 8 }}>
-          <FieldLabel>{isEn ? 'Category' : 'Категория'}</FieldLabel>
+          <FieldLabel htmlFor={categoryId}>{isEn ? 'Category' : 'Категория'}</FieldLabel>
           <input
+            id={categoryId}
+            name={categoryId}
+            autoComplete="off"
             value={draft.category ?? ''}
             list={`cat-options-${index}`}
             onChange={(e) => updateDraft((s) => ({ ...s, category: e.target.value }))}
@@ -369,8 +389,11 @@ const ServiceCardRow = memo(function ServiceCardRow({
 
         {/* Description */}
         <div style={{ marginBottom: 6 }}>
-          <FieldLabel>{isEn ? 'Description' : 'Описание (BG)'}</FieldLabel>
+          <FieldLabel htmlFor={descriptionId}>{isEn ? 'Description' : 'Описание (BG)'}</FieldLabel>
           <input
+            id={descriptionId}
+            name={descriptionId}
+            autoComplete="off"
             value={draft.description ?? ''}
             onChange={(e) => updateDraft((s) => ({ ...s, description: e.target.value }))}
             style={{ ...fieldInp, color: '#444' }}
@@ -382,8 +405,11 @@ const ServiceCardRow = memo(function ServiceCardRow({
         {/* EN description — shown only on BG sites */}
         {!isEn && (
           <div style={{ marginBottom: 6 }}>
-            <FieldLabel>Description (EN) — optional</FieldLabel>
+            <FieldLabel htmlFor={descriptionEnId}>Description (EN) — optional</FieldLabel>
             <input
+              id={descriptionEnId}
+              name={descriptionEnId}
+              autoComplete="off"
               value={(draft as ServiceItem).descriptionEn ?? ''}
               onChange={(e) => updateDraft((s) => ({ ...s, descriptionEn: e.target.value }))}
               style={{ ...fieldInp, color: '#444' }}
@@ -411,7 +437,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   background: (draft.payment_type ?? 'none') === pt ? '#000' : '#fff',
                   color: (draft.payment_type ?? 'none') === pt ? '#fff' : T.muted,
                   cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  transition: 'background-color 150ms ease, border-color 150ms ease, color 150ms ease',
                 }}
               >
                 {pt === 'none'
@@ -502,12 +528,13 @@ const ServiceCardRow = memo(function ServiceCardRow({
         <div style={{ marginTop: 12, display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
           <input
             type="checkbox"
-            id="requires_confirmation"
+            id={requiresConfirmationId}
+            name={requiresConfirmationId}
             checked={draft.requires_confirmation === true}
             onChange={(e) => updateDraft((s) => ({ ...s, requires_confirmation: e.target.checked || undefined }))}
             style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#000' }}
           />
-          <label htmlFor="requires_confirmation" style={{ fontSize: 13, color: '#333', cursor: 'pointer', lineHeight: 1.45, minWidth: 0 }}>
+          <label htmlFor={requiresConfirmationId} style={{ fontSize: 13, color: '#333', cursor: 'pointer', lineHeight: 1.45, minWidth: 0 }}>
             {isEn
               ? 'Requires my confirmation before the client receives a confirmation'
               : 'Изисква потвърждение от мен преди клиентът да получи потвърждение'}
@@ -532,7 +559,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
               overflowWrap: 'anywhere',
             }}
           >
-            <Plus size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
+            <Plus size={13} aria-hidden="true" style={{ color: '#22c55e', flexShrink: 0 }} />
             {isEn ? 'Variants' : 'Варианти'}{variants.length > 0 ? ` (${variants.length})` : ''}
           </summary>
           <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
@@ -551,6 +578,8 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 }}
               >
                 <input
+                  name={`${fieldPrefix}-variant-label-${variantIndex}`}
+                  autoComplete="off"
                   value={variant.label}
                   onChange={(e) =>
                     updateDraft((serviceRow) => {
@@ -561,10 +590,15 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   }
                   style={{ ...fieldInp, padding: '5px 8px', fontSize: 12, ...(isMobile ? { gridArea: 'label' } : {}) }}
                   placeholder={isEn ? 'Variant' : 'Вариант'}
+                  aria-label={isEn ? 'Variant name' : 'Име на вариант'}
                 />
                 <div style={{ position: 'relative', ...(isMobile ? { gridArea: 'price', minWidth: 0 } : {}) }}>
                   <input
                     type="number"
+                    name={`${fieldPrefix}-variant-price-${variantIndex}`}
+                    inputMode="decimal"
+                    min={0}
+                    autoComplete="off"
                     value={variant.price}
                     onChange={(e) =>
                       updateDraft((serviceRow) => {
@@ -585,6 +619,10 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 <div style={{ position: 'relative', ...(isMobile ? { gridArea: 'duration', minWidth: 0 } : {}) }}>
                   <input
                     type="number"
+                    name={`${fieldPrefix}-variant-duration-${variantIndex}`}
+                    inputMode="numeric"
+                    min={5}
+                    autoComplete="off"
                     value={Number(variant.duration ?? draft.duration_min ?? 30)}
                     onChange={(e) =>
                       updateDraft((serviceRow) => {
@@ -644,7 +682,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 })
               }
             >
-              <Plus size={11} />
+              <Plus size={11} aria-hidden="true" />
               {isEn ? 'Variant' : 'Вариант'}
             </button>
           </div>
@@ -752,7 +790,7 @@ export function ServicesEditorPanel({
                   cursor: 'pointer',
                   flexShrink: 0,
                   whiteSpace: 'nowrap',
-                  transition: 'all 0.15s',
+                  transition: 'background-color 150ms ease, border-color 150ms ease, color 150ms ease',
                 }}
               >
                 {cat.label}
