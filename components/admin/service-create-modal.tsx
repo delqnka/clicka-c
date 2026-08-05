@@ -11,6 +11,7 @@ type ServiceDraft = {
   category: string;
   description: string;
   price: number;
+  original_price: number | undefined;
   duration_min: number;
   variants: DraftVariant[];
 };
@@ -199,6 +200,27 @@ export function ServiceCreateModal({
                   onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
                 />
               </div>
+              <div>
+                <label htmlFor="new-service-original-price" style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Стара цена (€)</label>
+                <input
+                  id="new-service-original-price"
+                  name="new-service-original-price"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  autoComplete="off"
+                  style={inp}
+                  value={newServiceDraft.original_price ?? ''}
+                  onChange={(e) =>
+                    setNewServiceDraft((p) => ({
+                      ...p,
+                      original_price: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <div>
                 <label htmlFor="new-service-duration" style={{ display: 'block', margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: T.text }}>Мин</label>
                 <input

@@ -15,6 +15,7 @@ export type ServiceItem = {
   descriptionEn?: string;
   category?: string;
   price: number;
+  original_price?: number;
   duration_min: number;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
@@ -34,6 +35,7 @@ export type ParsedSalonService = {
   descriptionEn?: string;
   category?: string;
   price?: number;
+  original_price?: number;
   duration: number;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
@@ -102,6 +104,9 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
     const duration = Number(row.duration ?? row.duration_min ?? row.durationMin ?? 30) || 30;
     const priceRaw = row.price ?? row.service_price ?? row.servicePrice;
     const price = priceRaw != null ? Number(priceRaw) : undefined;
+    const originalPriceRaw =
+      row.original_price ?? row.compare_at_price ?? row.originalPrice ?? row.compareAtPrice;
+    const originalPrice = originalPriceRaw != null ? Number(originalPriceRaw) : undefined;
     const variants = Array.isArray(row.variants)
       ? (row.variants as unknown[])
           .map((variant): { label: string; price: number; duration?: number } | null => {
@@ -164,6 +169,8 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
           row.serviceCategory,
         ) || undefined,
       price: price != null && Number.isFinite(price) ? price : undefined,
+      original_price:
+        originalPrice != null && Number.isFinite(originalPrice) ? Math.max(0, originalPrice) : undefined,
       duration,
       images,
       variants: variants && variants.length > 0 ? variants : undefined,
@@ -224,6 +231,9 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
       ...(s.descriptionEn ? { descriptionEn: s.descriptionEn } : {}),
       category: s.category,
       price: basePrice,
+      ...((s.original_price != null && Number.isFinite(Number(s.original_price)))
+        ? { original_price: Math.max(0, Number(s.original_price)) }
+        : {}),
       duration_min: baseDuration,
       ...(Array.isArray(s.images) && s.images.length > 0 ? { images: s.images } : {}),
       ...(normalizedVariants.length > 0 ? { variants: normalizedVariants } : {}),

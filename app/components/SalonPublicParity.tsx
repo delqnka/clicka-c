@@ -94,6 +94,7 @@ type TabId = (typeof SALON_TABS)[number]['id'];
 const SCROLL_SPY_TAB_ORDER: TabId[] = ['about', 'offers', 'services', 'portfolio', 'team', 'reviews'];
 
 const DESCRIPTION_PREVIEW_LEN = 120;
+const PUBLIC_SITE_MAX_WIDTH = 'max-w-[min(100%,1100px)]';
 
 export type { SalonOfferRow };
 
@@ -224,6 +225,7 @@ type ServiceRow = {
   description?: string;
   duration: number;
   price?: number;
+  original_price?: number;
   category?: string;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
@@ -873,6 +875,7 @@ export default function SalonPublicParity({
       id: `${service.id}::${variant.label}`,
       name: `${service.name} – ${variant.label}`,
       price: variant.price,
+      original_price: undefined,
       duration: variant.duration ?? service.duration,
     };
   }, []);
@@ -1352,7 +1355,7 @@ export default function SalonPublicParity({
       className={`client-site min-h-screen [overflow-x:clip] bg-white text-[#1a1a1a] pb-20 lg:pb-10`}
       style={{ ['--salon-primary' as string]: primary } as React.CSSProperties}
     >
-      <div className="relative mx-auto w-full max-w-[min(100%,1180px)] px-0 pb-3 pt-3 md:px-6 md:pt-4">
+      <div className={`relative mx-auto w-full ${PUBLIC_SITE_MAX_WIDTH} px-0 pb-3 pt-3 md:px-6 md:pt-4`}>
         <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
           {shareHint ? (
             <span
@@ -1397,7 +1400,7 @@ export default function SalonPublicParity({
           }`}
           aria-hidden={!showStickySectionTabs}
         >
-          <div className="relative mx-auto w-full max-w-[min(100%,1180px)]">
+          <div className={`relative mx-auto w-full ${PUBLIC_SITE_MAX_WIDTH}`}>
             <div className="flex gap-5 overflow-x-auto scrollbar-none">
               {salonTabsWithTeamLabel.map((tab) => {
                 const isActive = activeTab === tab.id;
@@ -1428,13 +1431,19 @@ export default function SalonPublicParity({
         </div>
       ) : null}
 
-      <main className="mx-auto w-full max-w-[min(100%,1180px)] px-4 md:px-6">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,380px)] lg:items-start lg:gap-x-10">
+      <main className={`mx-auto w-full ${PUBLIC_SITE_MAX_WIDTH} px-4 md:px-6`}>
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(330px,360px)] lg:items-start lg:gap-x-14">
           <div className="min-w-0">
             <div className="flex flex-wrap items-start justify-between gap-4 pb-5 lg:pb-0">
               <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--salon-primary)] md:text-3xl">{heroTitle}</h1>
-                {heroSubtitle ? <p className="salon-text-light text-sm lg:mt-2">{heroSubtitle}</p> : null}
+                <h1 className="max-w-[12ch] text-balance text-[1.9rem] font-semibold leading-[1.02] tracking-[-0.04em] text-[#171717] md:text-[2.3rem] lg:text-[2.65rem]">
+                  {heroTitle}
+                </h1>
+                {heroSubtitle ? (
+                  <p className="salon-text-light mt-2 max-w-[44ch] text-[0.96rem] leading-relaxed lg:mt-3">
+                    {heroSubtitle}
+                  </p>
+                ) : null}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm salon-text-muted">
                   {headerGoogleRating != null && (
                     <button
@@ -1490,13 +1499,15 @@ export default function SalonPublicParity({
               ref={(el) => {
                 sectionRefs.current.about = el;
               }}
-              className="scroll-mt-24 pt-7"
+              className="scroll-mt-24 pt-8 lg:pt-10"
             >
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.reformer.title}</h2>
+              <h2 className="max-w-[16ch] text-balance text-[1.32rem] font-semibold tracking-[-0.03em] text-[#171717] md:text-[1.55rem]">
+                {siteContent.reformer.title}
+              </h2>
               {siteContent.reformer.subtitle ? (
-                <p className="mt-2 text-sm text-[#404040]">{siteContent.reformer.subtitle}</p>
+                <p className="mt-3 max-w-[60ch] text-[0.96rem] leading-relaxed text-[#4a4a4a]">{siteContent.reformer.subtitle}</p>
               ) : null}
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#1a1a1a]">
+              <p className="mt-3 max-w-[68ch] whitespace-pre-wrap text-[0.98rem] leading-[1.8] text-[#242424]">
                 {descriptionExpanded
                   ? description || 'Няма добавено описание.'
                   : (description || 'Няма добавено описание.').slice(0, DESCRIPTION_PREVIEW_LEN)}
@@ -1512,18 +1523,18 @@ export default function SalonPublicParity({
                 </button>
               ) : null}
 
-              <div className="mt-6 grid gap-6">
+              <div className="mt-8 grid gap-8 lg:gap-10">
                 <div>
-                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.benefits.title}</h3>
+                  <h3 className="text-[1.02rem] font-semibold tracking-[-0.02em] text-[#171717]">{siteContent.benefits.title}</h3>
                   {siteContent.benefits.intro ? (
-                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.benefits.intro}</p>
+                    <p className="mt-2 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.benefits.intro}</p>
                   ) : null}
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {siteContent.benefits.items.map((item) => (
-                      <article key={item.id} className="rounded-2xl border border-black/10 bg-[#fafaf8] p-4">
-                        <p className="text-sm font-semibold text-[#1a1a1a]">{item.title}</p>
+                      <article key={item.id} className="rounded-[1.35rem] border border-black/8 bg-[#f7f7f5] p-5">
+                        <p className="text-[0.95rem] font-semibold text-[#171717]">{item.title}</p>
                         {item.text ? (
-                          <p className="mt-2 text-sm leading-relaxed text-[#404040]">{item.text}</p>
+                          <p className="mt-2 text-[0.94rem] leading-relaxed text-[#4a4a4a]">{item.text}</p>
                         ) : null}
                       </article>
                     ))}
@@ -1531,26 +1542,26 @@ export default function SalonPublicParity({
                 </div>
 
                 <div>
-                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.audience.title}</h3>
+                  <h3 className="text-[1.02rem] font-semibold tracking-[-0.02em] text-[#171717]">{siteContent.audience.title}</h3>
                   {siteContent.audience.intro ? (
-                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.audience.intro}</p>
+                    <p className="mt-2 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.audience.intro}</p>
                   ) : null}
                   <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                     {siteContent.audience.items.map((item, index) => (
-                      <li key={`${item}-${index}`} className="rounded-full border border-black/10 px-3 py-2 text-sm text-[#1a1a1a]">
+                      <li key={`${item}-${index}`} className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm text-[#1a1a1a]">
                         {item}
                       </li>
                     ))}
                   </ul>
                   {siteContent.audience.outro ? (
-                    <p className="mt-3 text-sm leading-relaxed text-[#404040]">{siteContent.audience.outro}</p>
+                    <p className="mt-3 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.audience.outro}</p>
                   ) : null}
                 </div>
 
                 <div>
-                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.whyChooseUs.title}</h3>
+                  <h3 className="text-[1.02rem] font-semibold tracking-[-0.02em] text-[#171717]">{siteContent.whyChooseUs.title}</h3>
                   {siteContent.whyChooseUs.intro ? (
-                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.whyChooseUs.intro}</p>
+                    <p className="mt-2 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.whyChooseUs.intro}</p>
                   ) : null}
                   <ul className="mt-3 grid gap-2">
                     {siteContent.whyChooseUs.items.map((item, index) => (
@@ -1561,18 +1572,18 @@ export default function SalonPublicParity({
                     ))}
                   </ul>
                   {siteContent.whyChooseUs.outro ? (
-                    <p className="mt-3 text-sm leading-relaxed text-[#404040]">{siteContent.whyChooseUs.outro}</p>
+                    <p className="mt-3 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.whyChooseUs.outro}</p>
                   ) : null}
                 </div>
 
                 <div>
-                  <h3 className="text-base font-semibold text-[#1a1a1a]">{siteContent.pricing.title}</h3>
+                  <h3 className="text-[1.02rem] font-semibold tracking-[-0.02em] text-[#171717]">{siteContent.pricing.title}</h3>
                   {siteContent.pricing.intro ? (
-                    <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.pricing.intro}</p>
+                    <p className="mt-2 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.pricing.intro}</p>
                   ) : null}
                   <div className="mt-3 grid gap-3 md:grid-cols-3">
                     {siteContent.pricing.items.map((item) => (
-                      <article key={item.id} className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                      <article key={item.id} className="rounded-[1.35rem] border border-black/8 bg-white p-5 shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
                         <div className="flex items-start justify-between gap-3">
                           <p className="text-sm font-semibold text-[#1a1a1a]">{item.name}</p>
                           {item.price ? <span className="text-sm text-[color:var(--salon-primary)]">{item.price}</span> : null}
@@ -1590,7 +1601,7 @@ export default function SalonPublicParity({
               </div>
             </section>
 
-            <div className="-mx-4 mt-6 border-b border-black/10 bg-white px-4 py-1 lg:static lg:z-0 lg:mx-0 lg:border-b lg:border-t lg:border-black/10 lg:bg-transparent lg:px-0 lg:py-2">
+            <div className="-mx-4 mt-8 border-b border-black/10 bg-white px-4 py-1 lg:static lg:z-0 lg:mx-0 lg:border-b lg:border-t lg:border-black/10 lg:bg-transparent lg:px-0 lg:py-2">
               <div className="flex gap-5 overflow-x-auto border-black/10 scrollbar-none">
                 {salonTabsWithTeamLabel.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -1621,14 +1632,14 @@ export default function SalonPublicParity({
             </div>
 
             {activeOffers.length > 0 ? <DeferredSection
-              className="scroll-mt-36 pt-6"
+              className="scroll-mt-36 pt-10 lg:pt-12"
               minHeight={240}
               eager={revealedSections.has('offers')}
               sectionRef={(el) => {
                 sectionRefs.current.offers = el;
               }}
             >
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">Оферти на салона</h2>
+              <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">Оферти на салона</h2>
                 <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
                   {activeOffers.map((o) => {
                     const spots = offerSpotsLeft(o);
@@ -1682,7 +1693,7 @@ export default function SalonPublicParity({
             </DeferredSection> : null}
 
             <DeferredSection
-              className="scroll-mt-36 pt-10"
+              className="scroll-mt-36 pt-14"
               minHeight={280}
               eager={revealedSections.has('services')}
               sectionRef={(el) => {
@@ -1690,7 +1701,7 @@ export default function SalonPublicParity({
               }}
             >
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-[#1a1a1a]">Услуги</h2>
+                <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">Услуги</h2>
                 <select
                   value={serviceSort}
                   onChange={(e) => setServiceSort(e.target.value as typeof serviceSort)}
@@ -1774,12 +1785,19 @@ export default function SalonPublicParity({
                               <Clock className="h-3 w-3 shrink-0" aria-hidden />
                               {effective.duration} мин
                             </span>
-                            {effective.price != null ? (
-                              <>
-                                <span className="mx-1.5 text-black/35">·</span>
-                                <span className="font-medium text-[#1a1a1a]">{formatDualEurText(String(effective.price))}</span>
-                              </>
-                            ) : null}
+                        {effective.price != null ? (
+                          <>
+                            <span className="mx-1.5 text-black/35">·</span>
+                                <span className="inline-flex items-baseline gap-2">
+                                  {effective.original_price != null && effective.original_price > effective.price ? (
+                                    <span className="text-xs text-[#666] line-through">
+                                      {formatDualEurText(String(effective.original_price))}
+                                    </span>
+                                  ) : null}
+                                  <span className="font-medium text-[#1a1a1a]">{formatDualEurText(String(effective.price))}</span>
+                                </span>
+                          </>
+                        ) : null}
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-col items-center gap-1.5 self-center">
@@ -1820,21 +1838,21 @@ export default function SalonPublicParity({
 
             {hasPortfolio ? (
               <DeferredSection
-                className="scroll-mt-36 pt-10"
+                className="scroll-mt-36 pt-14"
                 minHeight={280}
                 eager={revealedSections.has('portfolio')}
                 sectionRef={(el) => {
                   sectionRefs.current.portfolio = el;
                 }}
               >
-                <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.gallery.title}</h2>
+                <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">{siteContent.gallery.title}</h2>
                 {siteContent.gallery.subtitle ? (
-                  <p className="mt-2 text-sm text-[#404040]">{siteContent.gallery.subtitle}</p>
+                  <p className="mt-3 max-w-[58ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.gallery.subtitle}</p>
                 ) : null}
                 {siteContent.gallery.body ? (
-                  <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.gallery.body}</p>
+                  <p className="mt-3 max-w-[64ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.gallery.body}</p>
                 ) : null}
-                <div className="mt-3 grid gap-2">
+                <div className="mt-5 grid gap-2.5">
                   <div className="grid grid-cols-2 gap-2">
                     {portfolioDisplay.slice(0, 2).map((uri, idx) => (
                       <button
@@ -1886,19 +1904,19 @@ export default function SalonPublicParity({
             ) : null}
 
             <DeferredSection
-              className="scroll-mt-36 pt-10"
+              className="scroll-mt-36 pt-14"
               minHeight={120}
               eager={revealedSections.has('team')}
               sectionRef={(el) => {
                 sectionRefs.current.team = el;
               }}
             >
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.instructors.title || publicTeamSectionLabel}</h2>
+              <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">{siteContent.instructors.title || publicTeamSectionLabel}</h2>
               {siteContent.instructors.subtitle ? (
-                <p className="mt-2 text-sm text-[#404040]">{siteContent.instructors.subtitle}</p>
+                <p className="mt-3 max-w-[58ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.instructors.subtitle}</p>
               ) : null}
               {siteContent.instructors.body ? (
-                <p className="mt-2 text-sm leading-relaxed text-[#404040]">{siteContent.instructors.body}</p>
+                <p className="mt-3 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.instructors.body}</p>
               ) : null}
               {publicTeamMembers.length > 0 ? (
                 <TeamMembersRow members={publicTeamMembers} optimizedSrc={optimizedSrc} />
@@ -1908,7 +1926,7 @@ export default function SalonPublicParity({
             </DeferredSection>
 
             <DeferredSection
-              className="scroll-mt-36 pt-10"
+              className="scroll-mt-36 pt-14"
               minHeight={200}
               eager={revealedSections.has('reviews')}
               sectionRef={(el) => {
@@ -1917,7 +1935,7 @@ export default function SalonPublicParity({
             >
               <div className="mt-2 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-lg font-normal tracking-tight text-[#1a1a1a]">Ревюта от Google</h2>
+                  <h2 className="text-[1.2rem] font-medium tracking-[-0.03em] text-[#171717]">Ревюта от Google</h2>
                   {googleRatingAvg != null ? (
                     <div className="flex items-center gap-1 rounded-xl bg-amber-500/10 px-2.5 py-1">
                       <span className="text-sm font-semibold text-[#1a1a1a]">{googleRatingAvg.toFixed(1)}</span>
@@ -1967,8 +1985,8 @@ export default function SalonPublicParity({
               </div>
             </DeferredSection>
 
-            <section className="pt-10">
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">Работно време</h2>
+            <section className="pt-14">
+              <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">Работно време</h2>
               <ul className="mt-3 space-y-2">
                 {DAY_NAMES_EN.map((dayKey) => {
                   const hours = getEffectiveHours(openingHoursMerged, dayKey);
@@ -2001,13 +2019,13 @@ export default function SalonPublicParity({
               <SalonBrandsSection brandNames={brandNames} />
             )}
 
-            <section className="pt-10">
-              <h2 className="text-lg font-semibold text-[#1a1a1a]">{siteContent.contact.title}</h2>
+            <section className="pt-14">
+              <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">{siteContent.contact.title}</h2>
               {siteContent.contact.subtitle ? (
-                <p className="mt-2 text-sm text-[#404040]">{siteContent.contact.subtitle}</p>
+                <p className="mt-3 max-w-[58ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.contact.subtitle}</p>
               ) : null}
               {siteContent.contact.body ? (
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#404040]">{siteContent.contact.body}</p>
+                <p className="mt-3 max-w-[62ch] whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.contact.body}</p>
               ) : null}
               <div className="mt-4 grid gap-2 text-sm text-[#1a1a1a]">
                 {address ? <p>{address}{city ? `, ${city}` : ''}</p> : null}
@@ -2017,9 +2035,9 @@ export default function SalonPublicParity({
             </section>
 
             {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
-              <DeferredSection className="pt-10" minHeight={220}>
-                <h2 className="text-lg font-semibold text-[#1a1a1a]">Локация</h2>
-                <div className="relative mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
+              <DeferredSection className="pt-14" minHeight={220}>
+                <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">Локация</h2>
+                <div className="relative mt-4 overflow-hidden rounded-[1.35rem] border border-black/10 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.05)]">
                   <iframe
                     title="Карта на салона"
                     src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008},${lat - 0.005},${lng + 0.008},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`}

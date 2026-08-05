@@ -396,6 +396,7 @@ export default function AdminDashboardClient({
     category: '',
     description: '',
     price: 0,
+    original_price: undefined as number | undefined,
     duration_min: 30,
     variants: [] as { label: string; price: number; duration_min: number }[],
   });
@@ -722,6 +723,22 @@ export default function AdminDashboardClient({
       document.body.style.overflow = prevOverflow;
     };
   }, [isMobile, navOpen]);
+
+  useEffect(() => {
+    if (
+      typeof document === 'undefined' ||
+      isMobile ||
+      serviceModalOpen ||
+      clientModalOpen ||
+      qrOpen ||
+      pwaInstallOpen
+    ) {
+      return;
+    }
+
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }, [isMobile, serviceModalOpen, clientModalOpen, qrOpen, pwaInstallOpen]);
 
   const hasGoogleReviewsCandidate = Boolean(
     site.googlePlaceId.trim() || site.googleMapsUrl.trim(),
@@ -1707,12 +1724,17 @@ export default function AdminDashboardClient({
           category: newServiceDraft.category.trim(),
           description: newServiceDraft.description.trim(),
           price: nextPrice,
+          ...(newServiceDraft.original_price != null &&
+          Number.isFinite(Number(newServiceDraft.original_price)) &&
+          Number(newServiceDraft.original_price) > nextPrice
+            ? { original_price: Math.max(0, Number(newServiceDraft.original_price)) }
+            : {}),
           duration_min: nextDuration,
           ...(normalizedVariants.length > 0 ? { variants: normalizedVariants } : {}),
         },
       ],
     }));
-    setNewServiceDraft({ name: '', category: '', description: '', price: 0, duration_min: 30, variants: [] });
+    setNewServiceDraft({ name: '', category: '', description: '', price: 0, original_price: undefined, duration_min: 30, variants: [] });
     setServiceModalOpen(false);
   }
 
@@ -1722,6 +1744,7 @@ export default function AdminDashboardClient({
       className="admin-mobile-root"
       style={{
         minHeight: '100dvh',
+        height: isMobile ? '100dvh' : undefined,
         width: '100%',
         background: T.bg,
         color: T.text,
@@ -1730,6 +1753,9 @@ export default function AdminDashboardClient({
         position: 'relative',
         touchAction: 'manipulation',
         overflowX: 'hidden',
+        overflowY: isMobile ? 'auto' : undefined,
+        overscrollBehaviorY: isMobile ? 'contain' : undefined,
+        WebkitOverflowScrolling: isMobile ? 'touch' : undefined,
         maxWidth: '100vw',
       }}
     >
@@ -2004,6 +2030,7 @@ export default function AdminDashboardClient({
               : '32px 40px 56px',
             scrollPaddingBottom: isMobile ? MOBILE_BOTTOM_INSET : undefined,
             overflowX: isMobile ? 'hidden' : undefined,
+            overflowY: 'visible',
             boxSizing: 'border-box',
           }}
         >

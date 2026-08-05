@@ -28,6 +28,7 @@ export type BookingServiceItem = {
   description?: string;
   duration: number;
   price?: number;
+  original_price?: number;
   category?: string;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];

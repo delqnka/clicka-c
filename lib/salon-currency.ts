@@ -7,43 +7,39 @@ export const SALON_CURRENCY_SYMBOL = '€';
 export const SALON_LEGAL_PRICE_NOTICE =
   'Посочените цени на услугите са в евро (EUR) с включен ДДС, освен ако изрично не е посочено друго.';
 
-/** Официален фиксиран курс за периода на двойно обозначаване BGN/EUR. */
-export const EUR_TO_BGN_RATE = 1.95583;
-
-/** "299 €" -> "299 € (584.79 лв.)" — изисква се по закон за периода на двойно обозначаване. */
+/** "299" -> "299 €" */
 export function formatSalonPrice(amount: number): string {
   const value = Number(amount);
   if (!Number.isFinite(value)) return `— ${SALON_CURRENCY_SYMBOL}`;
   const rounded = Math.round(value * 100) / 100;
   const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
-  const bgn = (rounded * EUR_TO_BGN_RATE).toFixed(2);
-  return `${text} ${SALON_CURRENCY_SYMBOL} (${bgn} лв.)`;
+  return `${text} ${SALON_CURRENCY_SYMBOL}`;
 }
 
 export function toBgn(eurAmount: number): number {
-  return Number(eurAmount) * EUR_TO_BGN_RATE;
+  return Number(eurAmount);
 }
 
-/** "299 € (584.79 лв.)" — изисква се по закон за периода на двойно обозначаване. */
+/** "299 €" */
 export function formatDualEur(eurAmount: number): string {
   const value = Number(eurAmount);
   if (!Number.isFinite(value)) return `— ${SALON_CURRENCY_SYMBOL}`;
   const eur = Number.isInteger(value) ? String(value) : value.toFixed(2);
-  const bgn = toBgn(value).toFixed(2);
-  return `${eur} ${SALON_CURRENCY_SYMBOL} (${bgn} лв.)`;
+  return `${eur} ${SALON_CURRENCY_SYMBOL}`;
 }
 
-/** Връща частите поотделно — за UI, където BGN трябва да е визуално по-малък/вторичен. */
+/** Връща частите поотделно — вторичната стойност вече е празна. */
 export function formatDualEurParts(eurAmount: number): { eur: string; bgn: string } {
   const value = Number(eurAmount);
   if (!Number.isFinite(value)) return { eur: `— ${SALON_CURRENCY_SYMBOL}`, bgn: '' };
   const eur = Number.isInteger(value) ? String(value) : value.toFixed(2);
-  return { eur: `${eur} ${SALON_CURRENCY_SYMBOL}`, bgn: `≈ ${toBgn(value).toFixed(2)} лв.` };
+  return { eur: `${eur} ${SALON_CURRENCY_SYMBOL}`, bgn: '' };
 }
 
-/** Вариант за вече форматирано евро низ, напр. formatDualEurText("0.82") -> "0.82 € (1.60 лв.)" */
+/** Вариант за вече форматирано евро низ, напр. formatDualEurText("0.82") -> "0.82 €" */
 export function formatDualEurText(eurText: string): string {
   const value = Number(eurText);
   if (!Number.isFinite(value)) return eurText;
-  return `${eurText} ${SALON_CURRENCY_SYMBOL} (${toBgn(value).toFixed(2)} лв.)`;
+  const eur = Number.isInteger(value) ? String(value) : value.toFixed(2);
+  return `${eur} ${SALON_CURRENCY_SYMBOL}`;
 }

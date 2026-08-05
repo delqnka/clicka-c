@@ -30,6 +30,13 @@ function mapVariants(serviceRow: ServiceItem): ServiceVariant[] {
   }));
 }
 
+function normalizeOriginalPrice(value: unknown, currentPrice: number): number | undefined {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  const normalized = Math.max(0, parsed);
+  return normalized > currentPrice ? normalized : undefined;
+}
+
 function compactInp(base: CSSProperties): CSSProperties {
   return {
     ...base,
@@ -275,7 +282,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
             gap: 8,
             marginBottom: 10,
           }}
@@ -303,7 +310,16 @@ const ServiceCardRow = memo(function ServiceCardRow({
               <input
                 type="number"
                 value={draft.price}
-                onChange={(e) => updateDraft((s) => ({ ...s, price: Number(e.target.value) || 0 }))}
+                onChange={(e) =>
+                  updateDraft((s) => {
+                    const nextPrice = Math.max(0, Number(e.target.value) || 0);
+                    return {
+                      ...s,
+                      price: nextPrice,
+                      original_price: normalizeOriginalPrice(s.original_price, nextPrice),
+                    };
+                  })
+                }
                 style={{
                   ...numInp,
                   flex: 1,
@@ -316,6 +332,55 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   fontSize: 28,
                 }}
                 aria-label={isEn ? 'Price in euros' : 'Цена в евро'}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>€</span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              border: '1px solid #E8E8E8',
+              borderRadius: 10,
+              padding: '6px 10px',
+            }}
+          >
+            <span
+              style={{
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#000',
+                marginBottom: 2,
+              }}
+            >
+              {isEn ? 'Old price' : 'Стара цена'}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+              <input
+                type="number"
+                value={draft.original_price ?? ''}
+                onChange={(e) =>
+                  updateDraft((s) => ({
+                    ...s,
+                    original_price:
+                      e.target.value === ''
+                        ? undefined
+                        : normalizeOriginalPrice(e.target.value, Math.max(0, Number(s.price) || 0)),
+                  }))
+                }
+                style={{
+                  ...numInp,
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  padding: '0',
+                  fontSize: 28,
+                }}
+                aria-label={isEn ? 'Old price in euros' : 'Стара цена в евро'}
+                placeholder="—"
               />
               <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>€</span>
             </div>

@@ -5,7 +5,7 @@ import {
   loadAdminImageFieldsBySlug,
   normalizeImageList,
 } from '@/lib/admin-site';
-import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
+import { revalidateSalonPublicCache } from '@/lib/revalidate-salon-public';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -53,7 +53,8 @@ export async function PATCH(request: NextRequest) {
     WHERE slug = ${auth.salon.slug}
   `;
 
-  deferRevalidateSalonPublicCache({
+  // Images should appear on the public site immediately after save.
+  revalidateSalonPublicCache({
     slug: auth.salon.slug,
     customDomain: auth.salon.customDomain,
   });
