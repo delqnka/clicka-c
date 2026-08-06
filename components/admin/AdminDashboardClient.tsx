@@ -1744,7 +1744,6 @@ export default function AdminDashboardClient({
       className="admin-mobile-root"
       style={{
         minHeight: '100dvh',
-        height: isMobile ? '100dvh' : undefined,
         width: '100%',
         background: T.bg,
         color: T.text,
@@ -1753,9 +1752,6 @@ export default function AdminDashboardClient({
         position: 'relative',
         touchAction: 'manipulation',
         overflowX: 'hidden',
-        overflowY: isMobile ? 'auto' : undefined,
-        overscrollBehaviorY: isMobile ? 'contain' : undefined,
-        WebkitOverflowScrolling: isMobile ? 'touch' : undefined,
         maxWidth: '100vw',
       }}
     >
