@@ -716,29 +716,31 @@ export default function AdminDashboardClient({
   }, [slug]);
 
   useEffect(() => {
-    if (!isMobile || !navOpen || typeof document === 'undefined') return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isMobile, navOpen]);
+    if (typeof document === 'undefined') return;
 
-  useEffect(() => {
-    if (
-      typeof document === 'undefined' ||
-      isMobile ||
+    const shouldLockScroll =
+      (isMobile && navOpen) ||
       serviceModalOpen ||
       clientModalOpen ||
       qrOpen ||
-      pwaInstallOpen
-    ) {
-      return;
+      pwaInstallOpen;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    if (shouldLockScroll) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     }
 
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
-  }, [isMobile, serviceModalOpen, clientModalOpen, qrOpen, pwaInstallOpen]);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isMobile, navOpen, serviceModalOpen, clientModalOpen, qrOpen, pwaInstallOpen]);
 
   const hasGoogleReviewsCandidate = Boolean(
     site.googlePlaceId.trim() || site.googleMapsUrl.trim(),

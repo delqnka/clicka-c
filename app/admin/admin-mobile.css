@@ -3,10 +3,19 @@
 html:has(.admin-mobile-root) {
   background: #ffffff;
   overflow-x: clip;
+  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+  overscroll-behavior-y: auto;
 }
 
 body:has(.admin-mobile-root) {
   overflow-x: clip;
+  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-mobile-root {
@@ -17,6 +26,7 @@ body:has(.admin-mobile-root) {
   width: 100%;
   max-width: 100%;
   overflow-x: clip;
+  overflow-y: visible;
 }
 
 /* Admin secondary text defaults to Light */
@@ -175,7 +185,7 @@ body:has(.admin-mobile-root) {
 
 /* ─── Admin shell behavior ─── */
 .admin-mobile-root {
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
 }
 .admin-mobile-root input:focus,
 .admin-mobile-root textarea:focus,
