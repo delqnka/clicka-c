@@ -103,6 +103,19 @@ function updateSiteContent(
   }));
 }
 
+function languageToggleStyle(active: boolean): CSSProperties {
+  return {
+    border: `1px solid ${active ? '#18181B' : ADMIN_T.border}`,
+    borderRadius: 999,
+    padding: '6px 12px',
+    background: active ? '#18181B' : '#fff',
+    color: active ? '#fff' : ADMIN_T.muted,
+    fontSize: 12,
+    fontWeight: active ? 600 : 500,
+    cursor: 'pointer',
+  };
+}
+
 function StringListEditor({
   label,
   items,
@@ -292,10 +305,38 @@ export function SiteTabPanel({
 }) {
   const t = getT(locale);
   const [section, setSection] = useState<SiteSectionId>(initialSection ?? 'basics');
+  const [contentLocale, setContentLocale] = useState<'bg' | 'en'>('bg');
   useEffect(() => {
     if (initialSection) setSection(initialSection);
   }, [initialSection, siteNavVersion]);
   const fieldInp: CSSProperties = { ...inp, padding: '7px 10px', fontSize: 14 };
+  const localizedHeroTitle = contentLocale === 'en' ? site.heroTitleEn : site.heroTitle;
+  const localizedHeroSubtitle = contentLocale === 'en' ? site.heroSubtitleEn : site.heroSubtitle;
+  const localizedAbout = contentLocale === 'en' ? site.aboutEn : site.about;
+  const localizedFaqItems = contentLocale === 'en' ? site.faqItemsEn : site.faqItems;
+  const localizedSiteContent = contentLocale === 'en' ? site.siteContentEn : site.siteContent;
+
+  function setLocalizedContentStrings(
+    patch: Partial<Pick<AdminSitePayload, 'heroTitle' | 'heroSubtitle' | 'about' | 'heroTitleEn' | 'heroSubtitleEn' | 'aboutEn'>>,
+  ) {
+    setSite((prev) => ({ ...prev, ...patch }));
+  }
+
+  function setLocalizedFaqItems(items: AdminSitePayload['faqItems']) {
+    setSite((prev) =>
+      contentLocale === 'en'
+        ? { ...prev, faqItemsEn: items }
+        : { ...prev, faqItems: items },
+    );
+  }
+
+  function updateLocalizedSiteContent(updater: (prev: SiteContent) => SiteContent) {
+    setSite((prev) =>
+      contentLocale === 'en'
+        ? { ...prev, siteContentEn: updater(prev.siteContentEn) }
+        : { ...prev, siteContent: updater(prev.siteContent) },
+    );
+  }
 
   return (
     <AdminSection
@@ -460,10 +501,23 @@ export function SiteTabPanel({
 
       {section === 'about' ? (
         <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted }}>Редактираш текстове за:</p>
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <button type="button" onClick={() => setContentLocale('bg')} style={languageToggleStyle(contentLocale === 'bg')}>BG</button>
+              <button type="button" onClick={() => setContentLocale('en')} style={languageToggleStyle(contentLocale === 'en')}>EN</button>
+            </div>
+          </div>
           <AdminField compact label={t('adminDashboard.siteTab.fields.heroTitle')}>
             <input
-              value={site.heroTitle}
-              onChange={(e) => setSite((p) => ({ ...p, heroTitle: e.target.value }))}
+              value={localizedHeroTitle}
+              onChange={(e) =>
+                setLocalizedContentStrings(
+                  contentLocale === 'en'
+                    ? { heroTitleEn: e.target.value }
+                    : { heroTitle: e.target.value },
+                )
+              }
               placeholder={site.name}
               style={fieldInp}
             />
@@ -473,8 +527,14 @@ export function SiteTabPanel({
           </AdminField>
           <AdminField compact label={t('adminDashboard.siteTab.fields.heroSubtitle')}>
             <input
-              value={site.heroSubtitle}
-              onChange={(e) => setSite((p) => ({ ...p, heroSubtitle: e.target.value }))}
+              value={localizedHeroSubtitle}
+              onChange={(e) =>
+                setLocalizedContentStrings(
+                  contentLocale === 'en'
+                    ? { heroSubtitleEn: e.target.value }
+                    : { heroSubtitle: e.target.value },
+                )
+              }
               style={fieldInp}
             />
             <p style={{ margin: '4px 0 0', fontSize: 11, color: ADMIN_T.muted, lineHeight: 1.4 }}>
@@ -483,8 +543,14 @@ export function SiteTabPanel({
           </AdminField>
           <AdminField compact label={t('adminDashboard.siteTab.sections.about')}>
             <textarea
-              value={site.about}
-              onChange={(e) => setSite((p) => ({ ...p, about: e.target.value }))}
+              value={localizedAbout}
+              onChange={(e) =>
+                setLocalizedContentStrings(
+                  contentLocale === 'en'
+                    ? { aboutEn: e.target.value }
+                    : { about: e.target.value },
+                )
+              }
               style={{ ...fieldInp, minHeight: 180, resize: 'vertical', lineHeight: 1.5 }}
             />
           </AdminField>
@@ -506,26 +572,33 @@ export function SiteTabPanel({
 
       {section === 'content' ? (
         <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted }}>Редактираш съдържанието за:</p>
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <button type="button" onClick={() => setContentLocale('bg')} style={languageToggleStyle(contentLocale === 'bg')}>BG</button>
+              <button type="button" onClick={() => setContentLocale('en')} style={languageToggleStyle(contentLocale === 'en')}>EN</button>
+            </div>
+          </div>
           <div style={sectionCardStyle}>
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Reformer Pilates</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.reformer.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, reformer: { ...prev.reformer, title: e.target.value } }))}
+                value={localizedSiteContent.reformer.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, reformer: { ...prev.reformer, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Подзаглавие">
               <input
-                value={site.siteContent.reformer.subtitle}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, reformer: { ...prev.reformer, subtitle: e.target.value } }))}
+                value={localizedSiteContent.reformer.subtitle}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, reformer: { ...prev.reformer, subtitle: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Описание">
               <textarea
-                value={site.siteContent.reformer.body}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, reformer: { ...prev.reformer, body: e.target.value } }))}
+                value={localizedSiteContent.reformer.body}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, reformer: { ...prev.reformer, body: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 120, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
@@ -535,22 +608,22 @@ export function SiteTabPanel({
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Ползи</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.benefits.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, benefits: { ...prev.benefits, title: e.target.value } }))}
+                value={localizedSiteContent.benefits.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, benefits: { ...prev.benefits, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Увод">
               <textarea
-                value={site.siteContent.benefits.intro}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, benefits: { ...prev.benefits, intro: e.target.value } }))}
+                value={localizedSiteContent.benefits.intro}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, benefits: { ...prev.benefits, intro: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
             <BenefitItemsEditor
-              items={site.siteContent.benefits.items}
+              items={localizedSiteContent.benefits.items}
               inputStyle={fieldInp}
-              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, benefits: { ...prev.benefits, items } }))}
+              onChange={(items) => updateLocalizedSiteContent((prev) => ({ ...prev, benefits: { ...prev.benefits, items } }))}
             />
           </div>
 
@@ -558,28 +631,28 @@ export function SiteTabPanel({
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>За кого е подходящ</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.audience.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, title: e.target.value } }))}
+                value={localizedSiteContent.audience.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, audience: { ...prev.audience, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Увод">
               <textarea
-                value={site.siteContent.audience.intro}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, intro: e.target.value } }))}
+                value={localizedSiteContent.audience.intro}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, audience: { ...prev.audience, intro: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
             <StringListEditor
               label="Подходящо за"
-              items={site.siteContent.audience.items}
+              items={localizedSiteContent.audience.items}
               inputStyle={fieldInp}
-              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, items } }))}
+              onChange={(items) => updateLocalizedSiteContent((prev) => ({ ...prev, audience: { ...prev.audience, items } }))}
             />
             <AdminField compact label="Заключение">
               <textarea
-                value={site.siteContent.audience.outro}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, audience: { ...prev.audience, outro: e.target.value } }))}
+                value={localizedSiteContent.audience.outro}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, audience: { ...prev.audience, outro: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
@@ -589,28 +662,28 @@ export function SiteTabPanel({
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Защо да изберат вас</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.whyChooseUs.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } }))}
+                value={localizedSiteContent.whyChooseUs.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Увод">
               <textarea
-                value={site.siteContent.whyChooseUs.intro}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, intro: e.target.value } }))}
+                value={localizedSiteContent.whyChooseUs.intro}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, intro: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
             <StringListEditor
               label="Причини"
-              items={site.siteContent.whyChooseUs.items}
+              items={localizedSiteContent.whyChooseUs.items}
               inputStyle={fieldInp}
-              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, items } }))}
+              onChange={(items) => updateLocalizedSiteContent((prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, items } }))}
             />
             <AdminField compact label="Заключение">
               <textarea
-                value={site.siteContent.whyChooseUs.outro}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, outro: e.target.value } }))}
+                value={localizedSiteContent.whyChooseUs.outro}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, outro: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
@@ -620,27 +693,27 @@ export function SiteTabPanel({
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Цени и пакети</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.pricing.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, title: e.target.value } }))}
+                value={localizedSiteContent.pricing.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, pricing: { ...prev.pricing, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Увод">
               <textarea
-                value={site.siteContent.pricing.intro}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, intro: e.target.value } }))}
+                value={localizedSiteContent.pricing.intro}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, pricing: { ...prev.pricing, intro: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 84, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
             <PriceItemsEditor
-              items={site.siteContent.pricing.items}
+              items={localizedSiteContent.pricing.items}
               inputStyle={fieldInp}
-              onChange={(items) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, items } }))}
+              onChange={(items) => updateLocalizedSiteContent((prev) => ({ ...prev, pricing: { ...prev.pricing, items } }))}
             />
             <AdminField compact label="Бележка">
               <textarea
-                value={site.siteContent.pricing.note}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, pricing: { ...prev.pricing, note: e.target.value } }))}
+                value={localizedSiteContent.pricing.note}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, pricing: { ...prev.pricing, note: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 72, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
@@ -650,22 +723,22 @@ export function SiteTabPanel({
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Инструктори</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.instructors.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, instructors: { ...prev.instructors, title: e.target.value } }))}
+                value={localizedSiteContent.instructors.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, instructors: { ...prev.instructors, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Подзаглавие">
               <input
-                value={site.siteContent.instructors.subtitle}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, instructors: { ...prev.instructors, subtitle: e.target.value } }))}
+                value={localizedSiteContent.instructors.subtitle}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, instructors: { ...prev.instructors, subtitle: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Описание">
               <textarea
-                value={site.siteContent.instructors.body}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, instructors: { ...prev.instructors, body: e.target.value } }))}
+                value={localizedSiteContent.instructors.body}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, instructors: { ...prev.instructors, body: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 100, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
@@ -675,22 +748,22 @@ export function SiteTabPanel({
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Галерия</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.gallery.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, gallery: { ...prev.gallery, title: e.target.value } }))}
+                value={localizedSiteContent.gallery.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, gallery: { ...prev.gallery, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Подзаглавие">
               <input
-                value={site.siteContent.gallery.subtitle}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, gallery: { ...prev.gallery, subtitle: e.target.value } }))}
+                value={localizedSiteContent.gallery.subtitle}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, gallery: { ...prev.gallery, subtitle: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Описание">
               <textarea
-                value={site.siteContent.gallery.body}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, gallery: { ...prev.gallery, body: e.target.value } }))}
+                value={localizedSiteContent.gallery.body}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, gallery: { ...prev.gallery, body: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 100, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
@@ -700,22 +773,22 @@ export function SiteTabPanel({
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Контакти</p>
             <AdminField compact label="Заглавие">
               <input
-                value={site.siteContent.contact.title}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, contact: { ...prev.contact, title: e.target.value } }))}
+                value={localizedSiteContent.contact.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, contact: { ...prev.contact, title: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Подзаглавие">
               <input
-                value={site.siteContent.contact.subtitle}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, contact: { ...prev.contact, subtitle: e.target.value } }))}
+                value={localizedSiteContent.contact.subtitle}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, contact: { ...prev.contact, subtitle: e.target.value } }))}
                 style={fieldInp}
               />
             </AdminField>
             <AdminField compact label="Описание">
               <textarea
-                value={site.siteContent.contact.body}
-                onChange={(e) => updateSiteContent(setSite, (prev) => ({ ...prev, contact: { ...prev.contact, body: e.target.value } }))}
+                value={localizedSiteContent.contact.body}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, contact: { ...prev.contact, body: e.target.value } }))}
                 style={{ ...fieldInp, minHeight: 100, resize: 'vertical', lineHeight: 1.5 }}
               />
             </AdminField>
@@ -724,19 +797,28 @@ export function SiteTabPanel({
       ) : null}
 
       {section === 'faq' ? (
-        <SalonFaqVisitorFields
-          section="faq"
-          compact
-          faqItems={site.faqItems}
-          visitorInfo={site.visitorInfo}
-          visitorAdditionalInfo={site.visitorAdditionalInfo}
-          venueExtras={site.venueExtras}
-          inputStyle={fieldInp}
-          onChangeFaq={(faqItems) => setSite((p) => ({ ...p, faqItems }))}
-          onChangeVisitorInfo={(visitorInfo) => setSite((p) => ({ ...p, visitorInfo }))}
-          onChangeAdditionalInfo={(visitorAdditionalInfo) => setSite((p) => ({ ...p, visitorAdditionalInfo }))}
-          onChangeVenueExtras={(venueExtras) => setSite((p) => ({ ...p, venueExtras }))}
-        />
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted }}>Редактираш FAQ за:</p>
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <button type="button" onClick={() => setContentLocale('bg')} style={languageToggleStyle(contentLocale === 'bg')}>BG</button>
+              <button type="button" onClick={() => setContentLocale('en')} style={languageToggleStyle(contentLocale === 'en')}>EN</button>
+            </div>
+          </div>
+          <SalonFaqVisitorFields
+            section="faq"
+            compact
+            faqItems={localizedFaqItems}
+            visitorInfo={site.visitorInfo}
+            visitorAdditionalInfo={site.visitorAdditionalInfo}
+            venueExtras={site.venueExtras}
+            inputStyle={fieldInp}
+            onChangeFaq={setLocalizedFaqItems}
+            onChangeVisitorInfo={(visitorInfo) => setSite((p) => ({ ...p, visitorInfo }))}
+            onChangeAdditionalInfo={(visitorAdditionalInfo) => setSite((p) => ({ ...p, visitorAdditionalInfo }))}
+            onChangeVenueExtras={(venueExtras) => setSite((p) => ({ ...p, venueExtras }))}
+          />
+        </div>
       ) : null}
 
       {section === 'amenities' ? (

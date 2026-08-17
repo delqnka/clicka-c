@@ -50,8 +50,11 @@ export async function PATCH(request: NextRequest) {
     city: typeof body.city === 'string' ? body.city.trim() : '',
     address: typeof body.address === 'string' ? body.address.trim() : '',
     about: typeof body.about === 'string' ? body.about.trim() : '',
+    aboutEn: typeof body.aboutEn === 'string' ? body.aboutEn.trim() : '',
     heroTitle: typeof body.heroTitle === 'string' ? body.heroTitle.trim() : '',
     heroSubtitle: typeof body.heroSubtitle === 'string' ? body.heroSubtitle.trim() : '',
+    heroTitleEn: typeof body.heroTitleEn === 'string' ? body.heroTitleEn.trim() : '',
+    heroSubtitleEn: typeof body.heroSubtitleEn === 'string' ? body.heroSubtitleEn.trim() : '',
     instagram: typeof body.instagram === 'string' ? body.instagram.trim() : '',
     facebook: typeof body.facebook === 'string' ? body.facebook.trim() : '',
     tiktok: typeof body.tiktok === 'string' ? body.tiktok.trim() : '',
@@ -75,6 +78,7 @@ export async function PATCH(request: NextRequest) {
       typeof body.ownerPublicPhotoUrl === 'string' ? body.ownerPublicPhotoUrl.trim() : '',
     ownerPublicBio: typeof body.ownerPublicBio === 'string' ? body.ownerPublicBio.trim() : '',
     faqItems: Array.isArray(body.faqItems) ? normalizeSalonFaqItems(body.faqItems) : [],
+    faqItemsEn: Array.isArray(body.faqItemsEn) ? normalizeSalonFaqItems(body.faqItemsEn) : [],
     visitorInfo:
       body.visitorInfo && typeof body.visitorInfo === 'object'
         ? normalizeSalonVisitorInfo(body.visitorInfo)
@@ -91,6 +95,7 @@ export async function PATCH(request: NextRequest) {
             normalizeSalonVisitorInfo(body.visitorInfo),
           ),
     siteContent: normalizeSiteContent(body.siteContent, resolveSalonLocale(typeof body.language === 'string' ? body.language : 'bg')),
+    siteContentEn: normalizeSiteContent(body.siteContentEn, 'en'),
   };
 
   if (!next.name) {
@@ -100,6 +105,7 @@ export async function PATCH(request: NextRequest) {
     next.language === 'en'
       ? `${next.name} accepts online bookings through its own website.`
       : `${next.name} предлага онлайн резервации през собствен сайт.`;
+  const defaultAboutEn = `${next.name} accepts online bookings through its own website.`;
 
   await sql`
     UPDATE salons
@@ -111,8 +117,11 @@ export async function PATCH(request: NextRequest) {
       city = ${next.city || ''},
       address = ${next.address || ''},
       about = ${next.about || defaultAbout},
+      about_en = ${next.aboutEn || defaultAboutEn},
       hero_title = ${next.heroTitle || null},
       hero_subtitle = ${next.heroSubtitle || null},
+      hero_title_en = ${next.heroTitleEn || null},
+      hero_subtitle_en = ${next.heroSubtitleEn || null},
       instagram_username = ${next.instagram || ''},
       facebook_username = ${next.facebook || ''},
       tiktok_username = ${next.tiktok || null},
@@ -125,10 +134,12 @@ export async function PATCH(request: NextRequest) {
       owner_public_photo_url = ${next.ownerPublicPhotoUrl || null},
       owner_public_bio = ${next.ownerPublicBio || null},
       faq_items = ${JSON.stringify(next.faqItems)}::jsonb,
+      faq_items_en = ${JSON.stringify(next.faqItemsEn)}::jsonb,
       visitor_info = ${JSON.stringify(next.visitorInfo)}::jsonb,
       visitor_additional_info = ${next.visitorAdditionalInfo || null},
       venue_extras = ${JSON.stringify(next.venueExtras)}::jsonb,
       site_content = ${JSON.stringify(next.siteContent)}::jsonb,
+      site_content_en = ${JSON.stringify(next.siteContentEn)}::jsonb,
       updated_at = now()
     WHERE slug = ${auth.salon.slug}
   `;
@@ -148,8 +159,11 @@ export async function PATCH(request: NextRequest) {
       city: next.city,
       address: next.address,
       about: next.about || defaultAbout,
+      aboutEn: next.aboutEn || defaultAboutEn,
       heroTitle: next.heroTitle,
       heroSubtitle: next.heroSubtitle,
+      heroTitleEn: next.heroTitleEn,
+      heroSubtitleEn: next.heroSubtitleEn,
       instagram: next.instagram,
       facebook: next.facebook,
       tiktok: next.tiktok,
@@ -162,10 +176,12 @@ export async function PATCH(request: NextRequest) {
       ownerPublicPhotoUrl: next.ownerPublicPhotoUrl,
       ownerPublicBio: next.ownerPublicBio,
       faqItems: next.faqItems,
+      faqItemsEn: next.faqItemsEn,
       visitorInfo: next.visitorInfo,
       visitorAdditionalInfo: next.visitorAdditionalInfo,
       venueExtras: next.venueExtras,
       siteContent: next.siteContent,
+      siteContentEn: next.siteContentEn,
     },
   });
 }

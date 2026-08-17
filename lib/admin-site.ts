@@ -59,8 +59,11 @@ export type AdminSitePayload = {
   city: string;
   address: string;
   about: string;
+  aboutEn: string;
   heroTitle: string;
   heroSubtitle: string;
+  heroTitleEn: string;
+  heroSubtitleEn: string;
   instagram: string;
   facebook: string;
   tiktok: string;
@@ -84,6 +87,7 @@ export type AdminSitePayload = {
   onboardingCode: string;
   siteStatus: string;
   faqItems: SalonFaqItem[];
+  faqItemsEn: SalonFaqItem[];
   visitorInfo: SalonVisitorInfo;
   visitorAdditionalInfo: string;
   venueExtras: SalonVenueExtras;
@@ -92,6 +96,7 @@ export type AdminSitePayload = {
   metaPixelId: string;
   clarityId: string;
   siteContent: SiteContent;
+  siteContentEn: SiteContent;
 };
 
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
@@ -156,10 +161,10 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
   await ensureAdminSiteSchema();
   const rows = await sql`
     SELECT
-      slug, name, category, phone, email, city, address, about,
-      hero_title, hero_subtitle,
+      slug, name, category, phone, email, city, address, about, about_en,
+      hero_title, hero_subtitle, hero_title_en, hero_subtitle_en,
       language,
-      site_content,
+      site_content, site_content_en,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       images,
       owner_name, owner_public_role, owner_public_photo_url, owner_public_bio,
@@ -167,7 +172,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
       custom_domain,
       google_place_id, telegram_chat_id, onboarding_code, onboarding_tour_done,
       site_status, latitude, longitude,
-      faq_items, visitor_info, visitor_additional_info, venue_extras,
+      faq_items, faq_items_en, visitor_info, visitor_additional_info, venue_extras,
       stripe_account_id, stripe_charges_enabled,
       ga4_id, meta_pixel_id, clarity_id
     FROM salons
@@ -196,8 +201,11 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
     city: String(row.city ?? ''),
     address: String(row.address ?? ''),
     about: String(row.about ?? ''),
+    aboutEn: String(row.about_en ?? ''),
     heroTitle: String(row.hero_title ?? ''),
     heroSubtitle: String(row.hero_subtitle ?? ''),
+    heroTitleEn: String(row.hero_title_en ?? ''),
+    heroSubtitleEn: String(row.hero_subtitle_en ?? ''),
     instagram: String(row.instagram_username ?? ''),
     facebook: String(row.facebook_username ?? ''),
     tiktok: String(row.tiktok_username ?? ''),
@@ -240,6 +248,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
     onboardingTourDone: row.onboarding_tour_done === true,
     siteStatus: String(row.site_status ?? ''),
     faqItems: normalizeSalonFaqItems(row.faq_items),
+    faqItemsEn: normalizeSalonFaqItems(row.faq_items_en),
     visitorInfo: normalizeSalonVisitorInfo(row.visitor_info),
     visitorAdditionalInfo: normalizeVisitorAdditionalInfo(row.visitor_additional_info),
     venueExtras: mergeLegacyVisitorIntoVenueExtras(
@@ -250,6 +259,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
     metaPixelId: String(row.meta_pixel_id ?? ''),
     clarityId: String(row.clarity_id ?? ''),
     siteContent: normalizeSiteContent(row.site_content, language),
+    siteContentEn: normalizeSiteContent(row.site_content_en, 'en'),
   };
 }
 

@@ -36,9 +36,9 @@ export async function GET(
     SELECT
       CAST(id AS text) AS id,
       slug, name, category, phone, email,
-      city, address, about,
-      hero_title, hero_subtitle, faq_items,
-      site_content,
+      city, address, about, about_en,
+      hero_title, hero_subtitle, hero_title_en, hero_subtitle_en, faq_items, faq_items_en,
+      site_content, site_content_en,
       images,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       working_hours, opening_hours, services, team,

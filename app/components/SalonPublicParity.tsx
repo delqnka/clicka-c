@@ -535,9 +535,9 @@ export default function SalonPublicParity({
   const name = String(rawSalon.name ?? 'Салон');
   const salonLocale = resolveSalonLocale(typeof rawSalon.language === 'string' ? rawSalon.language : 'bg');
   const bookingLocale = toLocaleTag(salonLocale);
-  const heroTitle = String(rawSalon.hero_title ?? '').trim() || name;
-  const heroSubtitle = String(rawSalon.hero_subtitle ?? '').trim();
-  const description = String(rawSalon.about ?? '').trim() || siteContent.reformer.body;
+  const heroTitle = String(salonLocale === 'en' ? rawSalon.hero_title_en ?? rawSalon.hero_title : rawSalon.hero_title ?? '').trim() || name;
+  const heroSubtitle = String(salonLocale === 'en' ? rawSalon.hero_subtitle_en ?? rawSalon.hero_subtitle : rawSalon.hero_subtitle ?? '').trim();
+  const description = String(salonLocale === 'en' ? rawSalon.about_en ?? rawSalon.about : rawSalon.about ?? '').trim() || siteContent.reformer.body;
   const phone = String(rawSalon.phone ?? '').trim();
   const city = String(rawSalon.city ?? '').trim();
   const address = String(rawSalon.address ?? '').trim();

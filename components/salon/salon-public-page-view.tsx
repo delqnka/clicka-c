@@ -13,6 +13,7 @@ import { mergeOpeningHours } from '@/lib/salon-opening-hours';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { getStaffMembers } from '@/lib/staff-members';
 import { normalizeSiteContent } from '@/lib/site-content';
+import { resolveSalonLocale } from '@/lib/salon-locale';
 
 type SalonPageData = NonNullable<Awaited<ReturnType<typeof getPublicSalonPageData>>>;
 
@@ -71,7 +72,10 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
   // Pre-process data server-side — keeps these libs out of the client JS bundle
   const servicesEnriched = enrichServiceCategories(parseSalonServices(salonRecord.services));
   const serviceCategories = buildServiceCategoryTabs(servicesEnriched);
-  const faqItems = normalizeSalonFaqItems(salonRecord.faq_items);
+  const publicLocale = resolveSalonLocale(typeof salonRecord.language === 'string' ? salonRecord.language : 'bg');
+  const faqItems = normalizeSalonFaqItems(
+    publicLocale === 'en' ? salonRecord.faq_items_en ?? salonRecord.faq_items : salonRecord.faq_items,
+  );
   const visitorInfo = normalizeSalonVisitorInfo(salonRecord.visitor_info);
   const visitorAdditionalInfo = normalizeVisitorAdditionalInfo(salonRecord.visitor_additional_info);
   const blogEnabled = isCustomSiteBlogEnabled();
@@ -94,8 +98,8 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
   const ownerPhoto = String(salonRecord.owner_public_photo_url ?? '').trim();
   const ownerBio = String(salonRecord.owner_public_bio ?? '').trim();
   const siteContent = normalizeSiteContent(
-    salonRecord.site_content,
-    String(salonRecord.language ?? 'bg').startsWith('en') ? 'en' : 'bg',
+    publicLocale === 'en' ? salonRecord.site_content_en ?? salonRecord.site_content : salonRecord.site_content,
+    publicLocale,
   );
 
   // Load active staff members from staff_members table

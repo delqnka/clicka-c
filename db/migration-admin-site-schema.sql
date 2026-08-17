@@ -32,4 +32,9 @@ DO $$ BEGIN
   ALTER TABLE salons ADD COLUMN IF NOT EXISTS resend_verified_at timestamptz;
   ALTER TABLE salons ADD COLUMN IF NOT EXISTS hero_title text;
   ALTER TABLE salons ADD COLUMN IF NOT EXISTS hero_subtitle text;
+  ALTER TABLE salons ADD COLUMN IF NOT EXISTS about_en text;
+  ALTER TABLE salons ADD COLUMN IF NOT EXISTS hero_title_en text;
+  ALTER TABLE salons ADD COLUMN IF NOT EXISTS hero_subtitle_en text;
+  ALTER TABLE salons ADD COLUMN IF NOT EXISTS faq_items_en jsonb NOT NULL DEFAULT '[]'::jsonb;
+  ALTER TABLE salons ADD COLUMN IF NOT EXISTS site_content_en jsonb NOT NULL DEFAULT '{}'::jsonb;
 END $$;
