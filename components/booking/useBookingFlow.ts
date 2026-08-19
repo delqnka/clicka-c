@@ -57,6 +57,7 @@ export function useBookingFlow({
   // ── Date / time ──────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [bookingQuantity, setBookingQuantityState] = useState(1);
   const [occupiedByDate, setOccupiedByDate] = useState<Record<string, OccupiedSlot[]>>({});
   const [minDate, setMinDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
@@ -114,12 +115,14 @@ export function useBookingFlow({
       { cache: 'no-store', headers: requestHeaders },
     )
       .then((r) => r.json())
-      .then((d: { occupied?: Array<{ time?: string; duration?: number }> }) => {
+      .then((d: { occupied?: Array<{ time?: string; duration?: number; quantity?: number; blocksAll?: boolean }> }) => {
         if (cancelled || !Array.isArray(d.occupied)) return;
         const slots: OccupiedSlot[] = d.occupied
           .map((x) => ({
             time: String(x?.time ?? ''),
             duration: Math.max(5, Number(x?.duration ?? 30) || 30),
+            quantity: Math.max(1, Math.round(Number(x?.quantity ?? 1) || 1)),
+            ...(x?.blocksAll === true ? { blocksAll: true } : {}),
           }))
           .filter((x) => x.time.length >= 4);
         const cacheKey = selectedStaffMemberId
@@ -145,10 +148,62 @@ export function useBookingFlow({
     [selectedServices],
   );
 
-  const totalPrice = useMemo(
+  const baseTotalPrice = useMemo(
     () => selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0),
     [selectedServices],
   );
+
+  const selectedCapacity = useMemo(() => {
+    if (selectedServices.length === 0) return 1;
+    return Math.max(
+      1,
+      Math.min(...selectedServices.map((s) => Math.max(1, Math.round(Number(s.capacity ?? 1) || 1)))),
+    );
+  }, [selectedServices]);
+
+  const usedQuantityForSlot = useCallback((date: string, time: string, durationMin: number): number | null => {
+    if (!date || !time) return null;
+    const cacheKey = selectedStaffMemberId
+      ? `${date}:${selectedStaffMemberId}`
+      : date;
+    const occupied = occupiedByDate[cacheKey] ?? [];
+    const [hh = 0, mm = 0] = time.split(':').map(Number);
+    const start = hh * 60 + mm;
+    const end = start + Math.max(5, durationMin || 30);
+    let used = 0;
+    for (const booking of occupied) {
+      const [bh = 0, bm = 0] = booking.time.split(':').map(Number);
+      const bookingStart = bh * 60 + bm;
+      const bookingEnd = bookingStart + Math.max(5, booking.duration);
+      if (bookingStart < end && bookingEnd > start) {
+        if (booking.blocksAll === true) return selectedCapacity;
+        used += Math.max(1, Math.round(Number(booking.quantity ?? 1) || 1));
+      }
+    }
+    return used;
+  }, [occupiedByDate, selectedCapacity, selectedStaffMemberId]);
+
+  const selectedTimeRemaining = useMemo(() => {
+    if (!selectedDate || !selectedTime || selectedServices.length === 0) return null;
+    const used = usedQuantityForSlot(selectedDate, selectedTime, totalDuration || 30);
+    if (used == null) return null;
+    return Math.max(0, selectedCapacity - used);
+  }, [selectedCapacity, selectedDate, selectedServices.length, selectedTime, totalDuration, usedQuantityForSlot]);
+
+  const totalPrice = useMemo(
+    () => baseTotalPrice * Math.max(1, bookingQuantity),
+    [baseTotalPrice, bookingQuantity],
+  );
+
+  const setBookingQuantity = useCallback((value: number) => {
+    const max = selectedTimeRemaining ?? selectedCapacity;
+    setBookingQuantityState(Math.max(1, Math.min(Math.max(1, max), Math.round(Number(value) || 1))));
+  }, [selectedCapacity, selectedTimeRemaining]);
+
+  useEffect(() => {
+    const max = selectedTimeRemaining ?? selectedCapacity;
+    setBookingQuantityState((current) => Math.max(1, Math.min(Math.max(1, max), current)));
+  }, [selectedCapacity, selectedTimeRemaining]);
 
   // ── Slot calculation ─────────────────────────────────────────────────
   const slotsForDate = useCallback(
@@ -174,19 +229,25 @@ export function useBookingFlow({
       for (let t = start; t <= latestStart; t += slotIntervalMin) {
         const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
         const slotEnd = t + dur;
-        const overlaps = occupied.some(({ time, duration: d }) => {
+        const overlappingBookings = occupied.filter(({ time, duration: d }) => {
           const [bh = 0, bm = 0] = time.split(':').map(Number);
           const existStart = bh * 60 + bm;
           const existEnd = existStart + Math.max(5, d);
           return existStart < slotEnd && existEnd > t;
         });
-        if (!overlaps && !isBlockedForStartTime(bookingBlocks, date, slot, dur)) {
+        const blocksAll = overlappingBookings.some((booking) => booking.blocksAll === true);
+        const usedQuantity = overlappingBookings.reduce(
+          (sum, booking) => sum + Math.max(1, Math.round(Number(booking.quantity ?? 1) || 1)),
+          0,
+        );
+        const capacityFull = usedQuantity >= selectedCapacity;
+        if (!blocksAll && !capacityFull && !isBlockedForStartTime(bookingBlocks, date, slot, dur)) {
           slots.push(slot);
         }
       }
       return slots;
     },
-    [openingHours, bookingBlocks, occupiedByDate, selectedStaffMemberId, slotIntervalMin],
+    [openingHours, bookingBlocks, occupiedByDate, selectedCapacity, selectedStaffMemberId, slotIntervalMin],
   );
 
   const timeSlots = useMemo<string[] | 'closed' | null>(
@@ -210,6 +271,7 @@ export function useBookingFlow({
     }
     setSelectedDate('');
     setSelectedTime('');
+    setBookingQuantityState(1);
     setClientName('');
     setClientPhone('');
     setClientEmail('');
@@ -225,6 +287,7 @@ export function useBookingFlow({
     setSelectedStaffMemberIdState(null);
     setSelectedDate('');
     setSelectedTime('');
+    setBookingQuantityState(1);
   }, []);
 
   const toggleService = useCallback((idx: number) => {
@@ -233,28 +296,37 @@ export function useBookingFlow({
       return has ? prev.filter((x) => x !== idx) : [...prev, idx];
     });
     setSelectedTime('');
+    setBookingQuantityState(1);
   }, []);
 
   const setDate = useCallback((d: string) => {
     setSelectedDate(d);
     setSelectedTime('');
+    setBookingQuantityState(1);
   }, []);
 
   const setStaffMemberId = useCallback((id: string) => {
     setSelectedStaffMemberIdState(id);
     setSelectedDate('');
     setSelectedTime('');
+    setBookingQuantityState(1);
   }, []);
 
-  const markSlotOccupied = useCallback((date: string, time: string, duration: number) => {
+  const setTime = useCallback((time: string) => {
+    setSelectedTime(time);
+    setBookingQuantityState(1);
+  }, []);
+
+  const markSlotOccupied = useCallback((date: string, time: string, duration: number, quantity: number) => {
     if (!date || !time) return;
     const dur = Math.max(5, Number(duration) || 30);
+    const qty = Math.max(1, Math.round(Number(quantity) || 1));
     setOccupiedByDate((prev) => {
-      const day = prev[date] ?? [];
-      if (day.some((s) => s.time === time)) return prev;
-      return { ...prev, [date]: [...day, { time, duration: dur }] };
+      const cacheKey = selectedStaffMemberId ? `${date}:${selectedStaffMemberId}` : date;
+      const day = prev[cacheKey] ?? [];
+      return { ...prev, [cacheKey]: [...day, { time, duration: dur, quantity: qty }] };
     });
-  }, []);
+  }, [selectedStaffMemberId]);
 
   const submit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -290,6 +362,7 @@ export function useBookingFlow({
           serviceName,
           servicePrice:       totalPrice,
           serviceDuration:    duration,
+          bookingQuantity,
           date:               selectedDate,
           time:               selectedTime,
           notes:              notes.trim() || undefined,
@@ -339,7 +412,7 @@ export function useBookingFlow({
       const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(locale, {
         weekday: 'long', day: 'numeric', month: 'long',
       });
-      markSlotOccupied(selectedDate, selectedTime, duration);
+      markSlotOccupied(selectedDate, selectedTime, duration, bookingQuantity);
       setBookingSuccessDetails({ serviceName, dateLabel, time: selectedTime });
       setBookingSuccess(`${serviceName} — ${dateLabel} ${selectedTime}`);
       const eventPayload = {
@@ -355,16 +428,16 @@ export function useBookingFlow({
       setIsSubmitting(false);
     }
   }, [
-    api, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, notes,
+    api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, notes,
     onEvent, requestHeaders, selectedDate, selectedServices, selectedStaffMemberId, selectedTime,
     slug, slugPath, successUrl, t, totalDuration, totalPrice,
   ]);
 
   return {
     bookingOpen, open, close,
-    selectedServiceIdxs, toggleService, totalDuration, totalPrice, selectedServices,
+    selectedServiceIdxs, toggleService, totalDuration, totalPrice, baseTotalPrice, bookingQuantity, setBookingQuantity, selectedCapacity, selectedTimeRemaining, selectedServices,
     selectedDate, setDate,
-    selectedTime, setTime: setSelectedTime,
+    selectedTime, setTime,
     timeSlots, minDate, maxDate,
     clientName, setClientName,
     clientPhone, setClientPhone,

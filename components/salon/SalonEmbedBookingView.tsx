@@ -86,7 +86,7 @@ export function SalonEmbedBookingView({ pageData }: Props) {
   const [serviceIdxs, setServiceIdxs] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [occupiedByDate, setOccupiedByDate] = useState<Record<string, Array<{ time: string; duration: number }>>>({});
+  const [occupiedByDate, setOccupiedByDate] = useState<Record<string, Array<{ time: string; duration: number; quantity?: number; blocksAll?: boolean }>>>({});
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -121,10 +121,15 @@ export function SalonEmbedBookingView({ pageData }: Props) {
       { cache: 'no-store' },
     )
       .then((r) => r.json())
-      .then((d: { occupied?: Array<{ time?: string; duration?: number }> }) => {
+      .then((d: { occupied?: Array<{ time?: string; duration?: number; quantity?: number; blocksAll?: boolean }> }) => {
         if (cancelled || !Array.isArray(d.occupied)) return;
         const occupied = d.occupied
-          .map((x) => ({ time: String(x?.time ?? ''), duration: Math.max(5, Number(x?.duration ?? 30) || 30) }))
+          .map((x) => ({
+            time: String(x?.time ?? ''),
+            duration: Math.max(5, Number(x?.duration ?? 30) || 30),
+            quantity: Math.max(1, Math.round(Number(x?.quantity ?? 1) || 1)),
+            ...(x?.blocksAll === true ? { blocksAll: true } : {}),
+          }))
           .filter((x) => x.time.length >= 4);
         if (!cancelled) setOccupiedByDate((prev) => ({ ...prev, [selectedDate]: occupied }));
       })
@@ -138,6 +143,13 @@ export function SalonEmbedBookingView({ pageData }: Props) {
   );
   const totalDuration = useMemo(() => selectedServices.reduce((a, s) => a + s.duration, 0), [selectedServices]);
   const totalPrice = useMemo(() => selectedServices.reduce((a, s) => a + (s.price ?? 0), 0), [selectedServices]);
+  const selectedCapacity = useMemo(() => {
+    if (selectedServices.length === 0) return 1;
+    return Math.max(
+      1,
+      Math.min(...selectedServices.map((s) => Math.max(1, Math.round(Number(s.capacity ?? 1) || 1)))),
+    );
+  }, [selectedServices]);
 
   const slotIntervalMin = (() => {
     const oh = salonRecord?.opening_hours;
@@ -165,14 +177,20 @@ export function SalonEmbedBookingView({ pageData }: Props) {
     for (let t = startMin; t <= latestStart; t += slotIntervalMin) {
       const timeStr = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
       if (isBlockedForStartTime(bookingBlocks, selectedDate, timeStr, dur)) continue;
-      const conflicts = occupied.some((o) => {
+      const overlappingBookings = occupied.filter((o) => {
         const oStart = parseTimeToMinutes(o.time) ?? 0;
         return t < oStart + o.duration && t + dur > oStart;
       });
-      if (!conflicts) slots.push(timeStr);
+      const usedQuantity = overlappingBookings.reduce(
+        (sum, booking) => sum + Math.max(1, Math.round(Number(booking.quantity ?? 1) || 1)),
+        0,
+      );
+      if (!overlappingBookings.some((booking) => booking.blocksAll === true) && usedQuantity < selectedCapacity) {
+        slots.push(timeStr);
+      }
     }
     return slots;
-  }, [serviceIdxs, selectedDate, totalDuration, openingHours, bookingBlocks, occupiedByDate, slotIntervalMin]);
+  }, [serviceIdxs, selectedDate, totalDuration, openingHours, bookingBlocks, occupiedByDate, selectedCapacity, slotIntervalMin]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, Loader2, Plus, User, X } from 'lucide-react';
+import { Check, ChevronDown, Loader2, Plus, User, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n-react';
 import {
@@ -62,6 +62,10 @@ type SalonBookingModalProps = {
   selectedTime: string;
   totalDuration: number;
   totalPrice: number;
+  baseTotalPrice?: number;
+  bookingQuantity?: number;
+  selectedCapacity?: number;
+  selectedTimeRemaining?: number | null;
   clientName: string;
   clientPhone: string;
   clientEmail: string;
@@ -84,6 +88,7 @@ type SalonBookingModalProps = {
   onToggleService: (idx: number) => void;
   onDateChange: (date: string) => void;
   onTimeChange: (time: string) => void;
+  onBookingQuantityChange?: (quantity: number) => void;
   onClientNameChange: (v: string) => void;
   onClientPhoneChange: (v: string) => void;
   onClientEmailChange: (v: string) => void;
@@ -139,6 +144,10 @@ export function SalonBookingModal({
   selectedTime,
   totalDuration,
   totalPrice,
+  baseTotalPrice,
+  bookingQuantity = 1,
+  selectedCapacity = 1,
+  selectedTimeRemaining,
   clientName,
   clientPhone,
   clientEmail,
@@ -161,6 +170,7 @@ export function SalonBookingModal({
   onToggleService,
   onDateChange,
   onTimeChange,
+  onBookingQuantityChange,
   onClientNameChange,
   onClientPhoneChange,
   onClientEmailChange,
@@ -274,6 +284,8 @@ export function SalonBookingModal({
     () => serviceCatalog.filter((service) => serviceMatchesCategory(service, selectedCategory)),
     [serviceCatalog, selectedCategory],
   );
+  const maxBookableQuantity = Math.max(1, selectedTimeRemaining ?? selectedCapacity);
+  const showQuantityPicker = selectedCapacity > 1 && selectedTime && maxBookableQuantity > 0;
 
   useEffect(() => {
     if (!selectedCategory) return;
@@ -778,6 +790,42 @@ export function SalonBookingModal({
                       <p className="mt-1.5 text-sm text-black/35">{t('booking.modal.selectServiceFirst')}</p>
                     )}
                   </div>
+
+                  {showQuantityPicker ? (
+                    <div className={`rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-1.5 text-[13px] font-semibold text-black">
+                            <Users className="h-4 w-4 text-black/45" aria-hidden />
+                            {t('booking.modal.freeBeds', { count: maxBookableQuantity })}
+                          </p>
+                          <p className="mt-1 text-[12px] leading-relaxed text-black/45">
+                            {t('booking.modal.bedsHelp')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-5 gap-2">
+                        {Array.from({ length: Math.min(maxBookableQuantity, selectedCapacity) }, (_, i) => i + 1).map((qty) => {
+                          const active = bookingQuantity === qty;
+                          return (
+                            <button
+                              key={qty}
+                              type="button"
+                              onClick={() => onBookingQuantityChange?.(qty)}
+                              className={`h-10 rounded-full text-[14px] font-bold tabular-nums transition ${
+                                active
+                                  ? `text-white ${gradientCtaShadow}`
+                                  : 'border border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.08)]'
+                              }`}
+                              style={active ? accentFillStyle : undefined}
+                            >
+                              {qty}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -864,6 +912,11 @@ export function SalonBookingModal({
                 <p className="text-[17px] font-semibold tabular-nums text-black/70 leading-tight">
                   {t('booking.modal.totalPrice', { price: fmtPrice(totalPrice) })}
                 </p>
+                {selectedCapacity > 1 && bookingQuantity > 1 ? (
+                  <p className="mt-0.5 text-[12px] tabular-nums text-black/45">
+                    {t('booking.modal.pricePerBed', { count: bookingQuantity, price: fmtPrice(baseTotalPrice ?? totalPrice) })}
+                  </p>
+                ) : null}
                 {selectedTime ? (
                   <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-black">
                     {t('booking.modal.startTime', { start: selectedTime, end: endTime })}

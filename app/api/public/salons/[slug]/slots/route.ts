@@ -10,7 +10,7 @@ const PUBLIC_CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
 } as const;
 
-type OccupiedEntry = { time: string; duration: number };
+type OccupiedEntry = { time: string; duration: number; quantity?: number; blocksAll?: boolean };
 type PublicSlot = { start: string; end: string; available: boolean };
 
 function toIsoSlot(date: string, time: string, durationMin: number): PublicSlot | null {
@@ -36,6 +36,7 @@ export async function GET(
 ) {
   const sourceUrl = new URL(request.url);
   const date = sourceUrl.searchParams.get('date');
+  const capacity = Math.max(1, Math.round(Number(sourceUrl.searchParams.get('capacity') ?? 1) || 1));
 
   if (!date) {
     return NextResponse.json({ error: 'Missing date' }, { status: 400, headers: PUBLIC_CORS });
@@ -71,10 +72,20 @@ export async function GET(
     });
   }
 
-  const data = await upstream.json().catch(() => ({})) as { occupied?: OccupiedEntry[] };
-  const slots = (data.occupied ?? [])
+  const occupied = dataOccupied((await upstream.json().catch(() => ({}))) as { occupied?: OccupiedEntry[] });
+  const slots = occupied
+    .filter((entry, index, entries) => {
+      if (entry.blocksAll === true) return true;
+      const overlaps = entries.filter((candidate) => candidate.time === entry.time && candidate.blocksAll !== true);
+      const used = overlaps.reduce((sum, candidate) => sum + Math.max(1, Number(candidate.quantity ?? 1) || 1), 0);
+      return used >= capacity && overlaps.findIndex((candidate) => candidate === entry) === index;
+    })
     .map((entry) => toIsoSlot(date, entry.time, Number(entry.duration) || 0))
     .filter((s): s is PublicSlot => s !== null);
 
-  return NextResponse.json({ slots, date }, { headers: PUBLIC_CORS });
+  return NextResponse.json({ slots, occupied, date }, { headers: PUBLIC_CORS });
+}
+
+function dataOccupied(data: { occupied?: OccupiedEntry[] }): OccupiedEntry[] {
+  return Array.isArray(data.occupied) ? data.occupied : [];
 }

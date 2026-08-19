@@ -26,6 +26,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getStaffMemberById } from '@/lib/staff-members';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+type OccupiedSlot = { time: string; duration: number; quantity: number; blocksAll?: boolean };
 
 // CORS for public endpoints — allows BookingWidget from separate client repos.
 const PUBLIC_CORS = {
@@ -42,6 +43,32 @@ function formatBgDateDMY(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString('bg-BG');
+}
+
+function normalizeServiceCapacity(value: unknown): number {
+  const capacity = Number(value);
+  return Number.isFinite(capacity) ? Math.max(1, Math.round(capacity)) : 1;
+}
+
+function resolveBookingCapacity(
+  services: ReturnType<typeof normalizeServices>,
+  serviceName: string,
+): number {
+  const requestedNames = serviceName
+    .split(' + ')
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+  if (requestedNames.length === 0) return 1;
+
+  const capacities = requestedNames.map((requestedName) => {
+    const matched = services.find((service) => {
+      const normalized = service.name.toLowerCase();
+      return requestedName === normalized || requestedName.includes(normalized);
+    });
+    return normalizeServiceCapacity(matched?.capacity);
+  });
+
+  return Math.max(1, Math.min(...capacities));
 }
 
 async function resolveSalonFromRequest(request: NextRequest) {
@@ -91,7 +118,7 @@ export async function GET(request: NextRequest) {
     // For TEAM salons the widget passes staffMemberId so slots are scoped per staff.
     const staffMemberId = requestSearchParams.get('staffMemberId')?.trim() || null;
     const occupiedRows = await sql`
-      SELECT time, service_duration, status
+      SELECT time, service_duration, booking_quantity, status
       FROM bookings
       WHERE salon_id = ${salonId}
         AND date IN (${date}, ${legacyDate ?? date})
@@ -102,7 +129,7 @@ export async function GET(request: NextRequest) {
         AND (${staffMemberId}::uuid IS NULL OR staff_member_id = ${staffMemberId}::uuid)
       ORDER BY time ASC
     `;
-    const occupied: { time: string; duration: number }[] = occupiedRows
+    const occupied: OccupiedSlot[] = occupiedRows
       .filter((r) => !isCancelledStatus((r as Record<string, unknown>).status))
       .map((r) => {
         const row = r as Record<string, unknown>;
@@ -113,9 +140,10 @@ export async function GET(request: NextRequest) {
         return {
           time: `${hh}:${mm}`,
           duration: Math.max(5, Number(row.service_duration ?? 30) || 30),
+          quantity: Math.max(1, Math.round(Number(row.booking_quantity ?? 1) || 1)),
         };
       })
-      .filter((x): x is { time: string; duration: number } => x != null);
+      .filter((x): x is OccupiedSlot => x != null);
 
     const externalEvents = await loadExternalCalendarEventsForRange(salonId, date, date).catch(() => []);
     for (const ev of externalEvents) {
@@ -124,7 +152,7 @@ export async function GET(request: NextRequest) {
       const endMins = parseTimeToMinutes(ev.endTime);
       if (startMins == null || endMins == null) continue;
       const duration = Math.max(5, endMins - startMins);
-      occupied.push({ time: ev.startTime, duration });
+      occupied.push({ time: ev.startTime, duration, quantity: 1, blocksAll: true });
     }
 
     return NextResponse.json({ occupied }, { headers: PUBLIC_CORS });
@@ -221,6 +249,7 @@ export async function POST(request: NextRequest) {
     offerId?: string;
     requiresPayment?: boolean;
     staffMemberId?: string;
+    bookingQuantity?: number;
   };
 
   try {
@@ -242,6 +271,7 @@ export async function POST(request: NextRequest) {
     offerId,
     requiresPayment,
     staffMemberId: rawStaffMemberId,
+    bookingQuantity: rawBookingQuantity,
   } = body;
   const staffMemberId = rawStaffMemberId?.trim() || null;
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
@@ -347,6 +377,14 @@ export async function POST(request: NextRequest) {
     (s) => s.name.toLowerCase() === resolvedServiceName.toLowerCase() ||
            resolvedServiceName.toLowerCase().includes(s.name.toLowerCase()),
   );
+  const bookingCapacity = resolveBookingCapacity(salonServices, resolvedServiceName);
+  const bookingQuantity = Math.max(1, Math.round(Number(rawBookingQuantity ?? 1) || 1));
+  if (bookingQuantity > bookingCapacity) {
+    return NextResponse.json(
+      { error: `За този час има максимум ${bookingCapacity} места.` },
+      { status: 400 },
+    );
+  }
   const bookingStatus = matchedService?.requires_confirmation === true ? 'pending' : 'confirmed';
 
   let insertedBooking: { id: string; manageToken: string } | null = null;
@@ -361,6 +399,8 @@ export async function POST(request: NextRequest) {
       serviceName: resolvedServiceName,
       servicePrice: priceValue,
       serviceDuration: Math.max(5, durationValue ?? 30),
+      capacity: bookingCapacity,
+      quantity: bookingQuantity,
       date,
       time,
       notes: normalizedNotes,
@@ -402,7 +442,7 @@ export async function POST(request: NextRequest) {
       })),
     });
     return NextResponse.json(
-      { error: 'Този час току-що беше зает. Моля изберете друг свободен час.' },
+      { error: 'Този час току-що се запълни. Моля изберете друг свободен час.' },
       { status: 409 },
     );
   }

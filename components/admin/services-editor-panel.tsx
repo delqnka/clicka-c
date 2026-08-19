@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Plus, Tag, X } from 'lucide-react';
+import { Clock, Plus, Tag, Users, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { AdminSitePayload, ServiceItem } from '@/lib/admin-site';
 import type { Locale } from '@/lib/i18n';
@@ -282,7 +282,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr 1fr',
             gap: 8,
             marginBottom: 10,
           }}
@@ -427,6 +427,58 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 aria-label={isEn ? 'Duration in minutes' : 'Продължителност в минути'}
               />
               <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>{isEn ? 'min' : 'мин'}</span>
+            </div>
+          </div>
+
+          {/* Capacity */}
+          <div
+            style={{
+              border: '1px solid #E8E8E8',
+              borderRadius: 10,
+              padding: '6px 10px',
+            }}
+          >
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#000',
+                marginBottom: 2,
+              }}
+            >
+              <Users size={11} aria-hidden="true" />
+              {isEn ? 'Capacity' : 'Капацитет'}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+              <input
+                type="number"
+                min={1}
+                value={draft.capacity ?? 1}
+                onChange={(e) =>
+                  updateDraft((s) => {
+                    const capacity = Math.max(1, Math.round(Number(e.target.value) || 1));
+                    return { ...s, capacity: capacity > 1 ? capacity : undefined };
+                  })
+                }
+                style={{
+                  ...numInp,
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  padding: '0',
+                  fontSize: 28,
+                }}
+                aria-label={isEn ? 'Bookable capacity' : 'Капацитет за резервации'}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#555', flexShrink: 0 }}>
+                {isEn ? 'spots' : 'места'}
+              </span>
             </div>
           </div>
         </div>

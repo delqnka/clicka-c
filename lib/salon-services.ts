@@ -17,6 +17,7 @@ export type ServiceItem = {
   price: number;
   original_price?: number;
   duration_min: number;
+  capacity?: number;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
   assignedTeamMemberIds?: string[];
@@ -37,6 +38,7 @@ export type ParsedSalonService = {
   price?: number;
   original_price?: number;
   duration: number;
+  capacity?: number;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
   assignedTeamMemberIds?: string[];
@@ -102,6 +104,8 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
 
     const id = assignUniqueServiceId(String(row.id ?? ''), usedIds);
     const duration = Number(row.duration ?? row.duration_min ?? row.durationMin ?? 30) || 30;
+    const capacityRaw = Number(row.capacity ?? row.max_capacity ?? row.maxCapacity ?? row.seats ?? row.spots ?? 1);
+    const capacity = Number.isFinite(capacityRaw) ? Math.max(1, Math.round(capacityRaw)) : 1;
     const priceRaw = row.price ?? row.service_price ?? row.servicePrice;
     const price = priceRaw != null ? Number(priceRaw) : undefined;
     const originalPriceRaw =
@@ -172,6 +176,7 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
       original_price:
         originalPrice != null && Number.isFinite(originalPrice) ? Math.max(0, originalPrice) : undefined,
       duration,
+      ...(capacity > 1 ? { capacity } : {}),
       images,
       variants: variants && variants.length > 0 ? variants : undefined,
       ...(assignedTeamMemberIds && assignedTeamMemberIds.length > 0
@@ -235,6 +240,9 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
         ? { original_price: Math.max(0, Number(s.original_price)) }
         : {}),
       duration_min: baseDuration,
+      ...(s.capacity != null && Number.isFinite(Number(s.capacity)) && Number(s.capacity) > 1
+        ? { capacity: Math.max(1, Math.round(Number(s.capacity))) }
+        : {}),
       ...(Array.isArray(s.images) && s.images.length > 0 ? { images: s.images } : {}),
       ...(normalizedVariants.length > 0 ? { variants: normalizedVariants } : {}),
       ...(Array.isArray(s.assignedTeamMemberIds) && s.assignedTeamMemberIds.length > 0

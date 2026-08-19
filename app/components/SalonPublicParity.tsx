@@ -224,6 +224,7 @@ type ServiceRow = {
   name: string;
   description?: string;
   duration: number;
+  capacity?: number;
   price?: number;
   original_price?: number;
   category?: string;
@@ -619,7 +620,8 @@ export default function SalonPublicParity({
   const [bookingServiceIdxs, setBookingServiceIdxs] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [occupiedSlotsByDate, setOccupiedSlotsByDate] = useState<Record<string, Array<{ time: string; duration: number }>>>({});
+  const [bookingQuantity, setBookingQuantity] = useState(1);
+  const [occupiedSlotsByDate, setOccupiedSlotsByDate] = useState<Record<string, Array<{ time: string; duration: number; quantity?: number; blocksAll?: boolean }>>>({});
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -1007,6 +1009,7 @@ export default function SalonPublicParity({
     }
     setSelectedDate('');
     setSelectedTime('');
+    setBookingQuantity(1);
     setClientName('');
     setClientPhone('');
     setClientEmail('');
@@ -1021,6 +1024,7 @@ export default function SalonPublicParity({
     setSelectedStaffMemberId(null);
     setSelectedDate('');
     setSelectedTime('');
+    setBookingQuantity(1);
   }
 
   function openOfferBooking(offer: SalonOfferRow) {
@@ -1096,6 +1100,59 @@ export default function SalonPublicParity({
     () => selectedBookingServices.reduce((sum, svc) => sum + (Number(svc.price) || 0), 0),
     [selectedBookingServices]
   );
+  const bookingFinalPrice = useMemo(
+    () => bookingTotalPrice * Math.max(1, bookingQuantity),
+    [bookingQuantity, bookingTotalPrice],
+  );
+  const bookingSelectedCapacity = useMemo(() => {
+    if (selectedBookingServices.length === 0) return 1;
+    return Math.max(
+      1,
+      Math.min(...selectedBookingServices.map((svc) => Math.max(1, Math.round(Number(svc.capacity ?? 1) || 1)))),
+    );
+  }, [selectedBookingServices]);
+  const usedQuantityForSlot = useCallback((date: string, time: string, durationMin: number): number | null => {
+    if (!date || !time) return null;
+    const slotCacheKey = selectedStaffMemberId ? `${date}:${selectedStaffMemberId}` : date;
+    const occupied = occupiedSlotsByDate[slotCacheKey] ?? [];
+    const [hh, mm] = time.split(':').map(Number);
+    const slotStart = (Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
+    const slotEnd = slotStart + Math.max(5, durationMin || 30);
+    let used = 0;
+    for (const booking of occupied) {
+      const [bh, bm] = booking.time.split(':').map(Number);
+      const bookingStart = (Number.isFinite(bh) ? bh : 0) * 60 + (Number.isFinite(bm) ? bm : 0);
+      const bookingEnd = bookingStart + Math.max(5, Number(booking.duration) || 30);
+      if (bookingStart < slotEnd && bookingEnd > slotStart) {
+        if (booking.blocksAll === true) return bookingSelectedCapacity;
+        used += Math.max(1, Math.round(Number(booking.quantity ?? 1) || 1));
+      }
+    }
+    return used;
+  }, [bookingSelectedCapacity, occupiedSlotsByDate, selectedStaffMemberId]);
+  const selectedTimeRemaining = useMemo(() => {
+    if (!selectedDate || !selectedTime || selectedBookingServices.length === 0) return null;
+    const used = usedQuantityForSlot(selectedDate, selectedTime, bookingTotalDuration || 30);
+    if (used == null) return null;
+    return Math.max(0, bookingSelectedCapacity - used);
+  }, [bookingSelectedCapacity, bookingTotalDuration, selectedBookingServices.length, selectedDate, selectedTime, usedQuantityForSlot]);
+  useEffect(() => {
+    const max = selectedTimeRemaining ?? bookingSelectedCapacity;
+    setBookingQuantity((current) => Math.max(1, Math.min(Math.max(1, max), current)));
+  }, [bookingSelectedCapacity, selectedTimeRemaining]);
+  const handleBookingQuantityChange = useCallback((quantity: number) => {
+    const max = selectedTimeRemaining ?? bookingSelectedCapacity;
+    setBookingQuantity(Math.max(1, Math.min(Math.max(1, max), Math.round(Number(quantity) || 1))));
+  }, [bookingSelectedCapacity, selectedTimeRemaining]);
+  const handleBookingDateChange = useCallback((date: string) => {
+    setSelectedDate(date);
+    setSelectedTime('');
+    setBookingQuantity(1);
+  }, []);
+  const handleBookingTimeChange = useCallback((time: string) => {
+    setSelectedTime(time);
+    setBookingQuantity(1);
+  }, []);
   function slotsForDate(date: string, durationMin: number): string[] | 'closed' | null {
     if (!date) return null;
     const d = new Date(date + 'T12:00:00');
@@ -1116,13 +1173,18 @@ export default function SalonPublicParity({
       const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
       const slotStart = t;
       const slotEnd = t + totalDuration;
-      const overlapsExisting = occupied.some((b) => {
+      const overlappingBookings = occupied.filter((b) => {
         const [bh, bm] = b.time.split(':').map(Number);
         const existingStart = (Number.isFinite(bh) ? bh : 0) * 60 + (Number.isFinite(bm) ? bm : 0);
         const existingEnd = existingStart + Math.max(5, Number(b.duration) || 30);
         return existingStart < slotEnd && existingEnd > slotStart;
       });
-      if (overlapsExisting) continue;
+      if (overlappingBookings.some((booking) => booking.blocksAll === true)) continue;
+      const usedQuantity = overlappingBookings.reduce(
+        (sum, booking) => sum + Math.max(1, Math.round(Number(booking.quantity ?? 1) || 1)),
+        0,
+      );
+      if (usedQuantity >= bookingSelectedCapacity) continue;
       if (!isBlockedForStartTime(bookingBlocks, date, slot, totalDuration)) {
         slots.push(slot);
       }
@@ -1150,7 +1212,7 @@ export default function SalonPublicParity({
           { cache: 'no-store' },
         );
         const data = (await res.json().catch(() => ({}))) as {
-          occupied?: Array<{ time?: string; duration?: number }>;
+          occupied?: Array<{ time?: string; duration?: number; quantity?: number; blocksAll?: boolean }>;
         };
         if (!res.ok || cancelled) return;
         const occupied = Array.isArray(data.occupied)
@@ -1158,6 +1220,8 @@ export default function SalonPublicParity({
               .map((x) => ({
                 time: String(x?.time ?? ''),
                 duration: Math.max(5, Number(x?.duration ?? 30) || 30),
+                quantity: Math.max(1, Math.round(Number(x?.quantity ?? 1) || 1)),
+                ...(x?.blocksAll === true ? { blocksAll: true } : {}),
               }))
               .filter((x) => x.time.length >= 4)
           : [];
@@ -1188,19 +1252,19 @@ export default function SalonPublicParity({
     );
   }, []);
 
-  const markDateSlotOccupied = useCallback((date: string, time: string, duration: number) => {
+  const markDateSlotOccupied = useCallback((date: string, time: string, duration: number, quantity = 1) => {
     if (!date || !time) return;
     const normalizedDuration = Math.max(5, Number(duration) || 30);
+    const normalizedQuantity = Math.max(1, Math.round(Number(quantity) || 1));
     setOccupiedSlotsByDate((prev) => {
-      const day = prev[date] ?? [];
-      const alreadyExists = day.some((s) => s.time === time);
-      if (alreadyExists) return prev;
+      const cacheKey = selectedStaffMemberId ? `${date}:${selectedStaffMemberId}` : date;
+      const day = prev[cacheKey] ?? [];
       return {
         ...prev,
-        [date]: [...day, { time, duration: normalizedDuration }],
+        [cacheKey]: [...day, { time, duration: normalizedDuration, quantity: normalizedQuantity }],
       };
     });
-  }, []);
+  }, [selectedStaffMemberId]);
 
   async function submitBooking(e: React.FormEvent) {
     e.preventDefault();
@@ -1223,7 +1287,7 @@ export default function SalonPublicParity({
     const depositAmount = firstService?.deposit_amount ?? 0;
     const amountEuros =
       paymentType === 'deposit' ? depositAmount :
-      paymentType === 'full' ? (bookingTotalPrice ?? 0) : 0;
+      paymentType === 'full' ? (bookingFinalPrice ?? 0) : 0;
     const requiresPayment = paymentType !== 'none' && amountEuros > 0;
 
     setIsSubmitting(true);
@@ -1236,8 +1300,9 @@ export default function SalonPublicParity({
           clientPhone: clientPhone.trim(),
           clientEmail: clientEmail.trim().toLowerCase(),
           serviceName: combinedServiceName,
-          servicePrice: bookingTotalPrice,
+          servicePrice: bookingFinalPrice,
           serviceDuration: combinedDuration,
+          bookingQuantity,
           date: selectedDate,
           time: selectedTime,
           notes: notes.trim() || undefined,
@@ -1281,12 +1346,12 @@ export default function SalonPublicParity({
         day: 'numeric',
         month: 'long',
       });
-      markDateSlotOccupied(selectedDate, selectedTime, combinedDuration);
+      markDateSlotOccupied(selectedDate, selectedTime, combinedDuration, bookingQuantity);
       setBookingSuccessDetails({ serviceName: combinedServiceName, dateLabel, time: selectedTime });
       setBookingSuccess(`${combinedServiceName} — ${dateLabel} в ${selectedTime} ч.`);
       trackBookingCompleted({
         serviceName: combinedServiceName,
-        value: bookingTotalPrice && bookingTotalPrice > 0 ? bookingTotalPrice : undefined,
+        value: bookingFinalPrice && bookingFinalPrice > 0 ? bookingFinalPrice : undefined,
       });
     } catch (err: unknown) {
       setBookingError(err instanceof Error ? err.message : 'Грешка при резервация.');
@@ -2303,7 +2368,11 @@ export default function SalonPublicParity({
             selectedDate={selectedDate}
             selectedTime={selectedTime}
             totalDuration={bookingTotalDuration}
-            totalPrice={bookingTotalPrice}
+            totalPrice={bookingFinalPrice}
+            baseTotalPrice={bookingTotalPrice}
+            bookingQuantity={bookingQuantity}
+            selectedCapacity={bookingSelectedCapacity}
+            selectedTimeRemaining={selectedTimeRemaining}
             clientName={clientName}
             clientPhone={clientPhone}
             clientEmail={clientEmail}
@@ -2330,12 +2399,11 @@ export default function SalonPublicParity({
                 return next;
               });
               setSelectedTime('');
+              setBookingQuantity(1);
             }}
-            onDateChange={(date) => {
-              setSelectedDate(date);
-              setSelectedTime('');
-            }}
-            onTimeChange={setSelectedTime}
+            onDateChange={handleBookingDateChange}
+            onTimeChange={handleBookingTimeChange}
+            onBookingQuantityChange={handleBookingQuantityChange}
             onClientNameChange={setClientName}
             onClientPhoneChange={setClientPhone}
             onClientEmailChange={setClientEmail}
@@ -2347,6 +2415,7 @@ export default function SalonPublicParity({
               setSelectedStaffMemberId(id);
               setSelectedDate('');
               setSelectedTime('');
+              setBookingQuantity(1);
             }}
           />
         </I18nProvider>

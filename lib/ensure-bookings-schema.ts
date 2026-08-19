@@ -57,6 +57,15 @@ export async function ensureBookingsSchema() {
         ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS amount_paid numeric
       `;
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS booking_quantity integer NOT NULL DEFAULT 1
+      `;
+      await sql`
+        UPDATE bookings
+        SET booking_quantity = 1
+        WHERE booking_quantity IS NULL OR booking_quantity < 1
+      `;
 
       // CHECK constraints — idempotent via pg_constraint lookup
       const hasStatusCheck = await sql`
@@ -89,7 +98,10 @@ export async function ensureBookingsSchema() {
         CREATE INDEX IF NOT EXISTS bookings_salon_id_idx ON bookings(salon_id)
       `;
       await sql`
-        CREATE UNIQUE INDEX IF NOT EXISTS bookings_active_slot_unique_idx
+        DROP INDEX IF EXISTS bookings_active_slot_unique_idx
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS bookings_active_slot_lookup_idx
         ON bookings(salon_id, date, time)
         WHERE status IN ('pending', 'confirmed')
       `;

@@ -53,3 +53,16 @@ export const sql = ((strings: TemplateStringsArray, ...values: unknown[]) =>
       ...values,
     ),
   )) as unknown as NeonQueryFunction<false, false>;
+
+export async function sqlTransaction<T extends unknown[] = unknown[][]>(
+  run: (txn: NeonQueryFunction<false, false>) => unknown[],
+  opts?: { isolationMode?: 'ReadUncommitted' | 'ReadCommitted' | 'RepeatableRead' | 'Serializable' },
+): Promise<T> {
+  const db = getDb() as ReturnType<typeof neon> & {
+    transaction: (
+      run: (txn: NeonQueryFunction<false, false>) => unknown[],
+      opts?: { isolationMode?: 'ReadUncommitted' | 'ReadCommitted' | 'RepeatableRead' | 'Serializable' },
+    ) => Promise<T>;
+  };
+  return withRetry(() => db.transaction(run, opts));
+}

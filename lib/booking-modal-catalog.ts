@@ -12,6 +12,7 @@ export type BookingCatalogService = {
   price?: number;
   original_price?: number;
   duration: number;
+  capacity?: number;
   variants?: BookingCatalogVariant[];
   payment_type?: 'none' | 'deposit' | 'full';
   deposit_amount?: number;

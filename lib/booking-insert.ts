@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { sql } from '@/lib/db';
+import { sql, sqlTransaction } from '@/lib/db';
 import { bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
 import { upsertSalonClient } from '@/lib/salon-clients';
 
@@ -13,6 +13,8 @@ export type InsertBookingRow = {
   serviceName: string;
   servicePrice: number | null;
   serviceDuration: number;
+  capacity?: number;
+  quantity?: number;
   date: string;
   time: string;
   notes: string;
@@ -34,6 +36,9 @@ export async function insertBookingIfNoOverlap(
   const manageTokenHash = crypto.createHash('sha256').update(manageToken).digest('hex');
 
   const staffMemberId = row.staffMemberId ?? null;
+  const capacity = Math.max(1, Math.round(Number(row.capacity ?? 1) || 1));
+  const quantity = Math.max(1, Math.round(Number(row.quantity ?? 1) || 1));
+  if (quantity > capacity) return null;
 
   // Cancel stale pending-payment bookings for the exact same slot before inserting.
   // Scoped to the same staff member (or unassigned) and exact time so that one staff
@@ -49,66 +54,71 @@ export async function insertBookingIfNoOverlap(
       AND (staff_member_id IS NOT DISTINCT FROM ${staffMemberId}::uuid)
   `.catch(() => {});
 
-  const inserted = await sql`
-    INSERT INTO bookings (
-      id, salon_id, staff_member_id, client_name, client_phone, client_email,
-      service_name, service_price, service_duration,
-      date, time, status, notes,
-      offer_id, manage_token
-    )
-    SELECT
-      ${row.id},
-      ${row.salonId},
-      ${staffMemberId}::uuid,
-      ${row.clientName},
-      ${row.clientPhone},
-      ${row.clientEmail},
-      ${row.serviceName},
-      ${row.servicePrice},
-      ${row.serviceDuration},
-      ${row.date},
-      ${row.time},
-      ${row.status ?? 'pending'},
-      ${row.notes || ''},
-      ${row.offerId},
-      ${manageTokenHash}
-    WHERE NOT EXISTS (
-      SELECT 1
-      FROM bookings b
-      WHERE b.salon_id = ${row.salonId}
-        AND b.date IN (${row.date}, ${legacyDate})
-        AND lower(trim(coalesce(b.status, ''))) NOT IN (
-          'cancelled', 'canceled', 'отказана', 'анулирана'
-        )
-        AND NOT (
-          b.payment_status IN ('pending', 'unpaid')
-          AND b.created_at < now() - interval '5 minutes'
-        )
-        -- Scope overlap check to the same staff member.
-        -- When staffMemberId is NULL (solo / unassigned), match all bookings regardless
-        -- of their staff_member_id so legacy null-staff bookings still block the slot.
-        -- When staffMemberId is set, match only that staff member's bookings so two
-        -- different staff members can independently hold the same time slot.
-        AND (
-          ${staffMemberId}::uuid IS NULL
-          OR b.staff_member_id = ${staffMemberId}::uuid
-          OR b.staff_member_id IS NULL
-        )
-        AND (
-          (
-            COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60
-            + COALESCE(NULLIF(split_part(trim(b.time), ':', 2), '')::int, 0)
-          ) < ${requestedEndMinutes}
+  const lockKey = `${row.salonId}:${row.date}:${staffMemberId ?? 'all'}`;
+  const [, inserted] = await sqlTransaction<[unknown[], Record<string, unknown>[]]>((txn) => [
+    txn`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
+    txn`
+      INSERT INTO bookings (
+        id, salon_id, staff_member_id, client_name, client_phone, client_email,
+        service_name, service_price, service_duration,
+        date, time, status, notes, booking_quantity,
+        offer_id, manage_token
+      )
+      SELECT
+        ${row.id},
+        ${row.salonId},
+        ${staffMemberId}::uuid,
+        ${row.clientName},
+        ${row.clientPhone},
+        ${row.clientEmail},
+        ${row.serviceName},
+        ${row.servicePrice},
+        ${row.serviceDuration},
+        ${row.date},
+        ${row.time},
+        ${row.status ?? 'pending'},
+        ${row.notes || ''},
+        ${quantity},
+        ${row.offerId},
+        ${manageTokenHash}
+      WHERE (
+        SELECT COALESCE(SUM(GREATEST(1, COALESCE(b.booking_quantity, 1))), 0)
+        FROM bookings b
+        WHERE b.salon_id = ${row.salonId}
+          AND b.date IN (${row.date}, ${legacyDate})
+          AND lower(trim(coalesce(b.status, ''))) NOT IN (
+            'cancelled', 'canceled', 'отказана', 'анулирана'
+          )
+          AND NOT (
+            b.payment_status IN ('pending', 'unpaid')
+            AND b.created_at < now() - interval '5 minutes'
+          )
+          -- Scope overlap check to the same staff member.
+          -- When staffMemberId is NULL (solo / unassigned), match all bookings regardless
+          -- of their staff_member_id so legacy null-staff bookings still block the slot.
+          -- When staffMemberId is set, match only that staff member's bookings so two
+          -- different staff members can independently hold the same time slot.
+          AND (
+            ${staffMemberId}::uuid IS NULL
+            OR b.staff_member_id = ${staffMemberId}::uuid
+            OR b.staff_member_id IS NULL
+          )
           AND (
             (
               COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60
               + COALESCE(NULLIF(split_part(trim(b.time), ':', 2), '')::int, 0)
-            ) + GREATEST(5, COALESCE(b.service_duration, 30))
-          ) > ${requestedStartMinutes}
-        )
-    )
-    RETURNING id, manage_token
-  `;
+            ) < ${requestedEndMinutes}
+            AND (
+              (
+                COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60
+                + COALESCE(NULLIF(split_part(trim(b.time), ':', 2), '')::int, 0)
+              ) + GREATEST(5, COALESCE(b.service_duration, 30))
+            ) > ${requestedStartMinutes}
+          )
+      ) + ${quantity} <= ${capacity}
+      RETURNING id, manage_token
+    `,
+  ]);
 
   if (inserted.length === 0) return null;
   const result = inserted[0] as { id: string };

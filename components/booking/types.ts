@@ -4,7 +4,7 @@ import type { CancelPolicyAction } from '@/lib/cancellation-policy';
 
 export type { OpeningDayRecord, BookingBlock };
 
-export type OccupiedSlot = { time: string; duration: number };
+export type OccupiedSlot = { time: string; duration: number; quantity?: number; blocksAll?: boolean };
 
 export type BookingSuccessDetails = {
   serviceName: string;
@@ -27,6 +27,7 @@ export type BookingServiceItem = {
   name: string;
   description?: string;
   duration: number;
+  capacity?: number;
   price?: number;
   original_price?: number;
   category?: string;
@@ -83,6 +84,11 @@ export type UseBookingFlowReturn = {
   toggleService: (idx: number) => void;
   totalDuration: number;
   totalPrice: number;
+  baseTotalPrice: number;
+  bookingQuantity: number;
+  setBookingQuantity: (v: number) => void;
+  selectedCapacity: number;
+  selectedTimeRemaining: number | null;
   selectedServices: BookingServiceItem[];
 
   // Date / time

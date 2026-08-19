@@ -115,6 +115,10 @@ function BookingWidgetInner({
       selectedTime={flow.selectedTime}
       totalDuration={flow.totalDuration}
       totalPrice={flow.totalPrice}
+      baseTotalPrice={flow.baseTotalPrice}
+      bookingQuantity={flow.bookingQuantity}
+      selectedCapacity={flow.selectedCapacity}
+      selectedTimeRemaining={flow.selectedTimeRemaining}
       clientName={flow.clientName}
       clientPhone={flow.clientPhone}
       clientEmail={flow.clientEmail}
@@ -139,6 +143,7 @@ function BookingWidgetInner({
       onToggleService={flow.toggleService}
       onDateChange={flow.setDate}
       onTimeChange={flow.setTime}
+      onBookingQuantityChange={flow.setBookingQuantity}
       onClientNameChange={flow.setClientName}
       onClientPhoneChange={flow.setClientPhone}
       onClientEmailChange={flow.setClientEmail}
