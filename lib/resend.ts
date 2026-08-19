@@ -200,6 +200,7 @@ export interface BookingDetails {
   serviceName: string;
   servicePrice?: number | null;
   serviceDuration?: number | null;
+  bookingQuantity?: number | null;
   date: string;
   time: string;
   notes?: string;
@@ -230,6 +231,11 @@ function renderRow(label: string, value: string) {
       <td style="padding: 10px 12px; border: 1px solid #000;">${escapeHtml(value)}</td>
     </tr>
   `;
+}
+
+function normalizedBookingQuantity(booking: Pick<BookingDetails, 'bookingQuantity'>): number | null {
+  const quantity = Math.max(1, Math.round(Number(booking.bookingQuantity ?? 1) || 1));
+  return quantity > 1 ? quantity : null;
 }
 
 export async function sendPasswordChangedNotification(
@@ -431,6 +437,7 @@ export async function sendBookingNotification(
     renderRow(isEn ? 'Phone' : 'Телефон', booking.clientPhone),
     booking.clientEmail ? renderRow(isEn ? 'Email' : 'Имейл', booking.clientEmail) : '',
     renderRow(isEn ? 'Service' : 'Услуга', booking.serviceName),
+    normalizedBookingQuantity(booking) ? renderRow(isEn ? 'Reserved spots' : 'Запазени места', String(normalizedBookingQuantity(booking))) : '',
     booking.serviceDuration ? renderRow(isEn ? 'Duration' : 'Продължителност', `${booking.serviceDuration} ${isEn ? 'min' : 'мин'}`) : '',
     booking.servicePrice != null ? renderRow(isEn ? 'Price' : 'Цена', formatSalonPrice(booking.servicePrice)) : '',
     renderRow(isEn ? 'Date' : 'Дата', formattedDate),
@@ -547,6 +554,7 @@ export async function sendBookingConfirmation(
   const clientRows = [
     renderRow(isEn ? 'Name' : 'Име', booking.clientName),
     renderRow(isEn ? 'Service' : 'Услуга', booking.serviceName),
+    normalizedBookingQuantity(booking) ? renderRow(isEn ? 'Reserved spots' : 'Запазени места', String(normalizedBookingQuantity(booking))) : '',
     booking.serviceDuration ? renderRow(isEn ? 'Duration' : 'Продължителност', `${booking.serviceDuration} ${isEn ? 'min' : 'мин'}`) : '',
     booking.servicePrice != null ? renderRow(isEn ? 'Price' : 'Цена', formatSalonPrice(booking.servicePrice)) : '',
     depositPaid != null ? renderRow(isEn ? 'Deposit paid' : 'Платен депозит', formatSalonPrice(depositPaid)) : '',

@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
   const rows = await sql`
     SELECT
       b.id, b.client_name, b.client_phone, b.client_email,
-      b.service_name, b.service_price, b.service_duration,
+      b.service_name, b.service_price, b.service_duration, b.booking_quantity,
       b.date, b.time, b.notes, b.manage_token, b.staff_member_id,
       CAST(s.id AS text) AS salon_id,
       s.name AS salon_name, s.owner_name AS salon_owner_name, s.email AS salon_email, s.phone AS salon_phone,
@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
     serviceName: String(row.service_name ?? ''),
     servicePrice: row.service_price != null ? Number(row.service_price) : undefined,
     serviceDuration: row.service_duration != null ? Number(row.service_duration) : undefined,
+    bookingQuantity: row.booking_quantity != null ? Number(row.booking_quantity) : undefined,
     date: String(row.date ?? ''),
     time: String(row.time ?? ''),
     notes: row.notes ? String(row.notes) : undefined,

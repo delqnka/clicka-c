@@ -469,6 +469,7 @@ export async function POST(request: NextRequest) {
     serviceName: resolvedServiceName,
     servicePrice,
     serviceDuration,
+    bookingQuantity,
     date,
     time,
     notes: normalizedNotes || undefined,

@@ -194,6 +194,7 @@ export async function POST(request: NextRequest) {
     serviceName,
     servicePrice: priceValue,
     serviceDuration: durationValue,
+    bookingQuantity: 1,
     date,
     time,
     notes: notes || undefined,

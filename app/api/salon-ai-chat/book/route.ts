@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
         clientPhone,
         serviceName,
         servicePrice: servicePrice ?? undefined,
+        bookingQuantity: 1,
         date: normalizedDate,
         time,
         notes: notesLine,
