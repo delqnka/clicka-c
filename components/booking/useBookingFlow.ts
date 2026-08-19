@@ -413,7 +413,13 @@ export function useBookingFlow({
         weekday: 'long', day: 'numeric', month: 'long',
       });
       markSlotOccupied(selectedDate, selectedTime, duration, bookingQuantity);
-      setBookingSuccessDetails({ serviceName, dateLabel, time: selectedTime });
+      setBookingSuccessDetails({
+        serviceName,
+        dateLabel,
+        time: selectedTime,
+        quantity: bookingQuantity,
+        totalPrice,
+      });
       setBookingSuccess(`${serviceName} — ${dateLabel} ${selectedTime}`);
       const eventPayload = {
         serviceName,

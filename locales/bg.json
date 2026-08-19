@@ -67,6 +67,10 @@
       "waitingAt": "Очакваме ви в",
       "labelService": "Услуга",
       "labelWhen": "Кога",
+      "labelBeds": "Запазени легла",
+      "labelTotal": "Общо",
+      "bedsCountOne": "{count} легло",
+      "bedsCountMany": "{count} легла",
       "timeFormat": "{date}, {time} ч.",
       "done": "Готово"
     },

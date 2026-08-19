@@ -633,6 +633,8 @@ export default function SalonPublicParity({
     serviceName: string;
     dateLabel: string;
     time: string;
+    quantity?: number;
+    totalPrice?: number;
   } | null>(null);
 
   // TEAM plan: staff members fetched once when the booking modal first opens.
@@ -1347,7 +1349,13 @@ export default function SalonPublicParity({
         month: 'long',
       });
       markDateSlotOccupied(selectedDate, selectedTime, combinedDuration, bookingQuantity);
-      setBookingSuccessDetails({ serviceName: combinedServiceName, dateLabel, time: selectedTime });
+      setBookingSuccessDetails({
+        serviceName: combinedServiceName,
+        dateLabel,
+        time: selectedTime,
+        quantity: bookingQuantity,
+        totalPrice: bookingFinalPrice,
+      });
       setBookingSuccess(`${combinedServiceName} — ${dateLabel} в ${selectedTime} ч.`);
       trackBookingCompleted({
         serviceName: combinedServiceName,
@@ -1398,7 +1406,7 @@ export default function SalonPublicParity({
         month: 'long',
       });
       markDateSlotOccupied(selectedDate, selectedTime, offerDurationMin);
-      setBookingSuccessDetails({ serviceName: selectedOffer.title, dateLabel, time: selectedTime });
+      setBookingSuccessDetails({ serviceName: selectedOffer.title, dateLabel, time: selectedTime, quantity: 1 });
       setBookingSuccess(
         json.message || `${selectedOffer.title} — ${dateLabel} в ${selectedTime} ч.`,
       );

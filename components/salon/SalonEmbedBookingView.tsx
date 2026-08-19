@@ -94,7 +94,7 @@ export function SalonEmbedBookingView({ pageData }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
-  const [successDetails, setSuccessDetails] = useState<{ serviceName: string; dateLabel: string; time: string } | null>(null);
+  const [successDetails, setSuccessDetails] = useState<{ serviceName: string; dateLabel: string; time: string; quantity?: number; totalPrice?: number } | null>(null);
   const [minDate, setMinDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
 
@@ -219,7 +219,7 @@ export function SalonEmbedBookingView({ pageData }: Props) {
       const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(bookingLocale, {
         weekday: 'long', day: 'numeric', month: 'long',
       });
-      setSuccessDetails({ serviceName, dateLabel, time: selectedTime });
+      setSuccessDetails({ serviceName, dateLabel, time: selectedTime, quantity: 1, totalPrice });
       trackBookingCompleted({ serviceName, value: totalPrice > 0 ? totalPrice : undefined });
       setBookingSuccess(isEn ? `${serviceName} — ${dateLabel} at ${selectedTime}` : `${serviceName} — ${dateLabel} в ${selectedTime} ч.`);
     } catch (err) {

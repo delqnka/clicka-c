@@ -67,6 +67,10 @@
       "waitingAt": "We'll see you at",
       "labelService": "Service",
       "labelWhen": "When",
+      "labelBeds": "Reserved beds",
+      "labelTotal": "Total",
+      "bedsCountOne": "{count} bed",
+      "bedsCountMany": "{count} beds",
       "timeFormat": "{date} at {time}",
       "done": "Done"
     },

@@ -10,6 +10,8 @@ export type BookingSuccessDetails = {
   serviceName: string;
   dateLabel: string;
   time: string;
+  quantity?: number;
+  totalPrice?: number;
 };
 
 export type PublicStaffMember = {

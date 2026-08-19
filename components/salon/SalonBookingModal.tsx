@@ -83,7 +83,7 @@ type SalonBookingModalProps = {
   isSubmitting: boolean;
   bookingError: string;
   bookingSuccess: string;
-  bookingSuccessDetails?: { serviceName: string; dateLabel: string; time: string } | null;
+  bookingSuccessDetails?: { serviceName: string; dateLabel: string; time: string; quantity?: number; totalPrice?: number } | null;
   onClose: () => void;
   onToggleService: (idx: number) => void;
   onDateChange: (date: string) => void;
@@ -442,6 +442,12 @@ export function SalonBookingModal({
                 serviceName={bookingSuccessDetails.serviceName}
                 dateLabel={bookingSuccessDetails.dateLabel}
                 time={bookingSuccessDetails.time}
+                quantity={bookingSuccessDetails.quantity}
+                totalPriceLabel={
+                  typeof bookingSuccessDetails.totalPrice === 'number'
+                    ? fmtPrice(bookingSuccessDetails.totalPrice)
+                    : undefined
+                }
                 salonName={salonName}
                 onClose={onClose}
               />

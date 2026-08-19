@@ -7,6 +7,8 @@ type Props = {
   serviceName: string;
   dateLabel: string;
   time: string;
+  quantity?: number;
+  totalPriceLabel?: string;
   salonName: string;
   onClose: () => void;
 };
@@ -15,11 +17,16 @@ export function BookingSuccessView({
   serviceName,
   dateLabel,
   time,
+  quantity,
+  totalPriceLabel,
   salonName,
   onClose,
 }: Props) {
   const t = useT();
   const [show, setShow] = useState(false);
+  const quantityLabel = quantity && quantity > 0
+    ? t(quantity === 1 ? 'booking.success.bedsCountOne' : 'booking.success.bedsCountMany', { count: quantity })
+    : '';
 
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 50);
@@ -124,6 +131,40 @@ export function BookingSuccessView({
                 </p>
               </div>
             </div>
+
+            {quantity && quantity > 0 ? (
+              <>
+                <div className="h-px bg-black/[0.05]" />
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black/[0.04]">
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-black/40" aria-hidden>
+                      <path d="M6.75 9.25a2.75 2.75 0 100-5.5 2.75 2.75 0 000 5.5zM13.25 9.25a2.75 2.75 0 100-5.5 2.75 2.75 0 000 5.5zM2.5 15.25c0-2.071 1.903-3.75 4.25-3.75S11 13.179 11 15.25V16a1 1 0 01-1 1H3.5a1 1 0 01-1-1v-.75zM12.25 17H16.5a1 1 0 001-1v-.75c0-2.071-1.903-3.75-4.25-3.75-.592 0-1.156.107-1.668.3.58.918.918 2.11.918 3.45V16c0 .35-.089.68-.25 1z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-black/30">{t('booking.success.labelBeds')}</p>
+                    <p className="mt-0.5 text-[14px] font-medium leading-snug text-[#111]">{quantityLabel}</p>
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {totalPriceLabel ? (
+              <>
+                <div className="h-px bg-black/[0.05]" />
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black/[0.04]">
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-black/40" aria-hidden>
+                      <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM7.75 6.5A.75.75 0 017 7.25V8h4.75a.75.75 0 010 1.5H7v1h3.75a.75.75 0 010 1.5H7v.75a.75.75 0 01-1.5 0v-5.5a.75.75 0 01.75-.75h1.5z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-black/30">{t('booking.success.labelTotal')}</p>
+                    <p className="mt-0.5 text-[14px] font-medium leading-snug text-[#111]">{totalPriceLabel}</p>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
 
