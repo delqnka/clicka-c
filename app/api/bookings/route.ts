@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     ? before
       ? await sql`
           SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration,
+            service_name, service_price, service_duration, booking_quantity,
             date, time, status, notes, created_at
           FROM bookings
           WHERE salon_id = ${salonId} AND status = ${status} AND date < ${before}
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
         `
       : await sql`
           SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration,
+            service_name, service_price, service_duration, booking_quantity,
             date, time, status, notes, created_at
           FROM bookings
           WHERE salon_id = ${salonId} AND status = ${status}
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
     : before
       ? await sql`
           SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration,
+            service_name, service_price, service_duration, booking_quantity,
             date, time, status, notes, created_at
           FROM bookings
           WHERE salon_id = ${salonId} AND date < ${before}
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
         `
       : await sql`
           SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration,
+            service_name, service_price, service_duration, booking_quantity,
             date, time, status, notes, created_at
           FROM bookings
           WHERE salon_id = ${salonId}

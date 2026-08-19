@@ -210,6 +210,7 @@ type ClientSummary = {
   visits: number;
   totalSpent: number;
   lastVisit: string;
+  lastBookingQuantity?: number;
   isNew?: boolean;
 };
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
@@ -233,6 +234,47 @@ type GoogleBusinessCandidate = {
   mapsUrl: string;
   businessStatus: string;
 };
+
+function normalizeClientNameKey(value: string) {
+  return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function normalizeClientPhoneKey(value: string) {
+  return String(value ?? '').replace(/\D/g, '');
+}
+
+function clientsReferToSamePerson(a: ClientSummary, b: ClientSummary) {
+  const aEmail = String(a.email ?? '').trim().toLowerCase();
+  const bEmail = String(b.email ?? '').trim().toLowerCase();
+  if (aEmail && bEmail && aEmail === bEmail) return true;
+
+  const aPhone = normalizeClientPhoneKey(a.phone);
+  const bPhone = normalizeClientPhoneKey(b.phone);
+  if (aPhone && bPhone && aPhone === bPhone) return true;
+
+  const aName = normalizeClientNameKey(a.name);
+  const bName = normalizeClientNameKey(b.name);
+  return Boolean(aName && bName && aName === bName);
+}
+
+function mergeBookingAndExtraClients(bookingClients: ClientSummary[], extraClients: ClientSummary[]) {
+  const merged = bookingClients.map((client) => ({ ...client }));
+
+  for (const extra of extraClients) {
+    const existing = merged.find((client) => clientsReferToSamePerson(client, extra));
+    if (!existing) {
+      merged.push({ ...extra });
+      continue;
+    }
+
+    if (!existing.phone && extra.phone) existing.phone = extra.phone;
+    if (!existing.email && extra.email) existing.email = extra.email;
+    if (existing.name === 'Клиент' && extra.name) existing.name = extra.name;
+    if (extra.isNew && existing.visits === 0) existing.isNew = true;
+  }
+
+  return merged;
+}
 
 type TopLevelTabId = (typeof TOP_LEVEL_TAB_IDS)[number];
 
@@ -560,6 +602,7 @@ export default function AdminDashboardClient({
       const name = String(b.client_name ?? '').trim();
       const key = email || phone || b.id;
       const spent = Number(b.service_price ?? 0) || 0;
+      const quantity = Math.max(1, Number(b.booking_quantity ?? 1) || 1);
       const visitMoment = `${b.date}T${b.time || '00:00'}:00`;
       const existing = map.get(key);
       if (!existing) {
@@ -571,11 +614,15 @@ export default function AdminDashboardClient({
           visits: 1,
           totalSpent: spent,
           lastVisit: visitMoment,
+          lastBookingQuantity: quantity,
         });
       } else {
         existing.visits += 1;
         existing.totalSpent += spent;
-        if (visitMoment > existing.lastVisit) existing.lastVisit = visitMoment;
+        if (visitMoment > existing.lastVisit) {
+          existing.lastVisit = visitMoment;
+          existing.lastBookingQuantity = quantity;
+        }
         if (!existing.phone && phone) existing.phone = phone;
         if (!existing.email && email) existing.email = email;
         if (existing.name === 'Клиент' && name) existing.name = name;
@@ -583,6 +630,14 @@ export default function AdminDashboardClient({
     }
     return [...map.values()].sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
   }, [deferredBookings, clientsUiActive]);
+  const visibleBookingClients = useMemo(
+    () => clients.filter((client) => !hiddenClientKeys.has(client.key)),
+    [clients, hiddenClientKeys]
+  );
+  const mergedVisibleClients = useMemo(
+    () => mergeBookingAndExtraClients(visibleBookingClients, extraClients),
+    [visibleBookingClients, extraClients]
+  );
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -676,6 +731,7 @@ export default function AdminDashboardClient({
           visits: 0,
           totalSpent: 0,
           lastVisit: '',
+          lastBookingQuantity: undefined,
           isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
         })));
       })
@@ -891,6 +947,18 @@ export default function AdminDashboardClient({
     setAllExternalEvents(events);
   }, [calendarCursor, slug, site.bookingBlocks]);
 
+  const loadBookings = useCallback(async () => {
+    const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}&limit=200`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return;
+    const data = (await readJson(res)) as { bookings?: BookingRecord[] };
+    if (Array.isArray(data.bookings)) {
+      setBookings(data.bookings);
+      setBookingsLoaded(true);
+    }
+  }, [slug]);
+
   useEffect(() => {
     if (activeTab !== 'bookings') return;
     const hasExternal = calendarIntegrationStatus.externalIcsUrl;
@@ -912,26 +980,28 @@ export default function AdminDashboardClient({
   }, [activeTab, loadGoogleReviewsStatus, loadCalendarIntegrationStatus]);
 
   useEffect(() => {
-    if (bookingsLoaded) return;
     if (activeTopLevelTab !== 'bookings') return;
     let cancelled = false;
     const run = async () => {
       try {
-        const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}&limit=200`, {
-          cache: 'no-store',
-        });
-        if (!res.ok) return;
-        const data = (await readJson(res)) as { bookings?: BookingRecord[] };
         if (cancelled) return;
-        if (Array.isArray(data.bookings)) {
-          setBookings(data.bookings);
-          setBookingsLoaded(true);
-        }
+        await loadBookings();
       } catch { /* ignore — user can refresh */ }
     };
-    void run();
-    return () => { cancelled = true; };
-  }, [bookingsLoaded, activeTopLevelTab, slug]);
+    if (!bookingsLoaded) void run();
+
+    const refresh = () => {
+      if (!cancelled) void run();
+    };
+    const interval = window.setInterval(refresh, 30_000);
+    window.addEventListener('focus', refresh);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [bookingsLoaded, activeTopLevelTab, loadBookings]);
 
   useEffect(() => {
     if (activeTab !== 'staff') return;
@@ -2387,11 +2457,7 @@ export default function AdminDashboardClient({
                 action={
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined, minWidth: 0 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#000', minWidth: 0 }}>
-                      {(() => {
-                        const bc = clients.filter(c => !hiddenClientKeys.has(c.key));
-                        const names = new Set(bc.map(c => c.name.toLowerCase().trim()));
-                        return bc.length + extraClients.filter(c => !names.has(c.name.toLowerCase().trim())).length;
-                      })()} {locale === 'en' ? 'unique' : 'уникални'}
+                      {mergedVisibleClients.length} {locale === 'en' ? 'unique' : 'уникални'}
                     </span>
                     <button
                       type="button"
@@ -2419,12 +2485,7 @@ export default function AdminDashboardClient({
                 }
               >
                 <ClientsPanel
-                  clients={(() => {
-                    const bookingClients = clients.filter(c => !hiddenClientKeys.has(c.key));
-                    const bookingNames = new Set(bookingClients.map(c => c.name.toLowerCase().trim()));
-                    const deduped = extraClients.filter(c => !bookingNames.has(c.name.toLowerCase().trim()));
-                    return [...bookingClients, ...deduped];
-                  })()}
+                  clients={mergedVisibleClients}
                   isMobile={isMobile}
                   T={T}
                   onEdit={async (key, data) => {
@@ -2459,6 +2520,7 @@ export default function AdminDashboardClient({
                             visits: original?.visits ?? 0,
                             totalSpent: original?.totalSpent ?? 0,
                             lastVisit: original?.lastVisit ?? '',
+                            lastBookingQuantity: original?.lastBookingQuantity,
                           }];
                         });
                         setHiddenClientKeys((prev) => new Set([...prev, key]));

@@ -41,6 +41,7 @@ export type BookingRecord = {
   service_name: string;
   service_price: number | null;
   service_duration: number | null;
+  booking_quantity: number | null;
   date: string;
   time: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
@@ -287,7 +288,7 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
   const rows = await sql`
     SELECT
       id, client_name, client_phone, client_email,
-      service_name, service_price, service_duration,
+      service_name, service_price, service_duration, booking_quantity,
       date, time, status, notes, created_at, completed_at
     FROM bookings
     WHERE salon_id = ${salonId}

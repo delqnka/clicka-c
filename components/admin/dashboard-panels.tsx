@@ -32,6 +32,7 @@ type ClientSummary = {
   visits: number;
   totalSpent: number;
   lastVisit: string;
+  lastBookingQuantity?: number;
   isNew?: boolean;
 };
 
@@ -159,6 +160,9 @@ function BookingCard({
         </p>
         <p style={{ margin: '5px 0 0', fontSize: isMobile ? 14 : 13, color: T.muted, lineHeight: 1.45, fontWeight: 500 }}>
           {booking.service_name}
+          {Math.max(1, Number(booking.booking_quantity ?? 1) || 1) > 1
+            ? ` · ${Math.max(1, Number(booking.booking_quantity ?? 1) || 1)} ${isEn ? 'beds' : 'легла'}`
+            : ''}
           {Number.isFinite(Number(booking.service_price)) ? ` · ${formatSalonPrice(Number(booking.service_price))}` : ''}
         </p>
         <p style={{ margin: '6px 0 0', fontSize: isMobile ? 15 : 14, color: '#18181B', fontWeight: 600, lineHeight: 1.4 }}>
@@ -644,6 +648,9 @@ export function ClientsPanel({
               </p>
               <p style={{ margin: '6px 0 0', fontSize: 12, color: T.subtle }}>
                 {isEn ? 'Last booking: ' : 'Последна резервация: '}{client.lastVisit ? new Date(client.lastVisit).toLocaleString(isEn ? 'en-US' : 'bg-BG', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                {client.lastVisit && Math.max(1, Number(client.lastBookingQuantity ?? 1) || 1) > 1
+                  ? ` · ${Math.max(1, Number(client.lastBookingQuantity ?? 1) || 1)} ${isEn ? 'beds' : 'легла'}`
+                  : ''}
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0, minWidth: 0 }}>
