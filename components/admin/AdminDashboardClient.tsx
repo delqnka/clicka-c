@@ -606,13 +606,14 @@ export default function AdminDashboardClient({
   const bookingsCountByDate = useMemo(() => {
     if (!bookingsUiActive) return new Map<string, number>();
     const map = new Map<string, number>();
-    for (const b of filteredBookings) {
+    for (const b of deferredBookings) {
+      if (String(b.status ?? '').trim().toLowerCase() === 'cancelled') continue;
       const key = normalizeBookingDateKey(b.date);
       if (!key) continue;
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return map;
-  }, [filteredBookings, bookingsUiActive]);
+  }, [deferredBookings, bookingsUiActive]);
   const calendarMonthLabel = useMemo(
     () => calendarCursor.toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' }),
     [calendarCursor]

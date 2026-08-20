@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
            date, time, status, notes
     FROM bookings
     WHERE salon_id = ${staff.salonId}
-      AND staff_member_id = ${staff.id}::uuid
+      AND (staff_member_id = ${staff.id}::uuid OR staff_member_id IS NULL)
       AND date >= (current_date - interval '14 days')::text
     ORDER BY date ASC, time ASC
     LIMIT 300
