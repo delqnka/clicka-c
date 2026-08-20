@@ -31,6 +31,7 @@ import {
   CreditCard,
   QrCode,
   LifeBuoy,
+  FileText,
 } from 'lucide-react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -124,12 +125,13 @@ const TABS = [
   { id: 'clients',       labelKey: 'adminDashboard.tabs.clients', Icon: Users },
   { id: 'payments',      labelKey: 'adminDashboard.tabs.payments', Icon: CreditCard },
   { id: 'integrations',  labelKey: 'adminDashboard.tabs.integrations', Icon: Plug },
+  { id: 'legal',         labelKey: 'adminDashboard.tabs.legal', Icon: FileText },
   { id: 'account',       labelKey: 'adminDashboard.tabs.account', Icon: KeyRound },
 ] as const;
 
 const WEBSITE_TAB_IDS = ['site', 'faq', 'images', 'specialist', 'offers'] as const;
 const BOOKING_TAB_IDS = ['staff', 'services', 'hours', 'bookings', 'clients'] as const;
-const ACCOUNT_TAB_IDS = ['account', 'payments', 'integrations'] as const;
+const ACCOUNT_TAB_IDS = ['account', 'legal', 'payments', 'integrations'] as const;
 
 const TOP_LEVEL_TAB_IDS = ['site', 'bookings', 'account'] as const;
 
@@ -2737,8 +2739,15 @@ export default function AdminDashboardClient({
             </div>
           )}
 
-          {activeTab === 'account' && initialAccount ? (
-            <AccountTabPanel slug={slug} inp={inp} initialAccount={initialAccount} onDisplayNameChange={setDisplayName} locale={locale} />
+          {(activeTab === 'account' || activeTab === 'legal') && initialAccount ? (
+            <AccountTabPanel
+              slug={slug}
+              inp={inp}
+              initialAccount={initialAccount}
+              onDisplayNameChange={setDisplayName}
+              locale={locale}
+              initialSubTab={activeTab === 'legal' ? 'business' : 'profile'}
+            />
           ) : null}
 
           {activeTab === 'payments' ? (

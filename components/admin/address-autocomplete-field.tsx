@@ -35,6 +35,7 @@ export function AddressAutocompleteField({
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<AddressSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState('');
 
   useEffect(() => {
     setQuery(value);
@@ -45,6 +46,7 @@ export function AddressAutocompleteField({
     if (q.length < 3) {
       setResults([]);
       setLoading(false);
+      setSearchedQuery('');
       return;
     }
 
@@ -53,9 +55,15 @@ export function AddressAutocompleteField({
       setLoading(true);
       try {
         const data = await searchAddresses(q);
-        if (!ctrl.signal.aborted) setResults(data);
+        if (!ctrl.signal.aborted) {
+          setResults(data);
+          setSearchedQuery(q);
+        }
       } catch {
-        if (!ctrl.signal.aborted) setResults([]);
+        if (!ctrl.signal.aborted) {
+          setResults([]);
+          setSearchedQuery(q);
+        }
       } finally {
         if (!ctrl.signal.aborted) setLoading(false);
       }
@@ -84,7 +92,7 @@ export function AddressAutocompleteField({
         autoComplete="off"
         aria-autocomplete="list"
       />
-      {(loading || results.length > 0) && (
+      {(loading || results.length > 0 || searchedQuery === query.trim()) && (
         <div
           style={{
             border: '1px solid #E5E3DE',
@@ -99,7 +107,7 @@ export function AddressAutocompleteField({
         >
           {loading ? (
             <div style={{ padding: '10px 12px', fontSize: 13, color: '#71717A' }}>Търсим адреси…</div>
-          ) : (
+          ) : results.length > 0 ? (
             results.map((r, i) => (
               <button
                 key={`${r.lat}-${r.lon}-${i}`}
@@ -138,6 +146,10 @@ export function AddressAutocompleteField({
                 {r.display_name}
               </button>
             ))
+          ) : (
+            <div style={{ padding: '10px 12px', fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
+              Няма намерени адреси. Пробвай с град + улица + номер, например “София Витоша 42”.
+            </div>
           )}
         </div>
       )}

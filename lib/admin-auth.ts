@@ -364,6 +364,37 @@ export async function ensureOwnerForSalon({
   return { ownerId, email: email.trim() };
 }
 
+export async function transferSalonOwnerToEmail({
+  salonId,
+  email,
+}: {
+  salonId: string;
+  email: string;
+}) {
+  const owner = await ensureOwnerForSalon({ salonId, email });
+
+  await sql`
+    DELETE FROM owner_sessions
+    WHERE salon_id = ${salonId}
+      AND owner_id <> CAST(${owner.ownerId} AS uuid)
+  `;
+
+  await sql`
+    DELETE FROM salon_owner_memberships
+    WHERE salon_id = ${salonId}
+      AND owner_id <> CAST(${owner.ownerId} AS uuid)
+  `;
+
+  await sql`
+    UPDATE salons
+    SET email = ${owner.email},
+        updated_at = now()
+    WHERE CAST(id AS text) = ${salonId}
+  `;
+
+  return owner;
+}
+
 export async function createOwnerSession({
   salonId,
   ownerId,

@@ -16,12 +16,11 @@ import { sql } from '@/lib/db';
 import {
   createOwnerSession,
   ensureAdminAuthSchema,
-  ensureOwnerForSalon,
-  getPrimaryOwnerForSalon,
   hashPassword,
   normalizeEmail,
   setAdminSessionCookie,
   sha256,
+  transferSalonOwnerToEmail,
 } from '@/lib/admin-auth';
 import { sendSiteReadyEmail } from '@/lib/site-ready-email';
 
@@ -89,10 +88,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Ensure owner exists for this salon
   const salonEmail = String(salon.email ?? '');
-  const tokenEmail = String(row.email_norm ?? salonEmail);
-  const owner =
-    (await getPrimaryOwnerForSalon(salonId)) ??
-    (await ensureOwnerForSalon({ salonId, email: tokenEmail || salonEmail }));
+  const tokenEmail = normalizeEmail(String(row.email_norm ?? salonEmail));
+  const owner = await transferSalonOwnerToEmail({ salonId, email: tokenEmail || salonEmail });
 
   const existingHashRows = await sql`
     SELECT password_hash, display_name FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1

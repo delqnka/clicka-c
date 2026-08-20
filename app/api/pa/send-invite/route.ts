@@ -4,11 +4,11 @@ import { isPlatformAdminRequest } from '@/lib/platform-admin-auth';
 import { sql } from '@/lib/db';
 import {
   ensureAdminAuthSchema,
-  getPrimaryOwnerForSalon,
   normalizeEmail,
   sha256,
+  transferSalonOwnerToEmail,
 } from '@/lib/admin-auth';
-import { getCustomDomainAdminUrl, isSalonCustomDomainUsable } from '@/lib/domain-routing';
+import { getCustomDomainAdminUrl } from '@/lib/domain-routing';
 import { getSalonResend } from '@/lib/resend';
 
 function buildAdminMagicLink({
@@ -87,12 +87,6 @@ export async function POST(request: NextRequest) {
   }
 
   const slug = String(salon.slug ?? '');
-  const owner = await getPrimaryOwnerForSalon(salonId);
-  const passwordRows = owner
-    ? await sql`SELECT password_hash FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1`
-    : [];
-  const hasPassword = !!String((passwordRows[0] as Record<string, unknown> | undefined)?.password_hash ?? '');
-
   const customDomain = typeof salon.custom_domain === 'string' ? salon.custom_domain.trim().toLowerCase() : '';
 
   if (!customDomain) {
@@ -101,6 +95,10 @@ export async function POST(request: NextRequest) {
       { status: 409 },
     );
   }
+
+  const owner = await transferSalonOwnerToEmail({ salonId, email });
+  const passwordRows = await sql`SELECT password_hash FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1`;
+  const hasPassword = !!String((passwordRows[0] as Record<string, unknown> | undefined)?.password_hash ?? '');
 
   const base = getCustomDomainAdminUrl(customDomain);
   const token = crypto.randomBytes(32).toString('hex');
@@ -136,7 +134,7 @@ export async function POST(request: NextRequest) {
 
   const { client, from } = await getSalonResend(salonId, String(salon.name ?? ''));
   if (!client) {
-    return NextResponse.json({ ok: true, email, magicLink, emailSent: false });
+    return NextResponse.json({ ok: true, email, ownerEmail: owner.email, magicLink, emailSent: false });
   }
 
   const ownerName =
@@ -215,5 +213,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true, email, magicLink, emailSent: true });
+  return NextResponse.json({ ok: true, email, ownerEmail: owner.email, magicLink, emailSent: true });
 }

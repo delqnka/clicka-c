@@ -3,6 +3,8 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField } from '@/components/admin/admin-ui';
+import { LegalCustomDocumentsEditor } from '@/components/admin/legal-custom-documents-editor';
+import { defaultLegalCustomDocuments, type LegalCustomDocuments } from '@/lib/legal-custom-documents';
 import { type Locale } from '@/lib/i18n';
 
 type AccountInfo = {
@@ -18,6 +20,7 @@ type BusinessInfo = {
   managerName: string;
   address: string;
   contactEmail: string;
+  customDocuments: LegalCustomDocuments;
 };
 
 type SubTab = 'profile' | 'business' | 'email' | 'password';
@@ -35,16 +38,18 @@ export function AccountTabPanel({
   initialAccount,
   onDisplayNameChange,
   locale,
+  initialSubTab = 'profile',
 }: {
   slug: string;
   inp: CSSProperties;
   initialAccount: AccountInfo;
   onDisplayNameChange?: (name: string | null) => void;
   locale: Locale;
+  initialSubTab?: SubTab;
 }) {
   const isEn = locale === 'en';
   const [info, setInfo] = useState<AccountInfo>(initialAccount);
-  const [subTab, setSubTab] = useState<SubTab>('profile');
+  const [subTab, setSubTab] = useState<SubTab>(initialSubTab);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [businessLoaded, setBusinessLoaded] = useState(false);
@@ -58,6 +63,7 @@ export function AccountTabPanel({
     managerName: '',
     address: '',
     contactEmail: '',
+    customDocuments: defaultLegalCustomDocuments(),
   });
   const [emailForm, setEmailForm] = useState({ newEmail: '', currentPassword: '' });
   const [passwordForm, setPasswordForm] = useState({
@@ -68,6 +74,10 @@ export function AccountTabPanel({
   const [busy, setBusy] = useState<'profile' | 'business' | 'email' | 'password' | 'reset' | null>(null);
 
   const fieldInp = compactInp(inp);
+
+  useEffect(() => {
+    setSubTab(initialSubTab);
+  }, [initialSubTab]);
 
   useEffect(() => {
     if (subTab !== 'business' || businessLoaded) return;
@@ -84,6 +94,7 @@ export function AccountTabPanel({
           managerName: typeof legal.managerName === 'string' ? legal.managerName : '',
           address: typeof legal.address === 'string' ? legal.address : '',
           contactEmail: typeof legal.contactEmail === 'string' ? legal.contactEmail : '',
+          customDocuments: legal.customDocuments ?? defaultLegalCustomDocuments(),
         });
         setBusinessLoaded(true);
       } catch {
@@ -100,7 +111,7 @@ export function AccountTabPanel({
     e.preventDefault();
     setNotice('');
     setError('');
-    setBusy('business');
+    setBusy('profile');
     try {
       const res = await fetch(`/api/admin/account?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH',
@@ -128,7 +139,7 @@ export function AccountTabPanel({
     e.preventDefault();
     setNotice('');
     setError('');
-    setBusy('profile');
+    setBusy('business');
     try {
       const res = await fetch(`/api/admin/legal?slug=${encodeURIComponent(slug)}`, {
         method: 'POST',
@@ -140,6 +151,7 @@ export function AccountTabPanel({
           managerName: businessForm.managerName,
           address: businessForm.address,
           contactEmail: businessForm.contactEmail,
+          customDocuments: businessForm.customDocuments,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -365,6 +377,12 @@ export function AccountTabPanel({
               placeholder="info@example.com"
             />
           </AdminField>
+          <LegalCustomDocumentsEditor
+            value={businessForm.customDocuments}
+            inputStyle={fieldInp}
+            onChange={(customDocuments) => setBusinessForm((p) => ({ ...p, customDocuments }))}
+            locale={locale}
+          />
           <button
             type="submit"
             disabled={busy === 'business'}

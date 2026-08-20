@@ -34,6 +34,7 @@ type InviteNotice = {
   salonId: string;
   tone: 'success' | 'error';
   message: string;
+  magicLink?: string;
 };
 
 function formatDate(iso: string) {
@@ -205,6 +206,7 @@ export default function PlatformAdminDashboard({
           salonId,
           tone: 'error',
           message: typeof data.error === 'string' ? data.error : 'Не успяхме да изпратим magic link.',
+          magicLink: typeof data.magicLink === 'string' ? data.magicLink : undefined,
         });
         return;
       }
@@ -215,7 +217,22 @@ export default function PlatformAdminDashboard({
           data.emailSent === false
             ? 'Magic link е генериран, но имейл не е изпратен. Провери email настройките.'
             : `Magic link е изпратен на ${typeof data.email === 'string' ? data.email : email}.`,
+        magicLink: typeof data.magicLink === 'string' ? data.magicLink : undefined,
       });
+      const ownerEmail =
+        typeof data.ownerEmail === 'string'
+          ? data.ownerEmail
+          : typeof data.email === 'string'
+            ? data.email
+            : email;
+      setSalonList((prev) =>
+        prev.map((salon) =>
+          salon.salon_id === salonId
+            ? { ...salon, email: ownerEmail, owner_email: ownerEmail }
+            : salon,
+        ),
+      );
+      setInviteEmails((prev) => ({ ...prev, [salonId]: ownerEmail }));
     } finally {
       setSendingInvite(null);
     }
@@ -444,7 +461,26 @@ export default function PlatformAdminDashboard({
                                   ? 'border-[#bbf7d0] text-[#166534]'
                                   : 'border-[#fecaca] text-[#b91c1c]'
                               }`}>
-                                {inviteNotice.message}
+                                <div>{inviteNotice.message}</div>
+                                {inviteNotice.magicLink ? (
+                                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <a
+                                      href={inviteNotice.magicLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="min-w-0 flex-1 truncate rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-semibold text-black underline-offset-2 hover:underline"
+                                    >
+                                      {inviteNotice.magicLink}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => void navigator.clipboard?.writeText(inviteNotice.magicLink ?? '')}
+                                      className="inline-flex min-h-[36px] shrink-0 items-center justify-center rounded-full border border-black/10 bg-white px-3 text-xs font-semibold text-black transition hover:border-black/24"
+                                    >
+                                      Копирай
+                                    </button>
+                                  </div>
+                                ) : null}
                               </div>
                             )}
 
