@@ -35,6 +35,7 @@
       "dayClosed": "The salon is closed on this day.",
       "noSlots": "No available slots for the selected services.",
       "selectServiceFirst": "Please select a service first.",
+      "selectTimeForBeds": "Choose a time to see free beds.",
       "freeBeds": "Free beds: {count}",
       "bedsHelp": "Choose how many beds you want to reserve.",
       "contactDetails": "Your details",

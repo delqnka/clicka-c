@@ -286,6 +286,15 @@ export function SalonBookingModal({
   );
   const maxBookableQuantity = Math.max(1, selectedTimeRemaining ?? selectedCapacity);
   const showQuantityPicker = selectedCapacity > 1 && selectedTime && maxBookableQuantity > 0;
+  const quantityPickerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!showQuantityPicker) return;
+    const frame = window.requestAnimationFrame(() => {
+      quantityPickerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [showQuantityPicker, selectedTime]);
 
   useEffect(() => {
     if (!selectedCategory) return;
@@ -761,6 +770,46 @@ export function SalonBookingModal({
                     </div>
                   </div>
 
+                  {selectedCapacity > 1 ? (
+                    <div ref={quantityPickerRef} className={`rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-1.5 text-[13px] font-semibold text-black">
+                            <Users className="h-4 w-4 text-black/45" aria-hidden />
+                            {showQuantityPicker
+                              ? t('booking.modal.freeBeds', { count: maxBookableQuantity })
+                              : t('booking.modal.selectTimeForBeds')}
+                          </p>
+                          <p className="mt-1 text-[12px] leading-relaxed text-black/45">
+                            {t('booking.modal.bedsHelp')}
+                          </p>
+                        </div>
+                      </div>
+                      {showQuantityPicker ? (
+                        <div className="mt-3 grid grid-cols-5 gap-2">
+                          {Array.from({ length: Math.min(maxBookableQuantity, selectedCapacity) }, (_, i) => i + 1).map((qty) => {
+                            const active = bookingQuantity === qty;
+                            return (
+                              <button
+                                key={qty}
+                                type="button"
+                                onClick={() => onBookingQuantityChange?.(qty)}
+                                className={`h-10 rounded-full text-[14px] font-bold tabular-nums transition ${
+                                  active
+                                    ? `text-white ${gradientCtaShadow}`
+                                    : 'border border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.08)]'
+                                }`}
+                                style={active ? accentFillStyle : undefined}
+                              >
+                                {qty}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
                       {t('booking.modal.time')}
@@ -797,41 +846,6 @@ export function SalonBookingModal({
                     )}
                   </div>
 
-                  {showQuantityPicker ? (
-                    <div className={`rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="flex items-center gap-1.5 text-[13px] font-semibold text-black">
-                            <Users className="h-4 w-4 text-black/45" aria-hidden />
-                            {t('booking.modal.freeBeds', { count: maxBookableQuantity })}
-                          </p>
-                          <p className="mt-1 text-[12px] leading-relaxed text-black/45">
-                            {t('booking.modal.bedsHelp')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-5 gap-2">
-                        {Array.from({ length: Math.min(maxBookableQuantity, selectedCapacity) }, (_, i) => i + 1).map((qty) => {
-                          const active = bookingQuantity === qty;
-                          return (
-                            <button
-                              key={qty}
-                              type="button"
-                              onClick={() => onBookingQuantityChange?.(qty)}
-                              className={`h-10 rounded-full text-[14px] font-bold tabular-nums transition ${
-                                active
-                                  ? `text-white ${gradientCtaShadow}`
-                                  : 'border border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.08)]'
-                              }`}
-                              style={active ? accentFillStyle : undefined}
-                            >
-                              {qty}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
               ) : null}
 
