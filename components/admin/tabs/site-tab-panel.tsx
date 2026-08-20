@@ -442,12 +442,13 @@ export function SiteTabPanel({
               value={site.address}
               city={site.city}
               inputStyle={fieldInp}
-              onChange={(address) => setSite((p) => ({ ...p, address }))}
+              onChange={(address) => setSite((p) => ({ ...p, address, latitude: null, longitude: null }))}
               onGoogleMapsUrl={({ googleMapsUrl, lat, lng }) =>
                 setSite((p) => ({
                   ...p,
                   googleMapsUrl,
-                  ...(lat != null && lng != null ? { latitude: lat, longitude: lng } : {}),
+                  latitude: lat,
+                  longitude: lng,
                 }))
               }
               onSelect={({ address, city, lat, lng, googleMapsUrl }) =>
@@ -484,7 +485,8 @@ export function SiteTabPanel({
                 setSite((p) => ({
                   ...p,
                   googleMapsUrl,
-                  ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+                  latitude: coords?.lat ?? null,
+                  longitude: coords?.lng ?? null,
                 }));
               }}
               placeholder="https://maps.app.goo.gl/..."

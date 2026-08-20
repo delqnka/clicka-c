@@ -585,7 +585,8 @@ export default function SalonPublicParity({
   const lng = rawSalon.longitude != null ? Number(rawSalon.longitude) : parsedGoogleMapsCoords?.lng ?? null;
   const hasPreciseLocation = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
   const addressQuery = [address, city].filter(Boolean).join(', ');
-  const fallbackMapQuery = addressQuery || (googleMapsUrl ? [name, city].filter(Boolean).join(', ') : '');
+  const locationLabel = addressQuery || (googleMapsUrl ? 'Отвори локацията в Google Maps' : '');
+  const fallbackMapQuery = addressQuery;
   const fallbackMapEmbedUrl = fallbackMapQuery
     ? `https://maps.google.com/maps?q=${encodeURIComponent(fallbackMapQuery)}&output=embed&z=16`
     : null;
@@ -1556,11 +1557,11 @@ export default function SalonPublicParity({
                     {currentStatusLabel}
                   </span>
                 </div>
-                {mapsHref || address || city ? (
+                {mapsHref || locationLabel ? (
                   <a
                     href={
                       mapsHref ??
-                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([address, city].filter(Boolean).join(', '))}`
+                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressQuery)}`
                     }
                     target="_blank"
                     rel="noopener noreferrer"
@@ -1569,7 +1570,7 @@ export default function SalonPublicParity({
                     style={{ color: SALON_LINK_COLOR }}
                   >
                     <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="truncate">{[address, city].filter(Boolean).join(', ')}</span>
+                    <span className="truncate">{locationLabel}</span>
                   </a>
                 ) : null}
                 {addressDistanceLabel ? <p className="salon-text-muted mt-1 text-xs">{addressDistanceLabel}</p> : null}
@@ -2119,7 +2120,7 @@ export default function SalonPublicParity({
                 <p className="mt-3 max-w-[62ch] whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.contact.body}</p>
               ) : null}
               <div className="mt-4 grid gap-2 text-sm text-[#1a1a1a]">
-                {address ? <p>{address}{city ? `, ${city}` : ''}</p> : null}
+                {addressQuery ? <p>{addressQuery}</p> : null}
                 {phone ? <p>{phone}</p> : null}
                 {String(rawSalon.email ?? '').trim() ? <p>{String(rawSalon.email ?? '').trim()}</p> : null}
               </div>
@@ -2164,7 +2165,7 @@ export default function SalonPublicParity({
                   Отвори в Google Maps
                 </a>
                 <p className="mt-2 text-sm" style={{ color: SALON_LINK_COLOR }}>
-                  {[address, city].filter(Boolean).join(', ')}
+                  {locationLabel}
                 </p>
               </DeferredSection>
             ) : null}
@@ -2203,12 +2204,12 @@ export default function SalonPublicParity({
                   <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--salon-primary)]" aria-hidden />
                   <span className="min-w-0 leading-snug">{currentStatusLabel}</span>
                 </div>
-                {mapsHref || address || city ? (
+                {mapsHref || locationLabel ? (
                   <div>
                     <div className="flex gap-2">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: SALON_LINK_COLOR }} aria-hidden />
                       <span className="min-w-0" style={{ color: SALON_LINK_COLOR }}>
-                        {[address, city].filter(Boolean).join(', ')}
+                        {locationLabel}
                         {addressDistanceLabel ? (
                           <span className="salon-text-muted mt-1 block text-xs">{addressDistanceLabel}</span>
                         ) : null}
@@ -2217,7 +2218,7 @@ export default function SalonPublicParity({
                     <a
                       href={
                         mapsHref ??
-                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([address, city].filter(Boolean).join(', '))}`
+                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressQuery)}`
                       }
                       target="_blank"
                       rel="noopener noreferrer"
