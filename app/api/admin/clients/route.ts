@@ -32,11 +32,37 @@ export async function GET(request: NextRequest) {
   try {
     await ensureSalonClientsSchema();
     const rows = await sql`
-      SELECT id, name, phone, email, created_at
-      FROM salon_clients
-      WHERE salon_id = ${salonId}
-      ORDER BY name ASC
-    ` as { id: string; name: string; phone: string | null; email: string | null; created_at: string }[];
+      SELECT
+        sc.id,
+        sc.name,
+        sc.phone,
+        sc.email,
+        sc.created_at,
+        COUNT(b.id)::int AS visits,
+        COALESCE(SUM(b.service_price), 0)::numeric AS total_spent,
+        MAX(
+          CASE
+            WHEN b.id IS NULL THEN NULL
+            ELSE CONCAT(b.date, 'T', COALESCE(NULLIF(b.time, ''), '00:00'), ':00')
+          END
+        ) AS last_visit,
+        (
+          ARRAY_AGG(GREATEST(1, COALESCE(b.booking_quantity, 1)) ORDER BY b.date DESC, b.time DESC)
+          FILTER (WHERE b.id IS NOT NULL)
+        )[1] AS last_booking_quantity
+      FROM salon_clients sc
+      LEFT JOIN bookings b
+        ON b.salon_id = sc.salon_id
+       AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
+       AND (
+         (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(b.client_email)) = lower(trim(sc.email)))
+         OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+         OR lower(trim(b.client_name)) = lower(trim(sc.name))
+       )
+      WHERE sc.salon_id = ${salonId}
+      GROUP BY sc.id, sc.name, sc.phone, sc.email, sc.created_at
+      ORDER BY sc.name ASC
+    ` as { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits: number; total_spent: string; last_visit: string | null; last_booking_quantity: number | null }[];
     return NextResponse.json({ clients: rows });
   } catch {
     return NextResponse.json({ clients: [] });

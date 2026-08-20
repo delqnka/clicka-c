@@ -719,7 +719,7 @@ export default function AdminDashboardClient({
     const timeout = window.setTimeout(() => {
       fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, { signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : null)
-      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string }[] } | null) => {
+      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null }[] } | null) => {
         setExtraClientsLoaded(true);
         if (!data?.clients?.length) return;
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -728,10 +728,10 @@ export default function AdminDashboardClient({
           name: c.name,
           phone: c.phone ?? '',
           email: c.email ?? '',
-          visits: 0,
-          totalSpent: 0,
-          lastVisit: '',
-          lastBookingQuantity: undefined,
+          visits: Math.max(0, Number(c.visits ?? 0) || 0),
+          totalSpent: Math.max(0, Number(c.total_spent ?? 0) || 0),
+          lastVisit: String(c.last_visit ?? ''),
+          lastBookingQuantity: c.last_booking_quantity == null ? undefined : Math.max(1, Number(c.last_booking_quantity) || 1),
           isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
         })));
       })
@@ -988,7 +988,7 @@ export default function AdminDashboardClient({
         await loadBookings();
       } catch { /* ignore — user can refresh */ }
     };
-    if (!bookingsLoaded) void run();
+    void run();
 
     const refresh = () => {
       if (!cancelled) void run();
