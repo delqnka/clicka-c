@@ -128,10 +128,10 @@ const TABS = [
 ] as const;
 
 const WEBSITE_TAB_IDS = ['site', 'faq', 'images', 'specialist', 'offers'] as const;
-const BOOKING_TAB_IDS = ['staff', 'services', 'hours', 'bookings'] as const;
+const BOOKING_TAB_IDS = ['staff', 'services', 'hours', 'bookings', 'clients'] as const;
 const ACCOUNT_TAB_IDS = ['account', 'payments', 'integrations'] as const;
 
-const TOP_LEVEL_TAB_IDS = ['site', 'bookings', 'clients', 'account'] as const;
+const TOP_LEVEL_TAB_IDS = ['site', 'bookings', 'account'] as const;
 
 const ICON_GRADIENT = tokens.gradient.brand;
 /** Space for fixed mobile bottom tab bar (bar + safe area + tap margin). */
@@ -284,7 +284,6 @@ type TopLevelTabId = (typeof TOP_LEVEL_TAB_IDS)[number];
 function topLevelTabFor(tab: TabId): TopLevelTabId {
   if ((WEBSITE_TAB_IDS as readonly string[]).includes(tab)) return 'site';
   if ((BOOKING_TAB_IDS as readonly string[]).includes(tab)) return 'bookings';
-  if (tab === 'clients') return 'clients';
   return 'account';
 }
 
@@ -511,7 +510,7 @@ export default function AdminDashboardClient({
     [availableTabs],
   );
   const bookingSectionTabs = useMemo(
-    () => availableTabs.filter((tab) => (BOOKING_TAB_IDS as readonly string[]).includes(tab.id) && tab.id !== 'clients'),
+    () => availableTabs.filter((tab) => (BOOKING_TAB_IDS as readonly string[]).includes(tab.id)),
     [availableTabs],
   );
   const accountSectionTabs = useMemo(
@@ -523,7 +522,7 @@ export default function AdminDashboardClient({
 
   const servicesUiActive = activeTab === 'services' || serviceModalOpen;
   const bookingsUiActive = activeTopLevelTab === 'bookings';
-  const clientsUiActive = activeTopLevelTab === 'clients';
+  const clientsUiActive = activeTab === 'clients';
   const filteredBookings = useMemo(
     () => {
       if (deferredStatusFilter === 'all') return deferredBookings;
@@ -1766,7 +1765,6 @@ export default function AdminDashboardClient({
     if (enteringFromOutside) {
       if (id === 'site') setActiveTab(websiteSubTab);
       else if (id === 'bookings') setActiveTab(bookingSubTab);
-      else if (id === 'clients') setActiveTab('clients');
       else if (id === 'account') setActiveTab(accountSubTab);
       else setActiveTab(id);
     } else {
@@ -1779,7 +1777,6 @@ export default function AdminDashboardClient({
         const stored =
         id === 'site' ? websiteSubTab :
         id === 'bookings' ? bookingSubTab :
-        id === 'clients' ? 'clients' :
         id === 'account' ? accountSubTab :
         id;
       localStorage.setItem(`admin-tab:${slug}`, stored);
