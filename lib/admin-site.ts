@@ -293,7 +293,7 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
     FROM bookings
     WHERE salon_id = ${salonId}
     ORDER BY date DESC, time DESC
-    LIMIT ${Math.min(Math.max(limit, 1), 200)}
+    LIMIT ${Math.min(Math.max(limit, 1), 500)}
   `;
 
   return rows as BookingRecord[];

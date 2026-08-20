@@ -198,6 +198,7 @@ type Props = {
   slug: string;
   ownerEmail: string;
   initialSite: AdminSitePayload;
+  initialBookings?: BookingRecord[];
   initialOffers?: AdminSalonOffer[];
   initialAccount?: { displayName?: string | null; loginEmail: string; hasPassword: boolean; pendingEmail?: string | null };
 };
@@ -380,6 +381,7 @@ export default function AdminDashboardClient({
   slug,
   ownerEmail,
   initialSite,
+  initialBookings = [],
   initialOffers = [],
   initialAccount,
 }: Props) {
@@ -403,8 +405,8 @@ export default function AdminDashboardClient({
   const siteRef = useRef(site);
   siteRef.current = site;
   const [displayName, setDisplayName] = useState<string | null>(initialAccount?.displayName ?? null);
-  const [bookings, setBookings]   = useState<BookingRecord[]>([]);
-  const [bookingsLoaded, setBookingsLoaded] = useState(false);
+  const [bookings, setBookings]   = useState<BookingRecord[]>(initialBookings);
+  const [bookingsLoaded, setBookingsLoaded] = useState(initialBookings.length > 0);
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('site');
