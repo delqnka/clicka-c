@@ -3,8 +3,9 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 import {
+  addressLineFromSearchResult,
   cityFromOsmResult,
-  osmEmbedUrl,
+  googleMapsSearchUrl,
   type AddressSearchResult,
   searchAddresses,
 } from '@/lib/address-search';
@@ -12,6 +13,7 @@ import {
 type Props = {
   label: string;
   value: string;
+  city?: string;
   inputStyle: CSSProperties;
   className?: string;
   onChange: (address: string) => void;
@@ -27,6 +29,7 @@ type Props = {
 export function AddressAutocompleteField({
   label,
   value,
+  city = '',
   inputStyle,
   className,
   onChange,
@@ -54,7 +57,7 @@ export function AddressAutocompleteField({
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const data = await searchAddresses(q);
+        const data = await searchAddresses(q, city);
         if (!ctrl.signal.aborted) {
           setResults(data);
           setSearchedQuery(q);
@@ -73,7 +76,7 @@ export function AddressAutocompleteField({
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [query]);
+  }, [city, query]);
 
   return (
     <label style={{ display: 'grid', gap: 5 }}>
@@ -116,16 +119,17 @@ export function AddressAutocompleteField({
                 onClick={() => {
                   const lat = Number(r.lat);
                   const lng = Number(r.lon);
-                  const address = r.display_name;
+                  const address = addressLineFromSearchResult(r);
                   const city = cityFromOsmResult(r);
                   setQuery(address);
                   setResults([]);
+                  onChange(address);
                   onSelect({
                     address,
                     city,
                     lat,
                     lng,
-                    googleMapsUrl: osmEmbedUrl(lat, lng),
+                    googleMapsUrl: googleMapsSearchUrl(lat, lng),
                   });
                 }}
                 style={{

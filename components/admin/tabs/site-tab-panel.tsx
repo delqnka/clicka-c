@@ -439,6 +439,7 @@ export function SiteTabPanel({
             <AddressAutocompleteField
               label={t('adminDashboard.siteTab.fields.address')}
               value={site.address}
+              city={site.city}
               inputStyle={fieldInp}
               onChange={(address) => setSite((p) => ({ ...p, address }))}
               onSelect={({ address, city, lat, lng, googleMapsUrl }) =>

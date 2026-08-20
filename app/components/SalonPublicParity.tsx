@@ -578,6 +578,14 @@ export default function SalonPublicParity({
   const googlePlaceId = (rawSalon.google_place_id as string | null | undefined) ?? null;
   const lat = rawSalon.latitude != null ? Number(rawSalon.latitude) : null;
   const lng = rawSalon.longitude != null ? Number(rawSalon.longitude) : null;
+  const hasPreciseLocation = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
+  const addressQuery = [address, city].filter(Boolean).join(', ');
+  const fallbackMapEmbedUrl = addressQuery
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(addressQuery)}&output=embed&z=16`
+    : null;
+  const mapEmbedUrl = hasPreciseLocation
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008},${lat - 0.005},${lng + 0.008},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`
+    : fallbackMapEmbedUrl;
   const verified = rawSalon.verified === true;
   const [currentStatusLabel, setCurrentStatusLabel] = useState('');
   const currentStatusIsOpen = currentStatusLabel.startsWith('Отворено');
@@ -715,8 +723,10 @@ export default function SalonPublicParity({
   }, [userLocation, lat, lng]);
 
   const mapsHref =
-    lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)
+    hasPreciseLocation
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`
+      : addressQuery
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressQuery)}`
       : null;
 
   const publicTeamSectionLabel = publicTeamMembers.length > 1 ? 'Екип' : 'Вашият специалист';
@@ -2107,13 +2117,13 @@ export default function SalonPublicParity({
               </div>
             </section>
 
-            {lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? (
+            {mapEmbedUrl && mapsHref ? (
               <DeferredSection className="pt-14" minHeight={220}>
                 <h2 className="text-[1.2rem] font-semibold tracking-[-0.03em] text-[#171717]">Локация</h2>
                 <div className="relative mt-4 overflow-hidden rounded-[1.35rem] border border-black/10 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.05)]">
                   <iframe
                     title="Карта на салона"
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008},${lat - 0.005},${lng + 0.008},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`}
+                    src={mapEmbedUrl}
                     className="h-52 w-full border-0"
                     loading="lazy"
                   />

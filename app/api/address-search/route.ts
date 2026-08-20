@@ -11,12 +11,13 @@ export async function GET(request: NextRequest) {
   if (rl.limited) return NextResponse.json([], { status: 429 });
 
   const q = request.nextUrl.searchParams.get('q')?.trim() ?? '';
+  const city = request.nextUrl.searchParams.get('city')?.trim() ?? '';
   if (q.length < 3) {
     return NextResponse.json([]);
   }
 
   try {
-    const data = await searchOsmAddresses(q);
+    const data = await searchOsmAddresses(q, city);
     return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json([], { status: 502 });

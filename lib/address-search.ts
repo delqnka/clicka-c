@@ -5,6 +5,10 @@ export type AddressSearchResult = {
   lat: string;
   lon: string;
   address?: {
+    road?: string;
+    pedestrian?: string;
+    footway?: string;
+    house_number?: string;
     city?: string;
     town?: string;
     village?: string;
@@ -24,11 +28,33 @@ export function cityFromOsmResult(result: AddressSearchResult, fallback = ''): s
 
 export { osmEmbedUrl };
 
-export async function searchAddresses(query: string): Promise<AddressSearchResult[]> {
+function compactJoin(parts: Array<string | undefined | null>, separator = ', '): string {
+  return parts.map((part) => String(part ?? '').trim()).filter(Boolean).join(separator);
+}
+
+export function googleMapsSearchUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+export function addressLineFromSearchResult(result: AddressSearchResult): string {
+  const road =
+    result.address?.road ||
+    result.address?.pedestrian ||
+    result.address?.footway ||
+    '';
+  const streetLine = compactJoin([road, result.address?.house_number], ' ');
+  return streetLine || result.display_name;
+}
+
+export async function searchAddresses(query: string, contextCity = ''): Promise<AddressSearchResult[]> {
   const q = query.trim();
   if (q.length < 3) return [];
 
-  const res = await fetch(`/api/address-search?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+  const params = new URLSearchParams({ q });
+  const city = contextCity.trim();
+  if (city) params.set('city', city);
+
+  const res = await fetch(`/api/address-search?${params.toString()}`, { cache: 'no-store' });
   if (!res.ok) return [];
 
   const data = (await res.json()) as AddressSearchResult[];

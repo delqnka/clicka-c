@@ -9,6 +9,10 @@ export type OsmAddressResult = {
   lat: string;
   lon: string;
   address?: {
+    road?: string;
+    pedestrian?: string;
+    footway?: string;
+    house_number?: string;
     city?: string;
     town?: string;
     village?: string;
@@ -67,6 +71,8 @@ function photonFeatureToResult(feature: PhotonFeature): OsmAddressResult | null 
     lat: String(lat),
     lon: String(lon),
     address: {
+      road: p.street,
+      house_number: p.housenumber,
       city: p.city,
       county: p.county || p.state,
     },
@@ -92,27 +98,95 @@ async function searchPhotonAddresses(query: string): Promise<OsmAddressResult[]>
     .slice(0, 6);
 }
 
-export async function searchOsmAddresses(query: string): Promise<OsmAddressResult[]> {
+function normalizeBulgarianAddressQuery(query: string): string {
+  return query
+    .replace(/\bул\.?\s*/giu, 'улица ')
+    .replace(/\bбул\.?\s*/giu, 'булевард ')
+    .replace(/\bжк\.?\s*/giu, 'ж.к. ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasCountryHint(query: string): boolean {
+  return /\b(българия|bulgaria|bg)\b/iu.test(query);
+}
+
+function hasCityHint(query: string, city: string): boolean {
+  const normalizedQuery = query.toLocaleLowerCase('bg-BG');
+  const normalizedCity = city.toLocaleLowerCase('bg-BG');
+  return Boolean(normalizedCity) && normalizedQuery.includes(normalizedCity);
+}
+
+function buildAddressSearchQueries(query: string, city = ''): string[] {
+  const q = query.trim();
+  const normalized = normalizeBulgarianAddressQuery(q);
+  const cityTrimmed = city.trim();
+  const baseQueries = [q, normalized];
+  const withCity = cityTrimmed && !hasCityHint(q, cityTrimmed)
+    ? baseQueries.map((candidate) => `${cityTrimmed} ${candidate}`)
+    : [];
+  const all = [...baseQueries, ...withCity];
+  return all
+    .flatMap((candidate) => (hasCountryHint(candidate) ? [candidate] : [candidate, `${candidate}, България`]))
+    .map((candidate) => candidate.replace(/\s+/g, ' ').trim())
+    .filter((candidate, index, arr) => candidate.length >= 3 && arr.indexOf(candidate) === index);
+}
+
+function dedupeResults(results: OsmAddressResult[]): OsmAddressResult[] {
+  const seen = new Set<string>();
+  const unique: OsmAddressResult[] = [];
+  for (const result of results) {
+    const lat = Number(result.lat);
+    const lon = Number(result.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const key = `${lat.toFixed(6)},${lon.toFixed(6)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(result);
+  }
+  return unique;
+}
+
+async function searchNominatim(query: string): Promise<OsmAddressResult[]> {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&countrycodes=bg&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'alternine/1.0 (https://app.alternine.co; contact: support@alternine.co)',
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data as OsmAddressResult[] : [];
+}
+
+export async function searchOsmAddresses(query: string, city = ''): Promise<OsmAddressResult[]> {
   const q = query.trim();
   if (q.length < 3) return [];
 
-  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=bg&q=${encodeURIComponent(q)}`;
+  const candidates = buildAddressSearchQueries(q, city);
+  const nominatimResults: OsmAddressResult[] = [];
   try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'alternine/1.0 (https://app.alternine.co; contact: support@alternine.co)',
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return data as OsmAddressResult[];
+    for (const candidate of candidates) {
+      const data = await searchNominatim(candidate);
+      nominatimResults.push(...data);
+      const unique = dedupeResults(nominatimResults);
+      if (unique.length >= 6) return unique.slice(0, 6);
     }
   } catch {
     // Fall through to Photon below.
   }
 
-  return searchPhotonAddresses(q);
+  if (nominatimResults.length > 0) {
+    return dedupeResults(nominatimResults).slice(0, 6);
+  }
+
+  for (const candidate of candidates) {
+    const photonResults = await searchPhotonAddresses(candidate);
+    if (photonResults.length > 0) return dedupeResults(photonResults).slice(0, 6);
+  }
+
+  return [];
 }
