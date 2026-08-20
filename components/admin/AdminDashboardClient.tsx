@@ -8,6 +8,7 @@ import {
   Plug,
   CalendarClock,
   Clock3,
+  CircleHelp,
   Image as ImageIcon,
   ImagePlus,
   Scissors,
@@ -112,6 +113,7 @@ const DAYS = [
 
 const TABS = [
   { id: 'site',          labelKey: 'adminDashboard.tabs.site', Icon: BriefcaseBusiness },
+  { id: 'faq',           labelKey: 'adminDashboard.tabs.faq', Icon: CircleHelp },
   { id: 'images',        labelKey: 'adminDashboard.tabs.images', Icon: ImageIcon },
   { id: 'specialist',    labelKey: 'adminDashboard.tabs.specialist', Icon: UserRound },
   { id: 'staff',         labelKey: 'adminDashboard.tabs.staff', Icon: UsersRound },
@@ -125,7 +127,7 @@ const TABS = [
   { id: 'account',       labelKey: 'adminDashboard.tabs.account', Icon: KeyRound },
 ] as const;
 
-const WEBSITE_TAB_IDS = ['site', 'images', 'specialist', 'offers'] as const;
+const WEBSITE_TAB_IDS = ['site', 'faq', 'images', 'specialist', 'offers'] as const;
 const BOOKING_TAB_IDS = ['staff', 'services', 'hours', 'bookings', 'clients'] as const;
 const ACCOUNT_TAB_IDS = ['account', 'payments', 'integrations'] as const;
 
@@ -2150,7 +2152,7 @@ export default function AdminDashboardClient({
           )}
 
           {/* ── Site URL + QR bar ── */}
-          {activeTab === 'site' && (
+          {(activeTab === 'site' || activeTab === 'faq') && (
             <>
               {/* URL + QR bar — no background, no border */}
               <div style={{
@@ -2218,7 +2220,7 @@ export default function AdminDashboardClient({
                 />
               )}
 
-              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} initialSection={siteNav?.section as 'basics' | 'address' | 'about' | 'content' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} locale={locale} />
+              <LazySiteTabPanel site={site} setSite={setSite} inp={inp} btn={btn} busyKey={busyKey} saveSiteSettings={saveSiteSettings} isMobile={isMobile} currentSlug={slug} rootDomain={ROOT_DOMAIN} onSlugSaved={handleSlugSaved} initialSection={(activeTab === 'faq' ? 'faq' : siteNav?.section) as 'basics' | 'address' | 'about' | 'content' | 'faq' | 'amenities' | undefined} siteNavVersion={siteNav?.v} locale={locale} />
             </>
           )}
 
