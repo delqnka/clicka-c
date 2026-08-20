@@ -143,6 +143,7 @@ function BookingCard({
   const isEn = locale === 'en';
   const STATUS_CFG = statusCfg(locale);
   const cfg = STATUS_CFG[booking.status];
+  const bookingQuantity = Math.max(1, Number(booking.booking_quantity ?? 1) || 1);
 
   return (
     <div
@@ -160,9 +161,24 @@ function BookingCard({
         </p>
         <p style={{ margin: '5px 0 0', fontSize: isMobile ? 14 : 13, color: T.muted, lineHeight: 1.45, fontWeight: 500 }}>
           {booking.service_name}
-          {Math.max(1, Number(booking.booking_quantity ?? 1) || 1) > 1
-            ? ` · ${Math.max(1, Number(booking.booking_quantity ?? 1) || 1)} ${isEn ? 'beds' : 'легла'}`
-            : ''}
+          {bookingQuantity > 1 ? (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                marginLeft: 7,
+                padding: '2px 8px',
+                borderRadius: 999,
+                background: '#DCFCE7',
+                color: '#047857',
+                fontSize: isMobile ? 12 : 11,
+                fontWeight: 800,
+                lineHeight: 1.2,
+              }}
+            >
+              {bookingQuantity} {isEn ? 'beds' : 'легла'}
+            </span>
+          ) : null}
           {Number.isFinite(Number(booking.service_price)) ? ` · ${formatSalonPrice(Number(booking.service_price))}` : ''}
         </p>
         <p style={{ margin: '6px 0 0', fontSize: isMobile ? 15 : 14, color: '#18181B', fontWeight: 600, lineHeight: 1.4 }}>
@@ -380,7 +396,7 @@ export function BookingsPanel({
                   borderRadius: isMobile ? 10 : 12,
                   minHeight: isMobile ? 0 : 42,
                   aspectRatio: isMobile ? '1 / 1' : undefined,
-                  background: active ? T.accent : hasClicka ? '#4F46E5' : hasExternal ? '#FFF7ED' : '#F4F4F5',
+                  background: active && hasClicka ? '#047857' : active ? T.accent : hasClicka ? '#16A34A' : hasExternal ? '#FFF7ED' : '#F4F4F5',
                   color: active || hasClicka ? '#fff' : hasExternal ? '#9A3412' : T.text,
                   fontSize: isMobile ? 11 : 13,
                   fontWeight: 600,
