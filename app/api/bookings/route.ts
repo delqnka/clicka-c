@@ -50,6 +50,10 @@ function normalizeServiceCapacity(value: unknown): number {
   return Number.isFinite(capacity) ? Math.max(1, Math.round(capacity)) : 1;
 }
 
+function isIsoDate(value: string | null): value is string {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
 function resolveBookingCapacity(
   services: ReturnType<typeof normalizeServices>,
   serviceName: string,
@@ -166,16 +170,67 @@ export async function GET(request: NextRequest) {
 
   const status = requestSearchParams.get('status') as BookingStatus | null;
   const limitRaw = requestSearchParams.get('limit');
-  const limit = Math.min(Math.max(Number(limitRaw ?? '50') || 50, 1), 200);
+  const limit = Math.min(Math.max(Number(limitRaw ?? '50') || 50, 1), 500);
   const before = requestSearchParams.get('before'); // cursor: YYYY-MM-DD
+  const from = requestSearchParams.get('from')?.trim() ?? null;
+  const to = requestSearchParams.get('to')?.trim() ?? null;
 
-  if (status && !['pending', 'confirmed', 'cancelled'].includes(status)) {
+  if (status && !['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
     return NextResponse.json({ error: 'Невалиден статус' }, { status: 400 });
   }
 
   const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
 
-  const rows = status
+  const rows = isIsoDate(from) && isIsoDate(to)
+    ? status
+      ? await sql`
+          SELECT id, client_name, client_phone, client_email,
+            service_name, service_price, service_duration, booking_quantity,
+            date, time, status, notes, created_at
+          FROM bookings
+          WHERE salon_id = ${salonId}
+            AND status = ${status}
+            AND (
+              (date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND date >= ${from} AND date <= ${to})
+              OR (
+                date ~ '^[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}$'
+                AND to_date(date, 'DD.MM.YYYY') >= ${from}::date
+                AND to_date(date, 'DD.MM.YYYY') <= ${to}::date
+              )
+            )
+          ORDER BY
+            CASE
+              WHEN date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN date::date
+              WHEN date ~ '^[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}$' THEN to_date(date, 'DD.MM.YYYY')
+              ELSE NULL
+            END DESC,
+            time DESC
+          LIMIT ${limit}
+        `
+      : await sql`
+          SELECT id, client_name, client_phone, client_email,
+            service_name, service_price, service_duration, booking_quantity,
+            date, time, status, notes, created_at
+          FROM bookings
+          WHERE salon_id = ${salonId}
+            AND (
+              (date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND date >= ${from} AND date <= ${to})
+              OR (
+                date ~ '^[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}$'
+                AND to_date(date, 'DD.MM.YYYY') >= ${from}::date
+                AND to_date(date, 'DD.MM.YYYY') <= ${to}::date
+              )
+            )
+          ORDER BY
+            CASE
+              WHEN date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN date::date
+              WHEN date ~ '^[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}$' THEN to_date(date, 'DD.MM.YYYY')
+              ELSE NULL
+            END DESC,
+            time DESC
+          LIMIT ${limit}
+        `
+    : status
     ? before
       ? await sql`
           SELECT id, client_name, client_phone, client_email,

@@ -320,6 +320,37 @@ function ymdKey(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function monthBoundsForCursor(cursor: Date) {
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const from = ymdKey(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const to = ymdKey(year, month, lastDay);
+  return { from, to };
+}
+
+function normalizeBookingDateKey(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const legacy = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (legacy) return `${legacy[3]}-${legacy[2]}-${legacy[1]}`;
+  return raw;
+}
+
+function mergeBookingsById(...groups: BookingRecord[][]): BookingRecord[] {
+  const map = new Map<string, BookingRecord>();
+  for (const group of groups) {
+    for (const booking of group) {
+      if (booking?.id) map.set(String(booking.id), booking);
+    }
+  }
+  return [...map.values()].sort((a, b) => {
+    const aKey = `${normalizeBookingDateKey(a.date)}T${String(a.time ?? '').slice(0, 5)}`;
+    const bKey = `${normalizeBookingDateKey(b.date)}T${String(b.time ?? '').slice(0, 5)}`;
+    return bKey.localeCompare(aKey);
+  });
+}
+
 const CALENDAR_DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 
 function useIsMobileLayout(bp = 768) {
@@ -540,7 +571,7 @@ export default function AdminDashboardClient({
         ? ([] as BookingRecord[])
         :
       deferredSelectedCalendarDate
-        ? filteredBookings.filter((b) => String(b.date) === deferredSelectedCalendarDate)
+        ? filteredBookings.filter((b) => normalizeBookingDateKey(b.date) === deferredSelectedCalendarDate)
         : filteredBookings,
     [filteredBookings, deferredSelectedCalendarDate, bookingsUiActive]
   );
@@ -576,7 +607,7 @@ export default function AdminDashboardClient({
     if (!bookingsUiActive) return new Map<string, number>();
     const map = new Map<string, number>();
     for (const b of filteredBookings) {
-      const key = String(b.date ?? '').trim();
+      const key = normalizeBookingDateKey(b.date);
       if (!key) continue;
       map.set(key, (map.get(key) ?? 0) + 1);
     }
@@ -950,16 +981,29 @@ export default function AdminDashboardClient({
   }, [calendarCursor, slug, site.bookingBlocks]);
 
   const loadBookings = useCallback(async () => {
-    const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}&limit=200`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return;
-    const data = (await readJson(res)) as { bookings?: BookingRecord[] };
-    if (Array.isArray(data.bookings)) {
-      setBookings(data.bookings);
+    const { from, to } = monthBoundsForCursor(calendarCursor);
+    const [recentRes, monthRes] = await Promise.all([
+      fetch(`/api/bookings?slug=${encodeURIComponent(slug)}&limit=200`, {
+        cache: 'no-store',
+      }),
+      fetch(
+        `/api/bookings?slug=${encodeURIComponent(slug)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=500`,
+        { cache: 'no-store' },
+      ),
+    ]);
+    const recentData = recentRes.ok
+      ? ((await readJson(recentRes)) as { bookings?: BookingRecord[] })
+      : {};
+    const monthData = monthRes.ok
+      ? ((await readJson(monthRes)) as { bookings?: BookingRecord[] })
+      : {};
+    const recentBookings = Array.isArray(recentData.bookings) ? recentData.bookings : [];
+    const monthBookings = Array.isArray(monthData.bookings) ? monthData.bookings : [];
+    if (recentRes.ok || monthRes.ok) {
+      setBookings(mergeBookingsById(monthBookings, recentBookings));
       setBookingsLoaded(true);
     }
-  }, [slug]);
+  }, [calendarCursor, slug]);
 
   useEffect(() => {
     if (activeTab !== 'bookings') return;
