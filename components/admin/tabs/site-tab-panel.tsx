@@ -6,6 +6,7 @@ import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminSaveBtn, AdminSection } from '@/components/admin/admin-ui';
 import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
 import { SlugEditor } from '@/components/admin/SlugEditor';
+import { extractCoordinatesFromGoogleMapsUrl, isGoogleMapsUrl } from '@/lib/address-search';
 import type { AdminSitePayload } from '@/lib/admin-site';
 import { getT, type Locale } from '@/lib/i18n';
 import type {
@@ -442,6 +443,13 @@ export function SiteTabPanel({
               city={site.city}
               inputStyle={fieldInp}
               onChange={(address) => setSite((p) => ({ ...p, address }))}
+              onGoogleMapsUrl={({ googleMapsUrl, lat, lng }) =>
+                setSite((p) => ({
+                  ...p,
+                  googleMapsUrl,
+                  ...(lat != null && lng != null ? { latitude: lat, longitude: lng } : {}),
+                }))
+              }
               onSelect={({ address, city, lat, lng, googleMapsUrl }) =>
                 setSite((p) => ({
                   ...p,
@@ -465,6 +473,26 @@ export function SiteTabPanel({
               </a>
             ) : null}
           </div>
+          <AdminField compact label="Google Maps линк">
+            <input
+              value={site.googleMapsUrl}
+              onChange={(e) => {
+                const googleMapsUrl = e.target.value;
+                const coords = isGoogleMapsUrl(googleMapsUrl)
+                  ? extractCoordinatesFromGoogleMapsUrl(googleMapsUrl)
+                  : null;
+                setSite((p) => ({
+                  ...p,
+                  googleMapsUrl,
+                  ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+                }));
+              }}
+              placeholder="https://maps.app.goo.gl/..."
+              style={fieldInp}
+              inputMode="url"
+              autoComplete="url"
+            />
+          </AdminField>
           <AdminField compact label="Instagram">
             <input value={site.instagram} onChange={(e) => setSite((p) => ({ ...p, instagram: e.target.value }))} placeholder={t('adminDashboard.siteTab.socialPlaceholder')} style={fieldInp} />
           </AdminField>

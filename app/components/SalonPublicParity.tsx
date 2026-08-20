@@ -33,6 +33,7 @@ import { formatDualEurText } from '@/lib/salon-currency';
 import { DeferredSection } from '@/components/salon/deferred-section';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { publicImageSrcSet, publicImageUrl } from '@/lib/public-image-url';
+import { extractCoordinatesFromGoogleMapsUrl, isGoogleMapsUrl } from '@/lib/address-search';
 
 import {
   offerHasSpotsLeft,
@@ -576,12 +577,17 @@ export default function SalonPublicParity({
     return links;
   }, [instagram, tiktok, facebook]);
   const googlePlaceId = (rawSalon.google_place_id as string | null | undefined) ?? null;
-  const lat = rawSalon.latitude != null ? Number(rawSalon.latitude) : null;
-  const lng = rawSalon.longitude != null ? Number(rawSalon.longitude) : null;
+  const googleMapsUrl = String(rawSalon.google_maps_url ?? '').trim();
+  const parsedGoogleMapsCoords = isGoogleMapsUrl(googleMapsUrl)
+    ? extractCoordinatesFromGoogleMapsUrl(googleMapsUrl)
+    : null;
+  const lat = rawSalon.latitude != null ? Number(rawSalon.latitude) : parsedGoogleMapsCoords?.lat ?? null;
+  const lng = rawSalon.longitude != null ? Number(rawSalon.longitude) : parsedGoogleMapsCoords?.lng ?? null;
   const hasPreciseLocation = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
   const addressQuery = [address, city].filter(Boolean).join(', ');
-  const fallbackMapEmbedUrl = addressQuery
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(addressQuery)}&output=embed&z=16`
+  const fallbackMapQuery = addressQuery || (googleMapsUrl ? [name, city].filter(Boolean).join(', ') : '');
+  const fallbackMapEmbedUrl = fallbackMapQuery
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(fallbackMapQuery)}&output=embed&z=16`
     : null;
   const mapEmbedUrl = hasPreciseLocation
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008},${lat - 0.005},${lng + 0.008},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`
@@ -723,7 +729,9 @@ export default function SalonPublicParity({
   }, [userLocation, lat, lng]);
 
   const mapsHref =
-    hasPreciseLocation
+    googleMapsUrl
+      ? googleMapsUrl
+      : hasPreciseLocation
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`
       : addressQuery
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressQuery)}`

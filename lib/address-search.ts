@@ -36,6 +36,64 @@ export function googleMapsSearchUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
 }
 
+export function isGoogleMapsUrl(value: string): boolean {
+  const raw = value.trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    return (
+      host === 'maps.app.goo.gl' ||
+      host.endsWith('.google.com') && url.pathname.toLowerCase().includes('/maps') ||
+      host === 'google.com' && url.pathname.toLowerCase().includes('/maps') ||
+      host === 'maps.google.com'
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function extractCoordinatesFromGoogleMapsUrl(value: string): { lat: number; lng: number } | null {
+  const raw = value.trim();
+  if (!raw) return null;
+
+  const atMatch = raw.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,|z|\/|\?|$)/);
+  if (atMatch) {
+    const lat = Number(atMatch[1]);
+    const lng = Number(atMatch[2]);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  }
+
+  const dataMatch = raw.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (dataMatch) {
+    const lat = Number(dataMatch[1]);
+    const lng = Number(dataMatch[2]);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  }
+
+  try {
+    const url = new URL(raw);
+    const candidates = [
+      url.searchParams.get('q'),
+      url.searchParams.get('query'),
+      url.searchParams.get('ll'),
+      url.searchParams.get('center'),
+    ].filter(Boolean) as string[];
+
+    for (const candidate of candidates) {
+      const match = candidate.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+      if (!match) continue;
+      const lat = Number(match[1]);
+      const lng = Number(match[2]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export function addressLineFromSearchResult(result: AddressSearchResult): string {
   const road =
     result.address?.road ||

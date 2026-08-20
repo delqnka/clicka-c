@@ -1,11 +1,13 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   addressLineFromSearchResult,
   cityFromOsmResult,
+  extractCoordinatesFromGoogleMapsUrl,
   googleMapsSearchUrl,
+  isGoogleMapsUrl,
   type AddressSearchResult,
   searchAddresses,
 } from '@/lib/address-search';
@@ -24,6 +26,11 @@ type Props = {
     lng: number;
     googleMapsUrl: string;
   }) => void;
+  onGoogleMapsUrl?: (result: {
+    googleMapsUrl: string;
+    lat: number | null;
+    lng: number | null;
+  }) => void;
 };
 
 export function AddressAutocompleteField({
@@ -34,18 +41,37 @@ export function AddressAutocompleteField({
   className,
   onChange,
   onSelect,
+  onGoogleMapsUrl,
 }: Props) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<AddressSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchedQuery, setSearchedQuery] = useState('');
+  const onGoogleMapsUrlRef = useRef(onGoogleMapsUrl);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
 
   useEffect(() => {
+    onGoogleMapsUrlRef.current = onGoogleMapsUrl;
+  }, [onGoogleMapsUrl]);
+
+  useEffect(() => {
     const q = query.trim();
+    if (isGoogleMapsUrl(q)) {
+      setResults([]);
+      setLoading(false);
+      setSearchedQuery(q);
+      const coords = extractCoordinatesFromGoogleMapsUrl(q);
+      onGoogleMapsUrlRef.current?.({
+        googleMapsUrl: q,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+      });
+      return;
+    }
+
     if (q.length < 3) {
       setResults([]);
       setLoading(false);
@@ -86,8 +112,18 @@ export function AddressAutocompleteField({
       <input
         value={query}
         onChange={e => {
-          setQuery(e.target.value);
-          onChange(e.target.value);
+          const next = e.target.value;
+          setQuery(next);
+          if (isGoogleMapsUrl(next.trim())) {
+            const coords = extractCoordinatesFromGoogleMapsUrl(next);
+            onGoogleMapsUrlRef.current?.({
+              googleMapsUrl: next.trim(),
+              lat: coords?.lat ?? null,
+              lng: coords?.lng ?? null,
+            });
+            return;
+          }
+          onChange(next);
         }}
         style={inputStyle}
         className={className}
@@ -110,6 +146,10 @@ export function AddressAutocompleteField({
         >
           {loading ? (
             <div style={{ padding: '10px 12px', fontSize: 13, color: '#71717A' }}>Търсим адреси…</div>
+          ) : isGoogleMapsUrl(query.trim()) ? (
+            <div style={{ padding: '10px 12px', fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
+              Google Maps линкът е разпознат. Натисни “Запази”, за да се покаже на сайта.
+            </div>
           ) : results.length > 0 ? (
             results.map((r, i) => (
               <button
