@@ -217,12 +217,11 @@ export function SalonBookingModal({
   const [browseAllServices, setBrowseAllServices] = useState(true);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
   const [variantDropdownOpenForServiceId, setVariantDropdownOpenForServiceId] = useState<string | null>(null);
-  const prevOpenRef = useRef(false);
-
   useEffect(() => {
     if (!open) return;
     setStep(1);
     setSelectedCategory(null);
+    setBrowseAllServices(true);
     setVariantDropdownOpenForServiceId(null);
     const initial: Record<string, string> = {};
     for (const service of serviceCatalog) {
@@ -254,17 +253,8 @@ export function SalonBookingModal({
   }, [isTeam, eligibleStaff, onStaffMemberChange]);
 
   useEffect(() => {
-    if (open && !prevOpenRef.current) {
-      setBrowseAllServices(selectedServiceIdxs.length === 0);
-    }
-    prevOpenRef.current = open;
-  }, [open, selectedServiceIdxs.length]);
-
-  useEffect(() => {
     if (selectedServiceIdxs.length === 0) {
       setBrowseAllServices(true);
-    } else {
-      setBrowseAllServices(false);
     }
   }, [selectedServiceIdxs.length]);
 

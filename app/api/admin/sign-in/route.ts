@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   createOwnerSession,
   ensureAdminAuthSchema,
-  getPrimaryOwnerForSalon,
+  getOwnerForSalonByEmail,
   normalizeEmail,
   resolveSalonBySlugOrHost,
   setAdminSessionCookie,
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Грешен имейл или парола' }, { status: 401 });
   }
 
-  const owner = await getPrimaryOwnerForSalon(salon.salonId);
-  if (!owner || normalizeEmail(owner.email) !== email) {
+  const owner = await getOwnerForSalonByEmail({ salonId: salon.salonId, email });
+  if (!owner) {
     return NextResponse.json({ error: 'Грешен имейл или парола' }, { status: 401 });
   }
 

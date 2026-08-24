@@ -6,7 +6,7 @@ import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminField, AdminSaveBtn, AdminSection } from '@/components/admin/admin-ui';
 import { SalonFaqVisitorFields } from '@/components/admin/salon-faq-visitor-fields';
 import { SlugEditor } from '@/components/admin/SlugEditor';
-import { extractCoordinatesFromGoogleMapsUrl, isGoogleMapsUrl } from '@/lib/address-search';
+import { extractCoordinatesFromGoogleMapsUrl, googleMapsTextSearchUrl, isGoogleMapsUrl } from '@/lib/address-search';
 import type { AdminSitePayload } from '@/lib/admin-site';
 import { getT, type Locale } from '@/lib/i18n';
 import type {
@@ -316,6 +316,10 @@ export function SiteTabPanel({
   const localizedAbout = contentLocale === 'en' ? site.aboutEn : site.about;
   const localizedFaqItems = contentLocale === 'en' ? site.faqItemsEn : site.faqItems;
   const localizedSiteContent = contentLocale === 'en' ? site.siteContentEn : site.siteContent;
+  const buildAddressMapsUrl = (address: string, city = site.city) => {
+    const query = [address.trim(), city.trim()].filter(Boolean).join(', ');
+    return query ? googleMapsTextSearchUrl(query) : '';
+  };
 
   function setLocalizedContentStrings(
     patch: Partial<Pick<AdminSitePayload, 'heroTitle' | 'heroSubtitle' | 'about' | 'heroTitleEn' | 'heroSubtitleEn' | 'aboutEn'>>,
@@ -442,7 +446,15 @@ export function SiteTabPanel({
               value={site.address}
               city={site.city}
               inputStyle={fieldInp}
-              onChange={(address) => setSite((p) => ({ ...p, address, latitude: null, longitude: null }))}
+              onChange={(address) =>
+                setSite((p) => ({
+                  ...p,
+                  address,
+                  latitude: null,
+                  longitude: null,
+                  googleMapsUrl: buildAddressMapsUrl(address, p.city),
+                }))
+              }
               onGoogleMapsUrl={({ googleMapsUrl, lat, lng }) =>
                 setSite((p) => ({
                   ...p,

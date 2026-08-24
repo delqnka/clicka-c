@@ -104,6 +104,14 @@ export function AddressAutocompleteField({
     };
   }, [city, query]);
 
+  function useTypedAddress() {
+    const address = query.trim();
+    if (!address) return;
+    setResults([]);
+    setSearchedQuery('');
+    onChange(address);
+  }
+
   return (
     <label style={{ display: 'grid', gap: 5 }}>
       <span style={{ fontSize: 12, fontWeight: 600, color: '#18181B', letterSpacing: '0.02em' }}>
@@ -191,8 +199,31 @@ export function AddressAutocompleteField({
               </button>
             ))
           ) : (
-            <div style={{ padding: '10px 12px', fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
-              Няма намерени адреси. Пробвай с град + улица + номер, например “София Витоша 42”.
+            <div style={{ display: 'grid', gap: 8, padding: '10px 12px' }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#71717A', lineHeight: 1.45 }}>
+                Няма намерени адреси. Пробвай с град + улица + номер, например “София Витоша 42”.
+              </p>
+              {query.trim().length >= 3 ? (
+                <button
+                  type="button"
+                  onClick={useTypedAddress}
+                  style={{
+                    width: '100%',
+                    border: '1px solid #E5E3DE',
+                    borderRadius: 8,
+                    background: '#fff',
+                    padding: '8px 10px',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#18181B',
+                    fontFamily: 'inherit',
+                    textAlign: 'left',
+                  }}
+                >
+                  Използвай “{query.trim()}” за картата
+                </button>
+              ) : null}
             </div>
           )}
         </div>

@@ -744,9 +744,9 @@ export default function AdminDashboardClient({
       .catch(() => undefined);
   }, [activeTab, slug]);
 
-  // Load manually added salon_clients after the main bookings view is already interactive.
+  // Load manually added salon_clients when the clients view is opened.
   useEffect(() => {
-    if (activeTab !== 'bookings') return;
+    if (activeTab !== 'clients') return;
     if (extraClientsLoaded) return;
     const ctrl = new AbortController();
     const timeout = window.setTimeout(() => {
@@ -2497,7 +2497,10 @@ export default function AdminDashboardClient({
                   locale={locale}
                 />
               </Section>
+            </div>
+          )}
 
+          {activeTab === 'clients' && (
               <Section
                 title={locale === 'en' ? 'Clients' : 'Клиенти'}
                 action={
@@ -2586,7 +2589,6 @@ export default function AdminDashboardClient({
                   locale={locale}
                 />
               </Section>
-            </div>
           )}
 
           {clientModalOpen && (

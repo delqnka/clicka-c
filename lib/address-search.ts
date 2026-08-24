@@ -36,6 +36,10 @@ export function googleMapsSearchUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
 }
 
+export function googleMapsTextSearchUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query.trim())}`;
+}
+
 export function isGoogleMapsUrl(value: string): boolean {
   const raw = value.trim();
   if (!raw) return false;

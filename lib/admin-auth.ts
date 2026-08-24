@@ -321,7 +321,7 @@ export async function getPrimaryOwnerForSalon(salonId: string): Promise<OwnerRow
     FROM salon_owner_memberships m
     JOIN site_owners o ON o.id = m.owner_id
     WHERE m.salon_id = ${salonId}
-    ORDER BY m.created_at ASC
+    ORDER BY CASE WHEN m.role = 'owner' THEN 0 ELSE 1 END, m.created_at ASC
     LIMIT 1
   `;
   if (rows.length === 0) return null;
@@ -330,6 +330,35 @@ export async function getPrimaryOwnerForSalon(salonId: string): Promise<OwnerRow
     ownerId: String(row.owner_id ?? ''),
     email: String(row.email ?? ''),
     displayName: row.display_name ? String(row.display_name) : null,
+  };
+}
+
+export async function getOwnerForSalonByEmail({
+  salonId,
+  email,
+}: {
+  salonId: string;
+  email: string;
+}): Promise<(OwnerRow & { role: string }) | null> {
+  await ensureAdminAuthSchema();
+  const emailNorm = normalizeEmail(email);
+  if (!emailNorm) return null;
+
+  const rows = await sql`
+    SELECT o.id AS owner_id, o.email, o.display_name, m.role
+    FROM salon_owner_memberships m
+    JOIN site_owners o ON o.id = m.owner_id
+    WHERE m.salon_id = ${salonId}
+      AND o.email_norm = ${emailNorm}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const row = rows[0] as Record<string, unknown>;
+  return {
+    ownerId: String(row.owner_id ?? ''),
+    email: String(row.email ?? ''),
+    displayName: row.display_name ? String(row.display_name) : null,
+    role: String(row.role ?? 'owner'),
   };
 }
 
@@ -371,18 +400,32 @@ export async function transferSalonOwnerToEmail({
   salonId: string;
   email: string;
 }) {
+  const previousRows = await sql`
+    SELECT email
+    FROM salons
+    WHERE CAST(id AS text) = ${salonId}
+    LIMIT 1
+  `;
+  const previousEmail = normalizeEmail(String((previousRows[0] as Record<string, unknown> | undefined)?.email ?? ''));
+  const nextEmail = normalizeEmail(email);
+  if (previousEmail && previousEmail !== nextEmail) {
+    await ensureOwnerForSalon({ salonId, email: previousEmail });
+  }
+
   const owner = await ensureOwnerForSalon({ salonId, email });
 
   await sql`
-    DELETE FROM owner_sessions
+    UPDATE salon_owner_memberships
+    SET role = 'admin'
     WHERE salon_id = ${salonId}
       AND owner_id <> CAST(${owner.ownerId} AS uuid)
   `;
 
   await sql`
-    DELETE FROM salon_owner_memberships
+    UPDATE salon_owner_memberships
+    SET role = 'owner'
     WHERE salon_id = ${salonId}
-      AND owner_id <> CAST(${owner.ownerId} AS uuid)
+      AND owner_id = CAST(${owner.ownerId} AS uuid)
   `;
 
   await sql`
