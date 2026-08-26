@@ -126,7 +126,9 @@ function ServiceDescription({ text }: { text?: string }) {
   const description = text?.trim();
   if (!description) return null;
   return (
-    <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-black/50">{description}</p>
+    <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-relaxed text-black/50">
+      {description}
+    </p>
   );
 }
 
@@ -478,7 +480,7 @@ export function SalonBookingModal({
                           >
                             <div className="flex items-start justify-between gap-3 rounded-[15px] bg-white px-3.5 py-3.5">
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-[16px] font-semibold text-black">{svc.name}</p>
+                                <p className="break-words text-[16px] font-semibold leading-tight text-black">{svc.name}</p>
                                 <ServiceDescription text={svc.description} />
                                 <p className="mt-1 text-[13px] tabular-nums text-black/70">
                                   {svc.duration} {t('booking.modal.minSuffix')} · {fmtPrice(Number(svc.price ?? 0))}
@@ -561,7 +563,7 @@ export function SalonBookingModal({
                           }`}
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[16px] font-semibold text-black">{service.name}</p>
+                            <p className="break-words text-[16px] font-semibold leading-tight text-black">{service.name}</p>
                             <ServiceDescription text={service.description} />
                             {variants.length > 0 ? (
                               <div className="relative mt-1.5 max-w-full">
