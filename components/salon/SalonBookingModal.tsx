@@ -113,6 +113,8 @@ const blackCtaShadow = 'shadow-[0_4px_14px_rgba(0,0,0,0.15)]';
 const fieldClass =
   `mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 text-[16px] leading-tight text-[#111] touch-manipulation ${cardShadow} outline-none transition focus:border-[color:var(--salon-primary)]/40 focus:ring-2 focus:ring-[color:var(--salon-primary)]/12`;
 
+const SERVICE_DESCRIPTION_PREVIEW_WORDS = 14;
+
 function addMinutesToTime(time: string, minutesToAdd: number): string {
   const [h, m] = time.split(':').map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return time;
@@ -126,16 +128,16 @@ function ServiceDescription({ text, locale }: { text?: string; locale: string })
   const description = text?.trim();
   const [expanded, setExpanded] = useState(false);
   if (!description) return null;
-  const canToggle = description.length > 120 || description.includes('\n');
+  const words = description.split(/\s+/).filter(Boolean);
+  const canToggle = words.length > SERVICE_DESCRIPTION_PREVIEW_WORDS || description.includes('\n');
+  const preview = canToggle
+    ? `${words.slice(0, SERVICE_DESCRIPTION_PREVIEW_WORDS).join(' ')}...`
+    : description;
   const isEnglish = locale.toLowerCase().startsWith('en');
   return (
     <div className="mt-1">
-      <p
-        className={`whitespace-pre-line break-words text-[12px] leading-relaxed text-black/50 ${
-          canToggle && !expanded ? 'line-clamp-3' : ''
-        }`}
-      >
-        {description}
+      <p className="whitespace-pre-line break-words text-[12px] leading-relaxed text-black/50">
+        {expanded ? description : preview}
       </p>
       {canToggle ? (
         <button
@@ -144,7 +146,7 @@ function ServiceDescription({ text, locale }: { text?: string; locale: string })
           className="mt-1.5 text-[12px] font-semibold text-[color:var(--salon-primary)] underline underline-offset-2"
           aria-expanded={expanded}
         >
-          {expanded ? (isEnglish ? 'Hide' : 'Скрий') : (isEnglish ? 'Read more' : 'Прочети още')}
+          {expanded ? (isEnglish ? 'Hide' : 'Скрий') : (isEnglish ? 'Read more' : 'Прочети повече')}
         </button>
       ) : null}
     </div>
