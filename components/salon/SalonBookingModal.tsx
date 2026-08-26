@@ -122,13 +122,32 @@ function addMinutesToTime(time: string, minutesToAdd: number): string {
   return `${String(outH).padStart(2, '0')}:${String(outM).padStart(2, '0')}`;
 }
 
-function ServiceDescription({ text }: { text?: string }) {
+function ServiceDescription({ text, locale }: { text?: string; locale: string }) {
   const description = text?.trim();
+  const [expanded, setExpanded] = useState(false);
   if (!description) return null;
+  const canToggle = description.length > 120 || description.includes('\n');
+  const isEnglish = locale.toLowerCase().startsWith('en');
   return (
-    <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-relaxed text-black/50">
-      {description}
-    </p>
+    <div className="mt-1">
+      <p
+        className={`whitespace-pre-line break-words text-[12px] leading-relaxed text-black/50 ${
+          canToggle && !expanded ? 'line-clamp-3' : ''
+        }`}
+      >
+        {description}
+      </p>
+      {canToggle ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-1.5 text-[12px] font-semibold text-[color:var(--salon-primary)] underline underline-offset-2"
+          aria-expanded={expanded}
+        >
+          {expanded ? (isEnglish ? 'Hide' : 'Скрий') : (isEnglish ? 'Read more' : 'Прочети още')}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -481,7 +500,7 @@ export function SalonBookingModal({
                             <div className="flex items-start justify-between gap-3 rounded-[15px] bg-white px-3.5 py-3.5">
                               <div className="min-w-0 flex-1">
                                 <p className="break-words text-[16px] font-semibold leading-tight text-black">{svc.name}</p>
-                                <ServiceDescription text={svc.description} />
+                                <ServiceDescription text={svc.description} locale={locale} />
                                 <p className="mt-1 text-[13px] tabular-nums text-black/70">
                                   {svc.duration} {t('booking.modal.minSuffix')} · {fmtPrice(Number(svc.price ?? 0))}
                                 </p>
@@ -564,7 +583,7 @@ export function SalonBookingModal({
                         >
                           <div className="min-w-0 flex-1">
                             <p className="break-words text-[16px] font-semibold leading-tight text-black">{service.name}</p>
-                            <ServiceDescription text={service.description} />
+                            <ServiceDescription text={service.description} locale={locale} />
                             {variants.length > 0 ? (
                               <div className="relative mt-1.5 max-w-full">
                                 <button
