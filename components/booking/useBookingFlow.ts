@@ -16,6 +16,7 @@ import type {
 } from './types';
 
 const DAY_KEYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+const VIRTUAL_STAFF_PREFIX = 'trainer:';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -23,6 +24,14 @@ function pad(n: number): string {
 
 function toLocalISODate(d: Date): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]!;
+}
+
+function isVirtualStaffId(id: string | null): boolean {
+  return Boolean(id?.startsWith(VIRTUAL_STAFF_PREFIX));
+}
+
+function virtualStaffId(name: string): string {
+  return `${VIRTUAL_STAFF_PREFIX}${name}`;
 }
 
 export function useBookingFlow({
@@ -77,6 +86,27 @@ export function useBookingFlow({
   const [selectedStaffMemberId, setSelectedStaffMemberIdState] = useState<string | null>(null);
   const staffFetchedRef = useRef(false);
 
+  const derivedClassStaffMembers = useMemo<PublicStaffMember[]>(() => {
+    const names = new Map<string, string>();
+    for (const slots of Object.values(classSchedule ?? {})) {
+      for (const slot of slots) {
+        const normalized = normalizeTrainerName(slot.trainer);
+        if (normalized && !names.has(normalized)) names.set(normalized, slot.trainer.trim());
+      }
+    }
+    return Array.from(names.values()).map((name) => ({
+      id: virtualStaffId(name),
+      name,
+      slug: normalizeTrainerName(name).replace(/\s+/g, '-'),
+      bio: null,
+      avatarUrl: null,
+      serviceIds: [],
+    }));
+  }, [classSchedule]);
+
+  const effectiveStaffMembers = staffMembers.length > 0 ? staffMembers : derivedClassStaffMembers;
+  const selectedStaffMember = effectiveStaffMembers.find((member) => member.id === selectedStaffMemberId) ?? null;
+
   // ── Submission ───────────────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
@@ -111,7 +141,7 @@ export function useBookingFlow({
   useEffect(() => {
     if (!selectedDate) return;
     let cancelled = false;
-    const staffParam = selectedStaffMemberId
+    const staffParam = selectedStaffMemberId && !isVirtualStaffId(selectedStaffMemberId)
       ? `&staffMemberId=${encodeURIComponent(selectedStaffMemberId)}`
       : '';
     fetch(
@@ -163,7 +193,7 @@ export function useBookingFlow({
           classSchedule ?? {},
           selectedDate,
           selectedTime,
-          staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null,
+          selectedStaffMember?.name ?? null,
         )
       : null;
     if (classSlot) return classSlot.capacity;
@@ -172,7 +202,7 @@ export function useBookingFlow({
       1,
       Math.min(...selectedServices.map((s) => Math.max(1, Math.round(Number(s.capacity ?? 1) || 1)))),
     );
-  }, [classSchedule, selectedDate, selectedServices, selectedStaffMemberId, selectedTime, staffMembers]);
+  }, [classSchedule, selectedDate, selectedServices, selectedStaffMember, selectedTime]);
 
   const usedQuantityForSlot = useCallback((date: string, time: string, durationMin: number): number | null => {
     if (!date || !time) return null;
@@ -232,7 +262,7 @@ export function useBookingFlow({
         ? `${date}:${selectedStaffMemberId}`
         : date;
       const occupied = occupiedByDate[cacheKey] ?? [];
-      const selectedStaffName = staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null;
+      const selectedStaffName = selectedStaffMember?.name ?? null;
       const classSlots = getClassSlotsForDate(classSchedule ?? {}, date);
 
       if (classSlots.length > 0) {
@@ -289,7 +319,7 @@ export function useBookingFlow({
       }
       return slots;
     },
-    [openingHours, bookingBlocks, classSchedule, occupiedByDate, selectedCapacity, selectedStaffMemberId, slotIntervalMin, staffMembers],
+    [openingHours, bookingBlocks, classSchedule, occupiedByDate, selectedCapacity, selectedStaffMember, selectedStaffMemberId, slotIntervalMin],
   );
 
   const timeSlots = useMemo<string[] | 'closed' | null>(
@@ -418,7 +448,8 @@ export function useBookingFlow({
           time:               selectedTime,
           notes:              notes.trim() || undefined,
           requiresPayment,
-          staffMemberId:      selectedStaffMemberId ?? undefined,
+          staffMemberId:      selectedStaffMemberId && !isVirtualStaffId(selectedStaffMemberId) ? selectedStaffMemberId : undefined,
+          staffMemberName:    selectedStaffMember?.name ?? undefined,
         }),
       });
 
@@ -486,7 +517,7 @@ export function useBookingFlow({
     }
   }, [
     api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, notes,
-    onEvent, requestHeaders, selectedDate, selectedServices, selectedStaffMemberId, selectedTime,
+    onEvent, requestHeaders, selectedDate, selectedServices, selectedStaffMember, selectedStaffMemberId, selectedTime,
     slug, slugPath, successUrl, t, totalDuration, totalPrice,
   ]);
 
@@ -500,7 +531,7 @@ export function useBookingFlow({
     clientPhone, setClientPhone,
     clientEmail, setClientEmail,
     notes, setNotes,
-    staffMembers, selectedStaffMemberId, setStaffMemberId,
+    staffMembers: effectiveStaffMembers, selectedStaffMemberId, setStaffMemberId,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,
     submit,
   };

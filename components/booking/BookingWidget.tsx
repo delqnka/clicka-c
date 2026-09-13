@@ -180,11 +180,14 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
         ? (salon.opening_hours as Record<string, unknown>).booking_blocks
         : null,
     );
-    const resolvedClassSchedule = classScheduleProp ?? normalizeClassSchedule(
+    const salonClassSchedule = normalizeClassSchedule(
       salon.opening_hours && typeof salon.opening_hours === 'object'
         ? (salon.opening_hours as Record<string, unknown>).class_schedule
         : null,
     );
+    const fallbackClassSchedule = normalizeClassSchedule(classScheduleProp);
+    const resolvedClassSchedule =
+      Object.keys(salonClassSchedule).length > 0 ? salonClassSchedule : fallbackClassSchedule;
 
     // ── Slot config from salon settings ───────────────────────────────
     const slotIntervalMin = useMemo((): number => {

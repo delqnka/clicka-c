@@ -267,7 +267,7 @@ export function SalonBookingModal({
     if (!isTeam) return [];
     if (selectedServiceIds.length === 0) return staffMembers;
     return staffMembers.filter((sm) =>
-      selectedServiceIds.every((sid) => sm.serviceIds.includes(sid)),
+      sm.serviceIds.length === 0 || selectedServiceIds.every((sid) => sm.serviceIds.includes(sid)),
     );
   }, [isTeam, staffMembers, selectedServiceIds]);
 

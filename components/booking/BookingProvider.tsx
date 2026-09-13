@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { BookingWidget } from './BookingWidget';
-import type { BookingOpenOptions, BookingWidgetHandle } from './types';
+import type { BookingOpenOptions, BookingProviderScheduleProps, BookingWidgetHandle } from './types';
 
 export type BookingContextValue = {
   /**
@@ -30,7 +30,7 @@ export type BookingContextValue = {
 
 export const BookingContext = createContext<BookingContextValue | null>(null);
 
-export type BookingProviderProps = {
+export type BookingProviderProps = BookingProviderScheduleProps & {
   children?: React.ReactNode;
   /**
    * Salon slug. If omitted, the provider tries (in order):
@@ -180,6 +180,7 @@ export function BookingProvider({
   successUrl,
   cancelUrl,
   accentGradient,
+  classSchedule,
   formatPrice,
   onEvent,
   basePath,
@@ -328,6 +329,7 @@ export function BookingProvider({
         successUrl={resolvedSuccessUrl}
         cancelUrl={resolvedCancelUrl}
         accentGradient={accentGradient}
+        classSchedule={classSchedule}
         formatPrice={formatPrice}
         onEvent={onEvent}
         basePath={basePath}

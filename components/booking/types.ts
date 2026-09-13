@@ -179,3 +179,11 @@ export type BookingWidgetProps = {
     payload?: { serviceName?: string; value?: number; currency?: string },
   ) => void;
 };
+
+export type BookingProviderScheduleProps = {
+  /**
+   * Fallback fixed class timetable. The salon admin timetable from
+   * `salon.opening_hours.class_schedule` wins when it has rows.
+   */
+  classSchedule?: BookingClassSchedule;
+};

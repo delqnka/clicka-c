@@ -19,12 +19,12 @@ import type { SalonOfferRow } from '@/lib/salon-offers';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 import { normalizeServices } from '@/lib/salon-services';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
-import { findClassSlotForBooking, getClassSlotsForDate, normalizeClassSchedule } from '@/lib/class-schedule';
+import { findClassSlotForBooking, getClassSlotsForDate, normalizeClassSchedule, normalizeTrainerName } from '@/lib/class-schedule';
 import { runAfterResponse } from '@/lib/run-after-response';
 import { sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
-import { getStaffMemberById } from '@/lib/staff-members';
+import { getStaffMemberById, getStaffMembers } from '@/lib/staff-members';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 type OccupiedSlot = { time: string; duration: number; quantity: number; blocksAll?: boolean };
@@ -305,6 +305,7 @@ export async function POST(request: NextRequest) {
     offerId?: string;
     requiresPayment?: boolean;
     staffMemberId?: string;
+    staffMemberName?: string;
     bookingQuantity?: number;
   };
 
@@ -327,9 +328,11 @@ export async function POST(request: NextRequest) {
     offerId,
     requiresPayment,
     staffMemberId: rawStaffMemberId,
+    staffMemberName: rawStaffMemberName,
     bookingQuantity: rawBookingQuantity,
   } = body;
-  const staffMemberId = rawStaffMemberId?.trim() || null;
+  let staffMemberId = rawStaffMemberId?.trim() || null;
+  const staffMemberName = typeof rawStaffMemberName === 'string' ? rawStaffMemberName.trim() : '';
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
   const normalizedOfferId = typeof offerId === 'string' ? offerId.trim() : '';
   const skipNotifications = requiresPayment === true;
@@ -412,12 +415,24 @@ export async function POST(request: NextRequest) {
   let classSlotCapacity: number | null = null;
   if (classSlotsForDay.length > 0) {
     const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
-    const classSlot = findClassSlotForBooking(classSchedule, date, time, staffMember?.name ?? null);
-    if (!classSlot || !staffMember) {
+    const requestedTrainerName = staffMember?.name ?? staffMemberName;
+    const classSlot = findClassSlotForBooking(classSchedule, date, time, requestedTrainerName);
+    if (!classSlot || !requestedTrainerName) {
       return NextResponse.json(
         { error: 'Избраният час не е част от активния график. Моля изберете час от графика.' },
         { status: 400 },
       );
+    }
+    if (!staffMemberId) {
+      const staff = await getStaffMembers(salonId).catch(() => []);
+      const matchedStaff = staff.find((member) => normalizeTrainerName(member.name) === normalizeTrainerName(requestedTrainerName));
+      if (!matchedStaff) {
+        return NextResponse.json(
+          { error: 'Треньорката от графика не е намерена в екипа. Моля проверете настройките.' },
+          { status: 400 },
+        );
+      }
+      staffMemberId = matchedStaff.id;
     }
     classSlotCapacity = classSlot.capacity;
     durationValue = Math.max(5, parseTimeToMinutes(classSlot.end)! - parseTimeToMinutes(classSlot.start)!);
