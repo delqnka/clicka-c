@@ -1374,13 +1374,20 @@ export default function AdminDashboardClient({
     try {
       const res = await fetch(`/api/admin/site-hours?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workingHours: site.workingHours, bookingBlocks: site.bookingBlocks, bookingAdvanceDays: site.bookingAdvanceDays, slotIntervalMin: site.slotIntervalMin }),
+        body: JSON.stringify({
+          workingHours: site.workingHours,
+          bookingBlocks: site.bookingBlocks,
+          classSchedule: site.classSchedule,
+          bookingAdvanceDays: site.bookingAdvanceDays,
+          slotIntervalMin: site.slotIntervalMin,
+        }),
       });
       const data = await guardResponse(res);
       setSite(prev => ({
         ...prev,
         workingHours: data.workingHours as WorkingHours,
         bookingBlocks: (data.bookingBlocks ?? []) as BookingBlock[],
+        classSchedule: data.classSchedule && typeof data.classSchedule === 'object' ? data.classSchedule as AdminSitePayload['classSchedule'] : prev.classSchedule,
         bookingAdvanceDays: typeof data.bookingAdvanceDays === 'number' ? data.bookingAdvanceDays : prev.bookingAdvanceDays,
         slotIntervalMin: typeof data.slotIntervalMin === 'number' ? data.slotIntervalMin : prev.slotIntervalMin,
       }));

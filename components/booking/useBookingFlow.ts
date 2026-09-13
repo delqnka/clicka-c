@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isDateBlockedAllDay, isBlockedForStartTime } from '@/lib/booking-blocks';
+import { findClassSlotForBooking, getClassSlotsForDate, normalizeTrainerName } from '@/lib/class-schedule';
 import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-events';
 import { useT } from '@/lib/i18n-react';
 import type {
+  BookingOpenOptions,
   UseBookingFlowOptions,
   UseBookingFlowReturn,
   BookingServiceItem,
@@ -27,6 +29,7 @@ export function useBookingFlow({
   slug,
   openingHours,
   bookingBlocks,
+  classSchedule,
   slotIntervalMin,
   bookingAdvanceDays,
   bookingServices,
@@ -50,6 +53,7 @@ export function useBookingFlow({
 
   // ── Modal visibility ─────────────────────────────────────────────────
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [lockedService, setLockedService] = useState(false);
 
   // ── Service selection ────────────────────────────────────────────────
   const [selectedServiceIdxs, setSelectedServiceIdxs] = useState<number[]>([]);
@@ -154,12 +158,21 @@ export function useBookingFlow({
   );
 
   const selectedCapacity = useMemo(() => {
+    const classSlot = selectedDate && selectedTime
+      ? findClassSlotForBooking(
+          classSchedule ?? {},
+          selectedDate,
+          selectedTime,
+          staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null,
+        )
+      : null;
+    if (classSlot) return classSlot.capacity;
     if (selectedServices.length === 0) return 1;
     return Math.max(
       1,
       Math.min(...selectedServices.map((s) => Math.max(1, Math.round(Number(s.capacity ?? 1) || 1)))),
     );
-  }, [selectedServices]);
+  }, [classSchedule, selectedDate, selectedServices, selectedStaffMemberId, selectedTime, staffMembers]);
 
   const usedQuantityForSlot = useCallback((date: string, time: string, durationMin: number): number | null => {
     if (!date || !time) return null;
@@ -219,6 +232,35 @@ export function useBookingFlow({
         ? `${date}:${selectedStaffMemberId}`
         : date;
       const occupied = occupiedByDate[cacheKey] ?? [];
+      const selectedStaffName = staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null;
+      const classSlots = getClassSlotsForDate(classSchedule ?? {}, date);
+
+      if (classSlots.length > 0) {
+        const trainerName = normalizeTrainerName(selectedStaffName);
+        const slots: string[] = [];
+        for (const classSlot of classSlots) {
+          if (trainerName && normalizeTrainerName(classSlot.trainer) !== trainerName) continue;
+          if (!selectedStaffMemberId && classSlot.trainer) continue;
+          const [slotHour = 0, slotMinute = 0] = classSlot.start.split(':').map(Number);
+          const t = slotHour * 60 + slotMinute;
+          const slotEnd = t + dur;
+          const overlappingBookings = occupied.filter(({ time, duration: d }) => {
+            const [bh = 0, bm = 0] = time.split(':').map(Number);
+            const existStart = bh * 60 + bm;
+            const existEnd = existStart + Math.max(5, d);
+            return existStart < slotEnd && existEnd > t;
+          });
+          const blocksAll = overlappingBookings.some((booking) => booking.blocksAll === true);
+          const usedQuantity = overlappingBookings.reduce(
+            (sum, booking) => sum + Math.max(1, Math.round(Number(booking.quantity ?? 1) || 1)),
+            0,
+          );
+          if (!blocksAll && usedQuantity < classSlot.capacity && !isBlockedForStartTime(bookingBlocks, date, classSlot.start, dur)) {
+            slots.push(classSlot.start);
+          }
+        }
+        return slots;
+      }
 
       const [oh = 0, om = 0] = h.open.split(':').map(Number);
       const [ch = 0, cm = 0] = h.close.split(':').map(Number);
@@ -247,7 +289,7 @@ export function useBookingFlow({
       }
       return slots;
     },
-    [openingHours, bookingBlocks, occupiedByDate, selectedCapacity, selectedStaffMemberId, slotIntervalMin],
+    [openingHours, bookingBlocks, classSchedule, occupiedByDate, selectedCapacity, selectedStaffMemberId, slotIntervalMin, staffMembers],
   );
 
   const timeSlots = useMemo<string[] | 'closed' | null>(
@@ -259,14 +301,21 @@ export function useBookingFlow({
   );
 
   // ── Actions ──────────────────────────────────────────────────────────
-  const open = useCallback((serviceId?: string) => {
+  const open = useCallback((serviceId?: string, options?: BookingOpenOptions) => {
     setBookingError('');
     setBookingSuccess('');
     setBookingSuccessDetails(null);
     if (serviceId) {
-      const idx = bookingServices.findIndex((s) => s.id === serviceId);
+      const normalizedServiceId = serviceId.trim().toLowerCase();
+      const idx = bookingServices.findIndex((s) => {
+        const id = s.id.trim().toLowerCase();
+        const name = s.name.trim().toLowerCase();
+        return id === normalizedServiceId || name === normalizedServiceId;
+      });
+      setLockedService(Boolean(options?.lockService && idx >= 0));
       setSelectedServiceIdxs(idx >= 0 ? [idx] : []);
     } else {
+      setLockedService(false);
       setSelectedServiceIdxs([]);
     }
     setSelectedDate('');
@@ -284,6 +333,7 @@ export function useBookingFlow({
   const close = useCallback(() => {
     setBookingOpen(false);
     setBookingSuccessDetails(null);
+    setLockedService(false);
     setSelectedStaffMemberIdState(null);
     setSelectedDate('');
     setSelectedTime('');
@@ -293,11 +343,12 @@ export function useBookingFlow({
   const toggleService = useCallback((idx: number) => {
     setSelectedServiceIdxs((prev) => {
       const has = prev.includes(idx);
+      if (classSchedule && Object.keys(classSchedule).length > 0) return has ? [] : [idx];
       return has ? prev.filter((x) => x !== idx) : [...prev, idx];
     });
     setSelectedTime('');
     setBookingQuantityState(1);
-  }, []);
+  }, [classSchedule]);
 
   const setDate = useCallback((d: string) => {
     setSelectedDate(d);
@@ -441,7 +492,7 @@ export function useBookingFlow({
 
   return {
     bookingOpen, open, close,
-    selectedServiceIdxs, toggleService, totalDuration, totalPrice, baseTotalPrice, bookingQuantity, setBookingQuantity, selectedCapacity, selectedTimeRemaining, selectedServices,
+    lockedService, selectedServiceIdxs, toggleService, totalDuration, totalPrice, baseTotalPrice, bookingQuantity, setBookingQuantity, selectedCapacity, selectedTimeRemaining, selectedServices,
     selectedDate, setDate,
     selectedTime, setTime,
     timeSlots, minDate, maxDate,

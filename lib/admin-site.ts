@@ -15,6 +15,7 @@ import {
   type SalonVenueExtras,
 } from '@/lib/salon-venue-extras';
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
+import { normalizeClassSchedule, type BookingClassSchedule } from '@/lib/class-schedule';
 import { ensureAdminSiteSchema } from '@/lib/ensure-admin-site-schema';
 import { normalizeSiteContent, type SiteContent } from '@/lib/site-content';
 
@@ -80,6 +81,7 @@ export type AdminSitePayload = {
   services: ServiceItem[];
   workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
+  classSchedule: BookingClassSchedule;
   bookingAdvanceDays: number;
   slotIntervalMin: number;
   customDomain: string;
@@ -224,6 +226,11 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
     bookingBlocks: normalizeBookingBlocks(
       row.opening_hours && typeof row.opening_hours === 'object'
         ? (row.opening_hours as Record<string, unknown>).booking_blocks
+        : null
+    ),
+    classSchedule: normalizeClassSchedule(
+      row.opening_hours && typeof row.opening_hours === 'object'
+        ? (row.opening_hours as Record<string, unknown>).class_schedule
         : null
     ),
     bookingAdvanceDays: (() => {

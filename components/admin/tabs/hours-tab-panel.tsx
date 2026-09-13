@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { ADMIN_DAYS, getAdminDays } from '@/components/admin/admin-constants';
 import { ADMIN_COMPACT_SAVE_BTN, ADMIN_T } from '@/components/admin/admin-theme';
@@ -9,6 +9,17 @@ import type { AdminSitePayload } from '@/lib/admin-site';
 import { type Locale } from '@/lib/i18n';
 
 type DayKey = (typeof ADMIN_DAYS)[number]['key'];
+type ClassDayKey = '0' | '1' | '2' | '3' | '4' | '5' | '6';
+
+const DAY_KEY_TO_CLASS_DAY: Record<DayKey, ClassDayKey> = {
+  sunday: '0',
+  monday: '1',
+  tuesday: '2',
+  wednesday: '3',
+  thursday: '4',
+  friday: '5',
+  saturday: '6',
+};
 
 export function HoursTabPanel({
   site,
@@ -61,6 +72,44 @@ export function HoursTabPanel({
       ...p,
       bookingBlocks: [...p.bookingBlocks, { date, allDay: true }],
     }));
+  }
+
+  function addClassSlot(dayKey: DayKey = activeDayKey) {
+    const classDay = DAY_KEY_TO_CLASS_DAY[dayKey];
+    setSite((p) => ({
+      ...p,
+      classSchedule: {
+        ...(p.classSchedule ?? {}),
+        [classDay]: [
+          ...((p.classSchedule ?? {})[classDay] ?? []),
+          { start: '09:00', end: '09:50', trainer: '', capacity: 5 },
+        ],
+      },
+    }));
+  }
+
+  function updateClassSlot(dayKey: DayKey, index: number, patch: Partial<AdminSitePayload['classSchedule'][string][number]>) {
+    const classDay = DAY_KEY_TO_CLASS_DAY[dayKey];
+    setSite((p) => ({
+      ...p,
+      classSchedule: {
+        ...(p.classSchedule ?? {}),
+        [classDay]: ((p.classSchedule ?? {})[classDay] ?? []).map((slot, i) =>
+          i === index ? { ...slot, ...patch } : slot
+        ),
+      },
+    }));
+  }
+
+  function removeClassSlot(dayKey: DayKey, index: number) {
+    const classDay = DAY_KEY_TO_CLASS_DAY[dayKey];
+    setSite((p) => {
+      const nextDay = ((p.classSchedule ?? {})[classDay] ?? []).filter((_, i) => i !== index);
+      const nextSchedule = { ...(p.classSchedule ?? {}) };
+      if (nextDay.length > 0) nextSchedule[classDay] = nextDay;
+      else delete nextSchedule[classDay];
+      return { ...p, classSchedule: nextSchedule };
+    });
   }
 
   function renderDayEditor(dayKey: DayKey, compact?: boolean) {
@@ -243,6 +292,120 @@ export function HoursTabPanel({
     );
   }
 
+  function renderClassDay(dayKey: DayKey, compact?: boolean) {
+    const day = dayDefs.find((d) => d.key === dayKey) ?? ADMIN_DAYS.find((d) => d.key === dayKey)!;
+    const classDay = DAY_KEY_TO_CLASS_DAY[dayKey];
+    const slots = (site.classSchedule ?? {})[classDay] ?? [];
+
+    return (
+      <div
+        key={`classes-${dayKey}`}
+        style={{
+          border: `1px solid ${ADMIN_T.border}`,
+          borderRadius: 10,
+          background: '#fff',
+          padding: isMobile ? '8px' : '10px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: slots.length > 0 ? 8 : 0 }}>
+          <strong style={{ fontSize: 13, color: ADMIN_T.text }}>{compact ? day.label : day.label}</strong>
+          <button
+            type="button"
+            onClick={() => addClassSlot(dayKey)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              borderRadius: 8,
+              border: `1px solid ${ADMIN_T.border}`,
+              background: '#fff',
+              color: ADMIN_T.text,
+              padding: '5px 9px',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Plus size={12} strokeWidth={2.25} />
+            {isEn ? 'Class' : 'Клас'}
+          </button>
+        </div>
+
+        {slots.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>
+            {isEn ? 'No active classes for this day.' : 'Няма активни класове за този ден.'}
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {slots.map((slot, i) => (
+              <div
+                key={`${dayKey}-${slot.start}-${i}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr 1fr' : '96px 96px minmax(140px, 1fr) 82px 32px',
+                  gap: 6,
+                  alignItems: 'center',
+                }}
+              >
+                <input
+                  type="time"
+                  value={slot.start}
+                  onChange={(e) => updateClassSlot(dayKey, i, { start: e.target.value })}
+                  style={blockInp({ width: '100%' })}
+                  aria-label={isEn ? 'Class start' : 'Начало на клас'}
+                />
+                <input
+                  type="time"
+                  value={slot.end}
+                  onChange={(e) => updateClassSlot(dayKey, i, { end: e.target.value })}
+                  style={blockInp({ width: '100%' })}
+                  aria-label={isEn ? 'Class end' : 'Край на клас'}
+                />
+                <input
+                  value={slot.trainer}
+                  onChange={(e) => updateClassSlot(dayKey, i, { trainer: e.target.value })}
+                  placeholder={isEn ? 'Trainer' : 'Треньорка'}
+                  style={blockInp({ width: '100%', gridColumn: isMobile ? '1 / -1' : undefined, textAlign: 'left' })}
+                />
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={slot.capacity}
+                  onChange={(e) => updateClassSlot(dayKey, i, { capacity: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
+                  style={blockInp({ width: '100%' })}
+                  aria-label={isEn ? 'Capacity' : 'Капацитет'}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeClassSlot(dayKey, i)}
+                  aria-label={isEn ? 'Delete class' : 'Изтрий клас'}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    border: `1px solid ${ADMIN_T.border}`,
+                    background: '#fff',
+                    color: '#EF4444',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    gridColumn: isMobile ? '2 / 3' : undefined,
+                    justifySelf: isMobile ? 'end' : undefined,
+                  }}
+                >
+                  <Trash2 size={14} strokeWidth={2.1} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <AdminSection
       title={isEn ? 'Working hours' : 'Работно време'}
@@ -330,6 +493,42 @@ export function HoursTabPanel({
           {dayDefs.map((day) => renderDayEditor(day.key))}
         </div>
       )}
+
+      <div style={{ marginTop: isMobile ? 12 : 16, borderTop: `1px solid ${ADMIN_T.border}`, paddingTop: isMobile ? 10 : 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+          <div>
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>
+              {isEn ? 'Class schedule' : 'График на класове'}
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.subtle }}>
+              {isEn
+                ? 'Only these class starts are shown in online booking when this schedule has rows.'
+                : 'Само тези начални часове се показват в онлайн резервацията, когато има попълнен график.'}
+            </p>
+          </div>
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={() => addClassSlot(activeDayKey)}
+              style={{
+                ...btn('ghost'),
+                padding: '6px 10px',
+                fontSize: 11,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              + {isEn ? 'Class' : 'Клас'}
+            </button>
+          ) : null}
+        </div>
+        {isMobile ? (
+          renderClassDay(activeDayKey, true)
+        ) : (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {dayDefs.map((day) => renderClassDay(day.key))}
+          </div>
+        )}
+      </div>
 
       <div style={{ marginTop: isMobile ? 10 : 12 }}>
         <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: ADMIN_T.muted }}>

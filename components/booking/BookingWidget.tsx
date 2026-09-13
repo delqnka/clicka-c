@@ -14,6 +14,7 @@ import {
 } from '@/lib/salon-service-categories';
 import { mergeOpeningHours } from '@/lib/salon-opening-hours';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
+import { normalizeClassSchedule } from '@/lib/class-schedule';
 import type { BookingCatalogService } from '@/lib/booking-modal-catalog';
 import { useBookingFlow } from './useBookingFlow';
 import type { BookingServiceItem, BookingWidgetHandle, BookingWidgetProps } from './types';
@@ -34,6 +35,7 @@ type InnerProps = {
   slug: string;
   openingHours: ReturnType<typeof mergeOpeningHours>;
   bookingBlocks: ReturnType<typeof normalizeBookingBlocks>;
+  classSchedule: ReturnType<typeof normalizeClassSchedule>;
   slotIntervalMin: number;
   bookingAdvanceDays: number;
   bookingServices: BookingServiceItem[];
@@ -60,6 +62,7 @@ function BookingWidgetInner({
   slug,
   openingHours,
   bookingBlocks,
+  classSchedule,
   slotIntervalMin,
   bookingAdvanceDays,
   bookingServices,
@@ -81,6 +84,7 @@ function BookingWidgetInner({
     slug,
     openingHours,
     bookingBlocks,
+    classSchedule,
     slotIntervalMin,
     bookingAdvanceDays,
     bookingServices,
@@ -93,7 +97,7 @@ function BookingWidgetInner({
   });
 
   useImperativeHandle(forwardedRef, () => ({
-    open:  (serviceId?: string) => flow.open(serviceId),
+    open:  (serviceId, options) => flow.open(serviceId, options),
     close: () => flow.close(),
   }), [flow.open, flow.close]);
 
@@ -111,6 +115,7 @@ function BookingWidgetInner({
       categoryTabs={categoryTabs}
       services={bookingServices}
       selectedServiceIdxs={flow.selectedServiceIdxs}
+      lockedService={flow.lockedService}
       selectedDate={flow.selectedDate}
       selectedTime={flow.selectedTime}
       totalDuration={flow.totalDuration}
@@ -158,7 +163,7 @@ function BookingWidgetInner({
 // ── Public component ───────────────────────────────────────────────────────────
 
 export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>(
-  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, basePath = '', engineUrl = '', apiKey, accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
+  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, classSchedule: classScheduleProp, basePath = '', engineUrl = '', apiKey, accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
 
     // ── Opening hours ──────────────────────────────────────────────────
     const openingHours = useMemo(
@@ -173,6 +178,11 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
     const resolvedBlocks = blocksProp ?? normalizeBookingBlocks(
       salon.opening_hours && typeof salon.opening_hours === 'object'
         ? (salon.opening_hours as Record<string, unknown>).booking_blocks
+        : null,
+    );
+    const resolvedClassSchedule = classScheduleProp ?? normalizeClassSchedule(
+      salon.opening_hours && typeof salon.opening_hours === 'object'
+        ? (salon.opening_hours as Record<string, unknown>).class_schedule
         : null,
     );
 
@@ -248,6 +258,7 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
           slug={slug}
           openingHours={resolvedHours}
           bookingBlocks={resolvedBlocks}
+          classSchedule={resolvedClassSchedule}
           slotIntervalMin={slotIntervalMin}
           bookingAdvanceDays={bookingAdvanceDays}
           bookingServices={bookingServices}

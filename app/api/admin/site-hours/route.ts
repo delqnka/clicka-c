@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug, normalizeWorkingHours } from '@/lib/admin-site';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
+import { normalizeClassSchedule } from '@/lib/class-schedule';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 export async function GET(request: NextRequest) {
@@ -15,7 +16,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Сайтът не е намерен.' }, { status: 404 });
   }
 
-  return NextResponse.json({ workingHours: site.workingHours, bookingBlocks: site.bookingBlocks, bookingAdvanceDays: site.bookingAdvanceDays, slotIntervalMin: site.slotIntervalMin });
+  return NextResponse.json({
+    workingHours: site.workingHours,
+    bookingBlocks: site.bookingBlocks,
+    classSchedule: site.classSchedule,
+    bookingAdvanceDays: site.bookingAdvanceDays,
+    slotIntervalMin: site.slotIntervalMin,
+  });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -23,7 +30,7 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  let body: { workingHours?: unknown; bookingBlocks?: unknown; bookingAdvanceDays?: unknown; slotIntervalMin?: unknown };
+  let body: { workingHours?: unknown; bookingBlocks?: unknown; classSchedule?: unknown; bookingAdvanceDays?: unknown; slotIntervalMin?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -32,6 +39,7 @@ export async function PATCH(request: NextRequest) {
 
   const workingHours = normalizeWorkingHours(body.workingHours);
   const bookingBlocks = normalizeBookingBlocks(body.bookingBlocks);
+  const classSchedule = normalizeClassSchedule(body.classSchedule);
   const rawAdvance = Number(body.bookingAdvanceDays);
   const bookingAdvanceDays = Number.isFinite(rawAdvance) && rawAdvance >= 1 ? Math.round(rawAdvance) : 60;
   const rawInterval = Number(body.slotIntervalMin);
@@ -47,7 +55,13 @@ export async function PATCH(request: NextRequest) {
     currentRows[0]?.opening_hours && typeof currentRows[0].opening_hours === 'object'
       ? (currentRows[0].opening_hours as Record<string, unknown>)
       : {};
-  const nextOpeningHours = { ...currentOpeningHours, booking_blocks: bookingBlocks, booking_advance_days: bookingAdvanceDays, slot_interval_min: slotIntervalMin };
+  const nextOpeningHours = {
+    ...currentOpeningHours,
+    booking_blocks: bookingBlocks,
+    class_schedule: classSchedule,
+    booking_advance_days: bookingAdvanceDays,
+    slot_interval_min: slotIntervalMin,
+  };
 
   await sql`
     UPDATE salons
@@ -67,6 +81,7 @@ export async function PATCH(request: NextRequest) {
     success: true,
     workingHours,
     bookingBlocks,
+    classSchedule,
     bookingAdvanceDays,
     slotIntervalMin,
   });

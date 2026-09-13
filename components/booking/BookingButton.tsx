@@ -6,6 +6,8 @@ import { useBooking } from './useBooking';
 export type BookingButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Pre-select this service id when opening the modal. */
   service?: string;
+  /** When true, the modal stays focused on only this service. */
+  lockService?: boolean;
 };
 
 /**
@@ -19,7 +21,7 @@ export type BookingButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
  */
 export const BookingButton = forwardRef<HTMLButtonElement, BookingButtonProps>(
   function BookingButton(
-    { service, onClick, type = 'button', children, ...rest },
+    { service, lockService, onClick, type = 'button', children, ...rest },
     ref,
   ) {
     const { open } = useBooking();
@@ -29,7 +31,7 @@ export const BookingButton = forwardRef<HTMLButtonElement, BookingButtonProps>(
         type={type}
         onClick={(e) => {
           onClick?.(e);
-          if (!e.defaultPrevented) open(service);
+          if (!e.defaultPrevented) open(service, { lockService });
         }}
         {...rest}
       >

@@ -19,6 +19,7 @@ import type { SalonOfferRow } from '@/lib/salon-offers';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 import { normalizeServices } from '@/lib/salon-services';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
+import { findClassSlotForBooking, getClassSlotsForDate, normalizeClassSchedule } from '@/lib/class-schedule';
 import { runAfterResponse } from '@/lib/run-after-response';
 import { sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
@@ -395,11 +396,31 @@ export async function POST(request: NextRequest) {
       ? (resolved.salon.opening_hours as Record<string, unknown>).booking_blocks
       : null
   );
+  const classSchedule = normalizeClassSchedule(
+    resolved.salon.opening_hours && typeof resolved.salon.opening_hours === 'object'
+      ? (resolved.salon.opening_hours as Record<string, unknown>).class_schedule
+      : null
+  );
   if (isDateBlockedAllDay(bookingBlocks, date)) {
     return NextResponse.json(
       { error: 'Салонът не работи на избраната дата. Моля изберете друга.' },
       { status: 400 }
     );
+  }
+
+  const classSlotsForDay = getClassSlotsForDate(classSchedule, date);
+  let classSlotCapacity: number | null = null;
+  if (classSlotsForDay.length > 0) {
+    const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
+    const classSlot = findClassSlotForBooking(classSchedule, date, time, staffMember?.name ?? null);
+    if (!classSlot || !staffMember) {
+      return NextResponse.json(
+        { error: 'Избраният час не е част от активния график. Моля изберете час от графика.' },
+        { status: 400 },
+      );
+    }
+    classSlotCapacity = classSlot.capacity;
+    durationValue = Math.max(5, parseTimeToMinutes(classSlot.end)! - parseTimeToMinutes(classSlot.start)!);
   }
   if (isBlockedForStartTime(bookingBlocks, date, time, durationValue ?? 30)) {
     return NextResponse.json(
@@ -432,7 +453,7 @@ export async function POST(request: NextRequest) {
     (s) => s.name.toLowerCase() === resolvedServiceName.toLowerCase() ||
            resolvedServiceName.toLowerCase().includes(s.name.toLowerCase()),
   );
-  const bookingCapacity = resolveBookingCapacity(salonServices, resolvedServiceName);
+  const bookingCapacity = classSlotCapacity ?? resolveBookingCapacity(salonServices, resolvedServiceName);
   const bookingQuantity = Math.max(1, Math.round(Number(rawBookingQuantity ?? 1) || 1));
   if (bookingQuantity > bookingCapacity) {
     return NextResponse.json(

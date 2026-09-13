@@ -10,14 +10,14 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { BookingWidget } from './BookingWidget';
-import type { BookingWidgetHandle } from './types';
+import type { BookingOpenOptions, BookingWidgetHandle } from './types';
 
 export type BookingContextValue = {
   /**
    * Open the booking modal. Pass a service id to pre-select it. If the salon
    * record hasn't loaded yet, the call is queued and fired as soon as it does.
    */
-  open: (service?: string) => void;
+  open: (service?: string, options?: BookingOpenOptions) => void;
   /** Close the booking modal. No-op if it isn't open. */
   close: () => void;
   /** True once the salon record is loaded and the modal is mountable. */
@@ -201,8 +201,8 @@ export function BookingProvider({
 
   const widgetRef = useRef<BookingWidgetHandle>(null);
   // pendingRef: undefined = no queued open. null = open without service.
-  // string = open with that service id.
-  const pendingRef = useRef<string | null | undefined>(undefined);
+  // object = open with optional service id/options.
+  const pendingRef = useRef<{ service?: string; options?: BookingOpenOptions } | null | undefined>(undefined);
   const urlAutoOpenedRef = useRef(false);
 
   const [salon, setSalon] = useState<Record<string, unknown> | null>(null);
@@ -247,11 +247,11 @@ export function BookingProvider({
 
   // ── Public open/close ──────────────────────────────────────────────────
   const open = useCallback(
-    (service?: string) => {
+    (service?: string, options?: BookingOpenOptions) => {
       if (widgetRef.current && salon) {
-        widgetRef.current.open(service || undefined);
+        widgetRef.current.open(service || undefined, options);
       } else {
-        pendingRef.current = service ?? null;
+        pendingRef.current = service ? { service, options } : null;
       }
     },
     [salon],
@@ -262,9 +262,9 @@ export function BookingProvider({
   // ── Flush pending open() when salon finishes loading ───────────────────
   useEffect(() => {
     if (salon && widgetRef.current && pendingRef.current !== undefined) {
-      const s = pendingRef.current;
+      const pending = pendingRef.current;
       pendingRef.current = undefined;
-      widgetRef.current.open(s || undefined);
+      widgetRef.current.open(pending?.service, pending?.options);
     }
   }, [salon]);
 

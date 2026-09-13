@@ -58,6 +58,7 @@ type SalonBookingModalProps = {
   services: BookingServiceOption[];
   categoryTabs: ServiceCategoryTab[];
   selectedServiceIdxs: number[];
+  lockedService?: boolean;
   selectedDate: string;
   selectedTime: string;
   totalDuration: number;
@@ -163,6 +164,7 @@ export function SalonBookingModal({
   services,
   categoryTabs,
   selectedServiceIdxs,
+  lockedService = false,
   selectedDate,
   selectedTime,
   totalDuration,
@@ -244,7 +246,7 @@ export function SalonBookingModal({
     if (!open) return;
     setStep(1);
     setSelectedCategory(null);
-    setBrowseAllServices(true);
+    setBrowseAllServices(!lockedService);
     setVariantDropdownOpenForServiceId(null);
     const initial: Record<string, string> = {};
     for (const service of serviceCatalog) {
@@ -252,7 +254,7 @@ export function SalonBookingModal({
       if (variants.length > 0) initial[service.id] = variants[0]!.label;
     }
     setSelectedVariantByServiceId(initial);
-  }, [open, serviceCatalog]);
+  }, [open, serviceCatalog, lockedService]);
 
   // Compute which staff members can perform ALL currently selected services.
   const selectedServiceIds = useMemo(() => {
@@ -276,10 +278,10 @@ export function SalonBookingModal({
   }, [isTeam, eligibleStaff, onStaffMemberChange]);
 
   useEffect(() => {
-    if (selectedServiceIdxs.length === 0) {
+    if (selectedServiceIdxs.length === 0 && !lockedService) {
       setBrowseAllServices(true);
     }
-  }, [selectedServiceIdxs.length]);
+  }, [lockedService, selectedServiceIdxs.length]);
 
   const hasServices = selectedServiceIdxs.length > 0;
   const endTime = useMemo(
@@ -507,27 +509,31 @@ export function SalonBookingModal({
                                   {svc.duration} {t('booking.modal.minSuffix')} · {fmtPrice(Number(svc.price ?? 0))}
                                 </p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => onToggleService(idx)}
-                                className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-black/60 transition active:bg-black/[0.04] ${cardShadow}`}
-                                aria-label={t('booking.modal.removeAria')}
-                              >
-                                <X className="h-3.5 w-3.5" aria-hidden />
-                                {t('booking.modal.remove')}
-                              </button>
+                              {!lockedService ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleService(idx)}
+                                  className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-black/60 transition active:bg-black/[0.04] ${cardShadow}`}
+                                  aria-label={t('booking.modal.removeAria')}
+                                >
+                                  <X className="h-3.5 w-3.5" aria-hidden />
+                                  {t('booking.modal.remove')}
+                                </button>
+                              ) : null}
                             </div>
                           </div>
                         );
                       })}
-                      <button
-                        type="button"
-                        onClick={() => setBrowseAllServices(true)}
-                        className={`flex w-full items-center justify-center gap-1.5 rounded-2xl bg-white px-3.5 py-3 text-sm font-semibold text-black ${cardShadow}`}
-                      >
-                        <Plus className="h-4 w-4" aria-hidden />
-                        {t('booking.modal.addMoreServices')}
-                      </button>
+                      {!lockedService ? (
+                        <button
+                          type="button"
+                          onClick={() => setBrowseAllServices(true)}
+                          className={`flex w-full items-center justify-center gap-1.5 rounded-2xl bg-white px-3.5 py-3 text-sm font-semibold text-black ${cardShadow}`}
+                        >
+                          <Plus className="h-4 w-4" aria-hidden />
+                          {t('booking.modal.addMoreServices')}
+                        </button>
+                      ) : null}
                     </>
                   ) : (
                     <>
@@ -548,14 +554,16 @@ export function SalonBookingModal({
                         </button>
                       ) : null}
 
-                      <SalonServiceCategoryTabs
-                        categories={categoryTabs}
-                        selectedId={selectedCategory}
-                        onSelect={setSelectedCategory}
-                        size="sm"
-                        className="-mx-1 px-1"
-                        accentFill={accentFill}
-                      />
+                      {!lockedService ? (
+                        <SalonServiceCategoryTabs
+                          categories={categoryTabs}
+                          selectedId={selectedCategory}
+                          onSelect={setSelectedCategory}
+                          size="sm"
+                          className="-mx-1 px-1"
+                          accentFill={accentFill}
+                        />
+                      ) : null}
 
                       {visibleCatalog.map((service) => {
                     const variants = service.variants ?? [];
@@ -738,14 +746,16 @@ export function SalonBookingModal({
                         ? t('booking.modal.timeWithStaff', { name: staffMembers.find((s) => s.id === selectedStaffMemberId)?.name ?? '' })
                         : t('booking.modal.dateTime')}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className={`inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--salon-primary)] ${cardShadow} active:bg-black/[0.03]`}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      {t('booking.modal.addService')}
-                    </button>
+                    {!lockedService ? (
+                      <button
+                        type="button"
+                        onClick={() => setStep(1)}
+                        className={`inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--salon-primary)] ${cardShadow} active:bg-black/[0.03]`}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        {t('booking.modal.addService')}
+                      </button>
+                    ) : null}
                   </div>
 
                   {hasServices ? (

@@ -1,8 +1,9 @@
 import type { OpeningDayRecord } from '@/lib/salon-opening-hours';
 import type { BookingBlock } from '@/lib/booking-blocks';
+import type { BookingClassSchedule } from '@/lib/class-schedule';
 import type { CancelPolicyAction } from '@/lib/cancellation-policy';
 
-export type { OpeningDayRecord, BookingBlock };
+export type { OpeningDayRecord, BookingBlock, BookingClassSchedule };
 
 export type OccupiedSlot = { time: string; duration: number; quantity?: number; blocksAll?: boolean };
 
@@ -12,6 +13,10 @@ export type BookingSuccessDetails = {
   time: string;
   quantity?: number;
   totalPrice?: number;
+};
+
+export type BookingOpenOptions = {
+  lockService?: boolean;
 };
 
 export type PublicStaffMember = {
@@ -46,6 +51,8 @@ export type UseBookingFlowOptions = {
   slug: string;
   openingHours: OpeningDayRecord;
   bookingBlocks: BookingBlock[];
+  /** Optional fixed class timetable. When populated, only these starts are bookable. */
+  classSchedule?: BookingClassSchedule;
   /** Minutes between bookable slot starts. Must be one of 15|20|30|45|60. */
   slotIntervalMin: number;
   /** How many calendar days ahead to allow bookings. */
@@ -78,8 +85,9 @@ export type UseBookingFlowOptions = {
 export type UseBookingFlowReturn = {
   // Modal visibility
   bookingOpen: boolean;
-  open: (serviceId?: string) => void;
+  open: (serviceId?: string, options?: BookingOpenOptions) => void;
   close: () => void;
+  lockedService: boolean;
 
   // Service selection
   selectedServiceIdxs: number[];
@@ -126,7 +134,7 @@ export type UseBookingFlowReturn = {
 };
 
 export type BookingWidgetHandle = {
-  open: (serviceId?: string) => void;
+  open: (serviceId?: string, options?: BookingOpenOptions) => void;
   close: () => void;
 };
 
@@ -139,6 +147,8 @@ export type BookingWidgetProps = {
   openingHours?: OpeningDayRecord;
   /** Pre-processed booking blocks. Derived from salon if omitted. */
   bookingBlocks?: BookingBlock[];
+  /** Fixed class timetable. Derived from salon.opening_hours.class_schedule if omitted. */
+  classSchedule?: BookingClassSchedule;
   /** Base path for /terms and /privacy links. Default: ''. */
   basePath?: string;
   /**

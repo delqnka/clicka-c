@@ -41,4 +41,5 @@ export type {
   BookingSuccessDetails,
   OpeningDayRecord,
   BookingBlock,
+  BookingClassSchedule,
 } from '@/components/booking/types';
