@@ -113,6 +113,7 @@ function BookingWidgetInner({
       formatPrice={formatPrice}
       serviceCatalog={serviceCatalog}
       categoryTabs={categoryTabs}
+      classSchedule={classSchedule}
       services={bookingServices}
       selectedServiceIdxs={flow.selectedServiceIdxs}
       lockedService={flow.lockedService}

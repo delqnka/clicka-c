@@ -1,8 +1,9 @@
 'use client';
 
-import { Check, ChevronDown, Loader2, Plus, User, Users, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, Clock, Loader2, MapPin, Plus, User, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n-react';
+import { normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot } from '@/lib/class-schedule';
 import {
   getBookingRowIndex,
   getCatalogDisplayPriceDuration,
@@ -57,6 +58,7 @@ type SalonBookingModalProps = {
   /** Expanded rows for booking API (includes variant rows). */
   services: BookingServiceOption[];
   categoryTabs: ServiceCategoryTab[];
+  classSchedule?: BookingClassSchedule;
   selectedServiceIdxs: number[];
   lockedService?: boolean;
   selectedDate: string;
@@ -116,6 +118,8 @@ const fieldClass =
 
 const SERVICE_DESCRIPTION_PREVIEW_WORDS = 14;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function addMinutesToTime(time: string, minutesToAdd: number): string {
   const [h, m] = time.split(':').map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return time;
@@ -123,6 +127,18 @@ function addMinutesToTime(time: string, minutesToAdd: number): string {
   const outH = Math.floor(total / 60) % 24;
   const outM = total % 60;
   return `${String(outH).padStart(2, '0')}:${String(outM).padStart(2, '0')}`;
+}
+
+function isoDateAtOffset(baseIso: string, offsetDays: number): string {
+  const date = new Date(`${baseIso}T12:00:00`);
+  date.setDate(date.getDate() + offsetDays);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getClassSlotsForIsoDate(schedule: BookingClassSchedule | undefined, iso: string): BookingClassSlot[] {
+  if (!schedule || !iso) return [];
+  const dayKey = String(new Date(`${iso}T12:00:00`).getDay());
+  return schedule[dayKey] ?? [];
 }
 
 function ServiceDescription({ text, locale }: { text?: string; locale: string }) {
@@ -163,6 +179,7 @@ export function SalonBookingModal({
   serviceCatalog,
   services,
   categoryTabs,
+  classSchedule,
   selectedServiceIdxs,
   lockedService = false,
   selectedDate,
@@ -236,9 +253,14 @@ export function SalonBookingModal({
 
   // isTeam = TEAM salon with multiple staff members; direct = pre-selected staff link
   const isTeam = staffMembers.length > 0 && !directStaffName;
+  const hasClassSchedule = useMemo(
+    () => Object.values(classSchedule ?? {}).some((slots) => Array.isArray(slots) && slots.length > 0),
+    [classSchedule],
+  );
   // Steps: 1=service, 2=staff(team only), 3=datetime, 4=contact
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedInstructorFilter, setSelectedInstructorFilter] = useState<string>('all');
   const [browseAllServices, setBrowseAllServices] = useState(true);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
   const [variantDropdownOpenForServiceId, setVariantDropdownOpenForServiceId] = useState<string | null>(null);
@@ -246,6 +268,7 @@ export function SalonBookingModal({
     if (!open) return;
     setStep(1);
     setSelectedCategory(null);
+    setSelectedInstructorFilter('all');
     setBrowseAllServices(!lockedService);
     setVariantDropdownOpenForServiceId(null);
     const initial: Record<string, string> = {};
@@ -299,6 +322,51 @@ export function SalonBookingModal({
     () => serviceCatalog.filter((service) => serviceMatchesCategory(service, selectedCategory)),
     [serviceCatalog, selectedCategory],
   );
+  const classServiceIndex = useMemo(() => {
+    const reformerIdx = services.findIndex((service) => {
+      const haystack = `${service.id} ${service.name} ${service.category ?? ''}`.toLocaleLowerCase('bg-BG');
+      return haystack.includes('reformer') || haystack.includes('реформ');
+    });
+    return reformerIdx >= 0 ? reformerIdx : (services.length > 0 ? 0 : -1);
+  }, [services]);
+  const classService = classServiceIndex >= 0 ? services[classServiceIndex] : null;
+  const classMode = hasClassSchedule && classServiceIndex >= 0;
+  const displayDate = selectedDate || minDate;
+  const classDateOptions = useMemo(() => {
+    if (!minDate || !maxDate) return [];
+    const start = new Date(`${minDate}T12:00:00`).getTime();
+    const end = new Date(`${maxDate}T12:00:00`).getTime();
+    const length = Math.max(1, Math.min(21, Math.floor((end - start) / DAY_MS) + 1));
+    return Array.from({ length }, (_, index) => {
+      const iso = isoDateAtOffset(minDate, index);
+      const date = new Date(`${iso}T12:00:00`);
+      return {
+        iso,
+        weekday: date.toLocaleDateString(locale, { weekday: 'short' }),
+        day: date.toLocaleDateString(locale, { day: 'numeric' }),
+      };
+    });
+  }, [locale, maxDate, minDate]);
+  const instructorFilters = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const slots of Object.values(classSchedule ?? {})) {
+      for (const slot of slots) {
+        const key = normalizeTrainerName(slot.trainer);
+        if (key && !names.has(key)) names.set(key, slot.trainer.trim());
+      }
+    }
+    return Array.from(names.values());
+  }, [classSchedule]);
+  const visibleClassSlots = useMemo(() => {
+    const slots = getClassSlotsForIsoDate(classSchedule, displayDate);
+    if (selectedInstructorFilter === 'all') return slots;
+    const selectedTrainer = normalizeTrainerName(selectedInstructorFilter);
+    return slots.filter((slot) => normalizeTrainerName(slot.trainer) === selectedTrainer);
+  }, [classSchedule, displayDate, selectedInstructorFilter]);
+  const selectedClassTrainerName = useMemo(
+    () => staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null,
+    [selectedStaffMemberId, staffMembers],
+  );
   const maxBookableQuantity = Math.max(1, selectedTimeRemaining ?? selectedCapacity);
   const showQuantityPicker = selectedCapacity > 1 && selectedTime && maxBookableQuantity > 0;
   const quantityPickerRef = useRef<HTMLDivElement | null>(null);
@@ -325,6 +393,20 @@ export function SalonBookingModal({
     onToggleService(idx);
   }
 
+  function selectClassSlot(slot: BookingClassSlot) {
+    if (classServiceIndex < 0) return;
+    const matchingStaff = staffMembers.find(
+      (member) => normalizeTrainerName(member.name) === normalizeTrainerName(slot.trainer),
+    );
+    if (!selectedServiceIdxs.includes(classServiceIndex)) {
+      onToggleService(classServiceIndex);
+    }
+    if (matchingStaff) onStaffMemberChange?.(matchingStaff.id);
+    onDateChange(displayDate);
+    onTimeChange(slot.start);
+    setStep(2);
+  }
+
   const dateOptions = useMemo(() => {
     if (!minDate || !maxDate) return [];
     const out: { iso: string; weekday: string; day: string }[] = [];
@@ -344,6 +426,11 @@ export function SalonBookingModal({
   }, [minDate, maxDate, locale]);
 
   function goToStep(target: 1 | 2 | 3 | 4) {
+    if (classMode) {
+      if (target >= 2 && (!hasServices || !selectedDate || !selectedTime)) return;
+      setStep(target);
+      return;
+    }
     if (isTeam) {
       if (target >= 2 && !hasServices) return;
       if (target >= 3 && !selectedStaffMemberId) return;
@@ -356,7 +443,12 @@ export function SalonBookingModal({
   }
 
   // Step label definitions differ between SOLO and TEAM.
-  const stepLabels = isTeam
+  const stepLabels = classMode
+    ? [
+        { n: 1 as const, label: 'Клас' },
+        { n: 2 as const, label: t('booking.modal.stepDetails') },
+      ]
+    : isTeam
     ? [
         { n: 1 as const, label: t('booking.modal.stepService') },
         { n: 2 as const, label: t('booking.modal.stepSpecialist') },
@@ -425,9 +517,11 @@ export function SalonBookingModal({
               {stepLabels.map(({ n, label }) => {
                 const active = step === n;
                 const complete = step > n;
-                const disabled = isTeam
-                  ? (n >= 2 && !hasServices) || (n >= 3 && !selectedStaffMemberId) || (n >= 4 && (!hasServices || !selectedTime))
-                  : (n >= 2 && !hasServices) || (n >= 3 && (!hasServices || !selectedTime));
+                const disabled = classMode
+                  ? n >= 2 && (!hasServices || !selectedDate || !selectedTime)
+                  : isTeam
+                    ? (n >= 2 && !hasServices) || (n >= 3 && !selectedStaffMemberId) || (n >= 4 && (!hasServices || !selectedTime))
+                    : (n >= 2 && !hasServices) || (n >= 3 && (!hasServices || !selectedTime));
                 return (
                   <button
                     key={`header-step-${n}`}
@@ -482,7 +576,162 @@ export function SalonBookingModal({
             )
           ) : (
             <form id="salon-booking-form" onSubmit={onSubmit} className="min-w-0 space-y-3.5 bg-white">
-              {step === 1 ? (
+              {step === 1 && classMode ? (
+                <div className="space-y-4">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
+                    {classDateOptions.map((d) => {
+                      const active = displayDate === d.iso;
+                      const classCount = getClassSlotsForIsoDate(classSchedule, d.iso).length;
+                      return (
+                        <button
+                          key={d.iso}
+                          type="button"
+                          onClick={() => onDateChange(d.iso)}
+                          className={`flex h-[4.6rem] w-[4.2rem] shrink-0 flex-col items-center justify-center rounded-2xl text-center transition ${
+                            active
+                              ? 'bg-black text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]'
+                              : 'bg-white text-black/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),0_5px_16px_rgba(0,0,0,0.06)]'
+                          }`}
+                          aria-label={d.iso}
+                        >
+                          <span className="text-[10px] font-semibold uppercase leading-none tracking-[0.08em] opacity-70">
+                            {d.weekday}
+                          </span>
+                          <span className="mt-1 text-[20px] font-semibold leading-none tabular-nums">{d.day}</span>
+                          <span className={`mt-1 h-1 w-1 rounded-full ${classCount > 0 ? (active ? 'bg-white' : 'bg-black/25') : 'bg-transparent'}`} />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onDateChange(minDate)}
+                      className={`rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-black ${cardShadow}`}
+                    >
+                      Днес
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedInstructorFilter('all')}
+                      className={`rounded-full px-4 py-2.5 text-[13px] font-semibold transition ${
+                        selectedInstructorFilter === 'all'
+                          ? 'bg-black text-white'
+                          : `bg-white text-black ${cardShadow}`
+                      }`}
+                    >
+                      Всички
+                    </button>
+                  </div>
+
+                  {instructorFilters.length > 1 ? (
+                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
+                      {instructorFilters.map((name) => {
+                        const active = selectedInstructorFilter === name;
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => setSelectedInstructorFilter(name)}
+                            className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition ${
+                              active ? 'bg-black text-white' : `bg-white text-black ${cardShadow}`
+                            }`}
+                          >
+                            <User className="h-4 w-4" aria-hidden />
+                            {name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-3">
+                    {visibleClassSlots.length === 0 ? (
+                      <div className={`rounded-[1.35rem] bg-white px-4 py-6 text-center ${cardShadow}`}>
+                        <p className="text-[14px] font-semibold text-black/55">Няма активни Reformer часове за този ден.</p>
+                        <p className="mt-1 text-[12px] text-black/40">Избери друг ден от календара.</p>
+                      </div>
+                    ) : visibleClassSlots.map((slot) => {
+                      const serviceName = classService?.name ?? 'Reformer Pilates';
+                      const price = Number(classService?.price ?? 0) || 0;
+                      const duration = Math.max(5, Number(classService?.duration ?? 50) || 50);
+                      const dateLabel = new Date(`${displayDate}T12:00:00`).toLocaleDateString(locale, {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      });
+                      const selected =
+                        selectedDate === displayDate &&
+                        selectedTime === slot.start &&
+                        normalizeTrainerName(selectedClassTrainerName) === normalizeTrainerName(slot.trainer);
+
+                      return (
+                        <article
+                          key={`${displayDate}-${slot.start}-${slot.trainer}`}
+                          className={`rounded-[1.5rem] bg-white p-4 transition ${
+                            selected ? `ring-1 ring-black/10 ${gradientRingShadow}` : cardShadow
+                          }`}
+                        >
+                          <div className="flex gap-3">
+                            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#ebe8df]">
+                              <span className="px-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-black/35">
+                                Reset
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/45">Клас</p>
+                              <h4 className="mt-1 break-words text-[26px] font-semibold leading-[1.05] tracking-tight text-black">
+                                {serviceName}
+                              </h4>
+                            </div>
+                          </div>
+
+                          <div className="my-4 h-px bg-black/10" />
+
+                          <div className="space-y-2.5">
+                            <p className="flex items-center gap-2 text-[15px] font-semibold text-black">
+                              <User className="h-4 w-4 text-black/40" aria-hidden />
+                              {slot.trainer}
+                            </p>
+                            <p className="text-[14px] leading-relaxed text-black/55">
+                              Reformer Pilates тренировка с ограничен капацитет до {slot.capacity} легла.
+                            </p>
+                            <p className="flex items-center gap-2 text-[14px] text-black/55">
+                              <CalendarDays className="h-4 w-4 text-black/40" aria-hidden />
+                              {dateLabel}
+                            </p>
+                            <p className="flex items-center gap-2 text-[14px] text-black/55">
+                              <Clock className="h-4 w-4 text-black/40" aria-hidden />
+                              {slot.start} – {slot.end} · {duration} мин
+                            </p>
+                            <p className="flex items-center gap-2 text-[14px] text-black/55">
+                              <MapPin className="h-4 w-4 text-black/40" aria-hidden />
+                              Reset Body Lab
+                            </p>
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/10 pt-4">
+                            <p className="text-[30px] font-semibold tracking-tight text-black">
+                              {fmtPrice(price)}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => selectClassSlot(slot)}
+                              className={`rounded-2xl px-7 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.98] ${blackCtaShadow}`}
+                              style={{ backgroundColor: '#111' }}
+                            >
+                              Запази
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {step === 1 && !classMode ? (
                 <div className="space-y-3">
                   {hasServices && !browseAllServices ? (
                     <>
@@ -672,7 +921,7 @@ export function SalonBookingModal({
               ) : null}
 
               {/* Staff selection step — TEAM only, step 2 */}
-              {step === 2 && isTeam ? (
+              {step === 2 && isTeam && !classMode ? (
                 <div className="space-y-3">
                   <p className="text-[13px] font-semibold text-black">{t('booking.modal.selectSpecialist')}</p>
                   {selectedServiceIds.length > 0 && (
@@ -738,7 +987,7 @@ export function SalonBookingModal({
               ) : null}
 
               {/* Date/time step — step 2 for SOLO/direct, step 3 for TEAM */}
-              {((isTeam && step === 3) || (!isTeam && step === 2)) ? (
+              {(!classMode && ((isTeam && step === 3) || (!isTeam && step === 2))) ? (
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="text-[13px] font-semibold text-black">
@@ -873,11 +1122,54 @@ export function SalonBookingModal({
               ) : null}
 
               {/* Contact step — step 3 for SOLO/direct, step 4 for TEAM */}
-              {((isTeam && step === 4) || (!isTeam && step === 3)) ? (
+              {((classMode && step === 2) || (!classMode && ((isTeam && step === 4) || (!isTeam && step === 3)))) ? (
                 <div className="space-y-3.5">
                   <p className="text-[13px] font-semibold text-black">
                     {t('booking.modal.contactDetails')}
                   </p>
+                  {classMode && selectedTime ? (
+                    <div className={`rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}>
+                      <p className="text-[15px] font-semibold text-black">
+                        {selectedServices.map((s) => s.name).join(' + ') || classService?.name}
+                      </p>
+                      <p className="mt-1 text-[13px] text-black/55">
+                        {selectedClassTrainerName ? `${selectedClassTrainerName} · ` : ''}
+                        {selectedTime} – {endTime} · {Math.max(0, totalDuration)} мин
+                      </p>
+                      {selectedCapacity > 1 ? (
+                        <div className="mt-3 border-t border-black/10 pt-3">
+                          <p className="flex items-center gap-1.5 text-[13px] font-semibold text-black">
+                            <Users className="h-4 w-4 text-black/45" aria-hidden />
+                            {showQuantityPicker
+                              ? t('booking.modal.freeBeds', { count: maxBookableQuantity })
+                              : t('booking.modal.selectTimeForBeds')}
+                          </p>
+                          {showQuantityPicker ? (
+                            <div className="mt-3 grid grid-cols-5 gap-2">
+                              {Array.from({ length: Math.min(maxBookableQuantity, selectedCapacity) }, (_, i) => i + 1).map((qty) => {
+                                const active = bookingQuantity === qty;
+                                return (
+                                  <button
+                                    key={qty}
+                                    type="button"
+                                    onClick={() => onBookingQuantityChange?.(qty)}
+                                    className={`h-10 rounded-full text-[14px] font-bold tabular-nums transition ${
+                                      active
+                                        ? `text-white ${gradientCtaShadow}`
+                                        : 'border border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.08)]'
+                                    }`}
+                                    style={active ? accentFillStyle : undefined}
+                                  >
+                                    {qty}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
                       {t('booking.modal.name')}
@@ -945,7 +1237,7 @@ export function SalonBookingModal({
           )}
         </div>
 
-        {!bookingSuccess && !bookingSuccessDetails ? (
+        {!bookingSuccess && !bookingSuccessDetails && (!classMode || step > 1) ? (
           <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
             {hasServices ? (
               <div className="mb-3 px-1">
@@ -972,7 +1264,7 @@ export function SalonBookingModal({
               </div>
             ) : null}
 
-            {step === 3 && paymentType !== 'none' && (
+            {((classMode && step === 2) || (!classMode && step === 3)) && paymentType !== 'none' && (
               <div className="mb-2.5 space-y-1 text-center">
                 <p className="flex items-center justify-center gap-1.5 text-[13px] font-semibold text-[#635BFF]">
                   <svg width="14" height="14" viewBox="0 0 60 60" fill="none" aria-hidden>
@@ -999,12 +1291,14 @@ export function SalonBookingModal({
               </div>
             )}
             {(() => {
-              const maxStep = isTeam ? 4 : 3;
+              const maxStep = classMode ? 2 : (isTeam ? 4 : 3);
               const isLastStep = step === maxStep;
               const nextDisabled =
-                (step === 1 && !hasServices) ||
-                (isTeam && step === 2 && (!selectedStaffMemberId || eligibleStaff.length === 0)) ||
-                (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime);
+                classMode
+                  ? step === 1 && (!hasServices || !selectedDate || !selectedTime)
+                  : (step === 1 && !hasServices) ||
+                    (isTeam && step === 2 && (!selectedStaffMemberId || eligibleStaff.length === 0)) ||
+                    (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime);
               return (
                 <>
                 <div className="grid grid-cols-2 gap-2.5">
