@@ -35,6 +35,14 @@ function Badge({ active, locale }: { active: boolean; locale: Locale }) {
   );
 }
 
+function formatEuroAmount(value: number): string {
+  return new Intl.NumberFormat('bg-BG', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
+  }).format(Math.max(0, Number(value) || 0));
+}
+
 function CopyButton({ value, label, locale }: { value: string; label: string; locale: Locale }) {
   const isEn = locale === 'en';
   const [copied, setCopied] = useState(false);
@@ -705,6 +713,36 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                       <p style={{ fontSize: 11, color: ADMIN_T.subtle, marginTop: 2 }}>
                         /book/{member.slug}
                       </p>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            borderRadius: 999,
+                            background: '#f4f4f5',
+                            padding: '3px 8px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: ADMIN_T.text,
+                          }}
+                        >
+                          {isEn ? 'Classes: ' : 'Класове: '}{member.completedClassesCount}
+                        </span>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            borderRadius: 999,
+                            background: '#ecfdf5',
+                            padding: '3px 8px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: '#047857',
+                          }}
+                        >
+                          {isEn ? 'Turnover: ' : 'Оборот: '}{formatEuroAmount(member.completedRevenue)}
+                        </span>
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

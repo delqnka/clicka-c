@@ -586,9 +586,10 @@ export function SalonBookingModal({
                           onClick={() => onDateChange(d.iso)}
                           className={`flex h-[4.6rem] w-[4.2rem] shrink-0 flex-col items-center justify-center rounded-2xl text-center transition ${
                             active
-                              ? 'bg-black text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]'
+                              ? 'text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]'
                               : 'bg-white text-black/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),0_5px_16px_rgba(0,0,0,0.06)]'
                           }`}
+                          style={active ? accentFillStyle : undefined}
                           aria-label={d.iso}
                         >
                           <span className="text-[10px] font-semibold uppercase leading-none tracking-[0.08em] opacity-70">
@@ -599,16 +600,6 @@ export function SalonBookingModal({
                         </button>
                       );
                     })}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onDateChange(classFirstDate)}
-                      className={`rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-black ${cardShadow}`}
-                    >
-                      Начало
-                    </button>
                   </div>
 
                   <div className="space-y-3">
@@ -645,8 +636,7 @@ export function SalonBookingModal({
                           }`}
                         >
                           <div className="min-w-0">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/45">Клас</p>
-                            <h4 className="mt-1 break-words text-[26px] font-semibold leading-[1.05] tracking-tight text-black">
+                            <h4 className="break-words text-[26px] font-semibold leading-[1.05] tracking-tight text-black">
                               {serviceName}
                             </h4>
                           </div>
@@ -676,9 +666,14 @@ export function SalonBookingModal({
                               <CalendarDays className="h-4 w-4 text-black/40" aria-hidden />
                               {dateLabel}
                             </p>
-                            <p className="flex items-center gap-2 text-[24px] font-bold leading-tight tracking-tight text-black">
+                            <p className="flex items-baseline gap-2 text-black">
                               <Clock className="h-4 w-4 text-black/40" aria-hidden />
-                              {slot.start} – {slot.end} · {duration} мин
+                              <span className="text-[25px] font-bold leading-tight tracking-tight">
+                                {slot.start} – {slot.end}
+                              </span>
+                              <span className="text-[13px] font-medium text-black/45">
+                                · {duration} мин
+                              </span>
                             </p>
                           </div>
 
@@ -690,7 +685,7 @@ export function SalonBookingModal({
                               type="button"
                               onClick={() => selectClassSlot(slot)}
                               className={`rounded-2xl px-7 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.98] ${blackCtaShadow}`}
-                              style={{ backgroundColor: '#111' }}
+                              style={accentFillStyle}
                             >
                               Запази
                             </button>

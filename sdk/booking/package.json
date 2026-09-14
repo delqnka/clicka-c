@@ -1,6 +1,6 @@
 {
   "name": "@clicka1/booking",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "description": "White-label booking widget for salon sites powered by the Clicka engine API.",
   "type": "module",
   "sideEffects": [
