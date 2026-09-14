@@ -36,6 +36,8 @@ type InnerProps = {
   openingHours: ReturnType<typeof mergeOpeningHours>;
   bookingBlocks: ReturnType<typeof normalizeBookingBlocks>;
   classSchedule: ReturnType<typeof normalizeClassSchedule>;
+  classScheduleStartDate?: string;
+  staffProfileBasePath?: string;
   slotIntervalMin: number;
   bookingAdvanceDays: number;
   bookingServices: BookingServiceItem[];
@@ -63,6 +65,8 @@ function BookingWidgetInner({
   openingHours,
   bookingBlocks,
   classSchedule,
+  classScheduleStartDate,
+  staffProfileBasePath,
   slotIntervalMin,
   bookingAdvanceDays,
   bookingServices,
@@ -114,6 +118,8 @@ function BookingWidgetInner({
       serviceCatalog={serviceCatalog}
       categoryTabs={categoryTabs}
       classSchedule={classSchedule}
+      classScheduleStartDate={classScheduleStartDate}
+      staffProfileBasePath={staffProfileBasePath}
       services={bookingServices}
       selectedServiceIdxs={flow.selectedServiceIdxs}
       lockedService={flow.lockedService}
@@ -164,7 +170,7 @@ function BookingWidgetInner({
 // ── Public component ───────────────────────────────────────────────────────────
 
 export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>(
-  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, classSchedule: classScheduleProp, basePath = '', engineUrl = '', apiKey, accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
+  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, classSchedule: classScheduleProp, classScheduleStartDate, staffProfileBasePath, basePath = '', engineUrl = '', apiKey, accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
 
     // ── Opening hours ──────────────────────────────────────────────────
     const openingHours = useMemo(
@@ -263,6 +269,8 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
           openingHours={resolvedHours}
           bookingBlocks={resolvedBlocks}
           classSchedule={resolvedClassSchedule}
+          classScheduleStartDate={classScheduleStartDate}
+          staffProfileBasePath={staffProfileBasePath}
           slotIntervalMin={slotIntervalMin}
           bookingAdvanceDays={bookingAdvanceDays}
           bookingServices={bookingServices}

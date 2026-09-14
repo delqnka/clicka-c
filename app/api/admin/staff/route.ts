@@ -113,7 +113,7 @@ export async function PATCH(request: NextRequest) {
 
   const salonId = auth.salon.salonId;
 
-  let body: { id?: string; name?: string; email?: string | null; bio?: string | null; isActive?: boolean; serviceIds?: string[] };
+  let body: { id?: string; name?: string; email?: string | null; bio?: string | null; avatarUrl?: string | null; isActive?: boolean; serviceIds?: string[] };
   try {
     body = await request.json();
   } catch {
@@ -128,6 +128,7 @@ export async function PATCH(request: NextRequest) {
     name: body.name,
     email: body.email,
     bio: body.bio,
+    avatarUrl: body.avatarUrl,
     isActive: body.isActive,
     serviceIds: body.serviceIds,
   });

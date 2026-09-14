@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, Check, ChevronDown, Clock, Loader2, MapPin, Plus, User, Users, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, Clock, Loader2, Plus, User, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n-react';
 import { normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot } from '@/lib/class-schedule';
@@ -59,6 +59,8 @@ type SalonBookingModalProps = {
   services: BookingServiceOption[];
   categoryTabs: ServiceCategoryTab[];
   classSchedule?: BookingClassSchedule;
+  classScheduleStartDate?: string;
+  staffProfileBasePath?: string;
   selectedServiceIdxs: number[];
   lockedService?: boolean;
   selectedDate: string;
@@ -180,6 +182,8 @@ export function SalonBookingModal({
   services,
   categoryTabs,
   classSchedule,
+  classScheduleStartDate,
+  staffProfileBasePath = '/book',
   selectedServiceIdxs,
   lockedService = false,
   selectedDate,
@@ -260,7 +264,6 @@ export function SalonBookingModal({
   // Steps: 1=service, 2=staff(team only), 3=datetime, 4=contact
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedInstructorFilter, setSelectedInstructorFilter] = useState<string>('all');
   const [browseAllServices, setBrowseAllServices] = useState(true);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
   const [variantDropdownOpenForServiceId, setVariantDropdownOpenForServiceId] = useState<string | null>(null);
@@ -268,7 +271,6 @@ export function SalonBookingModal({
     if (!open) return;
     setStep(1);
     setSelectedCategory(null);
-    setSelectedInstructorFilter('all');
     setBrowseAllServices(!lockedService);
     setVariantDropdownOpenForServiceId(null);
     const initial: Record<string, string> = {};
@@ -331,14 +333,22 @@ export function SalonBookingModal({
   }, [services]);
   const classService = classServiceIndex >= 0 ? services[classServiceIndex] : null;
   const classMode = hasClassSchedule && classServiceIndex >= 0;
-  const displayDate = selectedDate || minDate;
+  const classFirstDate = useMemo(() => {
+    const configured = /^\d{4}-\d{2}-\d{2}$/.test(String(classScheduleStartDate ?? ''))
+      ? String(classScheduleStartDate)
+      : '';
+    if (!configured) return minDate;
+    if (!minDate) return configured;
+    return configured > minDate ? configured : minDate;
+  }, [classScheduleStartDate, minDate]);
+  const displayDate = selectedDate || classFirstDate || minDate;
   const classDateOptions = useMemo(() => {
-    if (!minDate || !maxDate) return [];
-    const start = new Date(`${minDate}T12:00:00`).getTime();
+    if (!classFirstDate || !maxDate) return [];
+    const start = new Date(`${classFirstDate}T12:00:00`).getTime();
     const end = new Date(`${maxDate}T12:00:00`).getTime();
     const length = Math.max(1, Math.min(21, Math.floor((end - start) / DAY_MS) + 1));
     return Array.from({ length }, (_, index) => {
-      const iso = isoDateAtOffset(minDate, index);
+      const iso = isoDateAtOffset(classFirstDate, index);
       const date = new Date(`${iso}T12:00:00`);
       return {
         iso,
@@ -346,23 +356,10 @@ export function SalonBookingModal({
         day: date.toLocaleDateString(locale, { day: 'numeric' }),
       };
     });
-  }, [locale, maxDate, minDate]);
-  const instructorFilters = useMemo(() => {
-    const names = new Map<string, string>();
-    for (const slots of Object.values(classSchedule ?? {})) {
-      for (const slot of slots) {
-        const key = normalizeTrainerName(slot.trainer);
-        if (key && !names.has(key)) names.set(key, slot.trainer.trim());
-      }
-    }
-    return Array.from(names.values());
-  }, [classSchedule]);
+  }, [classFirstDate, locale, maxDate]);
   const visibleClassSlots = useMemo(() => {
-    const slots = getClassSlotsForIsoDate(classSchedule, displayDate);
-    if (selectedInstructorFilter === 'all') return slots;
-    const selectedTrainer = normalizeTrainerName(selectedInstructorFilter);
-    return slots.filter((slot) => normalizeTrainerName(slot.trainer) === selectedTrainer);
-  }, [classSchedule, displayDate, selectedInstructorFilter]);
+    return getClassSlotsForIsoDate(classSchedule, displayDate);
+  }, [classSchedule, displayDate]);
   const selectedClassTrainerName = useMemo(
     () => staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null,
     [selectedStaffMemberId, staffMembers],
@@ -607,44 +604,12 @@ export function SalonBookingModal({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => onDateChange(minDate)}
+                      onClick={() => onDateChange(classFirstDate)}
                       className={`rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-black ${cardShadow}`}
                     >
-                      Днес
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedInstructorFilter('all')}
-                      className={`rounded-full px-4 py-2.5 text-[13px] font-semibold transition ${
-                        selectedInstructorFilter === 'all'
-                          ? 'bg-black text-white'
-                          : `bg-white text-black ${cardShadow}`
-                      }`}
-                    >
-                      Всички
+                      Начало
                     </button>
                   </div>
-
-                  {instructorFilters.length > 1 ? (
-                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
-                      {instructorFilters.map((name) => {
-                        const active = selectedInstructorFilter === name;
-                        return (
-                          <button
-                            key={name}
-                            type="button"
-                            onClick={() => setSelectedInstructorFilter(name)}
-                            className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition ${
-                              active ? 'bg-black text-white' : `bg-white text-black ${cardShadow}`
-                            }`}
-                          >
-                            <User className="h-4 w-4" aria-hidden />
-                            {name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
 
                   <div className="space-y-3">
                     {visibleClassSlots.length === 0 ? (
@@ -665,6 +630,12 @@ export function SalonBookingModal({
                         selectedDate === displayDate &&
                         selectedTime === slot.start &&
                         normalizeTrainerName(selectedClassTrainerName) === normalizeTrainerName(slot.trainer);
+                      const slotStaff = staffMembers.find(
+                        (member) => normalizeTrainerName(member.name) === normalizeTrainerName(slot.trainer),
+                      );
+                      const profileHref = slotStaff?.slug
+                        ? `${staffProfileBasePath.replace(/\/$/, '')}/${encodeURIComponent(slotStaff.slug)}`
+                        : null;
 
                       return (
                         <article
@@ -673,41 +644,41 @@ export function SalonBookingModal({
                             selected ? `ring-1 ring-black/10 ${gradientRingShadow}` : cardShadow
                           }`}
                         >
-                          <div className="flex gap-3">
-                            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#ebe8df]">
-                              <span className="px-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-black/35">
-                                Reset
-                              </span>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/45">Клас</p>
-                              <h4 className="mt-1 break-words text-[26px] font-semibold leading-[1.05] tracking-tight text-black">
-                                {serviceName}
-                              </h4>
-                            </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/45">Клас</p>
+                            <h4 className="mt-1 break-words text-[26px] font-semibold leading-[1.05] tracking-tight text-black">
+                              {serviceName}
+                            </h4>
                           </div>
 
                           <div className="my-4 h-px bg-black/10" />
 
-                          <div className="space-y-2.5">
-                            <p className="flex items-center gap-2 text-[15px] font-semibold text-black">
-                              <User className="h-4 w-4 text-black/40" aria-hidden />
-                              {slot.trainer}
-                            </p>
-                            <p className="text-[14px] leading-relaxed text-black/55">
-                              Reformer Pilates тренировка с ограничен капацитет до {slot.capacity} легла.
-                            </p>
-                            <p className="flex items-center gap-2 text-[14px] text-black/55">
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <p className="flex items-center gap-2 text-[16px] font-semibold text-black">
+                                <User className="h-4 w-4 text-black/40" aria-hidden />
+                                Клас с {slot.trainer}
+                              </p>
+                              {profileHref ? (
+                                <a
+                                  href={profileHref}
+                                  className="text-[13px] font-semibold text-black/55 underline underline-offset-2"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Виж био
+                                </a>
+                              ) : (
+                                <span className="text-[13px] font-semibold text-black/30">Виж био</span>
+                              )}
+                            </div>
+                            <p className="flex items-center gap-2 text-[16px] font-semibold text-black">
                               <CalendarDays className="h-4 w-4 text-black/40" aria-hidden />
                               {dateLabel}
                             </p>
-                            <p className="flex items-center gap-2 text-[14px] text-black/55">
+                            <p className="flex items-center gap-2 text-[24px] font-bold leading-tight tracking-tight text-black">
                               <Clock className="h-4 w-4 text-black/40" aria-hidden />
                               {slot.start} – {slot.end} · {duration} мин
-                            </p>
-                            <p className="flex items-center gap-2 text-[14px] text-black/55">
-                              <MapPin className="h-4 w-4 text-black/40" aria-hidden />
-                              Reset Body Lab
                             </p>
                           </div>
 

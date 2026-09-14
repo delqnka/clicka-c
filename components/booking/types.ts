@@ -149,6 +149,10 @@ export type BookingWidgetProps = {
   bookingBlocks?: BookingBlock[];
   /** Fixed class timetable. Derived from salon.opening_hours.class_schedule if omitted. */
   classSchedule?: BookingClassSchedule;
+  /** Optional ISO date (`YYYY-MM-DD`) before which class cards are hidden. */
+  classScheduleStartDate?: string;
+  /** Public base path for staff profiles. Default: `/book`. */
+  staffProfileBasePath?: string;
   /** Base path for /terms and /privacy links. Default: ''. */
   basePath?: string;
   /**
@@ -186,4 +190,8 @@ export type BookingProviderScheduleProps = {
    * `salon.opening_hours.class_schedule` wins when it has rows.
    */
   classSchedule?: BookingClassSchedule;
+  /** Optional ISO date (`YYYY-MM-DD`) before which class cards are hidden. */
+  classScheduleStartDate?: string;
+  /** Public base path for staff profiles. Default: `/book`. */
+  staffProfileBasePath?: string;
 };

@@ -181,6 +181,8 @@ export function BookingProvider({
   cancelUrl,
   accentGradient,
   classSchedule,
+  classScheduleStartDate,
+  staffProfileBasePath,
   formatPrice,
   onEvent,
   basePath,
@@ -330,6 +332,8 @@ export function BookingProvider({
         cancelUrl={resolvedCancelUrl}
         accentGradient={accentGradient}
         classSchedule={classSchedule}
+        classScheduleStartDate={classScheduleStartDate}
+        staffProfileBasePath={staffProfileBasePath}
         formatPrice={formatPrice}
         onEvent={onEvent}
         basePath={basePath}

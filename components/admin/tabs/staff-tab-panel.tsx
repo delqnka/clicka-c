@@ -309,6 +309,106 @@ function PortalLinkInfo({ member, salonSlug, locale }: { member: StaffMember; sa
   );
 }
 
+function StaffProfileEditor({
+  member,
+  salonSlug,
+  locale,
+  onUpdate,
+}: {
+  member: StaffMember;
+  salonSlug: string;
+  locale: Locale;
+  onUpdate: (patch: Pick<StaffMember, 'bio' | 'avatarUrl'>) => void;
+}) {
+  const isEn = locale === 'en';
+  const [bio, setBio] = useState(member.bio ?? '');
+  const [avatarUrl, setAvatarUrl] = useState(member.avatarUrl ?? '');
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const save = useCallback(async () => {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const r = await fetch(`/api/admin/staff?slug=${encodeURIComponent(salonSlug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: member.id,
+          bio: bio.trim() || null,
+          avatarUrl: avatarUrl.trim() || null,
+        }),
+      });
+      if (!r.ok) throw new Error('Save failed');
+      const patch = {
+        bio: bio.trim() || null,
+        avatarUrl: avatarUrl.trim() || null,
+      };
+      onUpdate(patch);
+      setStatus({ type: 'ok', text: isEn ? 'Profile saved.' : 'Профилът е запазен.' });
+    } catch {
+      setStatus({ type: 'err', text: isEn ? 'Save failed. Please try again.' : 'Грешка при запис. Опитайте отново.' });
+    } finally {
+      setBusy(false);
+    }
+  }, [avatarUrl, bio, isEn, member.id, onUpdate, salonSlug]);
+
+  return (
+    <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: ADMIN_T.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        {isEn ? 'Public trainer profile' : 'Публичен профил на треньор'}
+      </p>
+      <div style={{ display: 'grid', gap: 8 }}>
+        <label style={{ display: 'grid', gap: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.muted }}>{isEn ? 'Photo URL' : 'URL на снимка'}</span>
+          <input
+            value={avatarUrl}
+            onChange={(e) => setAvatarUrl(e.target.value)}
+            placeholder="https://..."
+            style={{
+              width: '100%', padding: '8px 10px', borderRadius: 8,
+              border: `1px solid ${ADMIN_T.border}`, fontSize: 13,
+              color: ADMIN_T.text, background: '#fff', boxSizing: 'border-box',
+            }}
+          />
+        </label>
+        <label style={{ display: 'grid', gap: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.muted }}>{isEn ? 'Short bio' : 'Кратко био'}</span>
+          <textarea
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={3}
+            placeholder={isEn ? 'Short trainer bio shown on the public profile.' : 'Кратко био, което се показва в публичния профил.'}
+            style={{
+              width: '100%', padding: '8px 10px', borderRadius: 8,
+              border: `1px solid ${ADMIN_T.border}`, fontSize: 13,
+              color: ADMIN_T.text, background: '#fff', boxSizing: 'border-box',
+              resize: 'vertical',
+            }}
+          />
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          {status ? (
+            <span style={{ fontSize: 12, color: status.type === 'ok' ? '#15803d' : '#b91c1c' }}>{status.text}</span>
+          ) : <span />}
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={busy}
+            style={{
+              padding: '6px 12px', borderRadius: 8, border: 'none',
+              background: '#000', color: '#fff', fontSize: 12, fontWeight: 600,
+              cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
+            }}
+          >
+            {busy ? (isEn ? 'Saving…' : 'Записване…') : (isEn ? 'Save profile' : 'Запази профил')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OnboardingInfo({ member, sitePublicUrl, locale }: { member: StaffMember; sitePublicUrl: string; locale: Locale }) {
   const isEn = locale === 'en';
   const bookingUrl = `${sitePublicUrl.replace(/\/$/, '')}/book/${member.slug}`;
@@ -425,6 +525,10 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
 
   const updateMemberServices = useCallback((memberId: string, serviceIds: string[]) => {
     setStaff((prev) => prev.map((m) => m.id === memberId ? { ...m, serviceIds } : m));
+  }, []);
+
+  const updateMemberProfile = useCallback((memberId: string, patch: Pick<StaffMember, 'bio' | 'avatarUrl'>) => {
+    setStaff((prev) => prev.map((m) => m.id === memberId ? { ...m, ...patch } : m));
   }, []);
 
   const nonOwners = staff.filter((m) => !m.isOwner);
@@ -667,6 +771,12 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                         salonSlug={salonSlug}
                         onUpdate={(ids) => updateMemberServices(member.id, ids)}
                         locale={locale}
+                      />
+                      <StaffProfileEditor
+                        member={member}
+                        salonSlug={salonSlug}
+                        locale={locale}
+                        onUpdate={(patch) => updateMemberProfile(member.id, patch)}
                       />
                       <OnboardingInfo member={member} sitePublicUrl={sitePublicUrl} locale={locale} />
                       {!member.isOwner ? <PortalLinkInfo member={member} salonSlug={salonSlug} locale={locale} /> : null}
