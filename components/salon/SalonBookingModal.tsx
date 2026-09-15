@@ -183,7 +183,6 @@ export function SalonBookingModal({
   categoryTabs,
   classSchedule,
   classScheduleStartDate,
-  staffProfileBasePath = '/book',
   selectedServiceIdxs,
   lockedService = false,
   selectedDate,
@@ -267,12 +266,14 @@ export function SalonBookingModal({
   const [browseAllServices, setBrowseAllServices] = useState(true);
   const [selectedVariantByServiceId, setSelectedVariantByServiceId] = useState<Record<string, string>>({});
   const [variantDropdownOpenForServiceId, setVariantDropdownOpenForServiceId] = useState<string | null>(null);
+  const [bioStaff, setBioStaff] = useState<PublicStaffMember | null>(null);
   useEffect(() => {
     if (!open) return;
     setStep(1);
     setSelectedCategory(null);
     setBrowseAllServices(!lockedService);
     setVariantDropdownOpenForServiceId(null);
+    setBioStaff(null);
     const initial: Record<string, string> = {};
     for (const service of serviceCatalog) {
       const variants = service.variants ?? [];
@@ -624,10 +625,6 @@ export function SalonBookingModal({
                       const slotStaff = staffMembers.find(
                         (member) => normalizeTrainerName(member.name) === normalizeTrainerName(slot.trainer),
                       );
-                      const profileHref = slotStaff?.slug
-                        ? `${staffProfileBasePath.replace(/\/$/, '')}/${encodeURIComponent(slotStaff.slug)}`
-                        : null;
-
                       return (
                         <article
                           key={`${displayDate}-${slot.start}-${slot.trainer}`}
@@ -649,15 +646,14 @@ export function SalonBookingModal({
                                 <User className="h-4 w-4 text-black/40" aria-hidden />
                                 Клас с {slot.trainer}
                               </p>
-                              {profileHref ? (
-                                <a
-                                  href={profileHref}
+                              {slotStaff ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setBioStaff(slotStaff)}
                                   className="text-[13px] font-semibold text-black/55 underline underline-offset-2"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
                                 >
                                   Виж био
-                                </a>
+                                </button>
                               ) : (
                                 <span className="text-[13px] font-semibold text-black/30">Виж био</span>
                               )}
@@ -1321,6 +1317,55 @@ export function SalonBookingModal({
           </div>
         ) : null}
       </div>
+
+      {bioStaff ? (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/30 px-4 py-5 backdrop-blur-sm"
+          role="dialog"
+          aria-modal
+          aria-label={`Био на ${bioStaff.name}`}
+          onClick={() => setBioStaff(null)}
+        >
+          <div
+            className="relative flex max-h-[calc(100dvh-2.5rem)] w-full max-w-[520px] flex-col items-center overflow-auto rounded-[2rem] bg-white px-6 pb-6 pt-12 text-center shadow-[0_28px_80px_rgba(0,0,0,0.22)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setBioStaff(null)}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/[0.06] text-black/70 transition active:scale-95"
+              aria-label="Затвори"
+            >
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+
+            <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-[#eee9df] shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
+              {bioStaff.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={bioStaff.avatarUrl} alt={bioStaff.name} className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-[42px] font-semibold text-black/45">{bioStaff.name.charAt(0)}</span>
+              )}
+            </div>
+
+            <h3 className="mt-6 text-[32px] font-semibold leading-tight tracking-tight text-black">
+              {bioStaff.name}
+            </h3>
+            <p className="mt-2 text-[16px] text-black/50">Инструктор</p>
+            <p className="mt-6 whitespace-pre-line text-[16px] leading-relaxed text-black/65">
+              {bioStaff.bio?.trim() || 'Скоро ще добавим кратко био за тази треньорка.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setBioStaff(null)}
+              className={`mt-8 w-full rounded-full py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.98] ${gradientCtaShadow}`}
+              style={accentFillStyle}
+            >
+              Запази час
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
