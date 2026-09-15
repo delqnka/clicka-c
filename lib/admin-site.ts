@@ -17,6 +17,7 @@ import {
 import { normalizeBookingBlocks, type BookingBlock } from '@/lib/booking-blocks';
 import { normalizeClassSchedule, type BookingClassSchedule } from '@/lib/class-schedule';
 import { ensureAdminSiteSchema } from '@/lib/ensure-admin-site-schema';
+import { ensureStaffSchema } from '@/lib/ensure-staff-schema';
 import { normalizeSiteContent, type SiteContent } from '@/lib/site-content';
 
 export type WorkingDay = {
@@ -43,6 +44,7 @@ export type BookingRecord = {
   service_price: number | null;
   service_duration: number | null;
   booking_quantity: number | null;
+  staff_name?: string | null;
   date: string;
   time: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
@@ -292,14 +294,17 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
 }
 
 export async function loadBookingsBySalonId(salonId: string, limit = 200): Promise<BookingRecord[]> {
+  await ensureStaffSchema();
   const rows = await sql`
     SELECT
-      id, client_name, client_phone, client_email,
-      service_name, service_price, service_duration, booking_quantity,
-      date, time, status, notes, created_at, completed_at
-    FROM bookings
-    WHERE salon_id = ${salonId}
-    ORDER BY date DESC, time DESC
+      b.id, b.client_name, b.client_phone, b.client_email,
+      b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+      sm.name AS staff_name,
+      b.date, b.time, b.status, b.notes, b.created_at, b.completed_at
+    FROM bookings b
+    LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
+    WHERE b.salon_id = ${salonId}
+    ORDER BY b.date DESC, b.time DESC
     LIMIT ${Math.min(Math.max(limit, 1), 500)}
   `;
 

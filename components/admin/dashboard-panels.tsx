@@ -109,6 +109,47 @@ function ymdKey(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function todayKey() {
+  const now = new Date();
+  return ymdKey(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function normalizeDateKey(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const legacy = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (legacy) return `${legacy[3]}-${legacy[2]}-${legacy[1]}`;
+  return raw;
+}
+
+function getBookingStaffName(booking: BookingRecord): string {
+  return String((booking as BookingRecord & { staff_name?: string | null }).staff_name ?? '').trim();
+}
+
+function getBookingQuantity(booking: BookingRecord): number {
+  return Math.max(1, Number(booking.booking_quantity ?? 1) || 1);
+}
+
+function isActiveBookingForCapacity(booking: BookingRecord): boolean {
+  const status = String(booking.status ?? '').trim().toLowerCase();
+  return status !== 'cancelled';
+}
+
+function bookingMatchesSearch(booking: BookingRecord, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [
+    booking.client_name,
+    booking.client_phone,
+    booking.client_email,
+    booking.service_name,
+    getBookingStaffName(booking),
+    booking.notes,
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(q));
+}
+
 function isUpcomingBooking(booking: BookingRecord): boolean {
   const status = String(booking.status ?? '').trim().toLowerCase();
   if (status === 'cancelled' || status === 'completed') return false;
@@ -167,7 +208,8 @@ function BookingCard({
   const isEn = locale === 'en';
   const STATUS_CFG = statusCfg(locale);
   const cfg = STATUS_CFG[booking.status];
-  const bookingQuantity = Math.max(1, Number(booking.booking_quantity ?? 1) || 1);
+  const bookingQuantity = getBookingQuantity(booking);
+  const staffName = getBookingStaffName(booking);
 
   return (
     <div
@@ -185,6 +227,7 @@ function BookingCard({
         </p>
         <p style={{ margin: '5px 0 0', fontSize: isMobile ? 14 : 13, color: T.muted, lineHeight: 1.45, fontWeight: 500 }}>
           {booking.service_name}
+          {staffName ? ` · ${staffName}` : ''}
           {bookingQuantity > 1 ? (
             <span
               style={{
@@ -287,7 +330,6 @@ export function BookingsPanel({
   setSelectedCalendarDate,
   setCalendarCursor,
   visibleBookings,
-  groupedVisibleBookings,
   updateBookingStatus,
   inp,
   btn,
@@ -295,6 +337,7 @@ export function BookingsPanel({
   locale,
 }: BookingsPanelProps) {
   const isEn = locale === 'en';
+  const [searchQuery, setSearchQuery] = React.useState('');
   const CALENDAR_DAY_NAMES = isEn ? CALENDAR_DAY_NAMES_EN : CALENDAR_DAY_NAMES_BG;
   const bookingGroups =
     statusFilter === 'upcoming'
@@ -302,6 +345,69 @@ export function BookingsPanel({
       : statusFilter === 'history'
         ? historyBookingGroups(locale)
         : allBookingGroups(locale);
+  const today = todayKey();
+  const selectedDayBookings = React.useMemo(
+    () =>
+      selectedCalendarDate
+        ? bookings.filter((booking) => normalizeDateKey(booking.date) === selectedCalendarDate)
+        : visibleBookings,
+    [bookings, selectedCalendarDate, visibleBookings],
+  );
+  const selectedDayActiveBookings = React.useMemo(
+    () => selectedDayBookings.filter(isActiveBookingForCapacity),
+    [selectedDayBookings],
+  );
+  const selectedDayBeds = React.useMemo(
+    () => selectedDayActiveBookings.reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
+    [selectedDayActiveBookings],
+  );
+  const selectedDaySlots = React.useMemo(
+    () => new Set(selectedDayActiveBookings.map((booking) => String(booking.time ?? '').slice(0, 5)).filter(Boolean)).size,
+    [selectedDayActiveBookings],
+  );
+  const selectedDayCapacity = selectedDaySlots * 5;
+  const panelVisibleBookings = React.useMemo(
+    () => visibleBookings.filter((booking) => bookingMatchesSearch(booking, searchQuery)),
+    [visibleBookings, searchQuery],
+  );
+  const panelGroupedBookings = React.useMemo(() => {
+    const groups: Record<BookingGroupKey, BookingRecord[]> = {
+      upcoming: [],
+      past: [],
+      completed: [],
+      cancelled: [],
+    };
+    for (const booking of panelVisibleBookings) {
+      const status = String(booking.status ?? '').trim().toLowerCase();
+      if (status === 'cancelled') {
+        groups.cancelled.push(booking);
+      } else if (status === 'completed') {
+        groups.completed.push(booking);
+      } else if (bookingSlotIsPastSimple(String(booking.date ?? ''), String(booking.time ?? ''))) {
+        groups.past.push(booking);
+      } else {
+        groups.upcoming.push(booking);
+      }
+    }
+    return groups;
+  }, [panelVisibleBookings]);
+  const timelineRows = React.useMemo(() => {
+    const map = new Map<string, BookingRecord[]>();
+    for (const booking of panelVisibleBookings) {
+      const key = String(booking.time ?? '').slice(0, 5) || '—';
+      const arr = map.get(key) ?? [];
+      arr.push(booking);
+      map.set(key, arr);
+    }
+    return [...map.entries()]
+      .map(([time, rows]) => ({
+        time,
+        rows: rows.sort((a, b) => String(a.client_name ?? '').localeCompare(String(b.client_name ?? ''), locale === 'en' ? 'en' : 'bg')),
+        beds: rows.filter(isActiveBookingForCapacity).reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
+      }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }, [panelVisibleBookings, locale]);
+  const useTimelineView = Boolean(selectedCalendarDate) && (statusFilter === 'upcoming' || statusFilter === 'pending' || statusFilter === 'all');
 
   return (
     <>
@@ -382,6 +488,30 @@ export function BookingsPanel({
             style={{ ...btn('ghost'), padding: isMobile ? '5px 8px' : '6px 10px', minWidth: 0 }}
           >
             →
+          </button>
+        </div>
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              setCalendarCursor(() => new Date(now.getFullYear(), now.getMonth(), 1));
+              setSelectedCalendarDate(today);
+              setStatusFilter('upcoming');
+            }}
+            style={{
+              border: selectedCalendarDate === today ? 'none' : `1px solid ${T.border}`,
+              borderRadius: 999,
+              background: selectedCalendarDate === today ? '#111' : '#fff',
+              color: selectedCalendarDate === today ? '#fff' : T.text,
+              padding: '7px 14px',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: selectedCalendarDate === today ? '0 8px 18px rgba(0,0,0,0.18)' : '0 2px 8px rgba(0,0,0,0.06)',
+            }}
+          >
+            {isEn ? 'Today' : 'Днес'}
           </button>
         </div>
 
@@ -469,7 +599,55 @@ export function BookingsPanel({
         ) : null}
       </div>
 
-      {visibleBookings.length === 0 && externalCalendarEvents.length === 0 ? (
+      <div
+        style={{
+          display: 'grid',
+          gap: 10,
+          marginBottom: 14,
+          borderRadius: isMobile ? 18 : 16,
+          background: '#fff',
+          padding: isMobile ? 14 : 16,
+          boxShadow: '0 4px 18px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 12, flexDirection: isMobile ? 'column' : 'row' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              {statusFilter === 'history' ? (isEn ? 'History' : 'История') : (isEn ? 'Daily schedule' : 'Дневен график')}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: isMobile ? 18 : 20, color: T.text, fontWeight: 800, letterSpacing: '-0.02em' }}>
+              {selectedCalendarDate ? formatBgDateDMY(selectedCalendarDate, locale) : (isEn ? 'All dates' : 'Всички дати')}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ borderRadius: 999, background: '#ECFDF5', color: '#047857', padding: '7px 10px', fontSize: 12, fontWeight: 800 }}>
+              {selectedDayBeds}{selectedDayCapacity ? `/${selectedDayCapacity}` : ''} {isEn ? 'beds' : 'легла'}
+            </span>
+            <span style={{ borderRadius: 999, background: '#F4F4F5', color: T.muted, padding: '7px 10px', fontSize: 12, fontWeight: 800 }}>
+              {selectedDayActiveBookings.length} {isEn ? 'bookings' : 'резервации'}
+            </span>
+          </div>
+        </div>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder={isEn ? 'Search client, phone, email, service, trainer…' : 'Търси клиент, телефон, имейл, услуга, треньор…'}
+          style={{
+            width: '100%',
+            border: `1px solid ${T.border}`,
+            borderRadius: 12,
+            background: '#FAFAFA',
+            color: T.text,
+            padding: '11px 13px',
+            fontSize: 14,
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+
+      {panelVisibleBookings.length === 0 && externalCalendarEvents.length === 0 ? (
         <div style={{ padding: '20px 14px', color: T.muted, textAlign: 'center', fontSize: 14 }}>
           {isEn ? 'No bookings for the selected filters.' : 'Няма резервации за избраните филтри.'}
         </div>
@@ -500,27 +678,73 @@ export function BookingsPanel({
               ))}
             </div>
           ) : null}
-          {bookingGroups.map(([groupKey, groupLabel]) => {
-            const rows = groupedVisibleBookings[groupKey];
-            if (rows.length === 0) return null;
-            return (
-              <div key={groupKey} style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
-                <p style={{ margin: '2px 2px 0', fontSize: 13, fontWeight: 700, color: '#111' }}>
-                  {groupLabel}
-                </p>
-                {rows.map((b) => (
-                  <BookingCard
-                    key={b.id}
-                    booking={b}
-                    isMobile={isMobile}
-                    T={T}
-                    updateBookingStatus={updateBookingStatus}
-                    locale={locale}
-                  />
-                ))}
-              </div>
-            );
-          })}
+          {useTimelineView ? (
+            <div style={{ display: 'grid', gap: isMobile ? 12 : 10 }}>
+              {timelineRows.map((slot) => (
+                <div
+                  key={slot.time}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : '88px minmax(0, 1fr)',
+                    gap: isMobile ? 8 : 12,
+                    alignItems: 'start',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: isMobile ? 'static' : 'sticky',
+                      top: 12,
+                      borderRadius: 14,
+                      background: '#111',
+                      color: '#fff',
+                      padding: isMobile ? '9px 12px' : '10px 8px',
+                      textAlign: isMobile ? 'left' : 'center',
+                      boxShadow: '0 8px 18px rgba(0,0,0,0.18)',
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: isMobile ? 17 : 16, fontWeight: 900, letterSpacing: '-0.02em' }}>{slot.time}</p>
+                    <p style={{ margin: '3px 0 0', fontSize: 11, opacity: 0.72, fontWeight: 700 }}>
+                      {slot.beds}/5 {isEn ? 'beds' : 'легла'}
+                    </p>
+                  </div>
+                  <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+                    {slot.rows.map((b) => (
+                      <BookingCard
+                        key={b.id}
+                        booking={b}
+                        isMobile={isMobile}
+                        T={T}
+                        updateBookingStatus={updateBookingStatus}
+                        locale={locale}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            bookingGroups.map(([groupKey, groupLabel]) => {
+              const rows = panelGroupedBookings[groupKey];
+              if (rows.length === 0) return null;
+              return (
+                <div key={groupKey} style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+                  <p style={{ margin: '2px 2px 0', fontSize: 13, fontWeight: 700, color: '#111' }}>
+                    {groupLabel}
+                  </p>
+                  {rows.map((b) => (
+                    <BookingCard
+                      key={b.id}
+                      booking={b}
+                      isMobile={isMobile}
+                      T={T}
+                      updateBookingStatus={updateBookingStatus}
+                      locale={locale}
+                    />
+                  ))}
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </>

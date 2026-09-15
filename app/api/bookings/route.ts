@@ -13,6 +13,7 @@ import {
   parseTimeToMinutes,
 } from '@/lib/booking-time';
 import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
+import { ensureStaffSchema } from '@/lib/ensure-staff-schema';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { offerHasSpotsLeft, offerVisibleToClient } from '@/lib/salon-offers';
 import type { SalonOfferRow } from '@/lib/salon-offers';
@@ -182,16 +183,19 @@ export async function GET(request: NextRequest) {
   }
 
   const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+  await ensureStaffSchema();
 
   const rows = isIsoDate(from) && isIsoDate(to)
     ? status
       ? await sql`
-          SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration, booking_quantity,
-            date, time, status, notes, created_at
-          FROM bookings
-          WHERE salon_id = ${salonId}
-            AND status = ${status}
+          SELECT b.id, b.client_name, b.client_phone, b.client_email,
+            b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            sm.name AS staff_name,
+            b.date, b.time, b.status, b.notes, b.created_at
+          FROM bookings b
+          LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
+          WHERE b.salon_id = ${salonId}
+            AND b.status = ${status}
             AND (
               (date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND date >= ${from} AND date <= ${to})
               OR (
@@ -206,15 +210,17 @@ export async function GET(request: NextRequest) {
               WHEN date ~ '^[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}$' THEN to_date(date, 'DD.MM.YYYY')
               ELSE NULL
             END DESC,
-            time DESC
+            b.time DESC
           LIMIT ${limit}
         `
       : await sql`
-          SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration, booking_quantity,
-            date, time, status, notes, created_at
-          FROM bookings
-          WHERE salon_id = ${salonId}
+          SELECT b.id, b.client_name, b.client_phone, b.client_email,
+            b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            sm.name AS staff_name,
+            b.date, b.time, b.status, b.notes, b.created_at
+          FROM bookings b
+          LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
+          WHERE b.salon_id = ${salonId}
             AND (
               (date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND date >= ${from} AND date <= ${to})
               OR (
@@ -229,46 +235,54 @@ export async function GET(request: NextRequest) {
               WHEN date ~ '^[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}$' THEN to_date(date, 'DD.MM.YYYY')
               ELSE NULL
             END DESC,
-            time DESC
+            b.time DESC
           LIMIT ${limit}
         `
     : status
     ? before
       ? await sql`
-          SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration, booking_quantity,
-            date, time, status, notes, created_at
-          FROM bookings
-          WHERE salon_id = ${salonId} AND status = ${status} AND date < ${before}
-          ORDER BY date DESC, time DESC
+          SELECT b.id, b.client_name, b.client_phone, b.client_email,
+            b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            sm.name AS staff_name,
+            b.date, b.time, b.status, b.notes, b.created_at
+          FROM bookings b
+          LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
+          WHERE b.salon_id = ${salonId} AND b.status = ${status} AND b.date < ${before}
+          ORDER BY b.date DESC, b.time DESC
           LIMIT ${limit}
         `
       : await sql`
-          SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration, booking_quantity,
-            date, time, status, notes, created_at
-          FROM bookings
-          WHERE salon_id = ${salonId} AND status = ${status}
-          ORDER BY date DESC, time DESC
+          SELECT b.id, b.client_name, b.client_phone, b.client_email,
+            b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            sm.name AS staff_name,
+            b.date, b.time, b.status, b.notes, b.created_at
+          FROM bookings b
+          LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
+          WHERE b.salon_id = ${salonId} AND b.status = ${status}
+          ORDER BY b.date DESC, b.time DESC
           LIMIT ${limit}
         `
     : before
       ? await sql`
-          SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration, booking_quantity,
-            date, time, status, notes, created_at
-          FROM bookings
-          WHERE salon_id = ${salonId} AND date < ${before}
-          ORDER BY date DESC, time DESC
+          SELECT b.id, b.client_name, b.client_phone, b.client_email,
+            b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            sm.name AS staff_name,
+            b.date, b.time, b.status, b.notes, b.created_at
+          FROM bookings b
+          LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
+          WHERE b.salon_id = ${salonId} AND b.date < ${before}
+          ORDER BY b.date DESC, b.time DESC
           LIMIT ${limit}
         `
       : await sql`
-          SELECT id, client_name, client_phone, client_email,
-            service_name, service_price, service_duration, booking_quantity,
-            date, time, status, notes, created_at
-          FROM bookings
-          WHERE salon_id = ${salonId}
-          ORDER BY date DESC, time DESC
+          SELECT b.id, b.client_name, b.client_phone, b.client_email,
+            b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            sm.name AS staff_name,
+            b.date, b.time, b.status, b.notes, b.created_at
+          FROM bookings b
+          LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
+          WHERE b.salon_id = ${salonId}
+          ORDER BY b.date DESC, b.time DESC
           LIMIT ${limit}
         `;
 
