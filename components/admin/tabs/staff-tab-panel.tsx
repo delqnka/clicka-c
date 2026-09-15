@@ -561,8 +561,12 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
       ) : null}
 
       <AdminSection
-        title={isEn ? 'Staff' : 'Служители'}
-        desc={isEn ? `${nonOwners.length} staff members (you as owner are not counted here)` : `${nonOwners.length} служителя (ти като собственик не влизаш в този брой)`}
+        title={isEn ? 'Team / trainers' : 'Екип / треньори'}
+        desc={
+          isEn
+            ? `${nonOwners.length} trainers. Their photo and bio appear on the public site and in the booking “View bio” link.`
+            : `${nonOwners.length} треньорки. Снимката и био-то им се показват в сайта и във “Виж био” в booking-а.`
+        }
         action={
           canAdd ? (
             <button
