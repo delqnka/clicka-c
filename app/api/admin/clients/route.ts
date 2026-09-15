@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { ensureSalonClientsSchema } from '@/lib/ensure-salon-clients-schema';
+import { ensureClientPackagesSchema } from '@/lib/client-packages';
 
 export async function DELETE(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   const salonId = auth.salon.salonId;
 
   try {
-    await ensureSalonClientsSchema();
+    await ensureClientPackagesSchema();
     const rows = await sql`
       SELECT
         sc.id,
@@ -49,7 +50,8 @@ export async function GET(request: NextRequest) {
         (
           ARRAY_AGG(GREATEST(1, COALESCE(b.booking_quantity, 1)) ORDER BY b.date DESC, b.time DESC)
           FILTER (WHERE b.id IS NOT NULL)
-        )[1] AS last_booking_quantity
+        )[1] AS last_booking_quantity,
+        pkg.active_package
       FROM salon_clients sc
       LEFT JOIN bookings b
         ON b.salon_id = sc.salon_id
@@ -59,10 +61,37 @@ export async function GET(request: NextRequest) {
          OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
          OR lower(trim(b.client_name)) = lower(trim(sc.name))
        )
+      LEFT JOIN LATERAL (
+        SELECT jsonb_build_object(
+          'id', cp.id,
+          'packageName', cp.package_name,
+          'totalSessions', cp.total_sessions,
+          'usedSessions', cp.used_sessions,
+          'remainingSessions', GREATEST(0, cp.total_sessions - cp.used_sessions),
+          'expiresAt', cp.expires_at,
+          'status',
+            CASE
+              WHEN cp.expires_at < CURRENT_DATE THEN 'expired'
+              WHEN cp.used_sessions >= cp.total_sessions THEN 'used'
+              ELSE 'active'
+            END
+        ) AS active_package
+        FROM client_packages cp
+        WHERE cp.salon_id = sc.salon_id
+          AND (
+            (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(cp.client_email)) = lower(trim(sc.email)))
+            OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+            OR lower(trim(cp.client_name)) = lower(trim(sc.name))
+          )
+          AND cp.expires_at >= CURRENT_DATE
+          AND cp.used_sessions < cp.total_sessions
+        ORDER BY cp.expires_at ASC, cp.created_at ASC
+        LIMIT 1
+      ) pkg ON true
       WHERE sc.salon_id = ${salonId}
-      GROUP BY sc.id, sc.name, sc.phone, sc.email, sc.created_at
+      GROUP BY sc.id, sc.name, sc.phone, sc.email, sc.created_at, pkg.active_package
       ORDER BY sc.name ASC
-    ` as { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits: number; total_spent: string; last_visit: string | null; last_booking_quantity: number | null }[];
+    ` as { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits: number; total_spent: string; last_visit: string | null; last_booking_quantity: number | null; active_package: unknown }[];
     return NextResponse.json({ clients: rows });
   } catch {
     return NextResponse.json({ clients: [] });

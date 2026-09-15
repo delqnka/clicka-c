@@ -25,6 +25,7 @@ import { sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getStaffMemberById, getStaffMembers } from '@/lib/staff-members';
+import { consumePackageForCompletedBooking } from '@/lib/client-packages';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 type OccupiedSlot = { time: string; duration: number; quantity: number; blocksAll?: boolean };
@@ -669,6 +670,14 @@ export async function PATCH(request: NextRequest) {
     const booking = updated[0] as Record<string, unknown>;
     const clientEmail = String(booking.client_email ?? '').trim();
     const googlePlaceId = String((resolved.salon as Record<string, unknown>).google_place_id ?? '').trim();
+
+    await consumePackageForCompletedBooking({
+      salonId,
+      bookingId,
+      clientName: String(booking.client_name ?? ''),
+      clientPhone: String(booking.client_phone ?? ''),
+      clientEmail,
+    }).catch((err) => console.error('[bookings PATCH] package consume failed', err));
 
     const inviteLock = await sql`
       UPDATE bookings

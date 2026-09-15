@@ -34,6 +34,15 @@ type ClientSummary = {
   lastVisit: string;
   lastBookingQuantity?: number;
   isNew?: boolean;
+  activePackage?: {
+    id: string;
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+    expiresAt: string;
+    status: 'active' | 'expired' | 'used';
+  } | null;
 };
 
 type ExternalCalendarEventRow = {
@@ -507,6 +516,7 @@ export function ClientsPanel({
   T,
   onDelete,
   onEdit,
+  onAddPackage,
   locale,
 }: {
   clients: ClientSummary[];
@@ -514,12 +524,14 @@ export function ClientsPanel({
   T: ThemePalette;
   onDelete?: (key: string) => void;
   onEdit?: (key: string, data: { name: string; phone: string; email: string }) => void;
+  onAddPackage?: (client: ClientSummary, totalSessions: 4 | 8) => Promise<void>;
   locale: Locale;
 }) {
   const isEn = locale === 'en';
   const [confirmKey, setConfirmKey] = React.useState<string | null>(null);
   const [editDraft, setEditDraft] = React.useState<EditDraft | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [packageBusyKey, setPackageBusyKey] = React.useState<string | null>(null);
   const [sortBy, setSortBy] = React.useState<ClientSort>('newest');
   const frozenOrderRef = React.useRef<string[] | null>(null);
 
@@ -668,6 +680,42 @@ export function ClientsPanel({
                   ? ` · ${Math.max(1, Number(client.lastBookingQuantity ?? 1) || 1)} ${isEn ? 'beds' : 'легла'}`
                   : ''}
               </p>
+              <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {client.activePackage ? (
+                  <span style={{ display: 'inline-flex', borderRadius: 999, background: '#ecfdf5', color: '#047857', padding: '4px 9px', fontSize: 12, fontWeight: 700 }}>
+                    {isEn ? 'Package: ' : 'Пакет: '}
+                    {client.activePackage.remainingSessions}/{client.activePackage.totalSessions}
+                    {' · '}
+                    {isEn ? 'valid until ' : 'до '}
+                    {new Date(`${client.activePackage.expiresAt}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}
+                  </span>
+                ) : (
+                  <span style={{ display: 'inline-flex', borderRadius: 999, background: '#f4f4f5', color: T.subtle, padding: '4px 9px', fontSize: 12, fontWeight: 600 }}>
+                    {isEn ? 'No active package' : 'Няма активен пакет'}
+                  </span>
+                )}
+                {onAddPackage ? ([4, 8] as const).map((count) => {
+                  const busy = packageBusyKey === `${client.key}:${count}`;
+                  return (
+                    <button
+                      key={count}
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        setPackageBusyKey(`${client.key}:${count}`);
+                        try {
+                          await onAddPackage(client, count);
+                        } finally {
+                          setPackageBusyKey(null);
+                        }
+                      }}
+                      style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '4px 9px', fontSize: 12, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                    >
+                      {busy ? '…' : `+${count}`}
+                    </button>
+                  );
+                }) : null}
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0, minWidth: 0 }}>
               <div style={{ textAlign: isMobile ? 'left' : 'right', minWidth: 0 }}>

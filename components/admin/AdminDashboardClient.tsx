@@ -217,6 +217,15 @@ type ClientSummary = {
   lastVisit: string;
   lastBookingQuantity?: number;
   isNew?: boolean;
+  activePackage?: {
+    id: string;
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+    expiresAt: string;
+    status: 'active' | 'expired' | 'used';
+  } | null;
 };
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
 type GoogleReviewsStatus = {
@@ -275,6 +284,7 @@ function mergeBookingAndExtraClients(bookingClients: ClientSummary[], extraClien
     if (!existing.phone && extra.phone) existing.phone = extra.phone;
     if (!existing.email && extra.email) existing.email = extra.email;
     if (existing.name === 'Клиент' && extra.name) existing.name = extra.name;
+    if (!existing.activePackage && extra.activePackage) existing.activePackage = extra.activePackage;
     if (extra.isNew && existing.visits === 0) existing.isNew = true;
   }
 
@@ -752,7 +762,7 @@ export default function AdminDashboardClient({
     const timeout = window.setTimeout(() => {
       fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, { signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : null)
-      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null }[] } | null) => {
+      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null; active_package?: ClientSummary['activePackage'] }[] } | null) => {
         setExtraClientsLoaded(true);
         if (!data?.clients?.length) return;
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -765,6 +775,7 @@ export default function AdminDashboardClient({
           totalSpent: Math.max(0, Number(c.total_spent ?? 0) || 0),
           lastVisit: String(c.last_visit ?? ''),
           lastBookingQuantity: c.last_booking_quantity == null ? undefined : Math.max(1, Number(c.last_booking_quantity) || 1),
+          activePackage: c.active_package ?? null,
           isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
         })));
       })
@@ -2592,6 +2603,39 @@ export default function AdminDashboardClient({
                     } else {
                       setHiddenClientKeys((prev) => new Set([...prev, key]));
                     }
+                  }}
+                  onAddPackage={async (client, totalSessions) => {
+                    const res = await fetch(`/api/admin/client-packages?slug=${encodeURIComponent(slug)}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        clientName: client.name,
+                        clientPhone: client.phone || null,
+                        clientEmail: client.email || null,
+                        totalSessions,
+                      }),
+                    });
+                    if (!res.ok) {
+                      const json = await res.json().catch(() => ({})) as { error?: string };
+                      throw new Error(json.error ?? 'Package creation failed');
+                    }
+                    const activePackage = {
+                      id: `new-${Date.now()}`,
+                      packageName: `${totalSessions} тренировки`,
+                      totalSessions,
+                      usedSessions: 0,
+                      remainingSessions: totalSessions,
+                      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                      status: 'active' as const,
+                    };
+                    setExtraClients((prev) => {
+                      const existingIndex = prev.findIndex((c) => clientsReferToSamePerson(c, client));
+                      if (existingIndex >= 0) {
+                        return prev.map((c, index) => index === existingIndex ? { ...c, activePackage } : c);
+                      }
+                      return [...prev, { ...client, key: client.key.startsWith('sc-') ? client.key : `pkg-${Date.now()}`, activePackage }];
+                    });
+                    setNotice(locale === 'en' ? 'Package added.' : `Добавен е пакет ${totalSessions} тренировки.`);
                   }}
                   locale={locale}
                 />
