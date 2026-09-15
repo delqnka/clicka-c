@@ -206,7 +206,7 @@ type Props = {
 };
 
 type BookingStatus = BookingRecord['status'];
-type BookingListFilter = 'all' | 'upcoming' | BookingStatus;
+type BookingListFilter = 'all' | 'upcoming' | 'history' | BookingStatus;
 type ClientSummary = {
   key: string;
   name: string;
@@ -333,6 +333,11 @@ function ymdKey(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function todayKey() {
+  const now = new Date();
+  return ymdKey(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 function monthBoundsForCursor(cursor: Date) {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -426,7 +431,9 @@ export default function AdminDashboardClient({
   const [bookingSubTab, setBookingSubTab] = useState<TabId>('bookings');
   const [accountSubTab, setAccountSubTab] = useState<TabId>('account');
   const [siteNav, setSiteNav] = useState<{ section: string; v: number } | undefined>(undefined);
-  const [statusFilter, setStatusFilter] = useState<BookingListFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<BookingListFilter>('upcoming');
+  const [bookingSoundEnabled, setBookingSoundEnabled] = useState(false);
+  const [newBookingsCount, setNewBookingsCount] = useState(0);
   const [error, setError]         = useState('');
   const [notice, setNotice]       = useState('');
   const [busyKey, setBusyKey]     = useState('');
@@ -458,7 +465,7 @@ export default function AdminDashboardClient({
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(() => todayKey());
   const externalCalendarEvents = useMemo(
     () => (selectedCalendarDate ? allExternalEvents.filter((ev) => ev.date === selectedCalendarDate) : []),
     [allExternalEvents, selectedCalendarDate],
@@ -468,6 +475,38 @@ export default function AdminDashboardClient({
   const [pwaOnHomeScreen, setPwaOnHomeScreen] = useState(false);
   const mobileNavSheetRef = useRef<HTMLDivElement>(null);
   const sheetDragRef = useRef({ startY: 0, offset: 0, dragging: false });
+  const knownBookingIdsRef = useRef<Set<string> | null>(null);
+  const bookingSoundEnabledRef = useRef(false);
+
+  useEffect(() => {
+    bookingSoundEnabledRef.current = bookingSoundEnabled;
+  }, [bookingSoundEnabled]);
+
+  const playNewBookingSound = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioContextCtor =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const ctx = new AudioContextCtor();
+      const gain = ctx.createGain();
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1174, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.38);
+      window.setTimeout(() => void ctx.close().catch(() => {}), 600);
+    } catch {
+      // Browser audio can be blocked until the admin enables it with a tap.
+    }
+  }, []);
   const [navOpen, setNavOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [qrOpen, setQrOpen] = useState(false);
@@ -543,6 +582,12 @@ export default function AdminDashboardClient({
           const status = String(b.status ?? '').trim().toLowerCase();
           if (status === 'cancelled' || status === 'completed') return false;
           return !bookingSlotIsPastSimple(String(b.date ?? ''), String(b.time ?? ''));
+        });
+      }
+      if (deferredStatusFilter === 'history') {
+        return deferredBookings.filter((b) => {
+          const status = String(b.status ?? '').trim().toLowerCase();
+          return status === 'cancelled' || status === 'completed' || bookingSlotIsPastSimple(String(b.date ?? ''), String(b.time ?? ''));
         });
       }
       return deferredBookings.filter((b) => b.status === deferredStatusFilter);
@@ -1011,10 +1056,28 @@ export default function AdminDashboardClient({
     const recentBookings = Array.isArray(recentData.bookings) ? recentData.bookings : [];
     const monthBookings = Array.isArray(monthData.bookings) ? monthData.bookings : [];
     if (recentRes.ok || monthRes.ok) {
-      setBookings(mergeBookingsById(monthBookings, recentBookings));
+      const merged = mergeBookingsById(monthBookings, recentBookings);
+      if (recentRes.ok) {
+        const nextRecentIds = new Set(recentBookings.map((booking) => String(booking.id)).filter(Boolean));
+        const knownIds = knownBookingIdsRef.current;
+        if (knownIds) {
+          const newCount = [...nextRecentIds].filter((id) => !knownIds.has(id)).length;
+          if (newCount > 0) {
+            setNewBookingsCount((count) => count + newCount);
+            setNotice(
+              newCount === 1
+                ? (locale === 'en' ? 'New booking received.' : 'Има нова резервация.')
+                : (locale === 'en' ? `${newCount} new bookings received.` : `Има ${newCount} нови резервации.`),
+            );
+            if (bookingSoundEnabledRef.current) playNewBookingSound();
+          }
+        }
+        knownBookingIdsRef.current = nextRecentIds;
+      }
+      setBookings(merged);
       setBookingsLoaded(true);
     }
-  }, [calendarCursor, slug]);
+  }, [calendarCursor, locale, playNewBookingSound, slug]);
 
   useEffect(() => {
     if (activeTab !== 'bookings') return;
@@ -2481,13 +2544,42 @@ export default function AdminDashboardClient({
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#000', minWidth: 0 }}>
                       {bookings.length} {locale === 'en' ? 'total' : 'общо'}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !bookingSoundEnabled;
+                        setBookingSoundEnabled(next);
+                        setNewBookingsCount(0);
+                        if (next) playNewBookingSound();
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        border: `1px solid ${bookingSoundEnabled ? '#86EFAC' : T.border}`,
+                        borderRadius: 999,
+                        background: bookingSoundEnabled ? '#ECFDF5' : '#fff',
+                        color: bookingSoundEnabled ? '#047857' : T.muted,
+                        padding: isMobile ? '7px 10px' : '8px 12px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: newBookingsCount > 0 ? '0 0 0 4px rgba(34,197,94,0.14)' : 'none',
+                      }}
+                      title={locale === 'en' ? 'Enable sound for new bookings' : 'Включи звук при нова резервация'}
+                    >
+                      <span aria-hidden="true">{newBookingsCount > 0 ? '🔔' : '🔕'}</span>
+                      <span>{bookingSoundEnabled ? (locale === 'en' ? 'Sound on' : 'Звук вкл.') : (locale === 'en' ? 'Sound' : 'Звук')}</span>
+                      {newBookingsCount > 0 ? <span>{newBookingsCount}</span> : null}
+                    </button>
                     {!isMobile ? (
                       <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as BookingListFilter)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
-                        <option value="all">{locale === 'en' ? 'All' : 'Всички'}</option>
-                        <option value="upcoming">{locale === 'en' ? 'Upcoming' : 'Предстоящи'}</option>
+                        <option value="upcoming">{locale === 'en' ? 'Schedule' : 'График'}</option>
+                        <option value="history">{locale === 'en' ? 'History' : 'История'}</option>
                         <option value="pending">{locale === 'en' ? 'Pending' : 'Чакащи'}</option>
                         <option value="completed">{locale === 'en' ? 'Completed' : 'Завършени'}</option>
                         <option value="cancelled">{locale === 'en' ? 'Cancelled' : 'Отказани'}</option>
+                        <option value="all">{locale === 'en' ? 'All' : 'Всички'}</option>
                       </select>
                     ) : null}
                   </div>

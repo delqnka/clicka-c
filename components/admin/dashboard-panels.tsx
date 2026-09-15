@@ -8,7 +8,7 @@ import type { Locale } from '@/lib/i18n';
 
 type BookingStatus = BookingRecord['status'];
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
-export type BookingListFilter = 'all' | 'upcoming' | BookingStatus;
+export type BookingListFilter = 'all' | 'upcoming' | 'history' | BookingStatus;
 
 type ThemePalette = {
   text: string;
@@ -118,6 +118,12 @@ function isUpcomingBooking(booking: BookingRecord): boolean {
 function bookingFilterCount(bookings: BookingRecord[], filter: BookingListFilter): number {
   if (filter === 'all') return bookings.length;
   if (filter === 'upcoming') return bookings.filter(isUpcomingBooking).length;
+  if (filter === 'history') {
+    return bookings.filter((booking) => {
+      const status = String(booking.status ?? '').trim().toLowerCase();
+      return status === 'completed' || status === 'cancelled' || bookingSlotIsPastSimple(String(booking.date ?? ''), String(booking.time ?? ''));
+    }).length;
+  }
   return bookings.filter((b) => b.status === filter).length;
 }
 
@@ -134,6 +140,15 @@ function allBookingGroups(locale: Locale): ReadonlyArray<readonly [BookingGroupK
 function upcomingBookingGroups(locale: Locale): ReadonlyArray<readonly [BookingGroupKey, string]> {
   const isEn = locale === 'en';
   return [['upcoming', isEn ? 'Upcoming' : 'Предстоящи']];
+}
+
+function historyBookingGroups(locale: Locale): ReadonlyArray<readonly [BookingGroupKey, string]> {
+  const isEn = locale === 'en';
+  return [
+    ['past', isEn ? 'Past' : 'Минали'],
+    ['completed', isEn ? 'Completed' : 'Завършени'],
+    ['cancelled', isEn ? 'Cancelled' : 'Отказани'],
+  ];
 }
 
 function BookingCard({
@@ -281,15 +296,20 @@ export function BookingsPanel({
 }: BookingsPanelProps) {
   const isEn = locale === 'en';
   const CALENDAR_DAY_NAMES = isEn ? CALENDAR_DAY_NAMES_EN : CALENDAR_DAY_NAMES_BG;
-  const bookingGroups = statusFilter === 'upcoming' ? upcomingBookingGroups(locale) : allBookingGroups(locale);
+  const bookingGroups =
+    statusFilter === 'upcoming'
+      ? upcomingBookingGroups(locale)
+      : statusFilter === 'history'
+        ? historyBookingGroups(locale)
+        : allBookingGroups(locale);
 
   return (
     <>
       {isMobile && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           {([
-            ['all', isEn ? 'All' : 'Всички'],
-            ['upcoming', isEn ? 'Upcoming' : 'Предстоящи'],
+            ['upcoming', isEn ? 'Schedule' : 'График'],
+            ['history', isEn ? 'History' : 'История'],
             ['pending', isEn ? 'Pending' : 'Чакащи'],
             ['completed', isEn ? 'Completed' : 'Завършени'],
             ['cancelled', isEn ? 'Cancelled' : 'Отказани'],
