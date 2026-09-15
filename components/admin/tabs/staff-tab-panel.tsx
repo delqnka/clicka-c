@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { UserRound, Plus, Trash2, PowerOff, Power, AlertCircle, X, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
@@ -332,9 +332,11 @@ function StaffProfileEditor({
   const [bio, setBio] = useState(member.bio ?? '');
   const [avatarUrl, setAvatarUrl] = useState(member.avatarUrl ?? '');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const save = useCallback(async () => {
+  const saveProfile = useCallback(async (nextBio: string, nextAvatarUrl: string) => {
     setBusy(true);
     setStatus(null);
     try {
@@ -343,14 +345,14 @@ function StaffProfileEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: member.id,
-          bio: bio.trim() || null,
-          avatarUrl: avatarUrl.trim() || null,
+          bio: nextBio.trim() || null,
+          avatarUrl: nextAvatarUrl.trim() || null,
         }),
       });
       if (!r.ok) throw new Error('Save failed');
       const patch = {
-        bio: bio.trim() || null,
-        avatarUrl: avatarUrl.trim() || null,
+        bio: nextBio.trim() || null,
+        avatarUrl: nextAvatarUrl.trim() || null,
       };
       onUpdate(patch);
       setStatus({ type: 'ok', text: isEn ? 'Profile saved.' : 'Профилът е запазен.' });
@@ -359,7 +361,39 @@ function StaffProfileEditor({
     } finally {
       setBusy(false);
     }
-  }, [avatarUrl, bio, isEn, member.id, onUpdate, salonSlug]);
+  }, [isEn, member.id, onUpdate, salonSlug]);
+
+  const save = useCallback(() => saveProfile(bio, avatarUrl), [avatarUrl, bio, saveProfile]);
+
+  const uploadPhoto = useCallback(async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setStatus(null);
+    const preview = URL.createObjectURL(file);
+    setAvatarUrl(preview);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch(`/api/upload?slug=${encodeURIComponent(salonSlug)}&kind=profile`, {
+        method: 'POST',
+        body: fd,
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(String(data.error || 'Upload failed'));
+      const url = String(data.url ?? '').trim();
+      if (!url) throw new Error('Missing image URL');
+      setAvatarUrl(url);
+      await saveProfile(bio, url);
+      setStatus({ type: 'ok', text: isEn ? 'Photo uploaded and saved.' : 'Снимката е качена и запазена.' });
+    } catch {
+      setAvatarUrl(member.avatarUrl ?? '');
+      setStatus({ type: 'err', text: isEn ? 'Photo upload failed. Please try again.' : 'Грешка при качване на снимката. Опитайте отново.' });
+    } finally {
+      URL.revokeObjectURL(preview);
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [bio, isEn, member.avatarUrl, salonSlug, saveProfile]);
 
   return (
     <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
@@ -367,19 +401,91 @@ function StaffProfileEditor({
         {isEn ? 'Public trainer profile' : 'Публичен профил на треньор'}
       </p>
       <div style={{ display: 'grid', gap: 8 }}>
-        <label style={{ display: 'grid', gap: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.muted }}>{isEn ? 'Photo URL' : 'URL на снимка'}</span>
-          <input
-            value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            placeholder="https://..."
-            style={{
-              width: '100%', padding: '8px 10px', borderRadius: 8,
-              border: `1px solid ${ADMIN_T.border}`, fontSize: 13,
-              color: ADMIN_T.text, background: '#fff', boxSizing: 'border-box',
-            }}
-          />
-        </label>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.muted }}>{isEn ? 'Photo' : 'Снимка'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                border: `1px solid ${ADMIN_T.border}`,
+                background: '#f4f4f5',
+                display: 'grid',
+                placeItems: 'center',
+                color: ADMIN_T.muted,
+                fontSize: 12,
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt={member.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                member.name.slice(0, 1).toUpperCase()
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => void uploadPhoto(e.target.files?.[0] ?? null)}
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy || uploading}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${ADMIN_T.border}`,
+                  background: '#fff',
+                  color: ADMIN_T.text,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: uploading ? 'wait' : 'pointer',
+                  opacity: busy || uploading ? 0.7 : 1,
+                }}
+              >
+                {uploading ? (isEn ? 'Uploading…' : 'Качване…') : avatarUrl ? (isEn ? 'Change photo' : 'Смени снимка') : (isEn ? 'Upload photo' : 'Качи снимка')}
+              </button>
+              {avatarUrl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatarUrl('');
+                    void saveProfile(bio, '');
+                  }}
+                  disabled={busy || uploading}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 8,
+                    border: `1px solid ${ADMIN_T.border}`,
+                    background: '#fff',
+                    color: ADMIN_T.muted,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: busy ? 'wait' : 'pointer',
+                    opacity: busy || uploading ? 0.7 : 1,
+                  }}
+                >
+                  {isEn ? 'Remove' : 'Премахни'}
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.subtle }}>
+            {isEn ? 'Upload a square or portrait photo. It will appear in the trainer profile and booking bio.' : 'Качи квадратна или портретна снимка. Ще се вижда в профила на треньорката и в биото в резервацията.'}
+          </p>
+        </div>
         <label style={{ display: 'grid', gap: 4 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_T.muted }}>{isEn ? 'Short bio' : 'Кратко био'}</span>
           <textarea
@@ -402,11 +508,11 @@ function StaffProfileEditor({
           <button
             type="button"
             onClick={() => void save()}
-            disabled={busy}
+            disabled={busy || uploading}
             style={{
               padding: '6px 12px', borderRadius: 8, border: 'none',
               background: '#000', color: '#fff', fontSize: 12, fontWeight: 600,
-              cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
+              cursor: busy ? 'wait' : 'pointer', opacity: busy || uploading ? 0.7 : 1,
             }}
           >
             {busy ? (isEn ? 'Saving…' : 'Записване…') : (isEn ? 'Save profile' : 'Запази профил')}
