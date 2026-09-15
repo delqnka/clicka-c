@@ -79,18 +79,18 @@ export async function getStaffMembers(salonId: string): Promise<StaffMember[]> {
         AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
         AND (
           lower(trim(coalesce(b.status, ''))) = 'completed'
-          OR (
-            b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'
-            AND b.time ~ '^\\d{1,2}:\\d{2}'
-            AND (
-              b.date::date < CURRENT_DATE
-              OR (
-                b.date::date = CURRENT_DATE
-                AND substring(b.time from '^\\d{1,2}:\\d{2}')::time <= LOCALTIME
+          OR CASE
+            WHEN b.date ~ '^\\d{4}-\\d{2}-\\d{2}$' AND b.time ~ '^\\d{1,2}:\\d{2}'
+              THEN (
+                b.date::date < CURRENT_DATE
+                OR (
+                  b.date::date = CURRENT_DATE
+                  AND substring(b.time from '^\\d{1,2}:\\d{2}')::time <= LOCALTIME
+                )
               )
-            )
+            ELSE false
+          END
           )
-        )
     ) stats ON true
     WHERE sm.salon_id = ${salonId}
     GROUP BY sm.id, stats.completed_classes_count, stats.completed_revenue
