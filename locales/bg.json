@@ -164,19 +164,19 @@
       "images": "Снимки за сайта",
       "specialist": "Профил на собственика",
       "staff": "Екип / Треньори",
-      "services": "Услуги за резервации",
+      "services": "Услуги",
       "offers": "Оферти",
       "brands": "Брандове",
       "blog": "Блог",
       "hours": "Работно време",
-      "bookings": "Резервации",
+      "bookings": "График",
       "clients": "Клиенти",
       "domain": "Собствен домейн",
       "payments": "Плащания",
       "integrations": "Интеграции",
       "marketing": "Маркетинг",
       "legal": "Правни",
-      "account": "Акаунт"
+      "account": "Настройки"
     },
     "groups": {
       "navigation": "Навигация",

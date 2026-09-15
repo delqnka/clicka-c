@@ -164,19 +164,19 @@
       "images": "Site images",
       "specialist": "Owner profile",
       "staff": "Team / Trainers",
-      "services": "Booking services",
+      "services": "Services",
       "offers": "Offers",
       "brands": "Brands",
       "blog": "Blog",
       "hours": "Working hours",
-      "bookings": "Booking",
+      "bookings": "Schedule",
       "clients": "Clients",
       "domain": "Custom domain",
       "payments": "Payments",
       "integrations": "Integrations",
       "marketing": "Marketing",
       "legal": "Legal",
-      "account": "Account"
+      "account": "Settings"
     },
     "groups": {
       "navigation": "Navigation",

@@ -113,16 +113,16 @@ const DAYS = [
 ] as const;
 
 const TABS = [
+  { id: 'bookings',      labelKey: 'adminDashboard.tabs.bookings', Icon: CalendarClock },
+  { id: 'clients',       labelKey: 'adminDashboard.tabs.clients', Icon: Users },
+  { id: 'staff',         labelKey: 'adminDashboard.tabs.staff', Icon: UsersRound },
   { id: 'site',          labelKey: 'adminDashboard.tabs.site', Icon: BriefcaseBusiness },
   { id: 'faq',           labelKey: 'adminDashboard.tabs.faq', Icon: CircleHelp },
   { id: 'images',        labelKey: 'adminDashboard.tabs.images', Icon: ImageIcon },
   { id: 'specialist',    labelKey: 'adminDashboard.tabs.specialist', Icon: UserRound },
-  { id: 'staff',         labelKey: 'adminDashboard.tabs.staff', Icon: UsersRound },
   { id: 'services',      labelKey: 'adminDashboard.tabs.services', Icon: Scissors },
   { id: 'offers',        labelKey: 'adminDashboard.tabs.offers', Icon: Tag },
   { id: 'hours',         labelKey: 'adminDashboard.tabs.hours', Icon: Clock3 },
-  { id: 'bookings',      labelKey: 'adminDashboard.tabs.bookings', Icon: CalendarClock },
-  { id: 'clients',       labelKey: 'adminDashboard.tabs.clients', Icon: Users },
   { id: 'payments',      labelKey: 'adminDashboard.tabs.payments', Icon: CreditCard },
   { id: 'integrations',  labelKey: 'adminDashboard.tabs.integrations', Icon: Plug },
   { id: 'legal',         labelKey: 'adminDashboard.tabs.legal', Icon: FileText },
@@ -130,10 +130,10 @@ const TABS = [
 ] as const;
 
 const WEBSITE_TAB_IDS = ['site', 'faq', 'images', 'specialist', 'offers'] as const;
-const BOOKING_TAB_IDS = ['staff', 'services', 'hours', 'bookings', 'clients'] as const;
+const BOOKING_TAB_IDS = ['bookings', 'services', 'hours'] as const;
 const ACCOUNT_TAB_IDS = ['account', 'legal', 'payments', 'integrations'] as const;
 
-const TOP_LEVEL_TAB_IDS = ['site', 'bookings', 'account'] as const;
+const TOP_LEVEL_TAB_IDS = ['bookings', 'clients', 'staff', 'site', 'account'] as const;
 
 const ICON_GRADIENT = tokens.gradient.brand;
 /** Space for fixed mobile bottom tab bar (bar + safe area + tap margin). */
@@ -294,6 +294,8 @@ function mergeBookingAndExtraClients(bookingClients: ClientSummary[], extraClien
 type TopLevelTabId = (typeof TOP_LEVEL_TAB_IDS)[number];
 
 function topLevelTabFor(tab: TabId): TopLevelTabId {
+  if (tab === 'clients') return 'clients';
+  if (tab === 'staff') return 'staff';
   if ((WEBSITE_TAB_IDS as readonly string[]).includes(tab)) return 'site';
   if ((BOOKING_TAB_IDS as readonly string[]).includes(tab)) return 'bookings';
   return 'account';
@@ -411,11 +413,11 @@ export default function AdminDashboardClient({
     [],
   );
   const desktopSidebarGroups = useMemo<{ labelKey?: string; ids: TabId[] }[]>(
-    () => [{ ids: ['site', 'bookings', 'account'] }],
+    () => [{ ids: ['bookings', 'clients', 'staff', 'site', 'account'] }],
     [],
   );
   const mobileSheetGroups = useMemo<{ labelKey: string; ids: TabId[] }[]>(
-    () => [{ labelKey: 'adminDashboard.groups.navigation', ids: ['site', 'bookings', 'account'] }],
+    () => [{ labelKey: 'adminDashboard.groups.navigation', ids: ['bookings', 'clients', 'staff', 'site', 'account'] }],
     [],
   );
   const mobileBottomTabs = visibleTabs;
@@ -426,7 +428,7 @@ export default function AdminDashboardClient({
   const [bookingsLoaded, setBookingsLoaded] = useState(initialBookings.length > 0);
   const [staffMembers, setStaffMembers] = useState<import('@/lib/staff-members').StaffMember[]>([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('site');
+  const [activeTab, setActiveTab] = useState<TabId>('bookings');
   const [websiteSubTab, setWebsiteSubTab] = useState<TabId>('site');
   const [bookingSubTab, setBookingSubTab] = useState<TabId>('bookings');
   const [accountSubTab, setAccountSubTab] = useState<TabId>('account');
@@ -749,7 +751,7 @@ export default function AdminDashboardClient({
 
   useEffect(() => {
     if (availableTabs.some((tab) => tab.id === activeTab)) return;
-    setActiveTab('site');
+    setActiveTab('bookings');
   }, [activeTab, availableTabs]);
 
   useEffect(() => {
