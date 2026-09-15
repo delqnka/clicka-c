@@ -84,6 +84,7 @@ export function useBookingFlow({
   // ── Staff (TEAM plan) ────────────────────────────────────────────────
   const [staffMembers, setStaffMembers] = useState<PublicStaffMember[]>([]);
   const [selectedStaffMemberId, setSelectedStaffMemberIdState] = useState<string | null>(null);
+  const [classTrainerFilterName, setClassTrainerFilterName] = useState<string | null>(null);
   const staffFetchedRef = useRef(false);
 
   const derivedClassStaffMembers = useMemo<PublicStaffMember[]>(() => {
@@ -335,6 +336,8 @@ export function useBookingFlow({
     setBookingError('');
     setBookingSuccess('');
     setBookingSuccessDetails(null);
+    const trainerFilter = (options?.staffName || options?.trainerName || '').trim();
+    setClassTrainerFilterName(trainerFilter || null);
     if (serviceId) {
       const normalizedServiceId = serviceId.trim().toLowerCase();
       const idx = bookingServices.findIndex((s) => {
@@ -350,6 +353,7 @@ export function useBookingFlow({
     }
     setSelectedDate('');
     setSelectedTime('');
+    setSelectedStaffMemberIdState(null);
     setBookingQuantityState(1);
     setClientName('');
     setClientPhone('');
@@ -365,6 +369,7 @@ export function useBookingFlow({
     setBookingSuccessDetails(null);
     setLockedService(false);
     setSelectedStaffMemberIdState(null);
+    setClassTrainerFilterName(null);
     setSelectedDate('');
     setSelectedTime('');
     setBookingQuantityState(1);
@@ -532,6 +537,7 @@ export function useBookingFlow({
     clientEmail, setClientEmail,
     notes, setNotes,
     staffMembers: effectiveStaffMembers, selectedStaffMemberId, setStaffMemberId,
+    classTrainerFilterName, setClassTrainerFilterName,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,
     submit,
   };

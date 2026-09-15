@@ -8,6 +8,9 @@ export type BookingButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   service?: string;
   /** When true, the modal stays focused on only this service. */
   lockService?: boolean;
+  /** Optional staff/trainer name used to filter class schedules. */
+  staffName?: string;
+  trainerName?: string;
 };
 
 /**
@@ -21,7 +24,7 @@ export type BookingButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
  */
 export const BookingButton = forwardRef<HTMLButtonElement, BookingButtonProps>(
   function BookingButton(
-    { service, lockService, onClick, type = 'button', children, ...rest },
+    { service, lockService, staffName, trainerName, onClick, type = 'button', children, ...rest },
     ref,
   ) {
     const { open } = useBooking();
@@ -31,7 +34,7 @@ export const BookingButton = forwardRef<HTMLButtonElement, BookingButtonProps>(
         type={type}
         onClick={(e) => {
           onClick?.(e);
-          if (!e.defaultPrevented) open(service, { lockService });
+          if (!e.defaultPrevented) open(service, { lockService, staffName, trainerName });
         }}
         {...rest}
       >

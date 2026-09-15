@@ -17,6 +17,8 @@ export type BookingSuccessDetails = {
 
 export type BookingOpenOptions = {
   lockService?: boolean;
+  staffName?: string;
+  trainerName?: string;
 };
 
 export type PublicStaffMember = {
@@ -124,6 +126,8 @@ export type UseBookingFlowReturn = {
   staffMembers: PublicStaffMember[];
   selectedStaffMemberId: string | null;
   setStaffMemberId: (id: string) => void;
+  classTrainerFilterName: string | null;
+  setClassTrainerFilterName: (name: string | null) => void;
 
   // Submission
   isSubmitting: boolean;

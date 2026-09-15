@@ -151,6 +151,7 @@ function BookingWidgetInner({
       bookingSuccessDetails={flow.bookingSuccessDetails}
       staffMembers={flow.staffMembers}
       selectedStaffMemberId={flow.selectedStaffMemberId}
+      classTrainerFilterName={flow.classTrainerFilterName}
       onClose={flow.close}
       onToggleService={flow.toggleService}
       onDateChange={flow.setDate}
@@ -161,6 +162,7 @@ function BookingWidgetInner({
       onClientEmailChange={flow.setClientEmail}
       onNotesChange={flow.setNotes}
       onStaffMemberChange={flow.setStaffMemberId}
+      onClassTrainerFilterChange={flow.setClassTrainerFilterName}
       onSubmit={flow.submit}
     />
     </Suspense>

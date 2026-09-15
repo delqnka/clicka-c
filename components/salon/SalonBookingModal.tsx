@@ -103,6 +103,8 @@ type SalonBookingModalProps = {
   staffMembers?: PublicStaffMember[];
   selectedStaffMemberId?: string | null;
   onStaffMemberChange?: (id: string) => void;
+  classTrainerFilterName?: string | null;
+  onClassTrainerFilterChange?: (name: string | null) => void;
   /** Direct staff link: pre-filters catalog and skips staff step. */
   directStaffName?: string;
 };
@@ -224,6 +226,8 @@ export function SalonBookingModal({
   staffMembers = [],
   selectedStaffMemberId,
   onStaffMemberChange,
+  classTrainerFilterName,
+  onClassTrainerFilterChange,
   directStaffName,
 }: SalonBookingModalProps) {
   const t = useT();
@@ -359,8 +363,11 @@ export function SalonBookingModal({
     });
   }, [classFirstDate, locale, maxDate]);
   const visibleClassSlots = useMemo(() => {
-    return getClassSlotsForIsoDate(classSchedule, displayDate);
-  }, [classSchedule, displayDate]);
+    const slots = getClassSlotsForIsoDate(classSchedule, displayDate);
+    const filter = normalizeTrainerName(classTrainerFilterName ?? '');
+    if (!filter) return slots;
+    return slots.filter((slot) => normalizeTrainerName(slot.trainer) === filter);
+  }, [classSchedule, classTrainerFilterName, displayDate]);
   const selectedClassTrainerName = useMemo(
     () => staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null,
     [selectedStaffMemberId, staffMembers],
@@ -604,9 +611,27 @@ export function SalonBookingModal({
                   </div>
 
                   <div className="space-y-3">
+                    {classTrainerFilterName ? (
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-black/[0.04] px-4 py-3">
+                        <p className="text-[13px] font-semibold text-black/65">
+                          Показани са часовете на {classTrainerFilterName}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => onClassTrainerFilterChange?.(null)}
+                          className="text-[12px] font-semibold text-black/45 underline underline-offset-2"
+                        >
+                          Всички
+                        </button>
+                      </div>
+                    ) : null}
                     {visibleClassSlots.length === 0 ? (
                       <div className={`rounded-[1.35rem] bg-white px-4 py-6 text-center ${cardShadow}`}>
-                        <p className="text-[14px] font-semibold text-black/55">Няма активни Reformer часове за този ден.</p>
+                        <p className="text-[14px] font-semibold text-black/55">
+                          {classTrainerFilterName
+                            ? `Няма активни Reformer часове при ${classTrainerFilterName} за този ден.`
+                            : 'Няма активни Reformer часове за този ден.'}
+                        </p>
                         <p className="mt-1 text-[12px] text-black/40">Избери друг ден от календара.</p>
                       </div>
                     ) : visibleClassSlots.map((slot) => {
@@ -1357,7 +1382,11 @@ export function SalonBookingModal({
             </p>
             <button
               type="button"
-              onClick={() => setBioStaff(null)}
+              onClick={() => {
+                onClassTrainerFilterChange?.(bioStaff.name);
+                setBioStaff(null);
+                setStep(1);
+              }}
               className={`mt-8 w-full rounded-full py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.98] ${gradientCtaShadow}`}
               style={accentFillStyle}
             >
