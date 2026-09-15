@@ -18,6 +18,8 @@ export type StaffMember = {
   portalToken: string | null;
   completedClassesCount: number;
   completedRevenue: number;
+  bookedClassesCount: number;
+  bookedRevenue: number;
 };
 
 type StaffRow = {
@@ -36,6 +38,8 @@ type StaffRow = {
   portal_token: string | null;
   completed_classes_count?: number | string | null;
   completed_revenue?: number | string | null;
+  booked_classes_count?: number | string | null;
+  booked_revenue?: number | string | null;
 };
 
 function rowToStaffMember(row: StaffRow): StaffMember {
@@ -55,6 +59,8 @@ function rowToStaffMember(row: StaffRow): StaffMember {
     portalToken: row.portal_token ?? null,
     completedClassesCount: Math.max(0, Math.round(Number(row.completed_classes_count ?? 0) || 0)),
     completedRevenue: Math.max(0, Number(row.completed_revenue ?? 0) || 0),
+    bookedClassesCount: Math.max(0, Math.round(Number(row.booked_classes_count ?? 0) || 0)),
+    bookedRevenue: Math.max(0, Number(row.booked_revenue ?? 0) || 0),
   };
 }
 
@@ -66,34 +72,52 @@ export async function getStaffMembers(salonId: string): Promise<StaffMember[]> {
       sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids,
       COALESCE(stats.completed_classes_count, 0) AS completed_classes_count,
-      COALESCE(stats.completed_revenue, 0) AS completed_revenue
+      COALESCE(stats.completed_revenue, 0) AS completed_revenue,
+      COALESCE(stats.booked_classes_count, 0) AS booked_classes_count,
+      COALESCE(stats.booked_revenue, 0) AS booked_revenue
     FROM staff_members sm
     LEFT JOIN staff_services ss ON ss.staff_member_id = sm.id
     LEFT JOIN LATERAL (
       SELECT
-        COUNT(*)::int AS completed_classes_count,
-        COALESCE(SUM(COALESCE(b.service_price, 0)), 0)::float AS completed_revenue
+        COUNT(*)::int AS booked_classes_count,
+        COALESCE(SUM(COALESCE(b.service_price, 0)), 0)::float AS booked_revenue,
+        COUNT(*) FILTER (
+          WHERE
+            lower(trim(coalesce(b.status, ''))) = 'completed'
+            OR CASE
+              WHEN b.date ~ '^\\d{4}-\\d{2}-\\d{2}$' AND b.time ~ '^\\d{1,2}:\\d{2}'
+                THEN (
+                  b.date::date < CURRENT_DATE
+                  OR (
+                    b.date::date = CURRENT_DATE
+                    AND substring(b.time from '^\\d{1,2}:\\d{2}')::time <= LOCALTIME
+                  )
+                )
+              ELSE false
+            END
+        )::int AS completed_classes_count,
+        COALESCE(SUM(COALESCE(b.service_price, 0)) FILTER (
+          WHERE
+            lower(trim(coalesce(b.status, ''))) = 'completed'
+            OR CASE
+              WHEN b.date ~ '^\\d{4}-\\d{2}-\\d{2}$' AND b.time ~ '^\\d{1,2}:\\d{2}'
+                THEN (
+                  b.date::date < CURRENT_DATE
+                  OR (
+                    b.date::date = CURRENT_DATE
+                    AND substring(b.time from '^\\d{1,2}:\\d{2}')::time <= LOCALTIME
+                  )
+                )
+              ELSE false
+            END
+        ), 0)::float AS completed_revenue
       FROM bookings b
       WHERE b.salon_id = sm.salon_id
         AND b.staff_member_id = sm.id
         AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
-        AND (
-          lower(trim(coalesce(b.status, ''))) = 'completed'
-          OR CASE
-            WHEN b.date ~ '^\\d{4}-\\d{2}-\\d{2}$' AND b.time ~ '^\\d{1,2}:\\d{2}'
-              THEN (
-                b.date::date < CURRENT_DATE
-                OR (
-                  b.date::date = CURRENT_DATE
-                  AND substring(b.time from '^\\d{1,2}:\\d{2}')::time <= LOCALTIME
-                )
-              )
-            ELSE false
-          END
-          )
     ) stats ON true
     WHERE sm.salon_id = ${salonId}
-    GROUP BY sm.id, stats.completed_classes_count, stats.completed_revenue
+    GROUP BY sm.id, stats.completed_classes_count, stats.completed_revenue, stats.booked_classes_count, stats.booked_revenue
     ORDER BY sm.is_owner DESC, sm.created_at ASC
   `;
   return (rows as StaffRow[]).map(rowToStaffMember);

@@ -836,7 +836,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                             color: ADMIN_T.text,
                           }}
                         >
-                          {isEn ? 'Classes: ' : 'Класове: '}{member.completedClassesCount}
+                          {isEn ? 'Booked: ' : 'Записани: '}{member.bookedClassesCount}
                         </span>
                         <span
                           style={{
@@ -850,7 +850,21 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                             color: '#047857',
                           }}
                         >
-                          {isEn ? 'Turnover: ' : 'Оборот: '}{formatEuroAmount(member.completedRevenue)}
+                          {isEn ? 'Expected turnover: ' : 'Очакван оборот: '}{formatEuroAmount(member.bookedRevenue)}
+                        </span>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            borderRadius: 999,
+                            background: '#eff6ff',
+                            padding: '3px 8px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: '#1d4ed8',
+                          }}
+                        >
+                          {isEn ? 'Completed: ' : 'Извършени: '}{member.completedClassesCount} · {formatEuroAmount(member.completedRevenue)}
                         </span>
                       </div>
                     </div>
