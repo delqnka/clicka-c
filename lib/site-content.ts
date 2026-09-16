@@ -12,6 +12,24 @@ export type SiteContentPriceItem = {
 };
 
 export type SiteContent = {
+  seo: {
+    title: string;
+    description: string;
+  };
+  labels: {
+    navReformer: string;
+    navGallery: string;
+    navTeam: string;
+    navPricing: string;
+    navFaq: string;
+    navContact: string;
+    benefitsHeading: string;
+    audienceHeading: string;
+    pricingHeading: string;
+    faqHeading: string;
+    finalCtaTitle: string;
+    finalCtaBody: string;
+  };
   benefits: {
     title: string;
     intro: string;
@@ -60,6 +78,24 @@ export type SiteContent = {
 export function defaultSiteContent(locale: 'bg' | 'en' = 'bg'): SiteContent {
   if (locale === 'en') {
     return {
+      seo: {
+        title: 'Reset Body Lab - Reformer Pilates studio in Varna',
+        description: 'Reformer Pilates for better posture, more strength, mobility and balance in a calm boutique studio in Varna.',
+      },
+      labels: {
+        navReformer: 'Reformer Pilates',
+        navGallery: 'Studio',
+        navTeam: 'Team',
+        navPricing: 'Pricing',
+        navFaq: 'FAQ',
+        navContact: 'Contact',
+        benefitsHeading: 'Main benefits include:',
+        audienceHeading: 'Training is suitable for:',
+        pricingHeading: 'Packages',
+        faqHeading: 'Frequently asked questions',
+        finalCtaTitle: 'Ready to begin?',
+        finalCtaBody: 'Choose an available time and reserve one of the five reformer beds.',
+      },
       benefits: {
         title: 'Benefits',
         intro: 'What will you achieve with Reformer Pilates?',
@@ -124,6 +160,24 @@ export function defaultSiteContent(locale: 'bg' | 'en' = 'bg'): SiteContent {
   }
 
   return {
+    seo: {
+      title: 'Reset body lab - Реформър Пилатес студио в град Варна',
+      description: 'Реформър пилатес за по-добра стойка, повече сила, мобилност и баланс в спокойно бутиково студио във Варна.',
+    },
+    labels: {
+      navReformer: 'Реформър пилатес',
+      navGallery: 'Студио',
+      navTeam: 'Екип',
+      navPricing: 'Цени',
+      navFaq: 'FAQ',
+      navContact: 'Контакт',
+      benefitsHeading: 'Основните ползи включват:',
+      audienceHeading: 'Тренировките са подходящи за:',
+      pricingHeading: 'Пакети',
+      faqHeading: 'Често задавани въпроси',
+      finalCtaTitle: 'Готова ли си да започнеш?',
+      finalCtaBody: 'Избери свободен час и запази едно от петте реформър легла.',
+    },
     benefits: {
       title: 'Ползи',
       intro: 'Какво ще постигнеш с Reformer Pilates?',
@@ -249,6 +303,8 @@ export function normalizeSiteContent(raw: unknown, locale: 'bg' | 'en' = 'bg'): 
   const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 
   const benefitsRaw = row.benefits && typeof row.benefits === 'object' ? (row.benefits as Record<string, unknown>) : {};
+  const seoRaw = row.seo && typeof row.seo === 'object' ? (row.seo as Record<string, unknown>) : {};
+  const labelsRaw = row.labels && typeof row.labels === 'object' ? (row.labels as Record<string, unknown>) : {};
   const reformerRaw = row.reformer && typeof row.reformer === 'object' ? (row.reformer as Record<string, unknown>) : {};
   const audienceRaw = row.audience && typeof row.audience === 'object' ? (row.audience as Record<string, unknown>) : {};
   const whyRaw = row.whyChooseUs && typeof row.whyChooseUs === 'object' ? (row.whyChooseUs as Record<string, unknown>) : {};
@@ -258,6 +314,24 @@ export function normalizeSiteContent(raw: unknown, locale: 'bg' | 'en' = 'bg'): 
   const contactRaw = row.contact && typeof row.contact === 'object' ? (row.contact as Record<string, unknown>) : {};
 
   return {
+    seo: {
+      title: normalizeString(seoRaw.title) || fallback.seo.title,
+      description: normalizeString(seoRaw.description) || fallback.seo.description,
+    },
+    labels: {
+      navReformer: normalizeString(labelsRaw.navReformer) || fallback.labels.navReformer,
+      navGallery: normalizeString(labelsRaw.navGallery) || fallback.labels.navGallery,
+      navTeam: normalizeString(labelsRaw.navTeam) || fallback.labels.navTeam,
+      navPricing: normalizeString(labelsRaw.navPricing) || fallback.labels.navPricing,
+      navFaq: normalizeString(labelsRaw.navFaq) || fallback.labels.navFaq,
+      navContact: normalizeString(labelsRaw.navContact) || fallback.labels.navContact,
+      benefitsHeading: normalizeString(labelsRaw.benefitsHeading) || fallback.labels.benefitsHeading,
+      audienceHeading: normalizeString(labelsRaw.audienceHeading) || fallback.labels.audienceHeading,
+      pricingHeading: normalizeString(labelsRaw.pricingHeading) || fallback.labels.pricingHeading,
+      faqHeading: normalizeString(labelsRaw.faqHeading) || fallback.labels.faqHeading,
+      finalCtaTitle: normalizeString(labelsRaw.finalCtaTitle) || fallback.labels.finalCtaTitle,
+      finalCtaBody: normalizeString(labelsRaw.finalCtaBody) || fallback.labels.finalCtaBody,
+    },
     benefits: {
       title: normalizeString(benefitsRaw.title) || fallback.benefits.title,
       intro: normalizeString(benefitsRaw.intro) || fallback.benefits.intro,

@@ -623,6 +623,66 @@ export function SiteTabPanel({
             </div>
           </div>
           <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>SEO за Google</p>
+            <AdminField compact label="Заглавие в Google">
+              <input
+                value={localizedSiteContent.seo.title}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, seo: { ...prev.seo, title: e.target.value } }))}
+                style={fieldInp}
+              />
+            </AdminField>
+            <AdminField compact label="Описание в Google">
+              <textarea
+                value={localizedSiteContent.seo.description}
+                onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, seo: { ...prev.seo, description: e.target.value } }))}
+                style={{ ...fieldInp, minHeight: 90, resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </AdminField>
+          </div>
+
+          <div style={sectionCardStyle}>
+            <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Имена на секции и меню</p>
+            <div style={compactGrid}>
+              <AdminField compact label="Меню: Реформър">
+                <input value={localizedSiteContent.labels.navReformer} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, navReformer: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Меню: Студио">
+                <input value={localizedSiteContent.labels.navGallery} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, navGallery: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Меню: Екип">
+                <input value={localizedSiteContent.labels.navTeam} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, navTeam: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Меню: Цени">
+                <input value={localizedSiteContent.labels.navPricing} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, navPricing: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Меню: FAQ">
+                <input value={localizedSiteContent.labels.navFaq} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, navFaq: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Меню: Контакт">
+                <input value={localizedSiteContent.labels.navContact} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, navContact: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Заглавие: Ползи">
+                <input value={localizedSiteContent.labels.benefitsHeading} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, benefitsHeading: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Заглавие: За кого">
+                <input value={localizedSiteContent.labels.audienceHeading} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, audienceHeading: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Заглавие: Пакети">
+                <input value={localizedSiteContent.labels.pricingHeading} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, pricingHeading: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Заглавие: FAQ">
+                <input value={localizedSiteContent.labels.faqHeading} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, faqHeading: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Финален CTA заглавие">
+                <input value={localizedSiteContent.labels.finalCtaTitle} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, finalCtaTitle: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+              <AdminField compact label="Финален CTA текст">
+                <input value={localizedSiteContent.labels.finalCtaBody} onChange={(e) => updateLocalizedSiteContent((prev) => ({ ...prev, labels: { ...prev.labels, finalCtaBody: e.target.value } }))} style={fieldInp} />
+              </AdminField>
+            </div>
+          </div>
+
+          <div style={sectionCardStyle}>
             <p style={{ margin: 0, fontSize: 13, color: '#111827' }}>Reformer Pilates</p>
             <AdminField compact label="Заглавие">
               <input
