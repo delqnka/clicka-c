@@ -215,6 +215,20 @@ export interface BookingDetails {
   language?: string | null;
 }
 
+export interface BookingCancellationDetails {
+  salonId?: string;
+  salonName: string;
+  salonOwnerName?: string;
+  clientName: string;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+  serviceName: string;
+  date: string;
+  time: string;
+  refundMessage?: string | null;
+  language?: string | null;
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')
@@ -222,6 +236,45 @@ function escapeHtml(value: string) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+export async function sendBookingCancellationNotification(
+  ownerEmail: string,
+  details: BookingCancellationDetails,
+): Promise<void> {
+  const locale = resolveSalonLocale(details.language);
+  const isEn = locale === 'en';
+  const { client, from } = await getSalonResend(details.salonId, details.salonName);
+  const dateFmt = formatDateDMY(details.date, locale);
+  const greetingName = details.salonOwnerName?.trim() || details.salonName;
+
+  await sendResendWithRetry({
+    from,
+    to: ownerEmail,
+    subject: isEn
+      ? `Cancelled booking — ${details.salonName}`
+      : `Отказана резервация — ${details.salonName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Booking cancelled' : 'Отказана резервация'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(greetingName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          ${isEn ? 'A client cancelled their booking.' : 'Клиент отказа своята резервация.'}
+        </p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          ${renderRow(isEn ? 'Client' : 'Клиент', details.clientName)}
+          ${details.clientPhone ? renderRow(isEn ? 'Phone' : 'Телефон', details.clientPhone) : ''}
+          ${details.clientEmail ? renderRow(isEn ? 'Email' : 'Имейл', details.clientEmail) : ''}
+          ${renderRow(isEn ? 'Service' : 'Услуга', details.serviceName)}
+          ${renderRow(isEn ? 'Date and time' : 'Дата и час', isEn ? `${dateFmt} at ${details.time}` : `${dateFmt} в ${details.time}`)}
+          ${details.refundMessage ? renderRow(isEn ? 'Cancellation policy' : 'Политика при отказ', details.refundMessage) : ''}
+        </table>
+        <p style="margin-top: 20px; line-height: 1.7; color: #555;">
+          ${isEn ? 'The slot was released in the schedule.' : 'Часът е освободен в графика.'}
+        </p>
+      </div>
+    `,
+  }, 4, client);
 }
 
 function renderRow(label: string, value: string) {

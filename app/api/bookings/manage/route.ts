@@ -5,6 +5,8 @@ import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 import { isCancelledStatus, bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { runAfterResponse } from '@/lib/run-after-response';
+import { sendBookingCancellationNotification } from '@/lib/resend';
+import { getStaffMemberById } from '@/lib/staff-members';
 import { stripe } from '@/lib/stripe';
 import { parseSalonServices } from '@/lib/salon-services';
 import {
@@ -48,6 +50,9 @@ async function loadBookingByToken(
   booking: BookingRow;
   salonName: string;
   salonSlug: string;
+  salonEmail: string | null;
+  salonOwnerName: string | null;
+  language: string | null;
   telegramChatId: string;
   stripeAccountId: string | null;
   servicesJson: unknown;
@@ -63,6 +68,7 @@ async function loadBookingByToken(
       b.date, b.time, b.status, b.notes, b.manage_token, b.staff_member_id,
       b.payment_status, b.amount_paid, b.stripe_checkout_session_id,
       s.name AS salon_name, s.slug AS salon_slug, s.telegram_chat_id,
+      s.email AS salon_email, s.owner_name AS salon_owner_name, s.language,
       s.stripe_account_id, s.services AS services_json
     FROM bookings b
     JOIN salons s ON CAST(s.id AS text) = b.salon_id
@@ -74,6 +80,9 @@ async function loadBookingByToken(
   const row = rows[0] as BookingRow & {
     salon_name: string;
     salon_slug: string;
+    salon_email: string | null;
+    salon_owner_name: string | null;
+    language: string | null;
     telegram_chat_id: string | null;
     stripe_account_id: string | null;
     services_json: unknown;
@@ -82,6 +91,9 @@ async function loadBookingByToken(
     booking: row,
     salonName: String(row.salon_name ?? ''),
     salonSlug: String(row.salon_slug ?? ''),
+    salonEmail: row.salon_email ? String(row.salon_email) : null,
+    salonOwnerName: row.salon_owner_name ? String(row.salon_owner_name) : null,
+    language: row.language ? String(row.language) : null,
     telegramChatId: String(row.telegram_chat_id ?? '').trim(),
     stripeAccountId: row.stripe_account_id ?? null,
     servicesJson: row.services_json,
@@ -161,7 +173,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Резервацията не е намерена.' }, { status: 404 });
   }
 
-  const { booking, salonName, telegramChatId, stripeAccountId, servicesJson } = result;
+  const { booking, salonName, salonEmail, salonOwnerName, telegramChatId, stripeAccountId, servicesJson, language } = result;
 
   if (isCancelledStatus(booking.status) || booking.status === 'completed') {
     return NextResponse.json({ error: 'Резервацията не може да бъде променена.' }, { status: 400 });
@@ -224,10 +236,34 @@ export async function PATCH(request: NextRequest) {
       UPDATE bookings SET status = 'cancelled' WHERE id = ${id}
     `;
 
-    if (telegramChatId) {
+    const staffMember = booking.staff_member_id
+      ? await getStaffMemberById(booking.staff_member_id).catch(() => null)
+      : null;
+    const notifyTelegram = (staffMember?.telegramChatId || null) ?? telegramChatId;
+    const notifyEmail = (staffMember?.email || null) ?? salonEmail;
+
+    if (notifyEmail) {
+      runAfterResponse(
+        sendBookingCancellationNotification(notifyEmail, {
+          salonId: booking.salon_id,
+          salonName,
+          salonOwnerName: staffMember?.name ?? salonOwnerName ?? undefined,
+          clientName: booking.client_name,
+          clientPhone: booking.client_phone,
+          clientEmail: booking.client_email ?? undefined,
+          serviceName: booking.service_name,
+          date: booking.date,
+          time: booking.time,
+          refundMessage,
+          language,
+        }).catch((err) => console.error('[manage] cancellation email notify', err)),
+      );
+    }
+
+    if (notifyTelegram) {
       runAfterResponse(
         sendTelegramMessage(
-          telegramChatId,
+          notifyTelegram,
           [
             `❌ <b>Отказана резервация</b>`,
             `👤 ${booking.client_name}`,

@@ -635,7 +635,7 @@ export function SalonBookingModal({
                         <p className="mt-1 text-[12px] text-black/40">Избери друг ден от календара.</p>
                       </div>
                     ) : visibleClassSlots.map((slot) => {
-                      const serviceName = classService?.name ?? 'Reformer Pilates';
+                      const serviceName = slot.className?.trim() || classService?.name || 'Reformer Pilates';
                       const price = Number(classService?.price ?? 0) || 0;
                       const duration = Math.max(5, Number(classService?.duration ?? 50) || 50);
                       const dateLabel = new Date(`${displayDate}T12:00:00`).toLocaleDateString(locale, {

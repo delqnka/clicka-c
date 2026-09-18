@@ -451,6 +451,9 @@ export async function POST(request: NextRequest) {
     }
     classSlotCapacity = classSlot.capacity;
     durationValue = Math.max(5, parseTimeToMinutes(classSlot.end)! - parseTimeToMinutes(classSlot.start)!);
+    if (classSlot.className?.trim()) {
+      resolvedServiceName = classSlot.className.trim();
+    }
   }
   if (isBlockedForStartTime(bookingBlocks, date, time, durationValue ?? 30)) {
     return NextResponse.json(

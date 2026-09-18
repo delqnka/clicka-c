@@ -1,6 +1,7 @@
 export type BookingClassSlot = {
   start: string;
   end: string;
+  className?: string;
   trainer: string;
   capacity: number;
 };
@@ -58,6 +59,7 @@ export function normalizeClassSchedule(raw: unknown): BookingClassSchedule {
         const row = item as Record<string, unknown>;
         const start = normalizeTime(row.start);
         const end = normalizeTime(row.end);
+        const className = String(row.className ?? row.class_name ?? row.name ?? row.title ?? '').trim();
         const trainer = String(row.trainer ?? '').trim();
         const capacityRaw = Number(row.capacity);
         const capacity = Number.isFinite(capacityRaw)
@@ -67,7 +69,7 @@ export function normalizeClassSchedule(raw: unknown): BookingClassSchedule {
         if (!start || !end || !trainer) return null;
         if (timeToMinutes(end) <= timeToMinutes(start)) return null;
 
-        return { start, end, trainer, capacity };
+        return { start, end, ...(className ? { className } : {}), trainer, capacity };
       })
       .filter((slot): slot is BookingClassSlot => slot !== null)
       .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));

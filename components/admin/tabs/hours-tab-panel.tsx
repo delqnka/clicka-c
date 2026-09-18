@@ -82,7 +82,7 @@ export function HoursTabPanel({
         ...(p.classSchedule ?? {}),
         [classDay]: [
           ...((p.classSchedule ?? {})[classDay] ?? []),
-          { start: '09:00', end: '09:50', trainer: '', capacity: 5 },
+          { start: '09:00', end: '09:50', className: '', trainer: '', capacity: 5 },
         ],
       },
     }));
@@ -343,7 +343,7 @@ export function HoursTabPanel({
                 key={`${dayKey}-${slot.start}-${i}`}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr 1fr' : '96px 96px minmax(140px, 1fr) 82px 32px',
+                  gridTemplateColumns: isMobile ? '1fr 1fr' : '96px 96px minmax(150px, 1fr) minmax(140px, 1fr) 82px 32px',
                   gap: 6,
                   alignItems: 'center',
                 }}
@@ -361,6 +361,12 @@ export function HoursTabPanel({
                   onChange={(e) => updateClassSlot(dayKey, i, { end: e.target.value })}
                   style={blockInp({ width: '100%' })}
                   aria-label={isEn ? 'Class end' : 'Край на клас'}
+                />
+                <input
+                  value={slot.className ?? ''}
+                  onChange={(e) => updateClassSlot(dayKey, i, { className: e.target.value })}
+                  placeholder={isEn ? 'Class name' : 'Име на клас'}
+                  style={blockInp({ width: '100%', gridColumn: isMobile ? '1 / -1' : undefined, textAlign: 'left' })}
                 />
                 <input
                   value={slot.trainer}
