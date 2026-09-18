@@ -687,8 +687,8 @@ export function BookingsPanel({
                   borderRadius: isMobile ? 10 : 12,
                   minHeight: isMobile ? 0 : 42,
                   aspectRatio: isMobile ? '1 / 1' : undefined,
-                  background: active && hasClicka ? '#047857' : active ? T.accent : hasClicka ? '#16A34A' : hasClasses ? '#EDE9FE' : hasExternal ? '#FFF7ED' : '#F4F4F5',
-                  color: active || hasClicka ? '#fff' : hasClasses ? '#4C1D95' : hasExternal ? '#9A3412' : T.text,
+                  background: active && hasClicka ? '#047857' : active ? T.accent : hasClicka ? '#16A34A' : hasClasses ? '#E2E8F0' : hasExternal ? '#FFF7ED' : '#F4F4F5',
+                  color: active || hasClicka ? '#fff' : hasClasses ? '#334155' : hasExternal ? '#9A3412' : T.text,
                   fontSize: isMobile ? 11 : 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -820,82 +820,117 @@ export function BookingsPanel({
               {displayedTimelineRows.map((slot) => {
                 const isFree = slot.status === 'free';
                 const isBlocked = slot.status === 'blocked';
+                const capacity = Math.max(1, Number(slot.capacity ?? 5) || 5);
+                const availableBeds = Math.max(0, capacity - slot.beds);
                 return (
                 <div
                   key={slot.time}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : '88px minmax(0, 1fr)',
-                    gap: isMobile ? 8 : 12,
+                    gridTemplateColumns: isMobile ? '1fr' : '104px minmax(0, 1fr)',
+                    gap: isMobile ? 8 : 14,
                     alignItems: 'start',
+                    borderRadius: isMobile ? 16 : 14,
+                    border: `1px solid ${isBlocked ? '#E7D7A8' : slot.rows.length > 0 ? '#CBD5E1' : '#E5E7EB'}`,
+                    background: '#fff',
+                    padding: isMobile ? 12 : 14,
+                    boxShadow: '0 1px 3px rgba(15,23,42,0.08)',
                   }}
                 >
                   <div
                     style={{
-                      position: isMobile ? 'static' : 'sticky',
-                      top: 12,
-                      borderRadius: 14,
-                      background: '#111',
-                      color: '#fff',
-                      padding: isMobile ? '9px 12px' : '10px 8px',
+                      borderRadius: 10,
+                      background: '#F8FAFC',
+                      border: '1px solid #E5E7EB',
+                      color: '#111827',
+                      padding: isMobile ? '9px 10px' : '10px 8px',
                       textAlign: isMobile ? 'left' : 'center',
-                      boxShadow: '0 8px 18px rgba(0,0,0,0.18)',
-                      opacity: isFree ? 0.72 : 1,
                     }}
                   >
-                    <p style={{ margin: 0, fontSize: isMobile ? 17 : 16, fontWeight: 900, letterSpacing: '-0.02em' }}>{slot.time}</p>
-                    <p style={{ margin: '3px 0 0', fontSize: 11, opacity: 0.72, fontWeight: 700 }}>
-                      {isBlocked
-                        ? (isEn ? 'Blocked' : 'Блокиран')
-                        : isFree
-                          ? (isEn ? 'Free' : 'Свободен')
-                          : `${slot.beds}/${slot.capacity ?? 5} ${isEn ? 'beds' : 'легла'}`}
+                    <p style={{ margin: 0, fontSize: isMobile ? 18 : 17, fontWeight: 850, fontVariantNumeric: 'tabular-nums', letterSpacing: 0 }}>
+                      {slot.time}
                     </p>
-                  </div>
-                  <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
-                    {slot.className || slot.trainer || slot.endTime ? (
-                      <div
-                        style={{
-                          borderRadius: isMobile ? 18 : 14,
-                          padding: isMobile ? '12px 16px' : '10px 14px',
-                          background: '#F5F3FF',
-                          border: '1px solid rgba(124,58,237,0.18)',
-                          color: '#4C1D95',
-                          fontSize: isMobile ? 14 : 13,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {slot.className || (isEn ? 'Class' : 'Клас')}
-                        {slot.trainer ? ` · ${slot.trainer}` : ''}
-                        {slot.endTime ? ` · ${slot.time} – ${slot.endTime}` : ''}
-                      </div>
+                    {slot.endTime ? (
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        {slot.endTime}
+                      </p>
                     ) : null}
-                    {slot.rows.length > 0 ? slot.rows.map((b) => (
-                      <BookingCard
-                        key={b.id}
-                        booking={b}
-                        isMobile={isMobile}
-                        T={T}
-                        updateBookingStatus={updateBookingStatus}
-                        locale={locale}
-                      />
-                    )) : (
+                  </div>
+
+                  <div style={{ display: 'grid', gap: isMobile ? 10 : 9, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        flexDirection: isMobile ? 'column' : 'row',
+                        minWidth: 0,
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, color: '#111827', fontSize: isMobile ? 15 : 14, fontWeight: 800, lineHeight: 1.35 }}>
+                          {slot.className || (isEn ? 'Class' : 'Клас')}
+                        </p>
+                        <p style={{ margin: '3px 0 0', color: '#64748B', fontSize: 12, fontWeight: 650, lineHeight: 1.35 }}>
+                          {slot.trainer ? `${slot.trainer} · ` : ''}{slot.time}{slot.endTime ? ` - ${slot.endTime}` : ''}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            borderRadius: 999,
+                            background: isBlocked ? '#FEF3C7' : slot.rows.length > 0 ? '#EEF2F7' : '#F8FAFC',
+                            border: `1px solid ${isBlocked ? '#FDE68A' : '#E5E7EB'}`,
+                            color: isBlocked ? '#92400E' : '#334155',
+                            padding: '5px 9px',
+                            fontSize: 12,
+                            fontWeight: 800,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {isBlocked
+                            ? (isEn ? 'Blocked' : 'Блокиран')
+                            : slot.rows.length > 0
+                              ? `${slot.beds}/${capacity} ${isEn ? 'beds' : 'легла'}`
+                              : `${availableBeds}/${capacity} ${isEn ? 'free' : 'свободни'}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isFree || isBlocked ? (
                       <div
                         style={{
-                          borderRadius: isMobile ? 18 : 14,
-                          padding: isMobile ? '14px 16px' : '12px 14px',
+                          borderRadius: 12,
+                          padding: isMobile ? '11px 12px' : '10px 12px',
                           background: isBlocked ? '#FFFBEB' : '#FAFAFA',
-                          border: `1px solid ${isBlocked ? 'rgba(245,158,11,0.34)' : T.border}`,
-                          color: isBlocked ? '#92400E' : T.muted,
+                          border: `1px solid ${isBlocked ? '#FDE68A' : '#E5E7EB'}`,
+                          color: isBlocked ? '#92400E' : '#64748B',
                           fontSize: isMobile ? 14 : 13,
                           fontWeight: 700,
                         }}
                       >
                         {isBlocked
-                          ? (slot.blocks?.[0]?.title || (isEn ? 'Blocked time' : 'Блокиран час'))
-                          : (isEn ? 'Available' : 'Свободен час')}
+                          ? (slot.blocks?.[0]?.title || (isEn ? 'Blocked time' : 'Блокиран клас'))
+                          : (isEn ? 'No bookings yet' : 'Все още няма резервации')}
                       </div>
-                    )}
+                    ) : null}
+
+                    {slot.rows.length > 0 ? (
+                      <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+                        {slot.rows.map((b) => (
+                          <BookingCard
+                            key={b.id}
+                            booking={b}
+                            isMobile={isMobile}
+                            T={T}
+                            updateBookingStatus={updateBookingStatus}
+                            locale={locale}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+
                     {slot.cancelledRows && slot.cancelledRows.length > 0 ? slot.cancelledRows.map((b) => (
                       <div
                         key={`cancelled-${b.id}`}
