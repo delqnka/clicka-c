@@ -2597,8 +2597,8 @@ export default function AdminDashboardClient({
                   bookingsCountByDate={bookingsCountByDate}
                   externalCalendarByDate={externalCalendarByDate}
                   externalCalendarEvents={externalCalendarEvents}
-                  workingHours={site.workingHours}
                   bookingBlocks={site.bookingBlocks}
+                  classSchedule={site.classSchedule}
                   slotIntervalMin={site.slotIntervalMin}
                   selectedCalendarDate={selectedCalendarDate}
                   setSelectedCalendarDate={setSelectedCalendarDate}

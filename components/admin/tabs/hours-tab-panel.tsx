@@ -43,6 +43,14 @@ export function HoursTabPanel({
   const isEn = locale === 'en';
   const dayDefs = getAdminDays(locale);
   const [activeDayKey, setActiveDayKey] = useState<DayKey>('monday');
+  const classServiceOptions = site.services
+    .map((service) => ({
+      id: service.id || service.name,
+      label: (isEn ? service.nameEn : service.name) || service.name,
+      duration: service.duration_min,
+      capacity: service.capacity,
+    }))
+    .filter((service) => service.label.trim());
 
   const timeInp = (extra?: CSSProperties): CSSProperties => ({
     ...inp,
@@ -362,12 +370,26 @@ export function HoursTabPanel({
                   style={blockInp({ width: '100%' })}
                   aria-label={isEn ? 'Class end' : 'Край на клас'}
                 />
-                <input
+                <select
                   value={slot.className ?? ''}
-                  onChange={(e) => updateClassSlot(dayKey, i, { className: e.target.value })}
-                  placeholder={isEn ? 'Class name' : 'Име на клас'}
+                  onChange={(e) => {
+                    const service = classServiceOptions.find((item) => item.label === e.target.value);
+                    const patch: Partial<AdminSitePayload['classSchedule'][string][number]> = {
+                      className: e.target.value,
+                    };
+                    if (service?.capacity) patch.capacity = Math.max(1, Math.round(Number(service.capacity) || 1));
+                    updateClassSlot(dayKey, i, patch);
+                  }}
                   style={blockInp({ width: '100%', gridColumn: isMobile ? '1 / -1' : undefined, textAlign: 'left' })}
-                />
+                  aria-label={isEn ? 'Class service' : 'Услуга за клас'}
+                >
+                  <option value="">{isEn ? 'Choose service' : 'Избери услуга'}</option>
+                  {classServiceOptions.map((service) => (
+                    <option key={service.id} value={service.label}>
+                      {service.label}
+                    </option>
+                  ))}
+                </select>
                 <input
                   value={slot.trainer}
                   onChange={(e) => updateClassSlot(dayKey, i, { trainer: e.target.value })}

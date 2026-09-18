@@ -2,8 +2,9 @@
 
 import React from 'react';
 import type { CSSProperties } from 'react';
-import type { BookingRecord, WorkingHours } from '@/lib/admin-site';
+import type { BookingRecord } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
+import type { BookingClassSchedule, BookingClassSlot } from '@/lib/class-schedule';
 import { formatSalonPrice } from '@/lib/salon-currency';
 import type { Locale } from '@/lib/i18n';
 
@@ -65,8 +66,8 @@ type BookingsPanelProps = {
   bookingsCountByDate: Map<string, number>;
   externalCalendarByDate: Map<string, number>;
   externalCalendarEvents: ExternalCalendarEventRow[];
-  workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
+  classSchedule: BookingClassSchedule;
   slotIntervalMin: number;
   selectedCalendarDate: string | null;
   setSelectedCalendarDate: (next: string | null) => void;
@@ -126,20 +127,20 @@ function normalizeDateKey(value: unknown): string {
   return raw;
 }
 
-const DATE_DAY_TO_WORKING_KEY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-
 function timeToMinutes(value: string): number | null {
   const match = String(value ?? '').match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   if (!match) return null;
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
-function minutesToTime(value: number): string {
-  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
-}
-
 function overlaps(start: number, end: number, otherStart: number, otherEnd: number): boolean {
   return start < otherEnd && end > otherStart;
+}
+
+function getClassSlotsForDate(classSchedule: BookingClassSchedule, date: string): BookingClassSlot[] {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return [];
+  const dayKey = String(new Date(`${date}T12:00:00`).getDay());
+  return (classSchedule?.[dayKey] ?? []).slice().sort((a, b) => a.start.localeCompare(b.start));
 }
 
 function getBookingStaffName(booking: BookingRecord): string {
@@ -157,6 +158,10 @@ function isActiveBookingForCapacity(booking: BookingRecord): boolean {
 
 type TimelineRow = {
   time: string;
+  endTime?: string;
+  className?: string;
+  trainer?: string;
+  capacity?: number;
   rows: BookingRecord[];
   cancelledRows?: BookingRecord[];
   beds: number;
@@ -166,28 +171,21 @@ type TimelineRow = {
 
 function buildDailyTimelineRows({
   date,
-  workingHours,
   bookingBlocks,
+  classSchedule,
   externalEvents,
   bookings,
   slotIntervalMin,
   locale,
 }: {
   date: string;
-  workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
+  classSchedule: BookingClassSchedule;
   externalEvents: ExternalCalendarEventRow[];
   bookings: BookingRecord[];
   slotIntervalMin: number;
   locale: Locale;
 }): TimelineRow[] {
-  const day = DATE_DAY_TO_WORKING_KEY[new Date(`${date}T12:00:00`).getDay()];
-  const workingDay = workingHours[day];
-  if (!workingDay || workingDay.closed) return [];
-  const open = timeToMinutes(workingDay.open);
-  const close = timeToMinutes(workingDay.close);
-  if (open == null || close == null || close <= open) return [];
-
   const interval = [15, 20, 30, 45, 60].includes(slotIntervalMin) ? slotIntervalMin : 30;
   const allDayBlocked = bookingBlocks.some((block) => block.date === date && block.allDay);
   const activeBookings = bookings.filter((booking) => normalizeDateKey(booking.date) === date && isActiveBookingForCapacity(booking));
@@ -195,10 +193,13 @@ function buildDailyTimelineRows({
     const status = String(booking.status ?? '').trim().toLowerCase();
     return normalizeDateKey(booking.date) === date && status === 'cancelled';
   });
+  const classSlots = getClassSlotsForDate(classSchedule, date);
 
   const rows: TimelineRow[] = [];
-  for (let start = open; start < close; start += interval) {
-    const end = Math.min(start + interval, close);
+  for (const classSlot of classSlots) {
+    const start = timeToMinutes(classSlot.start);
+    const end = timeToMinutes(classSlot.end);
+    if (start == null || end == null || end <= start) continue;
     const slotBookings = activeBookings
       .filter((booking) => {
         const bookingStart = timeToMinutes(String(booking.time ?? '').slice(0, 5));
@@ -216,7 +217,7 @@ function buildDailyTimelineRows({
       })
       .sort((a, b) => String(a.client_name ?? '').localeCompare(String(b.client_name ?? ''), locale === 'en' ? 'en' : 'bg'));
     const blocks = allDayBlocked
-      ? [{ id: `block-${date}-all-day`, title: '', date, startTime: workingDay.open, endTime: workingDay.close, source: 'block' }]
+      ? [{ id: `block-${date}-all-day`, title: '', date, startTime: classSlot.start, endTime: classSlot.end, source: 'block' }]
       : externalEvents.filter((event) => {
           const blockStart = timeToMinutes(event.startTime);
           const blockEnd = timeToMinutes(event.endTime);
@@ -224,7 +225,11 @@ function buildDailyTimelineRows({
         });
 
     rows.push({
-      time: minutesToTime(start),
+      time: classSlot.start,
+      endTime: classSlot.end,
+      className: classSlot.className,
+      trainer: classSlot.trainer,
+      capacity: classSlot.capacity,
       rows: slotBookings,
       cancelledRows,
       beds: slotBookings.reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
@@ -426,8 +431,8 @@ export function BookingsPanel({
   bookingsCountByDate,
   externalCalendarByDate,
   externalCalendarEvents,
-  workingHours,
   bookingBlocks,
+  classSchedule,
   slotIntervalMin,
   selectedCalendarDate,
   setSelectedCalendarDate,
@@ -465,10 +470,15 @@ export function BookingsPanel({
     [selectedDayActiveBookings],
   );
   const selectedDaySlots = React.useMemo(
-    () => new Set(selectedDayActiveBookings.map((booking) => String(booking.time ?? '').slice(0, 5)).filter(Boolean)).size,
-    [selectedDayActiveBookings],
+    () =>
+      selectedCalendarDate
+        ? getClassSlotsForDate(classSchedule, selectedCalendarDate).length
+        : new Set(selectedDayActiveBookings.map((booking) => String(booking.time ?? '').slice(0, 5)).filter(Boolean)).size,
+    [classSchedule, selectedCalendarDate, selectedDayActiveBookings],
   );
-  const selectedDayCapacity = selectedDaySlots * 5;
+  const selectedDayCapacity = selectedCalendarDate
+    ? getClassSlotsForDate(classSchedule, selectedCalendarDate).reduce((sum, slot) => sum + Math.max(1, Number(slot.capacity) || 1), 0)
+    : selectedDaySlots * 5;
   const panelVisibleBookings = React.useMemo(
     () => visibleBookings.filter((booking) => bookingMatchesSearch(booking, searchQuery)),
     [visibleBookings, searchQuery],
@@ -515,18 +525,19 @@ export function BookingsPanel({
       selectedCalendarDate
         ? buildDailyTimelineRows({
             date: selectedCalendarDate,
-            workingHours,
             bookingBlocks,
+            classSchedule,
             externalEvents: externalCalendarEvents,
             bookings,
             slotIntervalMin,
             locale,
           })
         : [],
-    [selectedCalendarDate, workingHours, bookingBlocks, externalCalendarEvents, bookings, slotIntervalMin, locale],
+    [selectedCalendarDate, bookingBlocks, classSchedule, externalCalendarEvents, bookings, slotIntervalMin, locale],
   );
-  const displayedTimelineRows = selectedCalendarDate && dailyTimelineRows.length > 0 ? dailyTimelineRows : timelineRows;
+  const displayedTimelineRows = selectedCalendarDate ? dailyTimelineRows : timelineRows;
   const useTimelineView = Boolean(selectedCalendarDate) && (statusFilter === 'upcoming' || statusFilter === 'pending' || statusFilter === 'all');
+  const timelineEmpty = useTimelineView && displayedTimelineRows.length === 0;
 
   return (
     <>
@@ -661,9 +672,11 @@ export function BookingsPanel({
             const key = ymdKey(calendarMeta.year, calendarMeta.month, day);
             const count = bookingsCountByDate.get(key) ?? 0;
             const externalCount = externalCalendarByDate.get(key) ?? 0;
+            const classCount = getClassSlotsForDate(classSchedule, key).length;
             const active = selectedCalendarDate === key;
             const hasClicka = count > 0;
             const hasExternal = externalCount > 0;
+            const hasClasses = classCount > 0;
             return (
               <button
                 key={key}
@@ -674,8 +687,8 @@ export function BookingsPanel({
                   borderRadius: isMobile ? 10 : 12,
                   minHeight: isMobile ? 0 : 42,
                   aspectRatio: isMobile ? '1 / 1' : undefined,
-                  background: active && hasClicka ? '#047857' : active ? T.accent : hasClicka ? '#16A34A' : hasExternal ? '#FFF7ED' : '#F4F4F5',
-                  color: active || hasClicka ? '#fff' : hasExternal ? '#9A3412' : T.text,
+                  background: active && hasClicka ? '#047857' : active ? T.accent : hasClicka ? '#16A34A' : hasClasses ? '#EDE9FE' : hasExternal ? '#FFF7ED' : '#F4F4F5',
+                  color: active || hasClicka ? '#fff' : hasClasses ? '#4C1D95' : hasExternal ? '#9A3412' : T.text,
                   fontSize: isMobile ? 11 : 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -694,7 +707,10 @@ export function BookingsPanel({
               >
                 <div>{day}</div>
                 {hasClicka ? <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>{count}</div> : null}
-                {!hasClicka && hasExternal ? (
+                {!hasClicka && hasClasses ? (
+                  <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>{classCount}</div>
+                ) : null}
+                {!hasClicka && !hasClasses && hasExternal ? (
                   <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>•</div>
                 ) : null}
               </button>
@@ -766,9 +782,11 @@ export function BookingsPanel({
         />
       </div>
 
-      {panelVisibleBookings.length === 0 && externalCalendarEvents.length === 0 && displayedTimelineRows.length === 0 ? (
+      {timelineEmpty || (panelVisibleBookings.length === 0 && externalCalendarEvents.length === 0 && displayedTimelineRows.length === 0) ? (
         <div style={{ padding: '20px 14px', color: T.muted, textAlign: 'center', fontSize: 14 }}>
-          {isEn ? 'No bookings for the selected filters.' : 'Няма резервации за избраните филтри.'}
+          {timelineEmpty
+            ? (isEn ? 'No classes in the schedule for this day.' : 'Няма класове в графика за този ден.')
+            : (isEn ? 'No bookings for the selected filters.' : 'Няма резервации за избраните филтри.')}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
@@ -831,10 +849,27 @@ export function BookingsPanel({
                         ? (isEn ? 'Blocked' : 'Блокиран')
                         : isFree
                           ? (isEn ? 'Free' : 'Свободен')
-                          : `${slot.beds}/5 ${isEn ? 'beds' : 'легла'}`}
+                          : `${slot.beds}/${slot.capacity ?? 5} ${isEn ? 'beds' : 'легла'}`}
                     </p>
                   </div>
                   <div style={{ display: 'grid', gap: isMobile ? 10 : 8 }}>
+                    {slot.className || slot.trainer || slot.endTime ? (
+                      <div
+                        style={{
+                          borderRadius: isMobile ? 18 : 14,
+                          padding: isMobile ? '12px 16px' : '10px 14px',
+                          background: '#F5F3FF',
+                          border: '1px solid rgba(124,58,237,0.18)',
+                          color: '#4C1D95',
+                          fontSize: isMobile ? 14 : 13,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {slot.className || (isEn ? 'Class' : 'Клас')}
+                        {slot.trainer ? ` · ${slot.trainer}` : ''}
+                        {slot.endTime ? ` · ${slot.time} – ${slot.endTime}` : ''}
+                      </div>
+                    ) : null}
                     {slot.rows.length > 0 ? slot.rows.map((b) => (
                       <BookingCard
                         key={b.id}
