@@ -46,6 +46,7 @@ export function HoursTabPanel({
   const classServiceOptions = site.services
     .map((service) => ({
       id: service.id || service.name,
+      name: service.name,
       label: (isEn ? service.nameEn : service.name) || service.name,
       duration: service.duration_min,
       capacity: service.capacity,
@@ -90,7 +91,7 @@ export function HoursTabPanel({
         ...(p.classSchedule ?? {}),
         [classDay]: [
           ...((p.classSchedule ?? {})[classDay] ?? []),
-          { start: '09:00', end: '09:50', className: '', trainer: '', capacity: 5 },
+          { start: '09:00', end: '09:50', serviceId: '', className: '', trainer: '', capacity: 5 },
         ],
       },
     }));
@@ -412,11 +413,16 @@ export function HoursTabPanel({
                   aria-label={isEn ? 'Class end' : 'Край на клас'}
                 />
                 <select
-                  value={slot.className ?? ''}
+                  value={
+                    slot.serviceId && classServiceOptions.some((item) => item.id === slot.serviceId)
+                      ? slot.serviceId
+                      : classServiceOptions.find((item) => item.label === slot.className || item.name === slot.className)?.id ?? ''
+                  }
                   onChange={(e) => {
-                    const service = classServiceOptions.find((item) => item.label === e.target.value);
+                    const service = classServiceOptions.find((item) => item.id === e.target.value);
                     const patch: Partial<AdminSitePayload['classSchedule'][string][number]> = {
-                      className: e.target.value,
+                      serviceId: service?.id ?? '',
+                      className: service?.name ?? '',
                     };
                     if (service?.capacity) patch.capacity = Math.max(1, Math.round(Number(service.capacity) || 1));
                     updateClassSlot(dayKey, i, patch);
@@ -426,7 +432,7 @@ export function HoursTabPanel({
                 >
                   <option value="">{isEn ? 'Choose service' : 'Избери услуга'}</option>
                   {classServiceOptions.map((service) => (
-                    <option key={service.id} value={service.label}>
+                    <option key={service.id} value={service.id}>
                       {service.label}
                     </option>
                   ))}

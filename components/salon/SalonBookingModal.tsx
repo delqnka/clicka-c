@@ -149,11 +149,28 @@ function normalizeServiceLookup(value: unknown): string {
   return String(value ?? '').trim().toLocaleLowerCase('bg-BG').replace(/\s+/g, ' ');
 }
 
+function normalizeServiceTokens(value: unknown): string[] {
+  return normalizeServiceLookup(value)
+    .replace(/[•·–—-]/g, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 2 && token !== 'клас' && token !== 'class');
+}
+
 function getClassSlotServiceIndex(
   services: BookingServiceOption[],
   slot: BookingClassSlot,
   fallbackIndex: number,
 ): number {
+  const serviceId = normalizeServiceLookup(slot.serviceId);
+  if (serviceId) {
+    const byId = services.findIndex((service) => {
+      const rowId = normalizeServiceLookup(service.id);
+      return rowId === serviceId || rowId.startsWith(`${serviceId}::`);
+    });
+    if (byId >= 0) return byId;
+  }
+
   const className = normalizeServiceLookup(slot.className);
   if (!className) return fallbackIndex;
 
@@ -165,8 +182,18 @@ function getClassSlotServiceIndex(
     const haystack = normalizeServiceLookup(`${service.id} ${service.name} ${service.category ?? ''}`);
     return Boolean(serviceName) && (haystack.includes(className) || className.includes(serviceName));
   });
+  if (partial >= 0) return partial;
 
-  return partial >= 0 ? partial : fallbackIndex;
+  const classTokens = normalizeServiceTokens(slot.className);
+  if (classTokens.length > 0) {
+    const tokenMatch = services.findIndex((service) => {
+      const serviceTokens = new Set(normalizeServiceTokens(`${service.id} ${service.name} ${service.category ?? ''}`));
+      return classTokens.every((token) => serviceTokens.has(token));
+    });
+    if (tokenMatch >= 0) return tokenMatch;
+  }
+
+  return fallbackIndex;
 }
 
 function ServiceDescription({ text, locale }: { text?: string; locale: string }) {
