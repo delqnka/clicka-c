@@ -75,10 +75,12 @@ export async function ensureStaffSchema() {
       // have stable ids (no svc-N in their JSON) are skipped entirely.
       await migrateServiceIds();
 
-      // Replace single-staff slot uniqueness with per-staff version
+      // Capacity is enforced by insertBookingIfNoOverlap so group classes can
+      // hold multiple separate bookings in the same trainer/date/time slot.
       await sql`DROP INDEX IF EXISTS bookings_active_slot_unique_idx`;
+      await sql`DROP INDEX IF EXISTS bookings_active_slot_per_staff_uniq`;
       await sql`
-        CREATE UNIQUE INDEX IF NOT EXISTS bookings_active_slot_per_staff_uniq
+        CREATE INDEX IF NOT EXISTS bookings_active_slot_per_staff_lookup_idx
           ON bookings(salon_id, COALESCE(staff_member_id::text, ''), date, time)
           WHERE status IN ('pending', 'confirmed')
       `;

@@ -76,6 +76,7 @@ import { formatSalonPrice } from '@/lib/salon-currency';
 import { T, tokens, BOOKING_STATUS_PALETTE } from '@/lib/admin-theme';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { MobileBottomNav } from '@/components/admin/MobileBottomNav';
+import type { AdminBookingInput } from '@/components/admin/dashboard-panels';
 const AdminSidebar = dynamic(
   () => import('@/components/admin/AdminSidebar').then((m) => m.AdminSidebar),
   { ssr: false }
@@ -1520,6 +1521,31 @@ export default function AdminDashboardClient({
     } catch (e) { setBookings(previous); handleErr(e); }
   }
 
+  async function createAdminBooking(input: AdminBookingInput) {
+    setError('');
+    const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        adminCreate: true,
+        clientName: input.clientName,
+        clientPhone: input.clientPhone,
+        clientEmail: input.clientEmail ?? '',
+        serviceName: input.serviceName,
+        servicePrice: null,
+        serviceDuration: input.serviceDuration,
+        date: input.date,
+        time: input.time,
+        notes: input.notes ?? '',
+        staffMemberName: input.staffMemberName ?? '',
+        bookingQuantity: input.bookingQuantity,
+      }),
+    });
+    await guardResponse(res);
+    await loadBookings();
+    setNotice(locale === 'en' ? 'Client added to the class.' : 'Клиентът е добавен в класа.');
+  }
+
   async function uploadSingleFile(
     file: File,
     opts?: { compress?: boolean; profile?: boolean },
@@ -2606,6 +2632,7 @@ export default function AdminDashboardClient({
                   visibleBookings={visibleBookings}
                   groupedVisibleBookings={groupedVisibleBookings}
                   updateBookingStatus={updateBookingStatus}
+                  createAdminBooking={createAdminBooking}
                   inp={inp}
                   btn={btn}
                   T={T}

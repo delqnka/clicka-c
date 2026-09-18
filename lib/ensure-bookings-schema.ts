@@ -113,6 +113,9 @@ export async function ensureBookingsSchema() {
         DROP INDEX IF EXISTS bookings_active_slot_unique_idx
       `;
       await sql`
+        DROP INDEX IF EXISTS bookings_active_slot_per_staff_uniq
+      `;
+      await sql`
         CREATE INDEX IF NOT EXISTS bookings_active_slot_lookup_idx
         ON bookings(salon_id, date, time)
         WHERE status IN ('pending', 'confirmed')

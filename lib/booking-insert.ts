@@ -123,11 +123,12 @@ export async function insertBookingIfNoOverlap(
   if (inserted.length === 0) return null;
   const result = inserted[0] as { id: string };
 
-  // Save/update client record for every booking source (fire-and-forget)
-  upsertSalonClient(row.salonId, row.clientName, {
+  // Save/update client record for every booking source so admin-created
+  // class bookings immediately appear in the clients list.
+  await upsertSalonClient(row.salonId, row.clientName, {
     phone: row.clientPhone || undefined,
     email: row.clientEmail || undefined,
-  }).catch(() => {});
+  });
 
   // Return the raw token (not the hash) — only this response moment exposes it.
   return { id: String(result.id ?? row.id), manageToken };

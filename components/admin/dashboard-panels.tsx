@@ -75,10 +75,24 @@ type BookingsPanelProps = {
   visibleBookings: BookingRecord[];
   groupedVisibleBookings: Record<BookingGroupKey, BookingRecord[]>;
   updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+  createAdminBooking: (input: AdminBookingInput) => Promise<void>;
   inp: CSSProperties;
   btn: ButtonFactory;
   T: ThemePalette;
   locale: Locale;
+};
+
+export type AdminBookingInput = {
+  clientName: string;
+  clientPhone: string;
+  clientEmail?: string;
+  serviceName: string;
+  serviceDuration: number;
+  date: string;
+  time: string;
+  staffMemberName?: string;
+  bookingQuantity: number;
+  notes?: string;
 };
 
 const CALENDAR_DAY_NAMES_BG = ['ПОН', 'ВТ', 'СР', 'ЧЕТ', 'ПЕТ', 'СЪБ', 'НЕД'] as const;
@@ -439,6 +453,7 @@ export function BookingsPanel({
   setCalendarCursor,
   visibleBookings,
   updateBookingStatus,
+  createAdminBooking,
   inp,
   btn,
   T,
@@ -446,6 +461,16 @@ export function BookingsPanel({
 }: BookingsPanelProps) {
   const isEn = locale === 'en';
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [addDraft, setAddDraft] = React.useState<{
+    slot: TimelineRow;
+    clientName: string;
+    clientPhone: string;
+    clientEmail: string;
+    bookingQuantity: number;
+    notes: string;
+  } | null>(null);
+  const [addError, setAddError] = React.useState('');
+  const [addSaving, setAddSaving] = React.useState(false);
   const CALENDAR_DAY_NAMES = isEn ? CALENDAR_DAY_NAMES_EN : CALENDAR_DAY_NAMES_BG;
   const bookingGroups =
     statusFilter === 'upcoming'
@@ -539,8 +564,155 @@ export function BookingsPanel({
   const useTimelineView = Boolean(selectedCalendarDate) && (statusFilter === 'upcoming' || statusFilter === 'pending' || statusFilter === 'all');
   const timelineEmpty = useTimelineView && displayedTimelineRows.length === 0;
 
+  function openAddClient(slot: TimelineRow) {
+    setAddError('');
+    setAddDraft({
+      slot,
+      clientName: '',
+      clientPhone: '',
+      clientEmail: '',
+      bookingQuantity: 1,
+      notes: '',
+    });
+  }
+
+  async function submitAddClient() {
+    if (!addDraft || !selectedCalendarDate) return;
+    const clientName = addDraft.clientName.trim();
+    const clientPhone = addDraft.clientPhone.trim();
+    const clientEmail = addDraft.clientEmail.trim();
+    const notes = addDraft.notes.trim();
+    const start = timeToMinutes(addDraft.slot.time);
+    const end = timeToMinutes(addDraft.slot.endTime ?? '');
+    const duration = Math.max(5, start != null && end != null ? end - start : 30);
+    if (!clientName || !clientPhone) {
+      setAddError(isEn ? 'Name and phone are required.' : 'Име и телефон са задължителни.');
+      return;
+    }
+    setAddSaving(true);
+    setAddError('');
+    try {
+      await createAdminBooking({
+        clientName,
+        clientPhone,
+        clientEmail: clientEmail || undefined,
+        serviceName: addDraft.slot.className || (isEn ? 'Class' : 'Клас'),
+        serviceDuration: duration,
+        date: selectedCalendarDate,
+        time: addDraft.slot.time,
+        staffMemberName: addDraft.slot.trainer || undefined,
+        bookingQuantity: Math.max(1, Math.round(Number(addDraft.bookingQuantity) || 1)),
+        notes: notes || undefined,
+      });
+      setAddDraft(null);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : (isEn ? 'Could not add the client.' : 'Клиентът не можа да бъде добавен.'));
+    } finally {
+      setAddSaving(false);
+    }
+  }
+
   return (
     <>
+      {addDraft ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 90,
+            background: 'rgba(15,23,42,0.36)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 18,
+          }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !addSaving) setAddDraft(null);
+          }}
+        >
+          <div
+            style={{
+              width: 'min(520px, 100%)',
+              borderRadius: 18,
+              background: '#fff',
+              boxShadow: '0 24px 70px rgba(15,23,42,0.24)',
+              padding: isMobile ? 18 : 22,
+              display: 'grid',
+              gap: 14,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {isEn ? 'Add client' : 'Добави клиент'}
+                </p>
+                <h3 style={{ margin: '5px 0 0', fontSize: 20, lineHeight: 1.2, color: T.text }}>
+                  {addDraft.slot.className || (isEn ? 'Class' : 'Клас')} · {addDraft.slot.time}{addDraft.slot.endTime ? ` - ${addDraft.slot.endTime}` : ''}
+                </h3>
+                {addDraft.slot.trainer ? (
+                  <p style={{ margin: '5px 0 0', fontSize: 13, color: T.muted, fontWeight: 650 }}>
+                    {addDraft.slot.trainer}
+                  </p>
+                ) : null}
+              </div>
+              <button type="button" onClick={() => !addSaving && setAddDraft(null)} style={{ ...btn('ghost'), padding: '6px 10px' }}>
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+              <input
+                value={addDraft.clientName}
+                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientName: event.target.value } : prev)}
+                placeholder={isEn ? 'Client name' : 'Име на клиента'}
+                style={inp}
+              />
+              <input
+                value={addDraft.clientPhone}
+                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientPhone: event.target.value } : prev)}
+                placeholder={isEn ? 'Phone' : 'Телефон'}
+                style={inp}
+              />
+              <input
+                value={addDraft.clientEmail}
+                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientEmail: event.target.value } : prev)}
+                placeholder={isEn ? 'Email optional' : 'Имейл по желание'}
+                style={inp}
+              />
+              <select
+                value={addDraft.bookingQuantity}
+                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, bookingQuantity: Number(event.target.value) } : prev)}
+                style={inp}
+              >
+                {Array.from({ length: Math.max(1, Math.min(10, Math.max(1, Number(addDraft.slot.capacity ?? 1) - addDraft.slot.beds))) }).map((_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1} {isEn ? (i === 0 ? 'spot' : 'spots') : (i === 0 ? 'място' : 'места')}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              value={addDraft.notes}
+              onChange={(event) => setAddDraft((prev) => prev ? { ...prev, notes: event.target.value } : prev)}
+              placeholder={isEn ? 'Note optional' : 'Бележка по желание'}
+              style={{ ...inp, minHeight: 86, resize: 'vertical' }}
+            />
+            {addError ? (
+              <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 700 }}>{addError}</p>
+            ) : null}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => !addSaving && setAddDraft(null)} style={btn('ghost')} disabled={addSaving}>
+                {isEn ? 'Cancel' : 'Отказ'}
+              </button>
+              <button type="button" onClick={() => void submitAddClient()} style={btn('primary')} disabled={addSaving}>
+                {addSaving ? (isEn ? 'Adding...' : 'Добавяне...') : (isEn ? 'Add to class' : 'Добави в класа')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {isMobile && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           {([
@@ -893,6 +1065,25 @@ export function BookingsPanel({
                               ? `${slot.beds}/${capacity} ${isEn ? 'beds' : 'легла'}`
                               : `${availableBeds}/${capacity} ${isEn ? 'free' : 'свободни'}`}
                         </span>
+                        {!isBlocked && availableBeds > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => openAddClient(slot)}
+                            style={{
+                              borderRadius: 999,
+                              border: '1px solid #BBF7D0',
+                              background: '#F0FDF4',
+                              color: '#047857',
+                              padding: '5px 10px',
+                              fontSize: 12,
+                              fontWeight: 850,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {isEn ? 'Add client' : 'Добави клиент'}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
 

@@ -22,7 +22,7 @@ import { normalizeServices } from '@/lib/salon-services';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { findClassSlotForBooking, getClassSlotsForDate, normalizeClassSchedule, normalizeTrainerName } from '@/lib/class-schedule';
 import { runAfterResponse } from '@/lib/run-after-response';
-import { sendGoogleReviewInvitation } from '@/lib/resend';
+import { sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getStaffMemberById, getStaffMembers } from '@/lib/staff-members';
@@ -296,6 +296,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await ensureBookingsSchema();
+    await ensureStaffSchema();
   } catch (err) {
     console.error('[bookings POST] schema', err);
     return NextResponse.json(
@@ -322,6 +323,7 @@ export async function POST(request: NextRequest) {
     staffMemberId?: string;
     staffMemberName?: string;
     bookingQuantity?: number;
+    adminCreate?: boolean;
   };
 
   try {
@@ -345,27 +347,36 @@ export async function POST(request: NextRequest) {
     staffMemberId: rawStaffMemberId,
     staffMemberName: rawStaffMemberName,
     bookingQuantity: rawBookingQuantity,
+    adminCreate,
   } = body;
+  const isAdminCreate = adminCreate === true;
   let staffMemberId = rawStaffMemberId?.trim() || null;
   const staffMemberName = typeof rawStaffMemberName === 'string' ? rawStaffMemberName.trim() : '';
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
   const normalizedOfferId = typeof offerId === 'string' ? offerId.trim() : '';
   const skipNotifications = requiresPayment === true;
 
-  if (!clientName || !clientPhone || !clientEmail || !serviceName || !date || !time) {
+  if (!clientName || !clientPhone || (!isAdminCreate && !clientEmail) || !serviceName || !date || !time) {
     return NextResponse.json(
       { error: 'Моля попълнете всички задължителни полета' },
       { status: 400 }
     );
   }
 
-  const normalizedClientEmail = String(clientEmail).trim().toLowerCase();
+  const normalizedClientEmail = String(clientEmail ?? '').trim().toLowerCase();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailPattern.test(normalizedClientEmail)) {
+  if (normalizedClientEmail && !emailPattern.test(normalizedClientEmail)) {
     return NextResponse.json({ error: 'Моля, въведете валиден имейл адрес.' }, { status: 400 });
   }
 
   const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+  if (isAdminCreate) {
+    const auth = await requireAdminRequestAccess(request, request.nextUrl.searchParams.get('slug'));
+    if (!auth.ok) return auth.response;
+    if (auth.salon.salonId !== salonId) {
+      return NextResponse.json({ error: 'Нямате достъп до този салон.' }, { status: 401 });
+    }
+  }
   const bookingId = crypto.randomUUID();
   let resolvedServiceName = String(serviceName).trim();
   let priceValue =
@@ -494,7 +505,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const bookingStatus = matchedService?.requires_confirmation === true ? 'pending' : 'confirmed';
+  const bookingStatus = isAdminCreate || matchedService?.requires_confirmation !== true ? 'confirmed' : 'pending';
 
   let insertedBooking: { id: string; manageToken: string } | null = null;
   try {
@@ -598,7 +609,11 @@ export async function POST(request: NextRequest) {
 
   const telegramChatId = String((resolved.salon as Record<string, unknown>).telegram_chat_id ?? '').trim();
 
-  if (!skipNotifications) {
+  if (isAdminCreate) {
+    if (normalizedClientEmail) {
+      runAfterResponse(sendBookingConfirmation(normalizedClientEmail, bookingDetails));
+    }
+  } else if (!skipNotifications) {
     // Load staff member contacts so notifications route to the right person.
     const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
 
