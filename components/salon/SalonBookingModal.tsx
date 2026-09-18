@@ -145,6 +145,30 @@ function getClassSlotsForIsoDate(schedule: BookingClassSchedule | undefined, iso
   return schedule[dayKey] ?? [];
 }
 
+function normalizeServiceLookup(value: unknown): string {
+  return String(value ?? '').trim().toLocaleLowerCase('bg-BG').replace(/\s+/g, ' ');
+}
+
+function getClassSlotServiceIndex(
+  services: BookingServiceOption[],
+  slot: BookingClassSlot,
+  fallbackIndex: number,
+): number {
+  const className = normalizeServiceLookup(slot.className);
+  if (!className) return fallbackIndex;
+
+  const exact = services.findIndex((service) => normalizeServiceLookup(service.name) === className);
+  if (exact >= 0) return exact;
+
+  const partial = services.findIndex((service) => {
+    const serviceName = normalizeServiceLookup(service.name);
+    const haystack = normalizeServiceLookup(`${service.id} ${service.name} ${service.category ?? ''}`);
+    return Boolean(serviceName) && (haystack.includes(className) || className.includes(serviceName));
+  });
+
+  return partial >= 0 ? partial : fallbackIndex;
+}
+
 function ServiceDescription({ text, locale }: { text?: string; locale: string }) {
   const description = text?.trim();
   const [expanded, setExpanded] = useState(false);
@@ -329,15 +353,15 @@ export function SalonBookingModal({
     () => serviceCatalog.filter((service) => serviceMatchesCategory(service, selectedCategory)),
     [serviceCatalog, selectedCategory],
   );
-  const classServiceIndex = useMemo(() => {
+  const fallbackClassServiceIndex = useMemo(() => {
     const reformerIdx = services.findIndex((service) => {
       const haystack = `${service.id} ${service.name} ${service.category ?? ''}`.toLocaleLowerCase('bg-BG');
       return haystack.includes('reformer') || haystack.includes('реформ');
     });
     return reformerIdx >= 0 ? reformerIdx : (services.length > 0 ? 0 : -1);
   }, [services]);
-  const classService = classServiceIndex >= 0 ? services[classServiceIndex] : null;
-  const classMode = hasClassSchedule && classServiceIndex >= 0;
+  const classService = fallbackClassServiceIndex >= 0 ? services[fallbackClassServiceIndex] : null;
+  const classMode = hasClassSchedule && services.length > 0;
   const classFirstDate = useMemo(() => {
     const configured = /^\d{4}-\d{2}-\d{2}$/.test(String(classScheduleStartDate ?? ''))
       ? String(classScheduleStartDate)
@@ -399,12 +423,13 @@ export function SalonBookingModal({
   }
 
   function selectClassSlot(slot: BookingClassSlot) {
-    if (classServiceIndex < 0) return;
+    const slotServiceIndex = getClassSlotServiceIndex(services, slot, fallbackClassServiceIndex);
+    if (slotServiceIndex < 0) return;
     const matchingStaff = staffMembers.find(
       (member) => normalizeTrainerName(member.name) === normalizeTrainerName(slot.trainer),
     );
-    if (!selectedServiceIdxs.includes(classServiceIndex)) {
-      onToggleService(classServiceIndex);
+    if (!selectedServiceIdxs.includes(slotServiceIndex)) {
+      onToggleService(slotServiceIndex);
     }
     if (matchingStaff) onStaffMemberChange?.(matchingStaff.id);
     onDateChange(displayDate);
@@ -635,9 +660,11 @@ export function SalonBookingModal({
                         <p className="mt-1 text-[12px] text-black/40">Избери друг ден от календара.</p>
                       </div>
                     ) : visibleClassSlots.map((slot) => {
-                      const serviceName = slot.className?.trim() || classService?.name || 'Reformer Pilates';
-                      const price = Number(classService?.price ?? 0) || 0;
-                      const duration = Math.max(5, Number(classService?.duration ?? 50) || 50);
+                      const slotServiceIndex = getClassSlotServiceIndex(services, slot, fallbackClassServiceIndex);
+                      const slotService = slotServiceIndex >= 0 ? services[slotServiceIndex] : null;
+                      const serviceName = slot.className?.trim() || slotService?.name || classService?.name || 'Клас';
+                      const price = Number(slotService?.price ?? classService?.price ?? 0) || 0;
+                      const duration = Math.max(5, Number(slotService?.duration ?? classService?.duration ?? 50) || 50);
                       const dateLabel = new Date(`${displayDate}T12:00:00`).toLocaleDateString(locale, {
                         weekday: 'long',
                         day: 'numeric',
@@ -646,6 +673,7 @@ export function SalonBookingModal({
                       const selected =
                         selectedDate === displayDate &&
                         selectedTime === slot.start &&
+                        (slotServiceIndex < 0 || selectedServiceIdxs.includes(slotServiceIndex)) &&
                         normalizeTrainerName(selectedClassTrainerName) === normalizeTrainerName(slot.trainer);
                       const slotStaff = staffMembers.find(
                         (member) => normalizeTrainerName(member.name) === normalizeTrainerName(slot.trainer),
