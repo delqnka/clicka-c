@@ -2576,7 +2576,7 @@ export default function AdminDashboardClient({
                     </button>
                     {!isMobile ? (
                       <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as BookingListFilter)} style={{ ...inp, width: 'auto', paddingRight: 28, cursor: 'pointer' }}>
-                        <option value="upcoming">{locale === 'en' ? 'Schedule' : 'График'}</option>
+                        <option value="upcoming">{locale === 'en' ? 'Class schedule' : 'График на класове'}</option>
                         <option value="history">{locale === 'en' ? 'History' : 'История'}</option>
                         <option value="pending">{locale === 'en' ? 'Pending' : 'Чакащи'}</option>
                         <option value="completed">{locale === 'en' ? 'Completed' : 'Завършени'}</option>

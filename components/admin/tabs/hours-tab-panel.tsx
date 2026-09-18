@@ -305,6 +305,47 @@ export function HoursTabPanel({
     const classDay = DAY_KEY_TO_CLASS_DAY[dayKey];
     const slots = (site.classSchedule ?? {})[classDay] ?? [];
 
+    if (slots.length === 0 && !compact) {
+      return (
+        <div
+          key={`classes-${dayKey}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            border: `1px solid ${ADMIN_T.border}`,
+            borderRadius: 10,
+            background: '#fff',
+            padding: '8px 10px',
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 650, color: ADMIN_T.muted }}>{day.label}</span>
+          <button
+            type="button"
+            onClick={() => addClassSlot(dayKey)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              borderRadius: 8,
+              border: `1px solid ${ADMIN_T.border}`,
+              background: '#fff',
+              color: ADMIN_T.text,
+              padding: '5px 9px',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Plus size={12} strokeWidth={2.25} />
+            {isEn ? 'Add class' : 'Добави клас'}
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div
         key={`classes-${dayKey}`}
@@ -436,7 +477,7 @@ export function HoursTabPanel({
 
   return (
     <AdminSection
-      title={isEn ? 'Working hours' : 'Работно време'}
+      title={isEn ? 'Hours & classes' : 'Раб.време и класове'}
       compact={isMobile}
       action={
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>

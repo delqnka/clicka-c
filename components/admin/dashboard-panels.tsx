@@ -544,7 +544,7 @@ export function BookingsPanel({
       {isMobile && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           {([
-            ['upcoming', isEn ? 'Schedule' : 'График'],
+            ['upcoming', isEn ? 'Class schedule' : 'График на класове'],
             ['history', isEn ? 'History' : 'История'],
             ['pending', isEn ? 'Pending' : 'Чакащи'],
             ['completed', isEn ? 'Completed' : 'Завършени'],
