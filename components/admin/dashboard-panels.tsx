@@ -707,9 +707,6 @@ export function BookingsPanel({
               >
                 <div>{day}</div>
                 {hasClicka ? <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>{count}</div> : null}
-                {!hasClicka && hasClasses ? (
-                  <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>{classCount}</div>
-                ) : null}
                 {!hasClicka && !hasClasses && hasExternal ? (
                   <div style={{ fontSize: isMobile ? 9 : 10, opacity: 0.85 }}>•</div>
                 ) : null}
@@ -869,20 +866,21 @@ export function BookingsPanel({
                       }}
                     >
                       <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: 0, color: '#111827', fontSize: isMobile ? 15 : 14, fontWeight: 800, lineHeight: 1.35 }}>
+                        <p style={{ margin: 0, color: '#64748B', fontSize: isMobile ? 12 : 11, fontWeight: 500, lineHeight: 1.35 }}>
                           {slot.className || (isEn ? 'Class' : 'Клас')}
                         </p>
-                        <p style={{ margin: '3px 0 0', color: '#64748B', fontSize: 12, fontWeight: 650, lineHeight: 1.35 }}>
-                          {slot.trainer ? `${slot.trainer} · ` : ''}{slot.time}{slot.endTime ? ` - ${slot.endTime}` : ''}
+                        <p style={{ margin: '3px 0 0', color: '#111827', fontSize: isMobile ? 15 : 14, fontWeight: 500, lineHeight: 1.35 }}>
+                          {slot.trainer ? <strong style={{ fontWeight: 850 }}>{slot.trainer}</strong> : null}
+                          {slot.trainer ? ' · ' : ''}{slot.time}{slot.endTime ? ` - ${slot.endTime}` : ''}
                         </p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span
                           style={{
                             borderRadius: 999,
-                            background: isBlocked ? '#FEF3C7' : slot.rows.length > 0 ? '#EEF2F7' : '#F8FAFC',
-                            border: `1px solid ${isBlocked ? '#FDE68A' : '#E5E7EB'}`,
-                            color: isBlocked ? '#92400E' : '#334155',
+                            background: isBlocked ? '#FEF3C7' : 'transparent',
+                            border: isBlocked ? '1px solid #FDE68A' : 'none',
+                            color: isBlocked ? '#92400E' : isFree ? '#047857' : '#334155',
                             padding: '5px 9px',
                             fontSize: 12,
                             fontWeight: 800,
@@ -902,12 +900,12 @@ export function BookingsPanel({
                       <div
                         style={{
                           borderRadius: 12,
-                          padding: isMobile ? '11px 12px' : '10px 12px',
-                          background: isBlocked ? '#FFFBEB' : '#FAFAFA',
-                          border: `1px solid ${isBlocked ? '#FDE68A' : '#E5E7EB'}`,
-                          color: isBlocked ? '#92400E' : '#64748B',
+                          padding: isBlocked ? (isMobile ? '11px 12px' : '10px 12px') : 0,
+                          background: isBlocked ? '#FFFBEB' : 'transparent',
+                          border: isBlocked ? '1px solid #FDE68A' : 'none',
+                          color: isBlocked ? '#92400E' : '#94A3B8',
                           fontSize: isMobile ? 14 : 13,
-                          fontWeight: 700,
+                          fontWeight: 600,
                         }}
                       >
                         {isBlocked
