@@ -62,6 +62,18 @@ export async function ensureBookingsSchema() {
         ADD COLUMN IF NOT EXISTS booking_quantity integer NOT NULL DEFAULT 1
       `;
       await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS email_reminder_1h_sent_at timestamptz
+      `;
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS email_reminder_1h_claimed_at timestamptz
+      `;
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS email_reminder_1h_last_error text
+      `;
+      await sql`
         UPDATE bookings
         SET booking_quantity = 1
         WHERE booking_quantity IS NULL OR booking_quantity < 1
@@ -104,6 +116,14 @@ export async function ensureBookingsSchema() {
         CREATE INDEX IF NOT EXISTS bookings_active_slot_lookup_idx
         ON bookings(salon_id, date, time)
         WHERE status IN ('pending', 'confirmed')
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS bookings_email_reminder_1h_due_idx
+        ON bookings(date, time)
+        WHERE status = 'confirmed'
+          AND email_reminder_1h_sent_at IS NULL
+          AND client_email IS NOT NULL
+          AND client_email <> ''
       `;
     })().catch((err) => {
       ensurePromise = null;

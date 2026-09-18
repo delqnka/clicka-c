@@ -679,3 +679,52 @@ export async function sendBookingConfirmation(
     `,
   }, 4, client);
 }
+
+export async function sendBookingReminder(
+  clientEmail: string,
+  booking: BookingDetails,
+): Promise<void> {
+  const locale = resolveSalonLocale(booking.language);
+  const isEn = locale === 'en';
+  const formattedDate = formatDateDMY(booking.date, locale);
+  const firstName = booking.clientName.split(' ')[0] ?? booking.clientName;
+  const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
+
+  const rows = [
+    renderRow(isEn ? 'Service' : 'Услуга', booking.serviceName),
+    normalizedBookingQuantity(booking) ? renderRow(isEn ? 'Reserved spots' : 'Запазени места', String(normalizedBookingQuantity(booking))) : '',
+    booking.serviceDuration ? renderRow(isEn ? 'Duration' : 'Продължителност', `${booking.serviceDuration} ${isEn ? 'min' : 'мин'}`) : '',
+    renderRow(isEn ? 'Date' : 'Дата', formattedDate),
+    renderRow(isEn ? 'Time' : 'Час', booking.time),
+    booking.salonPhone ? renderRow(isEn ? 'Salon phone' : 'Телефон на салона', booking.salonPhone) : '',
+    booking.salonAddress ? renderRow(isEn ? 'Address' : 'Адрес', booking.salonAddress) : '',
+  ].join('');
+
+  await sendResendWithRetry({
+    from,
+    to: clientEmail,
+    reply_to: booking.salonEmail || undefined,
+    subject: isEn
+      ? `Reminder: your class starts in 1 hour — ${booking.salonName}`
+      : `Напомняне: часът ви започва след 1 час — ${booking.salonName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Your class starts in 1 hour' : 'Часът ви започва след 1 час'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(firstName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          ${isEn
+            ? `This is a reminder for your booking at <strong>${escapeHtml(booking.salonName)}</strong>.`
+            : `Напомняме ви за предстоящата резервация в <strong>${escapeHtml(booking.salonName)}</strong>.`}
+        </p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          ${rows}
+        </table>
+        <p style="margin-top: 20px; line-height: 1.7; color: #555;">
+          ${isEn
+            ? 'If you need to make a change, please contact the studio directly.'
+            : 'Ако се налага промяна, моля свържете се директно със студиото.'}
+        </p>
+      </div>
+    `,
+  }, 4, client);
+}
