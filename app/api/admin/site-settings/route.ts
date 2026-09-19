@@ -16,6 +16,7 @@ import {
 } from '@/lib/salon-venue-extras';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 import { normalizeSiteContent } from '@/lib/site-content';
+import { normalizeNotificationEmails } from '@/lib/notification-emails';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -42,11 +43,15 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Невалидни данни.' }, { status: 400 });
   }
 
+  const hasOwnerNotificationEmails = Object.prototype.hasOwnProperty.call(body, 'ownerNotificationEmails');
   const next = {
     language: resolveSalonLocale(typeof body.language === 'string' ? body.language : 'bg'),
     name: typeof body.name === 'string' ? body.name.trim() : '',
     category: typeof body.category === 'string' ? body.category.trim() : '',
     phone: typeof body.phone === 'string' ? body.phone.trim() : '',
+    ownerNotificationEmails: hasOwnerNotificationEmails
+      ? normalizeNotificationEmails(body.ownerNotificationEmails)
+      : [],
     city: typeof body.city === 'string' ? body.city.trim() : '',
     address: typeof body.address === 'string' ? body.address.trim() : '',
     about: typeof body.about === 'string' ? body.about.trim() : '',
@@ -114,6 +119,10 @@ export async function PATCH(request: NextRequest) {
       language = ${next.language},
       category = ${next.category},
       phone = ${next.phone || ''},
+      owner_notification_emails = CASE
+        WHEN ${hasOwnerNotificationEmails} THEN ${JSON.stringify(next.ownerNotificationEmails)}::jsonb
+        ELSE owner_notification_emails
+      END,
       city = ${next.city || ''},
       address = ${next.address || ''},
       about = ${next.about || defaultAbout},
@@ -156,6 +165,7 @@ export async function PATCH(request: NextRequest) {
       language: next.language,
       category: next.category,
       phone: next.phone,
+      ...(hasOwnerNotificationEmails ? { ownerNotificationEmails: next.ownerNotificationEmails } : {}),
       city: next.city,
       address: next.address,
       about: next.about || defaultAbout,

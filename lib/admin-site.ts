@@ -31,6 +31,7 @@ export type WorkingHours = Record<string, WorkingDay>;
 import { normalizeServices, type ServiceItem } from '@/lib/salon-services';
 import type { Locale } from '@/lib/i18n';
 import { resolveSalonLocale } from '@/lib/salon-locale';
+import { normalizeNotificationEmails } from '@/lib/notification-emails';
 
 export type { ServiceItem };
 export { normalizeServices };
@@ -60,6 +61,7 @@ export type AdminSitePayload = {
   category: string;
   phone: string;
   email: string;
+  ownerNotificationEmails: string[];
   city: string;
   address: string;
   about: string;
@@ -169,6 +171,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
       slug, name, category, phone, email, city, address, about, about_en,
       hero_title, hero_subtitle, hero_title_en, hero_subtitle_en,
       language,
+      owner_notification_emails,
       site_content, site_content_en,
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       images,
@@ -203,6 +206,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
     category: String(row.category ?? ''),
     phone: String(row.phone ?? ''),
     email: String(row.email ?? ''),
+    ownerNotificationEmails: normalizeNotificationEmails(row.owner_notification_emails),
     city: String(row.city ?? ''),
     address: String(row.address ?? ''),
     about: String(row.about ?? ''),

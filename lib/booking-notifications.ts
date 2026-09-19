@@ -1,6 +1,7 @@
 import type { BookingDetails } from '@/lib/resend';
 import { sendBookingConfirmation, sendBookingNotification } from '@/lib/resend';
 import { sendBookingTelegram, type BookingTelegramDetails } from '@/lib/telegram';
+import { loadOwnerNotificationEmails, mergeEmailRecipients } from '@/lib/notification-emails';
 
 export async function dispatchBookingNotifications({
   salonId,
@@ -33,18 +34,23 @@ export async function dispatchBookingNotifications({
   // Normalize empty strings to null so ?? correctly falls back to salon-level values.
   const notifyEmail = (staffEmail || null) ?? salonEmail;
   const notifyTelegram = (staffTelegramChatId || null) ?? telegramChatId;
+  const ownerNotificationEmails = await loadOwnerNotificationEmails(bookingDetails.salonId ?? salonId);
+  const notifyEmails = mergeEmailRecipients(notifyEmail, ownerNotificationEmails);
 
   const tasks: Promise<void>[] = [
     sendBookingConfirmation(clientEmail, bookingDetails),
   ];
 
-  if (notifyEmail) {
+  if (notifyEmails.length > 0) {
     // When the booking is routed to a specific staff member, greet them by
     // their own name instead of the salon owner's.
     const ownerNameForNotification = (staffEmail || null) && staffName?.trim()
       ? staffName.trim()
       : bookingDetails.salonOwnerName;
-    tasks.push(sendBookingNotification(notifyEmail, { ...bookingDetails, salonOwnerName: ownerNameForNotification }));
+    tasks.push(sendBookingNotification(
+      notifyEmails,
+      { ...bookingDetails, salonOwnerName: ownerNameForNotification },
+    ));
   }
 
   if (notifyTelegram) {

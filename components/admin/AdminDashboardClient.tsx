@@ -577,6 +577,7 @@ export default function AdminDashboardClient({
   const servicesUiActive = activeTab === 'services' || serviceModalOpen;
   const bookingsUiActive = activeTopLevelTab === 'bookings';
   const clientsUiActive = activeTab === 'clients';
+  const clientsDataNeeded = bookingsUiActive || clientsUiActive;
   const filteredBookings = useMemo(
     () => {
       if (deferredStatusFilter === 'all') return deferredBookings;
@@ -689,7 +690,7 @@ export default function AdminDashboardClient({
     return { year, month, daysInMonth, mondayFirstOffset };
   }, [calendarCursor]);
   const clients = useMemo<ClientSummary[]>(() => {
-    if (!clientsUiActive) return [];
+    if (!clientsDataNeeded) return [];
     const map = new Map<string, ClientSummary>();
     for (const b of deferredBookings) {
       const status = String(b.status ?? '').trim().toLowerCase();
@@ -728,7 +729,7 @@ export default function AdminDashboardClient({
       }
     }
     return [...map.values()].sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
-  }, [deferredBookings, clientsUiActive]);
+  }, [deferredBookings, clientsDataNeeded]);
   const visibleBookingClients = useMemo(
     () => clients.filter((client) => !hiddenClientKeys.has(client.key)),
     [clients, hiddenClientKeys]
@@ -805,9 +806,9 @@ export default function AdminDashboardClient({
       .catch(() => undefined);
   }, [activeTab, slug]);
 
-  // Load manually added salon_clients when the clients view is opened.
+  // Load manually added salon_clients when the clients list is needed.
   useEffect(() => {
-    if (activeTab !== 'clients') return;
+    if (!clientsDataNeeded) return;
     if (extraClientsLoaded) return;
     const ctrl = new AbortController();
     const timeout = window.setTimeout(() => {
@@ -838,7 +839,7 @@ export default function AdminDashboardClient({
       window.clearTimeout(timeout);
       ctrl.abort();
     };
-  }, [activeTab, extraClientsLoaded, slug]);
+  }, [clientsDataNeeded, extraClientsLoaded, slug]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
@@ -1348,6 +1349,7 @@ export default function AdminDashboardClient({
           name: site.name,
           category: site.category,
           phone: site.phone,
+          ownerNotificationEmails: site.ownerNotificationEmails,
           city: site.city,
           address: site.address,
           about: site.about,
@@ -2626,6 +2628,8 @@ export default function AdminDashboardClient({
                   bookingsCountByDate={bookingsCountByDate}
                   externalCalendarByDate={externalCalendarByDate}
                   externalCalendarEvents={externalCalendarEvents}
+                  clients={mergedVisibleClients}
+                  workingHours={site.workingHours}
                   bookingBlocks={site.bookingBlocks}
                   classSchedule={site.classSchedule}
                   slotIntervalMin={site.slotIntervalMin}

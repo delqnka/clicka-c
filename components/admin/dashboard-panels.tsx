@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { CSSProperties } from 'react';
-import type { BookingRecord } from '@/lib/admin-site';
+import type { BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import type { BookingClassSchedule, BookingClassSlot } from '@/lib/class-schedule';
 import { formatSalonPrice } from '@/lib/salon-currency';
@@ -66,6 +66,8 @@ type BookingsPanelProps = {
   bookingsCountByDate: Map<string, number>;
   externalCalendarByDate: Map<string, number>;
   externalCalendarEvents: ExternalCalendarEventRow[];
+  clients: ClientSummary[];
+  workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
   classSchedule: BookingClassSchedule;
   slotIntervalMin: number;
@@ -141,10 +143,16 @@ function normalizeDateKey(value: unknown): string {
   return raw;
 }
 
+const DATE_DAY_TO_WORKING_KEY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+
 function timeToMinutes(value: string): number | null {
   const match = String(value ?? '').match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   if (!match) return null;
   return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function minutesToTime(value: number): string {
+  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
 }
 
 function overlaps(start: number, end: number, otherStart: number, otherEnd: number): boolean {
@@ -267,6 +275,84 @@ function bookingMatchesSearch(booking: BookingRecord, query: string): boolean {
   ]
     .filter(Boolean)
     .some((value) => String(value).toLowerCase().includes(q));
+}
+
+type DailyScheduleSlot = {
+  time: string;
+  endTime: string;
+  status: 'free' | 'booked' | 'blocked';
+  bookings: BookingRecord[];
+  cancelledBookings: BookingRecord[];
+  blocks: ExternalCalendarEventRow[];
+};
+
+function buildDailyScheduleSlots({
+  date,
+  workingHours,
+  bookingBlocks,
+  externalEvents,
+  bookings,
+  slotIntervalMin,
+}: {
+  date: string;
+  workingHours: WorkingHours;
+  bookingBlocks: BookingBlock[];
+  externalEvents: ExternalCalendarEventRow[];
+  bookings: BookingRecord[];
+  slotIntervalMin: number;
+}): DailyScheduleSlot[] {
+  const day = DATE_DAY_TO_WORKING_KEY[new Date(`${date}T12:00:00`).getDay()];
+  const workingDay = workingHours[day];
+  if (!workingDay || workingDay.closed) return [];
+  const open = timeToMinutes(workingDay.open);
+  const close = timeToMinutes(workingDay.close);
+  if (open == null || close == null || close <= open) return [];
+
+  const interval = [15, 20, 30, 45, 60].includes(slotIntervalMin) ? slotIntervalMin : 30;
+  const allDayBlocked = bookingBlocks.some((block) => block.date === date && block.allDay);
+  const blocks = externalEvents;
+  const activeBookings = bookings.filter((booking) => {
+    const status = String(booking.status ?? '').trim().toLowerCase();
+    return booking.date === date && status !== 'cancelled';
+  });
+  const cancelledBookings = bookings.filter((booking) => {
+    const status = String(booking.status ?? '').trim().toLowerCase();
+    return booking.date === date && status === 'cancelled';
+  });
+
+  const slots: DailyScheduleSlot[] = [];
+  for (let start = open; start < close; start += interval) {
+    const end = Math.min(start + interval, close);
+    const time = minutesToTime(start);
+    const slotBookings = activeBookings.filter((booking) => {
+      const bookingStart = timeToMinutes(String(booking.time ?? ''));
+      if (bookingStart == null) return false;
+      const bookingEnd = bookingStart + Math.max(5, Number(booking.service_duration ?? interval) || interval);
+      return overlaps(start, end, bookingStart, bookingEnd);
+    });
+    const slotCancelledBookings = cancelledBookings.filter((booking) => {
+      const bookingStart = timeToMinutes(String(booking.time ?? ''));
+      if (bookingStart == null) return false;
+      const bookingEnd = bookingStart + Math.max(5, Number(booking.service_duration ?? interval) || interval);
+      return overlaps(start, end, bookingStart, bookingEnd);
+    });
+    const slotBlocks = allDayBlocked
+      ? [{ id: `block-${date}-all-day`, title: '', date, startTime: workingDay.open, endTime: workingDay.close, source: 'block' }]
+      : blocks.filter((block) => {
+          const blockStart = timeToMinutes(block.startTime);
+          const blockEnd = timeToMinutes(block.endTime);
+          return blockStart != null && blockEnd != null && overlaps(start, end, blockStart, blockEnd);
+        });
+    slots.push({
+      time,
+      endTime: minutesToTime(end),
+      status: slotBookings.length > 0 ? 'booked' : slotBlocks.length > 0 ? 'blocked' : 'free',
+      bookings: slotBookings,
+      cancelledBookings: slotCancelledBookings,
+      blocks: slotBlocks,
+    });
+  }
+  return slots;
 }
 
 function isUpcomingBooking(booking: BookingRecord): boolean {
@@ -445,6 +531,8 @@ export function BookingsPanel({
   bookingsCountByDate,
   externalCalendarByDate,
   externalCalendarEvents,
+  clients,
+  workingHours,
   bookingBlocks,
   classSchedule,
   slotIntervalMin,
@@ -463,6 +551,7 @@ export function BookingsPanel({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [addDraft, setAddDraft] = React.useState<{
     slot: TimelineRow;
+    clientKey: string;
     clientName: string;
     clientPhone: string;
     clientEmail: string;
@@ -568,12 +657,26 @@ export function BookingsPanel({
     setAddError('');
     setAddDraft({
       slot,
+      clientKey: '',
       clientName: '',
       clientPhone: '',
       clientEmail: '',
       bookingQuantity: 1,
       notes: '',
     });
+  }
+
+  function selectAddClient(clientKey: string) {
+    const client = clients.find((item) => item.key === clientKey);
+    setAddDraft((prev) => prev
+      ? {
+          ...prev,
+          clientKey,
+          clientName: client?.name ?? '',
+          clientPhone: client?.phone ?? '',
+          clientEmail: client?.email ?? '',
+        }
+      : prev);
   }
 
   async function submitAddClient() {
@@ -611,6 +714,20 @@ export function BookingsPanel({
       setAddSaving(false);
     }
   }
+  const dailyScheduleSlots = React.useMemo(
+    () =>
+      selectedCalendarDate
+        ? buildDailyScheduleSlots({
+            date: selectedCalendarDate,
+            workingHours,
+            bookingBlocks,
+            externalEvents: externalCalendarEvents,
+            bookings,
+            slotIntervalMin,
+          })
+         : [],
+    [selectedCalendarDate, workingHours, bookingBlocks, externalCalendarEvents, bookings, slotIntervalMin],
+  );
 
   return (
     <>
@@ -661,22 +778,39 @@ export function BookingsPanel({
               </button>
             </div>
 
+            <select
+              value={addDraft.clientKey}
+              onChange={(event) => selectAddClient(event.target.value)}
+              style={inp}
+            >
+              <option value="">
+                {isEn ? 'Choose existing client or type manually' : 'Избери съществуващ клиент или въведи ръчно'}
+              </option>
+              {clients.map((client) => (
+                <option key={client.key} value={client.key}>
+                  {client.name}
+                  {client.phone ? ` · ${client.phone}` : ''}
+                  {client.email ? ` · ${client.email}` : ''}
+                </option>
+              ))}
+            </select>
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <input
                 value={addDraft.clientName}
-                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientName: event.target.value } : prev)}
+                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientKey: '', clientName: event.target.value } : prev)}
                 placeholder={isEn ? 'Client name' : 'Име на клиента'}
                 style={inp}
               />
               <input
                 value={addDraft.clientPhone}
-                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientPhone: event.target.value } : prev)}
+                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientKey: '', clientPhone: event.target.value } : prev)}
                 placeholder={isEn ? 'Phone' : 'Телефон'}
                 style={inp}
               />
               <input
                 value={addDraft.clientEmail}
-                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientEmail: event.target.value } : prev)}
+                onChange={(event) => setAddDraft((prev) => prev ? { ...prev, clientKey: '', clientEmail: event.target.value } : prev)}
                 placeholder={isEn ? 'Email optional' : 'Имейл по желание'}
                 style={inp}
               />
@@ -950,6 +1084,83 @@ export function BookingsPanel({
           }}
         />
       </div>
+
+      {selectedCalendarDate && displayedTimelineRows.length === 0 && dailyScheduleSlots.length > 0 ? (
+        <div style={{ marginBottom: 14, display: 'grid', gap: 6 }}>
+          <p style={{ margin: '0 2px', fontSize: 13, fontWeight: 700, color: '#111' }}>
+            {isEn ? 'Daily schedule' : 'График за деня'}
+          </p>
+          {dailyScheduleSlots.map((slot) => {
+            const booked = slot.status === 'booked';
+            const blocked = slot.status === 'blocked';
+            return (
+              <div
+                key={`${selectedCalendarDate}-${slot.time}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '68px 1fr' : '86px 1fr auto',
+                  gap: 10,
+                  alignItems: 'center',
+                  borderRadius: isMobile ? 14 : 12,
+                  padding: isMobile ? '10px 12px' : '9px 12px',
+                  background: booked ? '#EEF2FF' : blocked ? '#FFFBEB' : '#FAFAFA',
+                  border: `1px solid ${booked ? 'rgba(79,70,229,0.28)' : blocked ? 'rgba(245,158,11,0.34)' : T.border}`,
+                }}
+              >
+                <div style={{ fontSize: isMobile ? 14 : 13, fontWeight: 750, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
+                  {slot.time}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: isMobile ? 14 : 13, fontWeight: 650, color: booked ? '#3730A3' : blocked ? '#92400E' : T.muted }}>
+                    {booked
+                      ? slot.bookings.map((booking) => booking.client_name || booking.service_name).join(', ')
+                      : blocked
+                        ? (slot.blocks[0]?.title || (isEn ? 'Blocked' : 'Блокирано'))
+                        : (isEn ? 'Free' : 'Свободен час')}
+                  </p>
+                  {booked ? (
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {slot.bookings.map((booking) => booking.service_name).join(', ')}
+                    </p>
+                  ) : null}
+                  {slot.cancelledBookings.length > 0 ? (
+                    <div style={{ display: 'grid', gap: 4, marginTop: booked || blocked ? 8 : 0 }}>
+                      {slot.cancelledBookings.map((booking) => (
+                        <div
+                          key={`cancelled-${booking.id}`}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                            borderRadius: 10,
+                            padding: '7px 9px',
+                            background: '#FEF2F2',
+                            border: '1px solid rgba(239,68,68,0.24)',
+                            color: '#991B1B',
+                            opacity: 0.86,
+                          }}
+                        >
+                          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 750 }}>
+                            {booking.client_name || booking.service_name || (isEn ? 'Cancelled booking' : 'Отказана резервация')}
+                          </span>
+                          <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, color: '#DC2626' }}>
+                            {isEn ? 'Cancelled' : 'Отказана'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                {!isMobile ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: booked ? '#3730A3' : blocked ? '#92400E' : T.subtle }}>
+                    {booked ? (isEn ? 'Booked' : 'Запазен') : blocked ? (isEn ? 'Blocked' : 'Блокиран') : (isEn ? 'Available' : 'Свободен')}
+                  </span>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {timelineEmpty || (panelVisibleBookings.length === 0 && externalCalendarEvents.length === 0 && displayedTimelineRows.length === 0) ? (
         <div style={{ padding: '20px 14px', color: T.muted, textAlign: 'center', fontSize: 14 }}>

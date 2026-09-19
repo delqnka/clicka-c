@@ -40,19 +40,37 @@ export async function insertBookingIfNoOverlap(
   const quantity = Math.max(1, Math.round(Number(row.quantity ?? 1) || 1));
   if (quantity > capacity) return null;
 
-  // Cancel stale pending-payment bookings for the exact same slot before inserting.
-  // Scoped to the same staff member (or unassigned) and exact time so that one staff
-  // member's abandoned payment cannot cancel another staff member's pending booking.
-  await sql`
+  // Cancel stale checkout-only bookings for the exact same slot before inserting.
+  // Do not touch ordinary/free bookings: only rows that actually have a Stripe
+  // checkout session are safe to treat as abandoned payment attempts.
+  const staleCheckoutRows = await sql`
     UPDATE bookings
     SET status = 'cancelled', payment_status = 'failed'
     WHERE salon_id = ${row.salonId}
       AND date IN (${row.date}, ${legacyDate})
       AND time = ${row.time}
-      AND payment_status IN ('pending', 'unpaid')
+      AND payment_status = 'pending'
+      AND stripe_checkout_session_id IS NOT NULL
       AND created_at < now() - interval '5 minutes'
       AND (staff_member_id IS NOT DISTINCT FROM ${staffMemberId}::uuid)
-  `.catch(() => {});
+    RETURNING id, client_name, date, time, staff_member_id
+  `.catch(() => []);
+
+  if (staleCheckoutRows.length > 0) {
+    console.warn('[booking-insert] cancelled stale checkout bookings before insert', {
+      salonId: row.salonId,
+      date: row.date,
+      time: row.time,
+      staffMemberId,
+      bookings: staleCheckoutRows.map((staleRow: Record<string, unknown>) => ({
+        id: staleRow.id,
+        clientName: staleRow.client_name,
+        date: staleRow.date,
+        time: staleRow.time,
+        staffMemberId: staleRow.staff_member_id,
+      })),
+    });
+  }
 
   const lockKey = `${row.salonId}:${row.date}:${staffMemberId ?? 'all'}`;
   const [, inserted] = await sqlTransaction<[unknown[], Record<string, unknown>[]]>((txn) => [
@@ -90,7 +108,8 @@ export async function insertBookingIfNoOverlap(
             'cancelled', 'canceled', 'отказана', 'анулирана'
           )
           AND NOT (
-            b.payment_status IN ('pending', 'unpaid')
+            b.payment_status = 'pending'
+            AND b.stripe_checkout_session_id IS NOT NULL
             AND b.created_at < now() - interval '5 minutes'
           )
           -- Scope overlap check to the same staff member.

@@ -7,6 +7,7 @@ import { BRAND } from '@/lib/brand';
 import { tryDecryptSecret } from '@/lib/encryption';
 import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 import type { Locale } from '@/lib/i18n';
+import { mergeEmailRecipients } from '@/lib/notification-emails';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -239,7 +240,7 @@ function escapeHtml(value: string) {
 }
 
 export async function sendBookingCancellationNotification(
-  ownerEmail: string,
+  ownerEmail: string | string[],
   details: BookingCancellationDetails,
 ): Promise<void> {
   const locale = resolveSalonLocale(details.language);
@@ -250,7 +251,7 @@ export async function sendBookingCancellationNotification(
 
   await sendResendWithRetry({
     from,
-    to: ownerEmail,
+    to: mergeEmailRecipients(ownerEmail),
     subject: isEn
       ? `Cancelled booking — ${details.salonName}`
       : `Отказана резервация — ${details.salonName}`,
@@ -476,7 +477,7 @@ export async function sendStaffInviteEmail(
 }
 
 export async function sendBookingNotification(
-  salonEmail: string,
+  salonEmail: string | string[],
   booking: BookingDetails
 ): Promise<void> {
   const locale = resolveSalonLocale(booking.language);
@@ -501,7 +502,7 @@ export async function sendBookingNotification(
   const { client, from } = await getSalonResend(booking.salonId, booking.salonName);
   await sendResendWithRetry({
     from,
-    to: salonEmail,
+    to: mergeEmailRecipients(salonEmail),
     reply_to: booking.clientEmail || undefined,
     subject: isEn ? `New booking from ${booking.clientName}` : `Нова резервация от ${booking.clientName}`,
     html: `

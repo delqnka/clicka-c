@@ -1,5 +1,6 @@
 import { sendBookingCancellationNotification, type BookingCancellationDetails } from '@/lib/resend';
 import { getStaffMemberById } from '@/lib/staff-members';
+import { loadOwnerNotificationEmails, mergeEmailRecipients } from '@/lib/notification-emails';
 
 type CancellationEmailInput = BookingCancellationDetails & {
   salonEmail?: string | null;
@@ -18,9 +19,10 @@ export async function sendBookingCancellationEmails(input: CancellationEmailInpu
   const recipients: Array<{ email: string; salonOwnerName?: string }> = [];
   const salonEmail = normalizeEmail(input.salonEmail);
   const staffEmail = normalizeEmail(staffMember?.email);
+  const ownerNotificationEmails = await loadOwnerNotificationEmails(input.salonId);
 
-  if (salonEmail) {
-    recipients.push({ email: salonEmail, salonOwnerName: input.salonOwnerName });
+  for (const email of mergeEmailRecipients(salonEmail, ownerNotificationEmails)) {
+    recipients.push({ email, salonOwnerName: input.salonOwnerName });
   }
   if (staffEmail && staffEmail !== salonEmail) {
     recipients.push({ email: staffEmail, salonOwnerName: staffMember?.name || input.salonOwnerName });

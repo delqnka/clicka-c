@@ -427,6 +427,14 @@ export function SiteTabPanel({
           <AdminField compact label={t('adminDashboard.siteTab.fields.email')}>
             <input value={site.email} readOnly style={{ ...fieldInp, color: '#71717A', cursor: 'default' }} />
           </AdminField>
+          <AdminField compact label={locale === 'en' ? 'Additional notification emails' : 'Допълнителни имейли за известия'}>
+            <StringListEditor
+              label={locale === 'en' ? 'Booking and cancellation copies' : 'Копия при резервация и отказ'}
+              items={site.ownerNotificationEmails}
+              inputStyle={fieldInp}
+              onChange={(ownerNotificationEmails) => setSite((p) => ({ ...p, ownerNotificationEmails }))}
+            />
+          </AdminField>
           <AdminField compact label={t('adminDashboard.siteTab.fields.city')}>
             <input value={site.city} onChange={(e) => setSite((p) => ({ ...p, city: e.target.value }))} style={fieldInp} />
           </AdminField>
