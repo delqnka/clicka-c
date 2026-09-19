@@ -394,6 +394,9 @@ export function SalonBookingModal({
         .filter((svc): svc is BookingServiceOption => Boolean(svc)),
     [selectedServiceIdxs, services]
   );
+  const emptyClassLabel = selectedServices.length === 1
+    ? `${selectedServices[0]!.name} часове`
+    : 'класове';
   const visibleCatalog = useMemo(
     () => serviceCatalog.filter((service) => serviceMatchesCategory(service, selectedCategory)),
     [serviceCatalog, selectedCategory],
@@ -744,8 +747,8 @@ export function SalonBookingModal({
                       <div className={`rounded-[1.35rem] bg-white px-4 py-6 text-center ${cardShadow}`}>
                         <p className="text-[14px] font-semibold text-black/55">
                           {classTrainerFilterName
-                            ? `Няма активни Reformer часове при ${classTrainerFilterName} за този ден.`
-                            : 'Няма активни Reformer часове за този ден.'}
+                            ? `Няма активни ${emptyClassLabel} при ${classTrainerFilterName} за този ден.`
+                            : `Няма активни ${emptyClassLabel} за този ден.`}
                         </p>
                         <p className="mt-1 text-[12px] text-black/40">Избери друг ден от календара.</p>
                       </div>
