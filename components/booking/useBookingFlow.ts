@@ -26,6 +26,20 @@ function toLocalISODate(d: Date): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]!;
 }
 
+function timeToMinutes(value: string): number | null {
+  const match = String(value ?? '').match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function isPastStartTimeForToday(date: string, time: string): boolean {
+  const now = new Date();
+  if (date !== toLocalISODate(now)) return false;
+  const slotStart = timeToMinutes(time);
+  if (slotStart == null) return false;
+  return slotStart <= now.getHours() * 60 + now.getMinutes();
+}
+
 function isVirtualStaffId(id: string | null): boolean {
   return Boolean(id?.startsWith(VIRTUAL_STAFF_PREFIX));
 }
@@ -272,6 +286,7 @@ export function useBookingFlow({
         for (const classSlot of classSlots) {
           if (trainerName && normalizeTrainerName(classSlot.trainer) !== trainerName) continue;
           if (!selectedStaffMemberId && classSlot.trainer) continue;
+          if (isPastStartTimeForToday(date, classSlot.start)) continue;
           const [slotHour = 0, slotMinute = 0] = classSlot.start.split(':').map(Number);
           const t = slotHour * 60 + slotMinute;
           const slotEnd = t + dur;
@@ -301,6 +316,7 @@ export function useBookingFlow({
 
       for (let t = start; t <= latestStart; t += slotIntervalMin) {
         const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
+        if (isPastStartTimeForToday(date, slot)) continue;
         const slotEnd = t + dur;
         const overlappingBookings = occupied.filter(({ time, duration: d }) => {
           const [bh = 0, bm = 0] = time.split(':').map(Number);

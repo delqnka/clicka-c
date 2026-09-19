@@ -145,6 +145,24 @@ function getClassSlotsForIsoDate(schedule: BookingClassSchedule | undefined, iso
   return schedule[dayKey] ?? [];
 }
 
+function toLocalISODate(date: Date): string {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0]!;
+}
+
+function timeToMinutes(value: string): number | null {
+  const match = String(value ?? '').match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function isPastClassSlotForToday(iso: string, slot: BookingClassSlot): boolean {
+  const now = new Date();
+  if (iso !== toLocalISODate(now)) return false;
+  const start = timeToMinutes(slot.start);
+  if (start == null) return false;
+  return start <= now.getHours() * 60 + now.getMinutes();
+}
+
 function normalizeServiceLookup(value: unknown): string {
   return String(value ?? '').trim().toLocaleLowerCase('bg-BG').replace(/\s+/g, ' ');
 }
@@ -414,7 +432,8 @@ export function SalonBookingModal({
     });
   }, [classFirstDate, locale, maxDate]);
   const visibleClassSlots = useMemo(() => {
-    const slots = getClassSlotsForIsoDate(classSchedule, displayDate);
+    const slots = getClassSlotsForIsoDate(classSchedule, displayDate)
+      .filter((slot) => !isPastClassSlotForToday(displayDate, slot));
     const filter = normalizeTrainerName(classTrainerFilterName ?? '');
     if (!filter) return slots;
     return slots.filter((slot) => normalizeTrainerName(slot.trainer) === filter);
