@@ -551,6 +551,7 @@ export function BookingsPanel({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [addDraft, setAddDraft] = React.useState<{
     slot: TimelineRow;
+    date: string;
     clientKey: string;
     clientName: string;
     clientPhone: string;
@@ -654,9 +655,14 @@ export function BookingsPanel({
   const timelineEmpty = useTimelineView && displayedTimelineRows.length === 0;
 
   function openAddClient(slot: TimelineRow) {
+    if (!selectedCalendarDate) {
+      setAddError(isEn ? 'Choose a date first.' : 'Първо избери конкретна дата.');
+      return;
+    }
     setAddError('');
     setAddDraft({
       slot,
+      date: selectedCalendarDate,
       clientKey: '',
       clientName: '',
       clientPhone: '',
@@ -680,7 +686,11 @@ export function BookingsPanel({
   }
 
   async function submitAddClient() {
-    if (!addDraft || !selectedCalendarDate) return;
+    if (!addDraft) return;
+    if (!addDraft.date) {
+      setAddError(isEn ? 'Choose a date first.' : 'Първо избери конкретна дата.');
+      return;
+    }
     const clientName = addDraft.clientName.trim();
     const clientPhone = addDraft.clientPhone.trim();
     const clientEmail = addDraft.clientEmail.trim();
@@ -701,7 +711,7 @@ export function BookingsPanel({
         clientEmail: clientEmail || undefined,
         serviceName: addDraft.slot.className || (isEn ? 'Class' : 'Клас'),
         serviceDuration: duration,
-        date: selectedCalendarDate,
+        date: addDraft.date,
         time: addDraft.slot.time,
         staffMemberName: addDraft.slot.trainer || undefined,
         bookingQuantity: Math.max(1, Math.round(Number(addDraft.bookingQuantity) || 1)),
@@ -1276,7 +1286,7 @@ export function BookingsPanel({
                               ? `${slot.beds}/${capacity} ${isEn ? 'beds' : 'легла'}`
                               : `${availableBeds}/${capacity} ${isEn ? 'free' : 'свободни'}`}
                         </span>
-                        {!isBlocked && availableBeds > 0 ? (
+                        {!isBlocked && availableBeds > 0 && selectedCalendarDate ? (
                           <button
                             type="button"
                             onClick={() => openAddClient(slot)}
