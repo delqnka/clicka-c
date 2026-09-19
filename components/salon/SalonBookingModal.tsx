@@ -407,7 +407,7 @@ export function SalonBookingModal({
   }, [services]);
   const classService = fallbackClassServiceIndex >= 0 ? services[fallbackClassServiceIndex] : null;
   const classMode = hasClassSchedule && services.length > 0;
-  const classFirstDate = useMemo(() => {
+  const classBaseFirstDate = useMemo(() => {
     const configured = /^\d{4}-\d{2}-\d{2}$/.test(String(classScheduleStartDate ?? ''))
       ? String(classScheduleStartDate)
       : '';
@@ -415,6 +415,38 @@ export function SalonBookingModal({
     if (!minDate) return configured;
     return configured > minDate ? configured : minDate;
   }, [classScheduleStartDate, minDate]);
+  const classFirstDate = useMemo(() => {
+    const trainerFilter = normalizeTrainerName(classTrainerFilterName ?? '');
+    const hasActiveClassFilter = trainerFilter || selectedServiceIdxs.length > 0;
+    if (!hasActiveClassFilter || !classBaseFirstDate || !maxDate) return classBaseFirstDate;
+
+    const start = new Date(`${classBaseFirstDate}T12:00:00`).getTime();
+    const end = new Date(`${maxDate}T12:00:00`).getTime();
+    const length = Math.max(1, Math.min(60, Math.floor((end - start) / DAY_MS) + 1));
+    for (let index = 0; index < length; index += 1) {
+      const iso = isoDateAtOffset(classBaseFirstDate, index);
+      const hasMatchingSlot = getClassSlotsForIsoDate(classSchedule, iso)
+        .filter((slot) => !isPastClassSlotForToday(iso, slot))
+        .some((slot) => {
+          if (trainerFilter && normalizeTrainerName(slot.trainer) !== trainerFilter) return false;
+          if (selectedServiceIdxs.length === 0) return true;
+
+          const slotServiceIndex = getClassSlotServiceIndex(services, slot, fallbackClassServiceIndex);
+          return slotServiceIndex >= 0 && selectedServiceIdxs.includes(slotServiceIndex);
+        });
+      if (hasMatchingSlot) return iso;
+    }
+
+    return classBaseFirstDate;
+  }, [
+    classBaseFirstDate,
+    classSchedule,
+    classTrainerFilterName,
+    fallbackClassServiceIndex,
+    maxDate,
+    selectedServiceIdxs,
+    services,
+  ]);
   const displayDate = selectedDate || classFirstDate || minDate;
   const classDateOptions = useMemo(() => {
     if (!classFirstDate || !maxDate) return [];
