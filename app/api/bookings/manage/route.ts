@@ -5,7 +5,7 @@ import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 import { isCancelledStatus, bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { runAfterResponse } from '@/lib/run-after-response';
-import { sendBookingCancellationNotification } from '@/lib/resend';
+import { sendBookingCancellationEmails } from '@/lib/booking-cancellation-notifications';
 import { getStaffMemberById } from '@/lib/staff-members';
 import { stripe } from '@/lib/stripe';
 import { parseSalonServices } from '@/lib/salon-services';
@@ -240,25 +240,23 @@ export async function PATCH(request: NextRequest) {
       ? await getStaffMemberById(booking.staff_member_id).catch(() => null)
       : null;
     const notifyTelegram = (staffMember?.telegramChatId || null) ?? telegramChatId;
-    const notifyEmail = (staffMember?.email || null) ?? salonEmail;
-
-    if (notifyEmail) {
-      runAfterResponse(
-        sendBookingCancellationNotification(notifyEmail, {
-          salonId: booking.salon_id,
-          salonName,
-          salonOwnerName: staffMember?.name ?? salonOwnerName ?? undefined,
-          clientName: booking.client_name,
-          clientPhone: booking.client_phone,
-          clientEmail: booking.client_email ?? undefined,
-          serviceName: booking.service_name,
-          date: booking.date,
-          time: booking.time,
-          refundMessage,
-          language,
-        }).catch((err) => console.error('[manage] cancellation email notify', err)),
-      );
-    }
+    runAfterResponse(
+      sendBookingCancellationEmails({
+        salonId: booking.salon_id,
+        salonName,
+        salonEmail,
+        salonOwnerName: salonOwnerName ?? undefined,
+        staffMemberId: booking.staff_member_id,
+        clientName: booking.client_name,
+        clientPhone: booking.client_phone,
+        clientEmail: booking.client_email ?? undefined,
+        serviceName: booking.service_name,
+        date: booking.date,
+        time: booking.time,
+        refundMessage,
+        language,
+      }).catch((err) => console.error('[manage] cancellation email notify', err)),
+    );
 
     if (notifyTelegram) {
       runAfterResponse(
