@@ -676,8 +676,8 @@ export function BookingsPanel({
   const useTimelineView = Boolean(selectedCalendarDate) && (statusFilter === 'upcoming' || statusFilter === 'pending' || statusFilter === 'all');
   const timelineEmpty = useTimelineView && displayedTimelineRows.length === 0;
 
-  function openAddClient(slot: TimelineRow) {
-    const draftDate = selectedCalendarDate ?? slot.date ?? '';
+  function openAddClient(slot: TimelineRow, explicitDate?: string | null) {
+    const draftDate = explicitDate ?? slot.date ?? selectedCalendarDate ?? '';
     if (!draftDate) {
       setAddError(isEn ? 'Choose a date first.' : 'Първо избери конкретна дата.');
       return;
@@ -721,6 +721,18 @@ export function BookingsPanel({
     const start = timeToMinutes(addDraft.slot.time);
     const end = timeToMinutes(addDraft.slot.endTime ?? '');
     const duration = Math.max(5, start != null && end != null ? end - start : 30);
+    const payload: AdminBookingInput = {
+      clientName,
+      clientPhone,
+      clientEmail: clientEmail || undefined,
+      serviceName: addDraft.slot.className || (isEn ? 'Class' : 'Клас'),
+      serviceDuration: duration,
+      date: addDraft.date,
+      time: addDraft.slot.time,
+      staffMemberName: addDraft.slot.trainer || undefined,
+      bookingQuantity: Math.max(1, Math.round(Number(addDraft.bookingQuantity) || 1)),
+      notes: notes || undefined,
+    };
     if (!clientName || !clientPhone) {
       setAddError(isEn ? 'Name and phone are required.' : 'Име и телефон са задължителни.');
       return;
@@ -728,21 +740,12 @@ export function BookingsPanel({
     setAddSaving(true);
     setAddError('');
     try {
-      await createAdminBooking({
-        clientName,
-        clientPhone,
-        clientEmail: clientEmail || undefined,
-        serviceName: addDraft.slot.className || (isEn ? 'Class' : 'Клас'),
-        serviceDuration: duration,
-        date: addDraft.date,
-        time: addDraft.slot.time,
-        staffMemberName: addDraft.slot.trainer || undefined,
-        bookingQuantity: Math.max(1, Math.round(Number(addDraft.bookingQuantity) || 1)),
-        notes: notes || undefined,
-      });
+      await createAdminBooking(payload);
       setAddDraft(null);
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : (isEn ? 'Could not add the client.' : 'Клиентът не можа да бъде добавен.'));
+      const details = `${payload.date} ${payload.time} · ${payload.serviceName}${payload.staffMemberName ? ` · ${payload.staffMemberName}` : ''}`;
+      const message = err instanceof Error ? err.message : (isEn ? 'Could not add the client.' : 'Клиентът не можа да бъде добавен.');
+      setAddError(`${message} (${details})`);
     } finally {
       setAddSaving(false);
     }
@@ -1312,7 +1315,7 @@ export function BookingsPanel({
                         {!isBlocked && availableBeds > 0 && (selectedCalendarDate || slot.date) ? (
                           <button
                             type="button"
-                            onClick={() => openAddClient(slot)}
+                            onClick={() => openAddClient(slot, slot.date ?? selectedCalendarDate)}
                             style={{
                               borderRadius: 999,
                               border: '1px solid #BBF7D0',
