@@ -439,6 +439,8 @@ export async function POST(request: NextRequest) {
 
   const classSlotsForDay = getClassSlotsForDate(classSchedule, date);
   let classSlotCapacity: number | null = null;
+  const salonServicesRaw = await sql`SELECT services FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
+  const salonServices = normalizeServices((salonServicesRaw[0] as Record<string, unknown> | undefined)?.services ?? []);
   if (classSlotsForDay.length > 0) {
     const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
     const requestedTrainerName = staffMember?.name ?? staffMemberName;
@@ -462,8 +464,23 @@ export async function POST(request: NextRequest) {
     }
     classSlotCapacity = classSlot.capacity;
     durationValue = Math.max(5, parseTimeToMinutes(classSlot.end)! - parseTimeToMinutes(classSlot.start)!);
-    if (classSlot.className?.trim()) {
+    const classSlotService = classSlot.serviceId
+      ? salonServices.find((service) => service.id === classSlot.serviceId)
+      : null;
+    if (classSlotService) {
+      resolvedServiceName = classSlotService.name;
+      priceValue = Number.isFinite(Number(classSlotService.price)) ? Number(classSlotService.price) : priceValue;
+    } else if (classSlot.className?.trim()) {
       resolvedServiceName = classSlot.className.trim();
+    } else if (isAdminCreate) {
+      const likelyClassService = salonServices.find((service) => {
+        const capacity = Math.max(1, Number(service.capacity ?? 1) || 1);
+        return capacity >= Math.max(1, Number(classSlot.capacity ?? 1) || 1);
+      }) ?? salonServices.find((service) => Math.max(1, Number(service.capacity ?? 1) || 1) > 1);
+      if (likelyClassService) {
+        resolvedServiceName = likelyClassService.name;
+        priceValue = Number.isFinite(Number(likelyClassService.price)) ? Number(likelyClassService.price) : priceValue;
+      }
     }
   }
   if (isBlockedForStartTime(bookingBlocks, date, time, durationValue ?? 30)) {
@@ -491,12 +508,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Determine booking status: check if the matched service requires manual confirmation
-  const salonServicesRaw = await sql`SELECT services FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
-  const salonServices = normalizeServices((salonServicesRaw[0] as Record<string, unknown> | undefined)?.services ?? []);
   const matchedService = salonServices.find(
     (s) => s.name.toLowerCase() === resolvedServiceName.toLowerCase() ||
            resolvedServiceName.toLowerCase().includes(s.name.toLowerCase()),
   );
+  if (priceValue == null && matchedService?.price != null && Number.isFinite(Number(matchedService.price))) {
+    priceValue = Number(matchedService.price);
+  }
   const bookingCapacity = classSlotCapacity ?? resolveBookingCapacity(salonServices, resolvedServiceName);
   const bookingQuantity = Math.max(1, Math.round(Number(rawBookingQuantity ?? 1) || 1));
   if (bookingQuantity > bookingCapacity) {
