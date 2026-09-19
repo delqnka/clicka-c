@@ -434,10 +434,22 @@ export function SalonBookingModal({
   const visibleClassSlots = useMemo(() => {
     const slots = getClassSlotsForIsoDate(classSchedule, displayDate)
       .filter((slot) => !isPastClassSlotForToday(displayDate, slot));
-    const filter = normalizeTrainerName(classTrainerFilterName ?? '');
-    if (!filter) return slots;
-    return slots.filter((slot) => normalizeTrainerName(slot.trainer) === filter);
-  }, [classSchedule, classTrainerFilterName, displayDate]);
+    const trainerFilter = normalizeTrainerName(classTrainerFilterName ?? '');
+    return slots.filter((slot) => {
+      if (trainerFilter && normalizeTrainerName(slot.trainer) !== trainerFilter) return false;
+      if (selectedServiceIdxs.length === 0) return true;
+
+      const slotServiceIndex = getClassSlotServiceIndex(services, slot, fallbackClassServiceIndex);
+      return slotServiceIndex >= 0 && selectedServiceIdxs.includes(slotServiceIndex);
+    });
+  }, [
+    classSchedule,
+    classTrainerFilterName,
+    displayDate,
+    fallbackClassServiceIndex,
+    selectedServiceIdxs,
+    services,
+  ]);
   const selectedClassTrainerName = useMemo(
     () => staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null,
     [selectedStaffMemberId, staffMembers],
