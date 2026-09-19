@@ -1526,6 +1526,24 @@ export default function AdminDashboardClient({
     } catch (e) { setBookings(previous); handleErr(e); }
   }
 
+  async function deleteBooking(bookingId: string) {
+    setError('');
+    const previous = bookings;
+    setBookings(c => c.filter(b => b.id !== bookingId));
+    try {
+      const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      });
+      await guardResponse(res);
+      setNotice(locale === 'en' ? 'The booking was deleted.' : 'Резервацията е изтрита.');
+    } catch (e) {
+      setBookings(previous);
+      handleErr(e);
+    }
+  }
+
   async function createAdminBooking(input: AdminBookingInput) {
     setError('');
     const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}`, {
@@ -2639,6 +2657,7 @@ export default function AdminDashboardClient({
                   visibleBookings={visibleBookings}
                   groupedVisibleBookings={groupedVisibleBookings}
                   updateBookingStatus={updateBookingStatus}
+                  deleteBooking={deleteBooking}
                   createAdminBooking={createAdminBooking}
                   inp={inp}
                   btn={btn}

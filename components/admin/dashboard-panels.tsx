@@ -77,6 +77,7 @@ type BookingsPanelProps = {
   visibleBookings: BookingRecord[];
   groupedVisibleBookings: Record<BookingGroupKey, BookingRecord[]>;
   updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+  deleteBooking: (bookingId: string) => Promise<void>;
   createAdminBooking: (input: AdminBookingInput) => Promise<void>;
   inp: CSSProperties;
   btn: ButtonFactory;
@@ -409,12 +410,14 @@ function BookingCard({
   isMobile,
   T,
   updateBookingStatus,
+  deleteBooking,
   locale,
 }: {
   booking: BookingRecord;
   isMobile: boolean;
   T: ThemePalette;
   updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+  deleteBooking: (bookingId: string) => Promise<void>;
   locale: Locale;
 }) {
   const isEn = locale === 'en';
@@ -476,7 +479,7 @@ function BookingCard({
           </p>
         ) : null}
       </div>
-      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
+      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <label
           style={{
             display: 'inline-flex',
@@ -523,6 +526,29 @@ function BookingCard({
             <option value="cancelled">{STATUS_CFG.cancelled.label}</option>
           </select>
         </label>
+        <button
+          type="button"
+          onClick={() => {
+            const ok = window.confirm(
+              isEn
+                ? `Delete booking for ${booking.client_name}?`
+                : `Да изтрия ли резервацията на ${booking.client_name}?`,
+            );
+            if (ok) void deleteBooking(booking.id);
+          }}
+          style={{
+            border: '1px solid rgba(220,38,38,0.24)',
+            borderRadius: 999,
+            background: '#FEF2F2',
+            color: '#B91C1C',
+            padding: '4px 9px',
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          {isEn ? 'Delete' : 'Изтрий'}
+        </button>
       </div>
     </div>
   );
@@ -548,6 +574,7 @@ export function BookingsPanel({
   setCalendarCursor,
   visibleBookings,
   updateBookingStatus,
+  deleteBooking,
   createAdminBooking,
   inp,
   btn,
@@ -1361,6 +1388,7 @@ export function BookingsPanel({
                             isMobile={isMobile}
                             T={T}
                             updateBookingStatus={updateBookingStatus}
+                            deleteBooking={deleteBooking}
                             locale={locale}
                           />
                         ))}
@@ -1390,6 +1418,30 @@ export function BookingsPanel({
                         <p style={{ margin: '3px 0 0', fontSize: 12, color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {b.service_name}
                         </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ok = window.confirm(
+                              isEn
+                                ? `Delete booking for ${b.client_name}?`
+                                : `Да изтрия ли резервацията на ${b.client_name}?`,
+                            );
+                            if (ok) void deleteBooking(b.id);
+                          }}
+                          style={{
+                            marginTop: 8,
+                            border: '1px solid rgba(220,38,38,0.24)',
+                            borderRadius: 999,
+                            background: '#fff',
+                            color: '#B91C1C',
+                            padding: '5px 10px',
+                            fontSize: 11,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {isEn ? 'Delete' : 'Изтрий'}
+                        </button>
                       </div>
                     )) : null}
                   </div>
@@ -1413,6 +1465,7 @@ export function BookingsPanel({
                       isMobile={isMobile}
                       T={T}
                       updateBookingStatus={updateBookingStatus}
+                      deleteBooking={deleteBooking}
                       locale={locale}
                     />
                   ))}

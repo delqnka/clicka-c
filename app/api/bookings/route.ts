@@ -767,6 +767,51 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({ success: true, reviewInvite });
 }
 
+// ── DELETE /api/bookings — permanently remove a booking ─────────────────────
+export async function DELETE(request: NextRequest) {
+  try {
+    await ensureBookingsSchema();
+  } catch (err) {
+    console.error('[bookings DELETE] schema', err);
+    return NextResponse.json(
+      { error: 'Резервационната система не е налична. Моля опитайте по-късно.' },
+      { status: 503 },
+    );
+  }
+
+  const { searchParams } = new URL(request.url);
+  const auth = await requireAdminRequestAccess(request, searchParams.get('slug'));
+  if (!auth.ok) return auth.response;
+
+  const resolved = await resolveSalonFromRequest(request);
+  if ('error' in resolved) return resolved.error;
+
+  let body: { bookingId?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Невалидни данни' }, { status: 400 });
+  }
+
+  const bookingId = body.bookingId?.trim();
+  if (!bookingId) {
+    return NextResponse.json({ error: 'Липсва bookingId' }, { status: 400 });
+  }
+
+  const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+  const deleted = await sql`
+    DELETE FROM bookings
+    WHERE id = ${bookingId} AND salon_id = ${salonId}
+    RETURNING id
+  `;
+
+  if (deleted.length === 0) {
+    return NextResponse.json({ error: 'Резервацията не е намерена' }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 // ── PUT /api/bookings — reschedule (change date/time) ────────────────────────
 export async function PUT(request: NextRequest) {
   try {
