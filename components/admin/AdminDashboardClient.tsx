@@ -692,7 +692,8 @@ export default function AdminDashboardClient({
     if (!clientsUiActive) return [];
     const map = new Map<string, ClientSummary>();
     for (const b of deferredBookings) {
-      if (String(b.status ?? '').trim().toLowerCase() === 'cancelled') continue;
+      const status = String(b.status ?? '').trim().toLowerCase();
+      const countsAsVisit = status !== 'cancelled';
       const phone = String(b.client_phone ?? '').trim();
       const email = String(b.client_email ?? '').trim().toLowerCase();
       const name = String(b.client_name ?? '').trim();
@@ -707,14 +708,16 @@ export default function AdminDashboardClient({
           name: name || 'Клиент',
           phone,
           email,
-          visits: 1,
-          totalSpent: spent,
+          visits: countsAsVisit ? 1 : 0,
+          totalSpent: countsAsVisit ? spent : 0,
           lastVisit: visitMoment,
           lastBookingQuantity: quantity,
         });
       } else {
-        existing.visits += 1;
-        existing.totalSpent += spent;
+        if (countsAsVisit) {
+          existing.visits += 1;
+          existing.totalSpent += spent;
+        }
         if (visitMoment > existing.lastVisit) {
           existing.lastVisit = visitMoment;
           existing.lastBookingQuantity = quantity;
