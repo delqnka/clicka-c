@@ -72,7 +72,7 @@ function resolveBookingCapacity(
       const normalized = service.name.toLowerCase();
       return requestedName === normalized || requestedName.includes(normalized);
     });
-    return normalizeServiceCapacity(matched?.capacity);
+    return normalizeServiceCapacity((matched as Record<string, unknown> | undefined)?.capacity);
   });
 
   return Math.max(1, Math.min(...capacities));
