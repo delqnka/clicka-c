@@ -178,7 +178,13 @@ function isActiveBookingForCapacity(booking: BookingRecord): boolean {
   return status !== 'cancelled';
 }
 
+function resolveBookingCapacityFromRows(rows: BookingRecord[]): number {
+  const beds = rows.filter(isActiveBookingForCapacity).reduce((sum, booking) => sum + getBookingQuantity(booking), 0);
+  return Math.max(5, beds);
+}
+
 type TimelineRow = {
+  date?: string;
   time: string;
   endTime?: string;
   className?: string;
@@ -247,6 +253,7 @@ function buildDailyTimelineRows({
         });
 
     rows.push({
+      date,
       time: classSlot.start,
       endTime: classSlot.end,
       className: classSlot.className,
@@ -622,19 +629,34 @@ export function BookingsPanel({
   const timelineRows = React.useMemo<TimelineRow[]>(() => {
     const map = new Map<string, BookingRecord[]>();
     for (const booking of panelVisibleBookings) {
-      const key = String(booking.time ?? '').slice(0, 5) || '—';
+      const dateKey = normalizeDateKey(booking.date);
+      const timeKey = String(booking.time ?? '').slice(0, 5) || '—';
+      const staffKey = getBookingStaffName(booking);
+      const key = `${dateKey}|${timeKey}|${staffKey}`;
       const arr = map.get(key) ?? [];
       arr.push(booking);
       map.set(key, arr);
     }
     return [...map.entries()]
-      .map(([time, rows]) => ({
-        time,
-        rows: rows.sort((a, b) => String(a.client_name ?? '').localeCompare(String(b.client_name ?? ''), locale === 'en' ? 'en' : 'bg')),
-        beds: rows.filter(isActiveBookingForCapacity).reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
-      }))
-      .sort((a, b) => a.time.localeCompare(b.time));
-  }, [panelVisibleBookings, locale]);
+      .map(([key, rows]) => {
+        const [date = '', time = '—'] = key.split('|');
+        const sortedRows = rows.sort((a, b) => String(a.client_name ?? '').localeCompare(String(b.client_name ?? ''), locale === 'en' ? 'en' : 'bg'));
+        const first = sortedRows[0];
+        const start = timeToMinutes(time);
+        const duration = Math.max(5, Number(first?.service_duration ?? slotIntervalMin) || slotIntervalMin);
+        return {
+          date,
+          time,
+          endTime: start == null ? undefined : minutesToTime(start + duration),
+          className: String(first?.service_name ?? '').trim() || undefined,
+          trainer: first ? getBookingStaffName(first) : undefined,
+          capacity: resolveBookingCapacityFromRows(sortedRows),
+          rows: sortedRows,
+          beds: sortedRows.filter(isActiveBookingForCapacity).reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
+        };
+      })
+      .sort((a, b) => `${a.date ?? ''} ${a.time}`.localeCompare(`${b.date ?? ''} ${b.time}`));
+  }, [panelVisibleBookings, locale, slotIntervalMin]);
   const dailyTimelineRows = React.useMemo(
     () =>
       selectedCalendarDate
@@ -655,14 +677,15 @@ export function BookingsPanel({
   const timelineEmpty = useTimelineView && displayedTimelineRows.length === 0;
 
   function openAddClient(slot: TimelineRow) {
-    if (!selectedCalendarDate) {
+    const draftDate = selectedCalendarDate ?? slot.date ?? '';
+    if (!draftDate) {
       setAddError(isEn ? 'Choose a date first.' : 'Първо избери конкретна дата.');
       return;
     }
     setAddError('');
     setAddDraft({
       slot,
-      date: selectedCalendarDate,
+      date: draftDate,
       clientKey: '',
       clientName: '',
       clientPhone: '',
@@ -1214,7 +1237,7 @@ export function BookingsPanel({
                 const availableBeds = Math.max(0, capacity - slot.beds);
                 return (
                 <div
-                  key={slot.time}
+                  key={`${slot.date ?? selectedCalendarDate ?? 'day'}-${slot.time}-${slot.trainer ?? ''}`}
                   style={{
                     display: 'grid',
                     gridTemplateColumns: isMobile ? '1fr' : '104px minmax(0, 1fr)',
@@ -1286,7 +1309,7 @@ export function BookingsPanel({
                               ? `${slot.beds}/${capacity} ${isEn ? 'beds' : 'легла'}`
                               : `${availableBeds}/${capacity} ${isEn ? 'free' : 'свободни'}`}
                         </span>
-                        {!isBlocked && availableBeds > 0 && selectedCalendarDate ? (
+                        {!isBlocked && availableBeds > 0 && (selectedCalendarDate || slot.date) ? (
                           <button
                             type="button"
                             onClick={() => openAddClient(slot)}
