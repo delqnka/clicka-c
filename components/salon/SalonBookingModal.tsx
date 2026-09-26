@@ -160,7 +160,7 @@ function isTooSoonClassSlotForToday(iso: string, slot: BookingClassSlot): boolea
   if (iso !== toLocalISODate(now)) return false;
   const start = timeToMinutes(slot.start);
   if (start == null) return false;
-  const minimumStart = now.getHours() * 60 + now.getMinutes() + 240;
+  const minimumStart = now.getHours() * 60 + now.getMinutes() + 120;
   return start < minimumStart;
 }
 

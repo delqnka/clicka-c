@@ -1100,7 +1100,7 @@ export default function SalonPublicParity({
     if (date !== toLocalISODate(now)) return false;
     const slotStart = timeToMinutes(time);
     if (slotStart == null) return false;
-    const minimumStart = now.getHours() * 60 + now.getMinutes() + 240;
+    const minimumStart = now.getHours() * 60 + now.getMinutes() + 120;
     return slotStart < minimumStart;
   }
 
