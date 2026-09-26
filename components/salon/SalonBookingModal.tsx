@@ -155,12 +155,13 @@ function timeToMinutes(value: string): number | null {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
-function isPastClassSlotForToday(iso: string, slot: BookingClassSlot): boolean {
+function isTooSoonClassSlotForToday(iso: string, slot: BookingClassSlot): boolean {
   const now = new Date();
   if (iso !== toLocalISODate(now)) return false;
   const start = timeToMinutes(slot.start);
   if (start == null) return false;
-  return start <= now.getHours() * 60 + now.getMinutes();
+  const minimumStart = now.getHours() * 60 + now.getMinutes() + 240;
+  return start < minimumStart;
 }
 
 function normalizeServiceLookup(value: unknown): string {
@@ -429,7 +430,7 @@ export function SalonBookingModal({
     for (let index = 0; index < length; index += 1) {
       const iso = isoDateAtOffset(classBaseFirstDate, index);
       const hasMatchingSlot = getClassSlotsForIsoDate(classSchedule, iso)
-        .filter((slot) => !isPastClassSlotForToday(iso, slot))
+        .filter((slot) => !isTooSoonClassSlotForToday(iso, slot))
         .some((slot) => {
           if (trainerFilter && normalizeTrainerName(slot.trainer) !== trainerFilter) return false;
           if (selectedServiceIdxs.length === 0) return true;
@@ -451,6 +452,7 @@ export function SalonBookingModal({
     services,
   ]);
   const displayDate = selectedDate || classFirstDate || minDate;
+  const isDisplayDateToday = displayDate === toLocalISODate(new Date());
   const classDateOptions = useMemo(() => {
     if (!classFirstDate || !maxDate) return [];
     const start = new Date(`${classFirstDate}T12:00:00`).getTime();
@@ -468,7 +470,7 @@ export function SalonBookingModal({
   }, [classFirstDate, locale, maxDate]);
   const visibleClassSlots = useMemo(() => {
     const slots = getClassSlotsForIsoDate(classSchedule, displayDate)
-      .filter((slot) => !isPastClassSlotForToday(displayDate, slot));
+      .filter((slot) => !isTooSoonClassSlotForToday(displayDate, slot));
     const trainerFilter = normalizeTrainerName(classTrainerFilterName ?? '');
     return slots.filter((slot) => {
       if (trainerFilter && normalizeTrainerName(slot.trainer) !== trainerFilter) return false;
@@ -704,7 +706,9 @@ export function SalonBookingModal({
                   <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
                     {classDateOptions.map((d) => {
                       const active = displayDate === d.iso;
-                      const classCount = getClassSlotsForIsoDate(classSchedule, d.iso).length;
+                      const classCount = getClassSlotsForIsoDate(classSchedule, d.iso).filter(
+                        (slot) => !isTooSoonClassSlotForToday(d.iso, slot),
+                      ).length;
                       return (
                         <button
                           key={d.iso}
@@ -746,11 +750,17 @@ export function SalonBookingModal({
                     {visibleClassSlots.length === 0 ? (
                       <div className={`rounded-[1.35rem] bg-white px-4 py-6 text-center ${cardShadow}`}>
                         <p className="text-[14px] font-semibold text-black/55">
-                          {classTrainerFilterName
+                          {isDisplayDateToday
+                            ? 'Няма свободни класове за днес.'
+                            : classTrainerFilterName
                             ? `Няма активни ${emptyClassLabel} при ${classTrainerFilterName} за този ден.`
                             : `Няма активни ${emptyClassLabel} за този ден.`}
                         </p>
-                        <p className="mt-1 text-[12px] text-black/40">Избери друг ден от календара.</p>
+                        <p className="mt-1 text-[12px] text-black/40">
+                          {isDisplayDateToday
+                            ? 'Избери по-късен час или друг ден от календара.'
+                            : 'Избери друг ден от календара.'}
+                        </p>
                       </div>
                     ) : visibleClassSlots.map((slot) => {
                       const slotServiceIndex = getClassSlotServiceIndex(services, slot, fallbackClassServiceIndex);

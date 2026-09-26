@@ -1084,6 +1084,26 @@ export default function SalonPublicParity({
     return String(n).padStart(2, '0');
   }
 
+  function toLocalISODate(date: Date): string {
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().split('T')[0] ?? '';
+  }
+
+  function timeToMinutes(value: string): number | null {
+    const match = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+    if (!match) return null;
+    return Number(match[1]) * 60 + Number(match[2]);
+  }
+
+  function isTooSoonStartTimeForToday(date: string, time: string): boolean {
+    const now = new Date();
+    if (date !== toLocalISODate(now)) return false;
+    const slotStart = timeToMinutes(time);
+    if (slotStart == null) return false;
+    const minimumStart = now.getHours() * 60 + now.getMinutes() + 240;
+    return slotStart < minimumStart;
+  }
+
   const wh = openingHoursMerged ?? {};
   const bookingModalServices = useMemo(() => {
     const out: ServiceRow[] = [];
@@ -1192,6 +1212,7 @@ export default function SalonPublicParity({
     const slots: string[] = [];
     for (let t = start; t <= latestStart; t += slotIntervalMin) {
       const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
+      if (isTooSoonStartTimeForToday(date, slot)) continue;
       const slotStart = t;
       const slotEnd = t + totalDuration;
       const overlappingBookings = occupied.filter((b) => {
@@ -1258,10 +1279,6 @@ export default function SalonPublicParity({
   }, [salonSlug, selectedDate, selectedStaffMemberId]);
 
   useEffect(() => {
-    const toLocalISODate = (date: Date) => {
-      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-      return local.toISOString().split('T')[0];
-    };
     const today = new Date();
     setMinDate(toLocalISODate(today));
     const oh = rawSalon?.opening_hours;

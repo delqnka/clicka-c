@@ -32,12 +32,13 @@ function timeToMinutes(value: string): number | null {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
-function isPastStartTimeForToday(date: string, time: string): boolean {
+function isTooSoonStartTimeForToday(date: string, time: string): boolean {
   const now = new Date();
   if (date !== toLocalISODate(now)) return false;
   const slotStart = timeToMinutes(time);
   if (slotStart == null) return false;
-  return slotStart <= now.getHours() * 60 + now.getMinutes();
+  const minimumStart = now.getHours() * 60 + now.getMinutes() + 240;
+  return slotStart < minimumStart;
 }
 
 function isVirtualStaffId(id: string | null): boolean {
@@ -46,6 +47,18 @@ function isVirtualStaffId(id: string | null): boolean {
 
 function virtualStaffId(name: string): string {
   return `${VIRTUAL_STAFF_PREFIX}${name}`;
+}
+
+function normalizeServiceId(value: unknown): string {
+  return String(value ?? '').trim().toLocaleLowerCase('bg-BG');
+}
+
+function serviceMatchesClassSlot(serviceId: string | undefined, slotServiceId: string | undefined): boolean {
+  const requested = normalizeServiceId(serviceId);
+  const slotId = normalizeServiceId(slotServiceId);
+  if (!slotId) return true;
+  if (!requested) return false;
+  return requested === slotId || requested.startsWith(`${slotId}::`);
 }
 
 export function useBookingFlow({
@@ -279,6 +292,7 @@ export function useBookingFlow({
       const occupied = occupiedByDate[cacheKey] ?? [];
       const selectedStaffName = selectedStaffMember?.name ?? null;
       const classSlots = getClassSlotsForDate(classSchedule ?? {}, date);
+      const selectedServiceIds = selectedServices.map((service) => service.id).filter(Boolean);
 
       if (classSlots.length > 0) {
         const trainerName = normalizeTrainerName(selectedStaffName);
@@ -286,7 +300,8 @@ export function useBookingFlow({
         for (const classSlot of classSlots) {
           if (trainerName && normalizeTrainerName(classSlot.trainer) !== trainerName) continue;
           if (!selectedStaffMemberId && classSlot.trainer) continue;
-          if (isPastStartTimeForToday(date, classSlot.start)) continue;
+          if (classSlot.serviceId && !selectedServiceIds.some((serviceId) => serviceMatchesClassSlot(serviceId, classSlot.serviceId))) continue;
+          if (isTooSoonStartTimeForToday(date, classSlot.start)) continue;
           const [slotHour = 0, slotMinute = 0] = classSlot.start.split(':').map(Number);
           const t = slotHour * 60 + slotMinute;
           const slotEnd = t + dur;
@@ -316,7 +331,7 @@ export function useBookingFlow({
 
       for (let t = start; t <= latestStart; t += slotIntervalMin) {
         const slot = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
-        if (isPastStartTimeForToday(date, slot)) continue;
+        if (isTooSoonStartTimeForToday(date, slot)) continue;
         const slotEnd = t + dur;
         const overlappingBookings = occupied.filter(({ time, duration: d }) => {
           const [bh = 0, bm = 0] = time.split(':').map(Number);
@@ -336,7 +351,7 @@ export function useBookingFlow({
       }
       return slots;
     },
-    [openingHours, bookingBlocks, classSchedule, occupiedByDate, selectedCapacity, selectedStaffMember, selectedStaffMemberId, slotIntervalMin],
+    [openingHours, bookingBlocks, classSchedule, occupiedByDate, selectedCapacity, selectedServices, selectedStaffMember, selectedStaffMemberId, slotIntervalMin],
   );
 
   const timeSlots = useMemo<string[] | 'closed' | null>(
@@ -462,6 +477,7 @@ export function useBookingFlow({
           clientPhone:        clientPhone.trim(),
           clientEmail:        clientEmail.trim().toLowerCase(),
           serviceName,
+          serviceId:           selectedServices.length === 1 ? selectedServices[0]?.id : undefined,
           servicePrice:       totalPrice,
           serviceDuration:    duration,
           bookingQuantity,
