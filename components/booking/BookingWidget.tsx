@@ -131,6 +131,7 @@ function BookingWidgetInner({
       bookingQuantity={flow.bookingQuantity}
       selectedCapacity={flow.selectedCapacity}
       selectedTimeRemaining={flow.selectedTimeRemaining}
+      getRemainingCapacityForSlot={flow.getRemainingCapacityForSlot}
       clientName={flow.clientName}
       clientPhone={flow.clientPhone}
       clientEmail={flow.clientEmail}
