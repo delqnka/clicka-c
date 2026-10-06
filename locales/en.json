@@ -32,7 +32,7 @@
       "date": "Date",
       "time": "Time",
       "selectDateFirst": "Please select a date first.",
-      "dayClosed": "The salon is closed on this day.",
+      "dayClosed": "The studio is closed on this day.",
       "noSlots": "No available slots for the selected services.",
       "selectServiceFirst": "Please select a service first.",
       "selectTimeForBeds": "Choose a time to see free beds.",

@@ -376,7 +376,7 @@ export function SalonOfferBookingModal({
                     {!selectedDate ? (
                       <p className="mt-1.5 text-sm text-black/35">Първо изберете дата.</p>
                     ) : timeSlots === 'closed' ? (
-                      <p className="mt-1.5 text-sm text-black/35">В този ден салонът е затворен.</p>
+                      <p className="mt-1.5 text-sm text-black/35">В този ден студиото не работи.</p>
                     ) : Array.isArray(timeSlots) && timeSlots.length === 0 ? (
                       <p className="mt-1.5 text-sm text-black/35">Няма свободни часове за тази оферта.</p>
                     ) : Array.isArray(timeSlots) ? (
