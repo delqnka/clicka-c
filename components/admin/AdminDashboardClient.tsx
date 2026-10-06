@@ -2787,6 +2787,28 @@ export default function AdminDashboardClient({
                     });
                     setNotice(locale === 'en' ? 'Package added.' : `Добавен е пакет ${totalSessions} тренировки.`);
                   }}
+                  onImportMemberships={async (csvText, mode) => {
+                    const res = await fetch(`/api/admin/client-packages/import?slug=${encodeURIComponent(slug)}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ csvText, mode }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok && !json?.rows) {
+                      throw new Error(
+                        typeof json?.error === 'string'
+                          ? json.error
+                          : locale === 'en'
+                            ? 'Import failed.'
+                            : 'Import неуспешен.',
+                      );
+                    }
+                    if (mode === 'import' && json?.ok) {
+                      setExtraClientsLoaded(false);
+                      setNotice(locale === 'en' ? 'Memberships imported.' : 'Пакетите са импортирани.');
+                    }
+                    return json;
+                  }}
                   locale={locale}
                 />
               </Section>

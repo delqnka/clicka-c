@@ -1481,6 +1481,35 @@ export function BookingsPanel({
 
 type EditDraft = { key: string; id: string; name: string; phone: string; email: string };
 type ClientSort = 'newest' | 'visits' | 'alpha';
+type MembershipImportMode = 'preview' | 'import';
+type MembershipImportRow = {
+  rowNumber: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  packageName: string;
+  totalSessions: number;
+  usedSessions: number;
+  remainingSessions: number;
+  price: number | null;
+  validFrom: string | null;
+  validTo: string;
+  errors: string[];
+  warnings: string[];
+  action?: 'created' | 'updated' | 'skipped';
+};
+type MembershipImportResult = {
+  ok: boolean;
+  rows: MembershipImportRow[];
+  summary: {
+    totalRows: number;
+    validRows: number;
+    errorRows: number;
+    createdPackages: number;
+    updatedPackages: number;
+    skippedPackages: number;
+  };
+};
 
 export function ClientsPanel({
   clients,
@@ -1489,6 +1518,7 @@ export function ClientsPanel({
   onDelete,
   onEdit,
   onAddPackage,
+  onImportMemberships,
   locale,
 }: {
   clients: ClientSummary[];
@@ -1497,6 +1527,7 @@ export function ClientsPanel({
   onDelete?: (key: string) => void;
   onEdit?: (key: string, data: { name: string; phone: string; email: string }) => void;
   onAddPackage?: (client: ClientSummary, totalSessions: 4 | 8) => Promise<void>;
+  onImportMemberships?: (csvText: string, mode: MembershipImportMode) => Promise<MembershipImportResult>;
   locale: Locale;
 }) {
   const isEn = locale === 'en';
@@ -1506,6 +1537,11 @@ export function ClientsPanel({
   const [packageBusyKey, setPackageBusyKey] = React.useState<string | null>(null);
   const [sortBy, setSortBy] = React.useState<ClientSort>('newest');
   const frozenOrderRef = React.useRef<string[] | null>(null);
+  const [importOpen, setImportOpen] = React.useState(false);
+  const [importText, setImportText] = React.useState('');
+  const [importBusy, setImportBusy] = React.useState<MembershipImportMode | null>(null);
+  const [importResult, setImportResult] = React.useState<MembershipImportResult | null>(null);
+  const [importError, setImportError] = React.useState('');
 
   const sortedClients = React.useMemo(() => {
     const arr = [...clients];
@@ -1532,19 +1568,26 @@ export function ClientsPanel({
     setEditDraft(null);
   }
 
-  if (clients.length === 0) {
-    return (
-      <div style={{ borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
-        {isEn ? 'No clients.' : 'Няма клиенти.'}
-      </div>
-    );
-  }
-
   const SORT_OPTIONS: { id: ClientSort; label: string }[] = [
     { id: 'newest', label: isEn ? 'Newest' : 'Най-нови' },
     { id: 'visits', label: isEn ? 'Bookings' : 'Резервации' },
     { id: 'alpha', label: isEn ? 'A–Z' : 'А–Я' },
   ];
+
+  async function runMembershipImport(mode: MembershipImportMode) {
+    if (!onImportMemberships) return;
+    setImportBusy(mode);
+    setImportError('');
+    try {
+      const result = await onImportMemberships(importText, mode);
+      setImportResult(result);
+      if (mode === 'import' && result.ok) setImportText('');
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : (isEn ? 'Import failed.' : 'Import неуспешен.'));
+    } finally {
+      setImportBusy(null);
+    }
+  }
 
   return (
     <>
@@ -1595,29 +1638,128 @@ export function ClientsPanel({
       </div>
     )}
 
-    {/* Sort controls */}
-    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-      {SORT_OPTIONS.map(opt => (
-        <button
-          key={opt.id}
-          type="button"
-          onClick={() => setSortBy(opt.id)}
-          style={{
-            padding: '5px 12px',
-            borderRadius: 20,
-            border: `1px solid ${sortBy === opt.id ? '#18181B' : T.border}`,
-            background: sortBy === opt.id ? '#18181B' : 'transparent',
-            color: sortBy === opt.id ? '#fff' : T.muted,
-            fontSize: 12,
-            fontWeight: sortBy === opt.id ? 600 : 400,
-            cursor: 'pointer',
-            transition: 'all 120ms',
-          }}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
+    {onImportMemberships && (
+      <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 14, marginBottom: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{isEn ? 'Membership CSV import' : 'Import на пакети от CSV'}</div>
+            <div style={{ marginTop: 3, fontSize: 12, color: T.muted }}>{isEn ? 'Paste CSV or tab-separated rows from Google Sheets/Excel.' : 'Постави CSV или копирани редове от Google Sheets/Excel.'}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setImportOpen((open) => !open)}
+            style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: importOpen ? '#111' : '#fff', color: importOpen ? '#fff' : '#111', padding: '7px 12px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+          >
+            {importOpen ? (isEn ? 'Close' : 'Затвори') : (isEn ? 'Open import' : 'Отвори import')}
+          </button>
+        </div>
+
+        {importOpen && (
+          <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+            <textarea
+              value={importText}
+              onChange={(e) => { setImportText(e.target.value); setImportResult(null); setImportError(''); }}
+              placeholder={isEn ? 'name, phone, email, package, total credits, used, valid to\nMaria, 0888123456, maria@example.com, 8 trainings, 8, 2, 31.12.2026' : 'име, телефон, имейл, пакет, общо, използвани, валиден до\nМария, 0888123456, maria@example.com, 8 тренировки, 8, 2, 31.12.2026'}
+              style={{ minHeight: 110, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.45, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#111', outline: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                disabled={!importText.trim() || importBusy != null}
+                onClick={() => void runMembershipImport('preview')}
+                style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '8px 12px', fontSize: 12, fontWeight: 800, cursor: importBusy ? 'wait' : 'pointer', opacity: !importText.trim() || importBusy ? 0.55 : 1 }}
+              >
+                {importBusy === 'preview' ? (isEn ? 'Previewing…' : 'Преглед…') : (isEn ? 'Preview' : 'Преглед')}
+              </button>
+              <button
+                type="button"
+                disabled={!importText.trim() || importBusy != null || !importResult?.ok}
+                onClick={() => void runMembershipImport('import')}
+                style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '8px 12px', fontSize: 12, fontWeight: 800, cursor: importBusy ? 'wait' : 'pointer', opacity: !importText.trim() || importBusy || !importResult?.ok ? 0.45 : 1 }}
+              >
+                {importBusy === 'import' ? (isEn ? 'Importing…' : 'Импортира…') : (isEn ? 'Import valid rows' : 'Импортирай валидните')}
+              </button>
+            </div>
+            {importError && (
+              <div style={{ border: '1px solid rgba(239,68,68,0.35)', borderRadius: 10, padding: '9px 10px', color: '#b91c1c', fontSize: 12 }}>
+                {importError}
+              </div>
+            )}
+            {importResult && (
+              <div style={{ border: `1px solid ${importResult.ok ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`, borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '9px 10px', background: importResult.ok ? '#ecfdf5' : '#fef2f2', color: importResult.ok ? '#047857' : '#b91c1c', fontSize: 12, fontWeight: 800 }}>
+                  {isEn
+                    ? `${importResult.summary.validRows}/${importResult.summary.totalRows} valid rows`
+                    : `${importResult.summary.validRows}/${importResult.summary.totalRows} валидни реда`}
+                  {importResult.summary.createdPackages || importResult.summary.updatedPackages
+                    ? ` · ${isEn ? 'created' : 'създадени'} ${importResult.summary.createdPackages}, ${isEn ? 'updated' : 'обновени'} ${importResult.summary.updatedPackages}`
+                    : ''}
+                </div>
+                <div style={{ maxHeight: 260, overflow: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760, fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: '#fafafa', color: T.subtle, textAlign: 'left' }}>
+                        {['#', isEn ? 'Client' : 'Клиент', isEn ? 'Contact' : 'Контакт', isEn ? 'Package' : 'Пакет', isEn ? 'Used' : 'Ползвани', isEn ? 'Valid to' : 'Валиден до', isEn ? 'Status' : 'Статус'].map((header) => (
+                          <th key={header} style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}`, fontWeight: 800 }}>{header}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importResult.rows.slice(0, 50).map((row) => {
+                        const hasErrors = row.errors.length > 0;
+                        return (
+                          <tr key={row.rowNumber} style={{ color: hasErrors ? '#b91c1c' : '#111' }}>
+                            <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.rowNumber}</td>
+                            <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.name || '—'}</td>
+                            <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.phone || row.email || '—'}</td>
+                            <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.packageName}</td>
+                            <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.usedSessions}/{row.totalSessions}</td>
+                            <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.validTo}</td>
+                            <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>
+                              {hasErrors ? row.errors.join(', ') : row.action ?? (row.warnings[0] ?? (isEn ? 'Ready' : 'Готов'))}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )}
+
+    {clients.length === 0 ? (
+      <div style={{ borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
+        {isEn ? 'No clients.' : 'Няма клиенти.'}
+      </div>
+    ) : (
+      <>
+      {/* Sort controls */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        {SORT_OPTIONS.map(opt => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setSortBy(opt.id)}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 20,
+              border: `1px solid ${sortBy === opt.id ? '#18181B' : T.border}`,
+              background: sortBy === opt.id ? '#18181B' : 'transparent',
+              color: sortBy === opt.id ? '#fff' : T.muted,
+              fontSize: 12,
+              fontWeight: sortBy === opt.id ? 600 : 400,
+              cursor: 'pointer',
+              transition: 'all 120ms',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
     <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
       {displayClients.map(client => (
@@ -1744,6 +1886,8 @@ export function ClientsPanel({
         </div>
       ))}
     </div>
+    </>
+    )}
     </>
   );
 }
