@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
-import type { CSSProperties } from 'react';
-import type { BookingRecord, WorkingHours } from '@/lib/admin-site';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
+import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import type { BookingClassSchedule, BookingClassSlot } from '@/lib/class-schedule';
 import { formatSalonPrice } from '@/lib/salon-currency';
 import type { Locale } from '@/lib/i18n';
+import type { SiteContent, SiteContentPriceItem } from '@/lib/site-content';
 
 type BookingStatus = BookingRecord['status'];
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
@@ -1513,21 +1514,54 @@ type MembershipImportResult = {
 
 
 export function PackagesPanel({
+  site,
+  setSite,
   isMobile,
   T,
+  busyKey,
+  saveSiteSettings,
   onImportMemberships,
   locale,
 }: {
+  site: AdminSitePayload;
+  setSite: Dispatch<SetStateAction<AdminSitePayload>>;
   isMobile: boolean;
   T: ThemePalette;
+  busyKey: string;
+  saveSiteSettings: () => void;
   onImportMemberships: (csvText: string, mode: MembershipImportMode) => Promise<MembershipImportResult>;
   locale: Locale;
 }) {
   const isEn = locale === 'en';
+  const [packageLocale, setPackageLocale] = React.useState<'bg' | 'en'>(locale === 'en' ? 'en' : 'bg');
   const [importText, setImportText] = React.useState('');
   const [importBusy, setImportBusy] = React.useState<MembershipImportMode | null>(null);
   const [importResult, setImportResult] = React.useState<MembershipImportResult | null>(null);
   const [importError, setImportError] = React.useState('');
+  const packageContent = packageLocale === 'en' ? site.siteContentEn : site.siteContent;
+  const priceItems = packageContent.pricing.items;
+
+  function updatePackageContent(updater: (prev: SiteContent) => SiteContent) {
+    setSite((prev) =>
+      packageLocale === 'en'
+        ? { ...prev, siteContentEn: updater(prev.siteContentEn) }
+        : { ...prev, siteContent: updater(prev.siteContent) },
+    );
+  }
+
+  function updatePriceItems(items: SiteContentPriceItem[]) {
+    updatePackageContent((prev) => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        items,
+      },
+    }));
+  }
+
+  function updatePriceItem(index: number, patch: Partial<SiteContentPriceItem>) {
+    updatePriceItems(priceItems.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
+  }
 
   async function runMembershipImport(mode: MembershipImportMode) {
     setImportBusy(mode);
@@ -1553,6 +1587,140 @@ export function PackagesPanel({
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'grid', gap: 4 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
+              {isEn ? 'Package definitions' : 'Пакетни дефиниции'}
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, color: T.muted }}>
+              {isEn
+                ? 'Create the packages shown on the public site. Client memberships can be imported below.'
+                : 'Създай пакетите, които се показват на публичния сайт. Клиентските членства се импортират по-долу.'}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'inline-flex', border: `1px solid ${T.border}`, borderRadius: 999, overflow: 'hidden' }}>
+              {(['bg', 'en'] as const).map((lang) => {
+                const active = packageLocale === lang;
+                return (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setPackageLocale(lang)}
+                    style={{ border: 'none', background: active ? '#111' : '#fff', color: active ? '#fff' : T.muted, padding: '7px 11px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={saveSiteSettings}
+              disabled={busyKey === 'site'}
+              style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '8px 14px', fontSize: 12, fontWeight: 850, cursor: busyKey === 'site' ? 'wait' : 'pointer', opacity: busyKey === 'site' ? 0.65 : 1 }}
+            >
+              {busyKey === 'site' ? (isEn ? 'Saving…' : 'Запис…') : (isEn ? 'Save packages' : 'Запази пакетите')}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Section title' : 'Заглавие на секцията'}
+              <input
+                value={packageContent.pricing.title}
+                onChange={(event) =>
+                  updatePackageContent((prev) => ({
+                    ...prev,
+                    pricing: { ...prev.pricing, title: event.target.value },
+                  }))
+                }
+                style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+              />
+            </label>
+            <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Intro' : 'Подзаглавие'}
+              <input
+                value={packageContent.pricing.intro}
+                onChange={(event) =>
+                  updatePackageContent((prev) => ({
+                    ...prev,
+                    pricing: { ...prev.pricing, intro: event.target.value },
+                  }))
+                }
+                style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, fontSize: 12, color: T.muted }}>
+              {priceItems.length} {isEn ? 'packages' : 'пакета'}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                updatePriceItems([
+                  ...priceItems,
+                  {
+                    id: `price-${Date.now()}`,
+                    name: packageLocale === 'en' ? 'New package' : 'Нов пакет',
+                    price: '',
+                    text: '',
+                  },
+                ])
+              }
+              style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '8px 12px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+            >
+              {isEn ? '+ Add package' : '+ Добави пакет'}
+            </button>
+          </div>
+
+          {priceItems.length === 0 ? (
+            <div style={{ border: `1px dashed ${T.border}`, borderRadius: 12, padding: 18, color: T.muted, textAlign: 'center', fontSize: 13 }}>
+              {isEn ? 'No package definitions yet.' : 'Все още няма създадени пакети.'}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {priceItems.map((item, index) => (
+                <div key={item.id || `price-${index}`} style={{ display: 'grid', gap: 9, border: `1px solid ${T.border}`, borderRadius: 12, background: '#fafafa', padding: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1.2fr) minmax(120px,0.5fr) auto', gap: 8 }}>
+                    <input
+                      value={item.name}
+                      onChange={(event) => updatePriceItem(index, { name: event.target.value })}
+                      placeholder={isEn ? 'Package name' : 'Име на пакет'}
+                      style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+                    />
+                    <input
+                      value={item.price}
+                      onChange={(event) => updatePriceItem(index, { price: event.target.value })}
+                      placeholder={isEn ? 'Price' : 'Цена'}
+                      style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updatePriceItems(priceItems.filter((_, itemIndex) => itemIndex !== index))}
+                      style={{ border: `1px solid ${T.border}`, borderRadius: 10, background: '#fff', color: '#b91c1c', padding: '0 12px', minHeight: 40, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      {isEn ? 'Delete' : 'Изтрий'}
+                    </button>
+                  </div>
+                  <textarea
+                    value={item.text}
+                    onChange={(event) => updatePriceItem(index, { text: event.target.value })}
+                    placeholder={isEn ? 'Short description' : 'Кратко описание'}
+                    style={{ minHeight: 76, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, lineHeight: 1.45, color: '#111', background: '#fff' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'grid', gap: 4 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
@@ -1651,17 +1819,6 @@ export function PackagesPanel({
             </div>
           ) : null}
         </div>
-      </div>
-
-      <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
-          {isEn ? 'Package definitions' : 'Пакетни дефиниции'}
-        </h3>
-        <p style={{ margin: '6px 0 0', fontSize: 13, color: T.muted }}>
-          {isEn
-            ? 'Next step: editable package templates with price, credits and validity. Imported memberships above already attach packages to clients.'
-            : 'Следваща стъпка: редакция на шаблони за пакети с цена, кредити и валидност. Import-ът по-горе вече закача пакети към клиенти.'}
-        </p>
       </div>
     </div>
   );

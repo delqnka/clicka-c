@@ -2676,8 +2676,12 @@ export default function AdminDashboardClient({
           {activeTab === 'packages' && (
             <Section title={locale === 'en' ? 'Packages' : 'Пакети'}>
               <PackagesPanel
+                site={site}
+                setSite={setSite}
                 isMobile={isMobile}
                 T={T}
+                busyKey={busyKey}
+                saveSiteSettings={saveSiteSettings}
                 locale={locale}
                 onImportMemberships={async (csvText, mode) => {
                   const res = await fetch(`/api/admin/client-packages/import?slug=${encodeURIComponent(slug)}`, {
