@@ -232,10 +232,16 @@ export function useBookingFlow({
     );
   }, [classSchedule, selectedDate, selectedServices, selectedStaffMember, selectedTime]);
 
-  const usedQuantityForSlot = useCallback((date: string, time: string, durationMin: number): number | null => {
+  const usedQuantityForSlot = useCallback((
+    date: string,
+    time: string,
+    durationMin: number,
+    capacityForBlocks = selectedCapacity,
+    staffMemberId = selectedStaffMemberId,
+  ): number | null => {
     if (!date || !time) return null;
-    const cacheKey = selectedStaffMemberId
-      ? `${date}:${selectedStaffMemberId}`
+    const cacheKey = staffMemberId
+      ? `${date}:${staffMemberId}`
       : date;
     const occupied = occupiedByDate[cacheKey] ?? [];
     const [hh = 0, mm = 0] = time.split(':').map(Number);
@@ -247,12 +253,25 @@ export function useBookingFlow({
       const bookingStart = bh * 60 + bm;
       const bookingEnd = bookingStart + Math.max(5, booking.duration);
       if (bookingStart < end && bookingEnd > start) {
-        if (booking.blocksAll === true) return selectedCapacity;
+        if (booking.blocksAll === true) return capacityForBlocks;
         used += Math.max(1, Math.round(Number(booking.quantity ?? 1) || 1));
       }
     }
     return used;
   }, [occupiedByDate, selectedCapacity, selectedStaffMemberId]);
+
+  const getRemainingCapacityForSlot = useCallback((
+    date: string,
+    time: string,
+    durationMin: number,
+    capacity: number,
+    staffMemberId?: string | null,
+  ): number | null => {
+    const normalizedCapacity = Math.max(1, Math.round(Number(capacity) || 1));
+    const used = usedQuantityForSlot(date, time, durationMin, normalizedCapacity, staffMemberId ?? null);
+    if (used == null) return null;
+    return Math.max(0, normalizedCapacity - used);
+  }, [usedQuantityForSlot]);
 
   const selectedTimeRemaining = useMemo(() => {
     if (!selectedDate || !selectedTime || selectedServices.length === 0) return null;
@@ -560,7 +579,7 @@ export function useBookingFlow({
 
   return {
     bookingOpen, open, close,
-    lockedService, selectedServiceIdxs, toggleService, totalDuration, totalPrice, baseTotalPrice, bookingQuantity, setBookingQuantity, selectedCapacity, selectedTimeRemaining, selectedServices,
+    lockedService, selectedServiceIdxs, toggleService, totalDuration, totalPrice, baseTotalPrice, bookingQuantity, setBookingQuantity, selectedCapacity, selectedTimeRemaining, getRemainingCapacityForSlot, selectedServices,
     selectedDate, setDate,
     selectedTime, setTime,
     timeSlots, minDate, maxDate,

@@ -101,6 +101,13 @@ export type UseBookingFlowReturn = {
   setBookingQuantity: (v: number) => void;
   selectedCapacity: number;
   selectedTimeRemaining: number | null;
+  getRemainingCapacityForSlot: (
+    date: string,
+    time: string,
+    durationMin: number,
+    capacity: number,
+    staffMemberId?: string | null,
+  ) => number | null;
   selectedServices: BookingServiceItem[];
 
   // Date / time

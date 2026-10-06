@@ -71,6 +71,13 @@ type SalonBookingModalProps = {
   bookingQuantity?: number;
   selectedCapacity?: number;
   selectedTimeRemaining?: number | null;
+  getRemainingCapacityForSlot?: (
+    date: string,
+    time: string,
+    durationMin: number,
+    capacity: number,
+    staffMemberId?: string | null,
+  ) => number | null;
   clientName: string;
   clientPhone: string;
   clientEmail: string;
@@ -265,6 +272,7 @@ export function SalonBookingModal({
   bookingQuantity = 1,
   selectedCapacity = 1,
   selectedTimeRemaining,
+  getRemainingCapacityForSlot,
   clientName,
   clientPhone,
   clientEmail,
@@ -468,6 +476,10 @@ export function SalonBookingModal({
       };
     });
   }, [classFirstDate, locale, maxDate]);
+  useEffect(() => {
+    if (!open || !classMode || selectedDate || !displayDate) return;
+    onDateChange(displayDate);
+  }, [classMode, displayDate, onDateChange, open, selectedDate]);
   const visibleClassSlots = useMemo(() => {
     const slots = getClassSlotsForIsoDate(classSchedule, displayDate)
       .filter((slot) => !isTooSoonClassSlotForToday(displayDate, slot));
@@ -491,8 +503,14 @@ export function SalonBookingModal({
     () => staffMembers.find((member) => member.id === selectedStaffMemberId)?.name ?? null,
     [selectedStaffMemberId, staffMembers],
   );
-  const maxBookableQuantity = Math.max(1, selectedTimeRemaining ?? selectedCapacity);
-  const showQuantityPicker = selectedCapacity > 1 && selectedTime && maxBookableQuantity > 0;
+  const maxBookableQuantity = Math.max(0, selectedTimeRemaining ?? selectedCapacity);
+  const hasSelectedFullCapacitySlot = selectedCapacity > 1 && Boolean(selectedTime) && maxBookableQuantity <= 0;
+  const showQuantityPicker = selectedCapacity > 1 && Boolean(selectedTime) && maxBookableQuantity > 0;
+  const bedAvailabilityLabel = !selectedTime
+    ? t('booking.modal.selectTimeForBeds')
+    : hasSelectedFullCapacitySlot
+      ? t('booking.modal.noBedsAvailable')
+      : t('booking.modal.freeBeds', { count: maxBookableQuantity });
   const quantityPickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -768,6 +786,13 @@ export function SalonBookingModal({
                       const serviceName = slot.className?.trim() || slotService?.name || classService?.name || 'Клас';
                       const price = Number(slotService?.price ?? classService?.price ?? 0) || 0;
                       const duration = Math.max(5, Number(slotService?.duration ?? classService?.duration ?? 50) || 50);
+                      const remainingCapacity = getRemainingCapacityForSlot?.(
+                        displayDate,
+                        slot.start,
+                        duration,
+                        slot.capacity,
+                      ) ?? null;
+                      const isFullClassSlot = remainingCapacity !== null && remainingCapacity <= 0;
                       const dateLabel = new Date(`${displayDate}T12:00:00`).toLocaleDateString(locale, {
                         weekday: 'long',
                         day: 'numeric',
@@ -830,13 +855,25 @@ export function SalonBookingModal({
                           </div>
 
                           <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/10 pt-4">
-                            <p className="text-[30px] font-semibold tracking-tight text-black">
-                              {fmtPrice(price)}
-                            </p>
+                            <div className="min-w-0">
+                              <p className="text-[30px] font-semibold tracking-tight text-black">
+                                {fmtPrice(price)}
+                              </p>
+                              {slot.capacity > 1 && remainingCapacity !== null ? (
+                                <p className={`mt-1 text-[13px] font-semibold ${isFullClassSlot ? 'text-red-700' : 'text-black/45'}`}>
+                                  {isFullClassSlot
+                                    ? t('booking.modal.noBedsAvailable')
+                                    : t('booking.modal.freeBeds', { count: remainingCapacity })}
+                                </p>
+                              ) : null}
+                            </div>
                             <button
                               type="button"
-                              onClick={() => selectClassSlot(slot)}
-                              className={`rounded-2xl px-7 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.98] ${blackCtaShadow}`}
+                              onClick={() => {
+                                if (!isFullClassSlot) selectClassSlot(slot);
+                              }}
+                              disabled={isFullClassSlot}
+                              className={`rounded-2xl px-7 py-3.5 text-[15px] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-45 active:scale-[0.98] disabled:active:scale-100 ${blackCtaShadow}`}
                               style={accentFillStyle}
                             >
                               Запази
@@ -1166,12 +1203,10 @@ export function SalonBookingModal({
                         <div className="min-w-0">
                           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-black">
                             <Users className="h-4 w-4 text-black/45" aria-hidden />
-                            {showQuantityPicker
-                              ? t('booking.modal.freeBeds', { count: maxBookableQuantity })
-                              : t('booking.modal.selectTimeForBeds')}
+                            {bedAvailabilityLabel}
                           </p>
-                          <p className="mt-1 text-[12px] leading-relaxed text-black/45">
-                            {t('booking.modal.bedsHelp')}
+                          <p className={`mt-1 text-[12px] leading-relaxed ${hasSelectedFullCapacitySlot ? 'text-red-700' : 'text-black/45'}`}>
+                            {hasSelectedFullCapacitySlot ? t('booking.modal.noBedsHelp') : t('booking.modal.bedsHelp')}
                           </p>
                         </div>
                       </div>
@@ -1258,9 +1293,7 @@ export function SalonBookingModal({
                         <div className="mt-3 border-t border-black/10 pt-3">
                           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-black">
                             <Users className="h-4 w-4 text-black/45" aria-hidden />
-                            {showQuantityPicker
-                              ? t('booking.modal.freeBeds', { count: maxBookableQuantity })
-                              : t('booking.modal.selectTimeForBeds')}
+                            {bedAvailabilityLabel}
                           </p>
                           {showQuantityPicker ? (
                             <div className="mt-3 grid grid-cols-5 gap-2">
@@ -1413,10 +1446,10 @@ export function SalonBookingModal({
               const isLastStep = step === maxStep;
               const nextDisabled =
                 classMode
-                  ? step === 1 && (!hasServices || !selectedDate || !selectedTime)
+                  ? step === 1 && (!hasServices || !selectedDate || !selectedTime || hasSelectedFullCapacitySlot)
                   : (step === 1 && !hasServices) ||
                     (isTeam && step === 2 && (!selectedStaffMemberId || eligibleStaff.length === 0)) ||
-                    (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime);
+                    (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime || hasSelectedFullCapacitySlot);
               return (
                 <>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -1444,7 +1477,7 @@ export function SalonBookingModal({
                     <button
                       type="submit"
                       form="salon-booking-form"
-                      disabled={isSubmitting || !selectedTime || !hasServices}
+                      disabled={isSubmitting || !selectedTime || !hasServices || hasSelectedFullCapacitySlot}
                       className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
                       style={accentFillStyle}
                     >
