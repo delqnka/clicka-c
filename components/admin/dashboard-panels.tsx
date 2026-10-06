@@ -1511,6 +1511,163 @@ type MembershipImportResult = {
   };
 };
 
+
+export function PackagesPanel({
+  isMobile,
+  T,
+  onImportMemberships,
+  locale,
+}: {
+  isMobile: boolean;
+  T: ThemePalette;
+  onImportMemberships: (csvText: string, mode: MembershipImportMode) => Promise<MembershipImportResult>;
+  locale: Locale;
+}) {
+  const isEn = locale === 'en';
+  const [importText, setImportText] = React.useState('');
+  const [importBusy, setImportBusy] = React.useState<MembershipImportMode | null>(null);
+  const [importResult, setImportResult] = React.useState<MembershipImportResult | null>(null);
+  const [importError, setImportError] = React.useState('');
+
+  async function runMembershipImport(mode: MembershipImportMode) {
+    setImportBusy(mode);
+    setImportError('');
+    try {
+      const result = await onImportMemberships(importText, mode);
+      setImportResult(result);
+      if (mode === 'import' && result.ok) setImportText('');
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : (isEn ? 'Import failed.' : 'Import неуспешен.'));
+    } finally {
+      setImportBusy(null);
+    }
+  }
+
+  async function readCsvFile(file: File | null) {
+    if (!file) return;
+    const text = await file.text();
+    setImportText(text);
+    setImportResult(null);
+    setImportError('');
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
+            {isEn ? 'Import client packages' : 'Import на клиентски пакети'}
+          </h3>
+          <p style={{ margin: 0, fontSize: 13, color: T.muted }}>
+            {isEn ? 'Upload a CSV file or paste rows copied from Google Sheets/Excel.' : 'Качи CSV файл или постави редове от Google Sheets/Excel.'}
+          </p>
+        </div>
+
+        <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+          <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 800, color: '#111' }}>
+            {isEn ? 'CSV file' : 'CSV файл'}
+            <input
+              type="file"
+              accept=".csv,text/csv,.txt"
+              onChange={(event) => void readCsvFile(event.target.files?.[0] ?? null)}
+              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: 10, fontSize: 13, color: '#111', background: '#fff' }}
+            />
+          </label>
+
+          <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 800, color: '#111' }}>
+            {isEn ? 'Or paste rows' : 'Или постави редове'}
+            <textarea
+              value={importText}
+              onChange={(e) => { setImportText(e.target.value); setImportResult(null); setImportError(''); }}
+              placeholder={isEn ? 'name, phone, email, package, total credits, used, valid to\nMaria, 0888123456, maria@example.com, 8 trainings, 8, 2, 31.12.2026' : 'име, телефон, имейл, пакет, общо, използвани, валиден до\nМария, 0888123456, maria@example.com, 8 тренировки, 8, 2, 31.12.2026'}
+              style={{ minHeight: 130, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.45, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#111', outline: 'none' }}
+            />
+          </label>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={!importText.trim() || importBusy != null}
+              onClick={() => void runMembershipImport('preview')}
+              style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '9px 13px', fontSize: 12, fontWeight: 850, cursor: importBusy ? 'wait' : 'pointer', opacity: !importText.trim() || importBusy ? 0.55 : 1 }}
+            >
+              {importBusy === 'preview' ? (isEn ? 'Previewing…' : 'Преглед…') : (isEn ? 'Preview' : 'Преглед')}
+            </button>
+            <button
+              type="button"
+              disabled={!importText.trim() || importBusy != null || !importResult?.ok}
+              onClick={() => void runMembershipImport('import')}
+              style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '9px 14px', fontSize: 12, fontWeight: 850, cursor: importBusy ? 'wait' : 'pointer', opacity: !importText.trim() || importBusy || !importResult?.ok ? 0.45 : 1 }}
+            >
+              {importBusy === 'import' ? (isEn ? 'Importing…' : 'Импортира…') : (isEn ? 'Import valid rows' : 'Импортирай валидните')}
+            </button>
+          </div>
+
+          {importError ? (
+            <div style={{ border: '1px solid rgba(239,68,68,0.35)', borderRadius: 10, padding: '9px 10px', color: '#b91c1c', fontSize: 12 }}>
+              {importError}
+            </div>
+          ) : null}
+
+          {importResult ? (
+            <div style={{ border: `1px solid ${importResult.ok ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`, borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '9px 10px', background: importResult.ok ? '#ecfdf5' : '#fef2f2', color: importResult.ok ? '#047857' : '#b91c1c', fontSize: 12, fontWeight: 850 }}>
+                {isEn
+                  ? `${importResult.summary.validRows}/${importResult.summary.totalRows} valid rows`
+                  : `${importResult.summary.validRows}/${importResult.summary.totalRows} валидни реда`}
+                {importResult.summary.createdPackages || importResult.summary.updatedPackages
+                  ? ` · ${isEn ? 'created' : 'създадени'} ${importResult.summary.createdPackages}, ${isEn ? 'updated' : 'обновени'} ${importResult.summary.updatedPackages}`
+                  : ''}
+              </div>
+              <div style={{ maxHeight: 300, overflow: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760, fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: '#fafafa', color: T.subtle, textAlign: 'left' }}>
+                      {['#', isEn ? 'Client' : 'Клиент', isEn ? 'Contact' : 'Контакт', isEn ? 'Package' : 'Пакет', isEn ? 'Used' : 'Ползвани', isEn ? 'Valid to' : 'Валиден до', isEn ? 'Status' : 'Статус'].map((header) => (
+                        <th key={header} style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}`, fontWeight: 850 }}>{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importResult.rows.slice(0, 80).map((row) => {
+                      const hasErrors = row.errors.length > 0;
+                      return (
+                        <tr key={row.rowNumber} style={{ color: hasErrors ? '#b91c1c' : '#111' }}>
+                          <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.rowNumber}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.name || '—'}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.phone || row.email || '—'}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.packageName}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.usedSessions}/{row.totalSessions}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>{row.validTo}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}` }}>
+                            {hasErrors ? row.errors.join(', ') : row.action ?? (row.warnings[0] ?? (isEn ? 'Ready' : 'Готов'))}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16 }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
+          {isEn ? 'Package definitions' : 'Пакетни дефиниции'}
+        </h3>
+        <p style={{ margin: '6px 0 0', fontSize: 13, color: T.muted }}>
+          {isEn
+            ? 'Next step: editable package templates with price, credits and validity. Imported memberships above already attach packages to clients.'
+            : 'Следваща стъпка: редакция на шаблони за пакети с цена, кредити и валидност. Import-ът по-горе вече закача пакети към клиенти.'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
 export function ClientsPanel({
   clients,
   isMobile,
