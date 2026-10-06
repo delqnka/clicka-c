@@ -12,7 +12,7 @@
       "stepDetails": "Details",
       "stepAria": "Step {n}: {label}",
       "selectedServices": "Selected services",
-      "services": "Services",
+      "services": "Prices & packages",
       "serviceCountOne": "{count} service",
       "serviceCountMany": "{count} services",
       "minSuffix": "min",

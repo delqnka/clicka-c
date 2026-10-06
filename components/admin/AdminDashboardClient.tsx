@@ -76,7 +76,7 @@ import { formatSalonPrice } from '@/lib/salon-currency';
 import { T, tokens, BOOKING_STATUS_PALETTE } from '@/lib/admin-theme';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { MobileBottomNav } from '@/components/admin/MobileBottomNav';
-import type { AdminBookingInput } from '@/components/admin/dashboard-panels';
+import type { AdminBookingInput, AdminBookingUpdate } from '@/components/admin/dashboard-panels';
 const AdminSidebar = dynamic(
   () => import('@/components/admin/AdminSidebar').then((m) => m.AdminSidebar),
   { ssr: false }
@@ -128,7 +128,6 @@ const TABS = [
   { id: 'services',      labelKey: 'adminDashboard.tabs.services', Icon: Scissors },
   { id: 'offers',        labelKey: 'adminDashboard.tabs.offers', Icon: Tag },
   { id: 'hours',         labelKey: 'adminDashboard.tabs.hours', Icon: Clock3 },
-  { id: 'packages',      labelKey: 'adminDashboard.tabs.packages', Icon: CreditCard },
   { id: 'payments',      labelKey: 'adminDashboard.tabs.payments', Icon: CreditCard },
   { id: 'integrations',  labelKey: 'adminDashboard.tabs.integrations', Icon: Plug },
   { id: 'legal',         labelKey: 'adminDashboard.tabs.legal', Icon: FileText },
@@ -136,7 +135,7 @@ const TABS = [
 ] as const;
 
 const WEBSITE_TAB_IDS = ['site', 'faq', 'images', 'specialist', 'offers'] as const;
-const BOOKING_TAB_IDS = ['bookings', 'services', 'hours', 'packages'] as const;
+const BOOKING_TAB_IDS = ['bookings', 'services', 'hours'] as const;
 const ACCOUNT_TAB_IDS = ['account', 'legal', 'payments', 'integrations'] as const;
 
 const TOP_LEVEL_TAB_IDS = ['bookings', 'clients', 'staff', 'site', 'account'] as const;
@@ -1549,6 +1548,47 @@ export default function AdminDashboardClient({
     }
   }
 
+  async function updateBooking(bookingId: string, data: AdminBookingUpdate) {
+    setError('');
+    const previous = bookings;
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              client_name: data.clientName,
+              client_phone: data.clientPhone,
+              client_email: data.clientEmail || null,
+              service_name: data.serviceName,
+              service_price: data.servicePrice,
+              service_duration: data.serviceDuration,
+              booking_quantity: data.bookingQuantity,
+              date: data.date,
+              time: data.time,
+              staff_member_id: data.staffMemberId,
+              staff_name: data.staffMemberName || null,
+              notes: data.notes || null,
+              status: data.status,
+            }
+          : booking,
+      ),
+    );
+    try {
+      const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, ...data }),
+      });
+      await guardResponse(res);
+      setNotice(locale === 'en' ? 'The booking was updated.' : 'Резервацията е обновена.');
+      await loadBookings();
+    } catch (e) {
+      setBookings(previous);
+      handleErr(e);
+      throw e;
+    }
+  }
+
   async function createAdminBooking(input: AdminBookingInput) {
     setError('');
     const res = await fetch(`/api/bookings?slug=${encodeURIComponent(slug)}`, {
@@ -2448,8 +2488,8 @@ export default function AdminDashboardClient({
           {/* ── Услуги ── */}
           {activeTab === 'services' && (
             <Section
-              title={locale === 'en' ? 'Booking services' : 'Услуги за резервации'}
-              desc={isMobile ? undefined : (locale === 'en' ? 'Manage the services, durations, prices, and categories used by the booking engine.' : 'Управлявай услугите, времетраенето, цените и категориите, които booking engine-ът използва.')}
+              title={locale === 'en' ? 'Prices and packages' : 'Цени и пакети'}
+              desc={isMobile ? undefined : (locale === 'en' ? 'Manage booking services, prices, durations, package definitions, and package imports.' : 'Управлявай услуги, цени, продължителност, пакетни продукти и import на клиентски пакети.')}
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 6, flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined }}>
@@ -2512,6 +2552,38 @@ export default function AdminDashboardClient({
                 btn={btn}
                 locale={locale}
               />
+
+              <div style={{ marginTop: 18 }}>
+                <PackagesPanel
+                  slug={slug}
+                  services={site.services}
+                  isMobile={isMobile}
+                  T={T}
+                  locale={locale}
+                  onImportMemberships={async (csvText, mode, columnMap) => {
+                    const res = await fetch(`/api/admin/client-packages/import?slug=${encodeURIComponent(slug)}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ csvText, mode, columnMap }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok && !json?.rows) {
+                      throw new Error(
+                        typeof json?.error === 'string'
+                          ? json.error
+                          : locale === 'en'
+                            ? 'Import failed.'
+                            : 'Import неуспешен.',
+                      );
+                    }
+                    if (mode === 'import' && json?.ok) {
+                      setExtraClientsLoaded(false);
+                      setNotice(locale === 'en' ? 'Memberships imported.' : 'Пакетите са импортирани.');
+                    }
+                    return json;
+                  }}
+                />
+              </div>
             </Section>
           )}
 
@@ -2652,6 +2724,7 @@ export default function AdminDashboardClient({
                   externalCalendarByDate={externalCalendarByDate}
                   externalCalendarEvents={externalCalendarEvents}
                   clients={mergedVisibleClients}
+                  staffMembers={staffMembers}
                   workingHours={site.workingHours}
                   bookingBlocks={site.bookingBlocks}
                   classSchedule={site.classSchedule}
@@ -2662,6 +2735,7 @@ export default function AdminDashboardClient({
                   visibleBookings={visibleBookings}
                   groupedVisibleBookings={groupedVisibleBookings}
                   updateBookingStatus={updateBookingStatus}
+                  updateBooking={updateBooking}
                   deleteBooking={deleteBooking}
                   createAdminBooking={createAdminBooking}
                   inp={inp}
@@ -2671,42 +2745,6 @@ export default function AdminDashboardClient({
                 />
               </Section>
             </div>
-          )}
-
-          {activeTab === 'packages' && (
-            <Section title={locale === 'en' ? 'Packages' : 'Пакети'}>
-              <PackagesPanel
-                site={site}
-                setSite={setSite}
-                isMobile={isMobile}
-                T={T}
-                busyKey={busyKey}
-                saveSiteSettings={saveSiteSettings}
-                locale={locale}
-                onImportMemberships={async (csvText, mode) => {
-                  const res = await fetch(`/api/admin/client-packages/import?slug=${encodeURIComponent(slug)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ csvText, mode }),
-                  });
-                  const json = await res.json().catch(() => ({}));
-                  if (!res.ok && !json?.rows) {
-                    throw new Error(
-                      typeof json?.error === 'string'
-                        ? json.error
-                        : locale === 'en'
-                          ? 'Import failed.'
-                          : 'Import неуспешен.',
-                    );
-                  }
-                  if (mode === 'import' && json?.ok) {
-                    setExtraClientsLoaded(false);
-                    setNotice(locale === 'en' ? 'Memberships imported.' : 'Пакетите са импортирани.');
-                  }
-                  return json;
-                }}
-              />
-            </Section>
           )}
 
           {activeTab === 'clients' && (

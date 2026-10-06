@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
-import { importMembershipCsv, parseMembershipCsv, type MembershipImportMode } from '@/lib/client-package-import';
+import {
+  importMembershipCsv,
+  parseMembershipCsv,
+  type MembershipImportColumnMap,
+  type MembershipImportMode,
+} from '@/lib/client-package-import';
 
 export async function POST(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  let body: { csvText?: string; mode?: MembershipImportMode };
+  let body: { csvText?: string; mode?: MembershipImportMode; columnMap?: MembershipImportColumnMap };
   try {
     body = await request.json();
   } catch {
@@ -21,8 +26,8 @@ export async function POST(request: NextRequest) {
   }
 
   const result = mode === 'import'
-    ? await importMembershipCsv({ salonId: auth.salon.salonId, csvText })
-    : parseMembershipCsv(csvText);
+    ? await importMembershipCsv({ salonId: auth.salon.salonId, csvText, columnMap: body.columnMap })
+    : parseMembershipCsv(csvText, body.columnMap);
 
   if (mode === 'import' && !result.ok) {
     return NextResponse.json(result, { status: 422 });

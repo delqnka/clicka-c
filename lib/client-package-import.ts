@@ -3,6 +3,18 @@ import { ensureClientPackagesSchema } from '@/lib/client-packages';
 import { upsertSalonClient } from '@/lib/salon-clients';
 
 export type MembershipImportMode = 'preview' | 'import';
+export type MembershipImportField =
+  | 'name'
+  | 'phone'
+  | 'email'
+  | 'packageName'
+  | 'totalSessions'
+  | 'usedSessions'
+  | 'remainingSessions'
+  | 'price'
+  | 'validFrom'
+  | 'validTo';
+export type MembershipImportColumnMap = Partial<Record<MembershipImportField, number>>;
 
 export type MembershipImportParsedRow = {
   rowNumber: number;
@@ -28,6 +40,9 @@ export type MembershipImportResultRow = MembershipImportParsedRow & {
 
 export type MembershipImportResult = {
   ok: boolean;
+  headers: string[];
+  detectedColumnMap: MembershipImportColumnMap;
+  columnMap: MembershipImportColumnMap;
   rows: MembershipImportResultRow[];
   summary: {
     totalRows: number;
@@ -44,19 +59,7 @@ type RawParsedCsv = {
   rows: string[][];
 };
 
-type HeaderKey =
-  | 'name'
-  | 'phone'
-  | 'email'
-  | 'packageName'
-  | 'totalSessions'
-  | 'usedSessions'
-  | 'remainingSessions'
-  | 'price'
-  | 'validFrom'
-  | 'validTo';
-
-const HEADER_ALIASES: Record<HeaderKey, string[]> = {
+const HEADER_ALIASES: Record<MembershipImportField, string[]> = {
   name: ['name', 'client', 'client name', 'име', 'клиент', 'име на клиент', 'клиент име'],
   phone: ['phone', 'telephone', 'tel', 'mobile', 'телефон', 'тел', 'номер'],
   email: ['email', 'e-mail', 'mail', 'имейл', 'мейл'],
@@ -122,16 +125,29 @@ function parseDelimitedText(text: string): RawParsedCsv {
   return { headers, rows: records.slice(1) };
 }
 
-function buildHeaderMap(headers: string[]) {
+function buildHeaderMap(headers: string[]): MembershipImportColumnMap {
   const normalizedHeaders = headers.map(normalizeHeader);
-  const map: Partial<Record<HeaderKey, number>> = {};
+  const map: MembershipImportColumnMap = {};
 
-  (Object.keys(HEADER_ALIASES) as HeaderKey[]).forEach((key) => {
+  (Object.keys(HEADER_ALIASES) as MembershipImportField[]).forEach((key) => {
     const index = normalizedHeaders.findIndex((header) => HEADER_ALIASES[key].includes(header));
     if (index >= 0) map[key] = index;
   });
 
   return map;
+}
+
+function normalizeColumnMap(input: MembershipImportColumnMap | undefined, headerCount: number): MembershipImportColumnMap {
+  const out: MembershipImportColumnMap = {};
+  if (!input) return out;
+  for (const key of Object.keys(HEADER_ALIASES) as MembershipImportField[]) {
+    const rawIndex = input[key];
+    if (rawIndex == null) continue;
+    const index = Math.round(Number(rawIndex));
+    if (!Number.isFinite(index) || index < 0 || index >= headerCount) continue;
+    out[key] = index;
+  }
+  return out;
 }
 
 function cell(row: string[], index: number | undefined) {
@@ -196,14 +212,19 @@ function defaultValidTo() {
   return addDaysIso(new Date(), 30);
 }
 
-export function parseMembershipCsv(text: string): MembershipImportResult {
+export function parseMembershipCsv(text: string, columnMapInput?: MembershipImportColumnMap): MembershipImportResult {
   const parsed = parseDelimitedText(text);
-  const headerMap = buildHeaderMap(parsed.headers);
+  const detectedColumnMap = buildHeaderMap(parsed.headers);
+  const overrideColumnMap = normalizeColumnMap(columnMapInput, parsed.headers.length);
+  const headerMap = { ...detectedColumnMap, ...overrideColumnMap };
   const rows: MembershipImportResultRow[] = [];
 
   if (parsed.headers.length === 0) {
     return {
       ok: false,
+      headers: [],
+      detectedColumnMap: {},
+      columnMap: {},
       rows: [],
       summary: { totalRows: 0, validRows: 0, errorRows: 1, createdPackages: 0, updatedPackages: 0, skippedPackages: 0 },
     };
@@ -244,6 +265,7 @@ export function parseMembershipCsv(text: string): MembershipImportResult {
       totalSessions = remainingRaw;
     }
     if (!totalSessions) errors.push('Missing total credits/sessions');
+    if (!explicitPackageName) warnings.push('No package column; using credits as package name');
 
     if (remainingRaw != null && usedRaw == null) {
       usedSessions = Math.max(0, totalSessions - remainingRaw);
@@ -273,6 +295,9 @@ export function parseMembershipCsv(text: string): MembershipImportResult {
   const errorRows = rows.filter((row) => row.errors.length > 0).length;
   return {
     ok: errorRows === 0,
+    headers: parsed.headers,
+    detectedColumnMap,
+    columnMap: headerMap,
     rows,
     summary: {
       totalRows: rows.length,
@@ -288,8 +313,9 @@ export function parseMembershipCsv(text: string): MembershipImportResult {
 export async function importMembershipCsv(input: {
   salonId: string;
   csvText: string;
+  columnMap?: MembershipImportColumnMap;
 }): Promise<MembershipImportResult> {
-  const preview = parseMembershipCsv(input.csvText);
+  const preview = parseMembershipCsv(input.csvText, input.columnMap);
   if (!preview.ok) return preview;
 
   await ensureClientPackagesSchema();
@@ -370,6 +396,9 @@ export async function importMembershipCsv(input: {
 
   return {
     ok: true,
+    headers: preview.headers,
+    detectedColumnMap: preview.detectedColumnMap,
+    columnMap: preview.columnMap,
     rows: importedRows,
     summary: {
       totalRows: importedRows.length,

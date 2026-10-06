@@ -45,6 +45,7 @@ export type BookingRecord = {
   service_price: number | null;
   service_duration: number | null;
   booking_quantity: number | null;
+  staff_member_id?: string | null;
   staff_name?: string | null;
   date: string;
   time: string;
@@ -303,6 +304,7 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
     SELECT
       b.id, b.client_name, b.client_phone, b.client_email,
       b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+      CAST(b.staff_member_id AS text) AS staff_member_id,
       sm.name AS staff_name,
       b.date, b.time, b.status, b.notes, b.created_at, b.completed_at
     FROM bookings b

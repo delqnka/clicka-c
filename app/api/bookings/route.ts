@@ -152,6 +152,28 @@ export async function GET(request: NextRequest) {
       })
       .filter((x): x is OccupiedSlot => x != null);
 
+    const bookingBlocks = normalizeBookingBlocks(
+      resolved.salon.opening_hours && typeof resolved.salon.opening_hours === 'object'
+        ? (resolved.salon.opening_hours as Record<string, unknown>).booking_blocks
+        : null,
+    );
+    for (const block of bookingBlocks) {
+      if (block.date !== date) continue;
+      if (block.allDay) {
+        occupied.push({ time: '00:00', duration: 24 * 60, quantity: 1, blocksAll: true });
+        continue;
+      }
+      const startMins = block.start ? parseTimeToMinutes(block.start) : null;
+      const endMins = block.end ? parseTimeToMinutes(block.end) : null;
+      if (startMins == null || endMins == null || endMins <= startMins || !block.start) continue;
+      occupied.push({
+        time: block.start,
+        duration: Math.max(5, endMins - startMins),
+        quantity: 1,
+        blocksAll: true,
+      });
+    }
+
     const externalEvents = await loadExternalCalendarEventsForRange(salonId, date, date).catch(() => []);
     for (const ev of externalEvents) {
       if (ev.allDay) continue;
@@ -190,6 +212,7 @@ export async function GET(request: NextRequest) {
       ? await sql`
           SELECT b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
             b.date, b.time, b.status, b.notes, b.created_at
           FROM bookings b
@@ -216,6 +239,7 @@ export async function GET(request: NextRequest) {
       : await sql`
           SELECT b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
             b.date, b.time, b.status, b.notes, b.created_at
           FROM bookings b
@@ -243,6 +267,7 @@ export async function GET(request: NextRequest) {
       ? await sql`
           SELECT b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
             b.date, b.time, b.status, b.notes, b.created_at
           FROM bookings b
@@ -254,6 +279,7 @@ export async function GET(request: NextRequest) {
       : await sql`
           SELECT b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
             b.date, b.time, b.status, b.notes, b.created_at
           FROM bookings b
@@ -266,6 +292,7 @@ export async function GET(request: NextRequest) {
       ? await sql`
           SELECT b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
             b.date, b.time, b.status, b.notes, b.created_at
           FROM bookings b
@@ -277,6 +304,7 @@ export async function GET(request: NextRequest) {
       : await sql`
           SELECT b.id, b.client_name, b.client_phone, b.client_email,
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
+            CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
             b.date, b.time, b.status, b.notes, b.created_at
           FROM bookings b
@@ -678,7 +706,22 @@ export async function PATCH(request: NextRequest) {
   const resolved = await resolveSalonFromRequest(request);
   if ('error' in resolved) return resolved.error;
 
-  let body: { bookingId?: string; status?: BookingStatus };
+  let body: {
+    bookingId?: string;
+    status?: BookingStatus;
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string | null;
+    serviceName?: string;
+    servicePrice?: number | null;
+    serviceDuration?: number | null;
+    bookingQuantity?: number | null;
+    date?: string;
+    time?: string;
+    notes?: string | null;
+    staffMemberId?: string | null;
+    staffMemberName?: string | null;
+  };
   try {
     body = await request.json();
   } catch {
@@ -691,16 +734,66 @@ export async function PATCH(request: NextRequest) {
   if (!bookingId) {
     return NextResponse.json({ error: 'Липсва bookingId' }, { status: 400 });
   }
-  if (!status || !['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
+  if (status && !['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
     return NextResponse.json({ error: 'Невалиден статус' }, { status: 400 });
   }
 
   const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
+  const hasStaffMemberId = body.staffMemberId !== undefined || body.staffMemberName !== undefined;
+  let staffMemberId = body.staffMemberId?.trim() || null;
+  if (body.staffMemberName !== undefined && !staffMemberId) {
+    const staffName = String(body.staffMemberName ?? '').trim();
+    if (staffName) {
+      const staffRows = await sql`
+        SELECT id
+        FROM staff_members
+        WHERE salon_id = ${salonId}
+          AND lower(trim(name)) = lower(trim(${staffName}))
+        LIMIT 1
+      ` as { id: string }[];
+      staffMemberId = staffRows[0]?.id ?? null;
+    }
+  }
+  if (staffMemberId) {
+    const staffRows = await sql`
+      SELECT id
+      FROM staff_members
+      WHERE id = ${staffMemberId}::uuid
+        AND salon_id = ${salonId}
+      LIMIT 1
+    ` as { id: string }[];
+    if (staffRows.length === 0) {
+      return NextResponse.json({ error: 'Избраният треньор не е намерен.' }, { status: 400 });
+    }
+  }
+
+  const hasClientName = typeof body.clientName === 'string';
+  const hasClientPhone = typeof body.clientPhone === 'string';
+  const hasClientEmail = body.clientEmail !== undefined;
+  const hasServiceName = typeof body.serviceName === 'string';
+  const hasServicePrice = body.servicePrice !== undefined;
+  const hasServiceDuration = body.serviceDuration !== undefined;
+  const hasBookingQuantity = body.bookingQuantity !== undefined;
+  const hasDate = typeof body.date === 'string';
+  const hasTime = typeof body.time === 'string';
+  const hasNotes = body.notes !== undefined;
 
   const updated = await sql`
     UPDATE bookings
-    SET status = ${status},
-        completed_at = CASE WHEN ${status} = 'completed' THEN now() ELSE completed_at END
+    SET
+        status = CASE WHEN ${status ?? null}::text IS NOT NULL THEN ${status ?? null} ELSE status END,
+        client_name = CASE WHEN ${hasClientName} THEN ${body.clientName?.trim() ?? ''} ELSE client_name END,
+        client_phone = CASE WHEN ${hasClientPhone} THEN ${body.clientPhone?.trim() ?? ''} ELSE client_phone END,
+        client_email = CASE WHEN ${hasClientEmail} THEN ${String(body.clientEmail ?? '').trim().toLowerCase() || null} ELSE client_email END,
+        service_name = CASE WHEN ${hasServiceName} THEN ${body.serviceName?.trim() ?? ''} ELSE service_name END,
+        service_price = CASE WHEN ${hasServicePrice} THEN ${body.servicePrice == null ? null : Math.max(0, Number(body.servicePrice) || 0)} ELSE service_price END,
+        service_duration = CASE WHEN ${hasServiceDuration} THEN ${body.serviceDuration == null ? null : Math.max(5, Math.round(Number(body.serviceDuration) || 30))} ELSE service_duration END,
+        booking_quantity = CASE WHEN ${hasBookingQuantity} THEN ${body.bookingQuantity == null ? null : Math.max(1, Math.round(Number(body.bookingQuantity) || 1))} ELSE booking_quantity END,
+        date = CASE WHEN ${hasDate} THEN ${body.date?.trim() ?? ''} ELSE date END,
+        time = CASE WHEN ${hasTime} THEN ${body.time?.trim() ?? ''} ELSE time END,
+        notes = CASE WHEN ${hasNotes} THEN ${String(body.notes ?? '').trim() || null} ELSE notes END,
+        staff_member_id = CASE WHEN ${hasStaffMemberId} THEN ${staffMemberId}::uuid ELSE staff_member_id END,
+        completed_at = CASE WHEN ${status ?? null} = 'completed' THEN now() ELSE completed_at END
     WHERE id = ${bookingId} AND salon_id = ${salonId}
     RETURNING id, client_email, client_name, service_name, client_phone,
               service_duration, date, time, notes, status

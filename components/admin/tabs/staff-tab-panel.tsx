@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { UserRound, Plus, Trash2, PowerOff, Power, AlertCircle, X, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { ADMIN_T } from '@/components/admin/admin-theme';
 import { AdminSection } from '@/components/admin/admin-ui';
@@ -14,6 +14,17 @@ type Props = {
   initialStaff: StaffMember[];
   salonServices?: ServiceItem[];
   locale: Locale;
+};
+
+type StaffRevenueRow = {
+  staffId: string;
+  staffName: string;
+  bookedClassesCount: number;
+  bookedPeopleCount: number;
+  bookedRevenue: number;
+  completedClassesCount: number;
+  completedPeopleCount: number;
+  completedRevenue: number;
 };
 
 function Badge({ active, locale }: { active: boolean; locale: Locale }) {
@@ -41,6 +52,31 @@ function formatEuroAmount(value: number): string {
     currency: 'EUR',
     maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
   }).format(Math.max(0, Number(value) || 0));
+}
+
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function currentWeekStart(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  return toDateInputValue(monday);
+}
+
+function currentWeekEnd(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const sundayOffset = day === 0 ? 0 : 7 - day;
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() + sundayOffset);
+  return toDateInputValue(sunday);
 }
 
 function CopyButton({ value, label, locale }: { value: string; label: string; locale: Locale }) {
@@ -563,6 +599,11 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
   const [addEmail, setAddEmail] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [revenueFrom, setRevenueFrom] = useState(currentWeekStart);
+  const [revenueTo, setRevenueTo] = useState(currentWeekEnd);
+  const [revenueRows, setRevenueRows] = useState<StaffRevenueRow[]>([]);
+  const [revenueBusy, setRevenueBusy] = useState(false);
+  const [revenueError, setRevenueError] = useState<string | null>(null);
 
   const showNotice = useCallback((type: 'ok' | 'err', text: string) => {
     setNotice({ type, text });
@@ -645,8 +686,42 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
     setStaff((prev) => prev.map((m) => m.id === memberId ? { ...m, ...patch } : m));
   }, []);
 
+  const loadRevenue = useCallback(async () => {
+    if (!revenueFrom || !revenueTo) return;
+    setRevenueBusy(true);
+    setRevenueError(null);
+    try {
+      const params = new URLSearchParams({ slug: salonSlug, from: revenueFrom, to: revenueTo });
+      const response = await fetch(`/api/admin/staff/revenue?${params.toString()}`);
+      const data = await response.json() as { staff?: StaffRevenueRow[]; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error || (isEn ? 'Could not load revenue.' : 'Неуспешно зареждане на оборота.'));
+      }
+      setRevenueRows(Array.isArray(data.staff) ? data.staff : []);
+    } catch (error) {
+      setRevenueError(error instanceof Error ? error.message : (isEn ? 'Could not load revenue.' : 'Неуспешно зареждане на оборота.'));
+    } finally {
+      setRevenueBusy(false);
+    }
+  }, [salonSlug, revenueFrom, revenueTo, isEn]);
+
+  useEffect(() => {
+    void loadRevenue();
+  }, [loadRevenue]);
+
   const nonOwners = staff.filter((m) => !m.isOwner);
   const canAdd = true;
+  const revenueTotals = revenueRows.reduce(
+    (acc, row) => ({
+      bookedClassesCount: acc.bookedClassesCount + row.bookedClassesCount,
+      bookedPeopleCount: acc.bookedPeopleCount + row.bookedPeopleCount,
+      bookedRevenue: acc.bookedRevenue + row.bookedRevenue,
+      completedClassesCount: acc.completedClassesCount + row.completedClassesCount,
+      completedPeopleCount: acc.completedPeopleCount + row.completedPeopleCount,
+      completedRevenue: acc.completedRevenue + row.completedRevenue,
+    }),
+    { bookedClassesCount: 0, bookedPeopleCount: 0, bookedRevenue: 0, completedClassesCount: 0, completedPeopleCount: 0, completedRevenue: 0 },
+  );
 
   const inp: React.CSSProperties = {
     width: '100%', padding: '8px 10px', borderRadius: 8,
@@ -767,6 +842,123 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
             </div>
           </div>
         ) : null}
+
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 14,
+            borderRadius: 10,
+            border: `1px solid ${ADMIN_T.border}`,
+            background: '#fff',
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: ADMIN_T.text }}>
+                {isEn ? 'Trainer revenue by period' : 'Пари на треньорите по период'}
+              </h3>
+              <p style={{ margin: '3px 0 0', fontSize: 12, color: ADMIN_T.muted }}>
+                {isEn ? 'Shows this week by default. Change the dates for another period.' : 'По подразбиране показва тази седмица. Смени датите за друг период.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadRevenue()}
+              disabled={revenueBusy}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: `1px solid ${ADMIN_T.border}`,
+                background: '#fff',
+                fontSize: 12,
+                fontWeight: 700,
+                color: ADMIN_T.text,
+                cursor: revenueBusy ? 'wait' : 'pointer',
+                opacity: revenueBusy ? 0.65 : 1,
+              }}
+            >
+              {revenueBusy ? (isEn ? 'Loading…' : 'Зареждане…') : (isEn ? 'Refresh' : 'Обнови')}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>
+                {isEn ? 'From' : 'От дата'}
+              </label>
+              <input type="date" value={revenueFrom} onChange={(e) => setRevenueFrom(e.target.value)} style={inp} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>
+                {isEn ? 'To' : 'До дата'}
+              </label>
+              <input type="date" value={revenueTo} onChange={(e) => setRevenueTo(e.target.value)} style={inp} />
+            </div>
+          </div>
+
+          {revenueError ? (
+            <p style={{ margin: 0, color: '#b91c1c', fontSize: 12, fontWeight: 600 }}>{revenueError}</p>
+          ) : null}
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(6, minmax(0, 1fr))', gap: 8 }}>
+            <div style={{ borderRadius: 8, background: '#f4f4f5', padding: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'Booked classes' : 'Записани класове'}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: ADMIN_T.text }}>{revenueTotals.bookedClassesCount}</p>
+            </div>
+            <div style={{ borderRadius: 8, background: '#f4f4f5', padding: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'Booked people' : 'Записани хора'}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: ADMIN_T.text }}>{revenueTotals.bookedPeopleCount}</p>
+            </div>
+            <div style={{ borderRadius: 8, background: '#ecfdf5', padding: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#047857', fontWeight: 700 }}>{isEn ? 'Expected turnover' : 'Очакван оборот'}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#047857' }}>{formatEuroAmount(revenueTotals.bookedRevenue)}</p>
+            </div>
+            <div style={{ borderRadius: 8, background: '#eff6ff', padding: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Completed classes' : 'Извършени класове'}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{revenueTotals.completedClassesCount}</p>
+            </div>
+            <div style={{ borderRadius: 8, background: '#eff6ff', padding: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Completed people' : 'Извършени хора'}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{revenueTotals.completedPeopleCount}</p>
+            </div>
+            <div style={{ borderRadius: 8, background: '#f5f3ff', padding: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#5b21b6', fontWeight: 700 }}>{isEn ? 'Completed revenue' : 'Оборот извършени'}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#5b21b6' }}>{formatEuroAmount(revenueTotals.completedRevenue)}</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 6 }}>
+            {revenueRows.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 12, color: ADMIN_T.muted }}>
+                {revenueBusy ? (isEn ? 'Loading revenue…' : 'Зареждане на оборота…') : (isEn ? 'No revenue for this period.' : 'Няма оборот за този период.')}
+              </p>
+            ) : revenueRows.map((row) => (
+              <div
+                key={row.staffId}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'minmax(150px, 1fr) repeat(6, minmax(82px, auto))',
+                  gap: 8,
+                  alignItems: 'center',
+                  padding: '9px 10px',
+                  borderRadius: 8,
+                  border: `1px solid ${ADMIN_T.border}`,
+                  fontSize: 12,
+                }}
+              >
+                <strong style={{ color: ADMIN_T.text, fontSize: 13 }}>{row.staffName}</strong>
+                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Booked classes: ' : 'Записани класове: '}{row.bookedClassesCount}</span>
+                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'People: ' : 'Хора: '}{row.bookedPeopleCount}</span>
+                <span style={{ color: '#047857', fontWeight: 700 }}>{formatEuroAmount(row.bookedRevenue)}</span>
+                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Completed classes: ' : 'Извършени класове: '}{row.completedClassesCount}</span>
+                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'People: ' : 'Хора: '}{row.completedPeopleCount}</span>
+                <span style={{ color: '#1d4ed8', fontWeight: 700 }}>{formatEuroAmount(row.completedRevenue)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {nonOwners.length === 0 ? (
           <p style={{ fontSize: 14, color: ADMIN_T.muted, padding: '24px 0', textAlign: 'center' }}>

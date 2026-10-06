@@ -23,11 +23,24 @@ function toIsoSlot(date: string, time: string, durationMin: number): PublicSlot 
   const startMin = hh * 60 + mm;
   const endMin = startMin + (durationMin > 0 ? durationMin : 60);
   const fmt = (totalMin: number) => {
-    const h = Math.floor(totalMin / 60) % 24;
-    const m = totalMin % 60;
-    return `${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+    const dayOffset = Math.floor(totalMin / (24 * 60));
+    const minutesInDay = ((totalMin % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const h = Math.floor(minutesInDay / 60);
+    const m = minutesInDay % 60;
+    const datePart = dayOffset === 0 ? date : addDays(date, dayOffset);
+    return `${datePart}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
   };
   return { start: fmt(startMin), end: fmt(endMin), available: false };
+}
+
+function addDays(date: string, days: number): string {
+  const parsed = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  parsed.setDate(parsed.getDate() + days);
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export async function GET(

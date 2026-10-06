@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import type { CSSProperties, Dispatch, SetStateAction } from 'react';
-import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
+import type { CSSProperties } from 'react';
+import type { BookingRecord, ServiceItem, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import type { BookingClassSchedule, BookingClassSlot } from '@/lib/class-schedule';
+import type { StaffMember } from '@/lib/staff-members';
 import { formatSalonPrice } from '@/lib/salon-currency';
 import type { Locale } from '@/lib/i18n';
-import type { SiteContent, SiteContentPriceItem } from '@/lib/site-content';
 
 type BookingStatus = BookingRecord['status'];
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
@@ -68,6 +68,7 @@ type BookingsPanelProps = {
   externalCalendarByDate: Map<string, number>;
   externalCalendarEvents: ExternalCalendarEventRow[];
   clients: ClientSummary[];
+  staffMembers: StaffMember[];
   workingHours: WorkingHours;
   bookingBlocks: BookingBlock[];
   classSchedule: BookingClassSchedule;
@@ -78,6 +79,7 @@ type BookingsPanelProps = {
   visibleBookings: BookingRecord[];
   groupedVisibleBookings: Record<BookingGroupKey, BookingRecord[]>;
   updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+  updateBooking: (bookingId: string, data: AdminBookingUpdate) => Promise<void>;
   deleteBooking: (bookingId: string) => Promise<void>;
   createAdminBooking: (input: AdminBookingInput) => Promise<void>;
   inp: CSSProperties;
@@ -97,6 +99,21 @@ export type AdminBookingInput = {
   staffMemberName?: string;
   bookingQuantity: number;
   notes?: string;
+};
+export type AdminBookingUpdate = {
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  serviceName: string;
+  servicePrice: number | null;
+  serviceDuration: number | null;
+  bookingQuantity: number | null;
+  date: string;
+  time: string;
+  staffMemberId: string | null;
+  staffMemberName: string;
+  notes: string;
+  status: BookingStatus;
 };
 
 const CALENDAR_DAY_NAMES_BG = ['ПОН', 'ВТ', 'СР', 'ЧЕТ', 'ПЕТ', 'СЪБ', 'НЕД'] as const;
@@ -411,6 +428,7 @@ function BookingCard({
   isMobile,
   T,
   updateBookingStatus,
+  onEditBooking,
   deleteBooking,
   locale,
 }: {
@@ -418,6 +436,7 @@ function BookingCard({
   isMobile: boolean;
   T: ThemePalette;
   updateBookingStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
+  onEditBooking: (booking: BookingRecord) => void;
   deleteBooking: (bookingId: string) => Promise<void>;
   locale: Locale;
 }) {
@@ -527,29 +546,38 @@ function BookingCard({
             <option value="cancelled">{STATUS_CFG.cancelled.label}</option>
           </select>
         </label>
-        <button
-          type="button"
-          onClick={() => {
-            const ok = window.confirm(
-              isEn
-                ? `Delete booking for ${booking.client_name}?`
-                : `Да изтрия ли резервацията на ${booking.client_name}?`,
-            );
-            if (ok) void deleteBooking(booking.id);
-          }}
-          style={{
-            border: '1px solid rgba(220,38,38,0.24)',
-            borderRadius: 999,
-            background: '#FEF2F2',
-            color: '#B91C1C',
-            padding: '4px 9px',
-            fontSize: 11,
-            fontWeight: 800,
-            cursor: 'pointer',
-          }}
-        >
-          {isEn ? 'Delete' : 'Изтрий'}
-        </button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => onEditBooking(booking)}
+            style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '4px 9px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+          >
+            {isEn ? 'Edit' : 'Редактирай'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const ok = window.confirm(
+                isEn
+                  ? `Delete booking for ${booking.client_name}?`
+                  : `Да изтрия ли резервацията на ${booking.client_name}?`,
+              );
+              if (ok) void deleteBooking(booking.id);
+            }}
+            style={{
+              border: '1px solid rgba(220,38,38,0.24)',
+              borderRadius: 999,
+              background: '#FEF2F2',
+              color: '#B91C1C',
+              padding: '4px 9px',
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            {isEn ? 'Delete' : 'Изтрий'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -566,6 +594,7 @@ export function BookingsPanel({
   externalCalendarByDate,
   externalCalendarEvents,
   clients,
+  staffMembers,
   workingHours,
   bookingBlocks,
   classSchedule,
@@ -575,6 +604,7 @@ export function BookingsPanel({
   setCalendarCursor,
   visibleBookings,
   updateBookingStatus,
+  updateBooking,
   deleteBooking,
   createAdminBooking,
   inp,
@@ -596,6 +626,14 @@ export function BookingsPanel({
   } | null>(null);
   const [addError, setAddError] = React.useState('');
   const [addSaving, setAddSaving] = React.useState(false);
+  const [editBookingId, setEditBookingId] = React.useState<string | null>(null);
+  const [editDraft, setEditDraft] = React.useState<AdminBookingUpdate | null>(null);
+  const [editError, setEditError] = React.useState('');
+  const [editSaving, setEditSaving] = React.useState(false);
+  const staffOptions = React.useMemo(
+    () => staffMembers.filter((member) => !member.isOwner),
+    [staffMembers],
+  );
   const CALENDAR_DAY_NAMES = isEn ? CALENDAR_DAY_NAMES_EN : CALENDAR_DAY_NAMES_BG;
   const bookingGroups =
     statusFilter === 'upcoming'
@@ -721,6 +759,45 @@ export function BookingsPanel({
       bookingQuantity: 1,
       notes: '',
     });
+  }
+
+  function openEditBooking(booking: BookingRecord) {
+    setEditBookingId(booking.id);
+    setEditError('');
+    setEditDraft({
+      clientName: String(booking.client_name ?? ''),
+      clientPhone: String(booking.client_phone ?? ''),
+      clientEmail: String(booking.client_email ?? ''),
+      serviceName: String(booking.service_name ?? ''),
+      servicePrice: booking.service_price == null ? null : Number(booking.service_price),
+      serviceDuration: booking.service_duration == null ? null : Number(booking.service_duration),
+      bookingQuantity: booking.booking_quantity == null ? 1 : Math.max(1, Number(booking.booking_quantity) || 1),
+      date: normalizeDateKey(String(booking.date ?? '')),
+      time: String(booking.time ?? '').slice(0, 5),
+      staffMemberId: booking.staff_member_id ?? null,
+      staffMemberName: getBookingStaffName(booking),
+      notes: String(booking.notes ?? ''),
+      status: booking.status,
+    });
+  }
+
+  async function submitEditBooking() {
+    if (!editBookingId || !editDraft) return;
+    if (!editDraft.clientName.trim() || !editDraft.clientPhone.trim() || !editDraft.serviceName.trim() || !editDraft.date.trim() || !editDraft.time.trim()) {
+      setEditError(isEn ? 'Name, phone, service, date and time are required.' : 'Име, телефон, услуга, дата и час са задължителни.');
+      return;
+    }
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await updateBooking(editBookingId, editDraft);
+      setEditBookingId(null);
+      setEditDraft(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : (isEn ? 'Could not save booking.' : 'Резервацията не беше запазена.'));
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   function selectAddClient(clientKey: string) {
@@ -905,6 +982,92 @@ export function BookingsPanel({
               </button>
               <button type="button" onClick={() => void submitAddClient()} style={btn('primary')} disabled={addSaving}>
                 {addSaving ? (isEn ? 'Adding...' : 'Добавяне...') : (isEn ? 'Add to class' : 'Добави в класа')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editDraft ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: 'fixed', inset: 0, zIndex: 95, background: 'rgba(15,23,42,0.4)', display: 'grid', placeItems: 'center', padding: 18 }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !editSaving) {
+              setEditDraft(null);
+              setEditBookingId(null);
+            }
+          }}
+        >
+          <div style={{ width: 'min(720px, 100%)', maxHeight: 'calc(100dvh - 36px)', overflowY: 'auto', borderRadius: 18, background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.24)', padding: isMobile ? 18 : 22, display: 'grid', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {isEn ? 'Edit booking' : 'Редактирай резервация'}
+                </p>
+                <h3 style={{ margin: '5px 0 0', fontSize: 20, lineHeight: 1.2, color: T.text }}>
+                  {editDraft.clientName || (isEn ? 'Booking' : 'Резервация')}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!editSaving) {
+                    setEditDraft(null);
+                    setEditBookingId(null);
+                  }
+                }}
+                style={{ ...btn('ghost'), padding: '6px 10px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+              <input value={editDraft.clientName} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientName: event.target.value } : draft)} placeholder={isEn ? 'Client name' : 'Име на клиента'} style={inp} />
+              <input value={editDraft.clientPhone} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientPhone: event.target.value } : draft)} placeholder={isEn ? 'Phone' : 'Телефон'} style={inp} />
+              <input value={editDraft.clientEmail} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientEmail: event.target.value } : draft)} placeholder={isEn ? 'Email' : 'Имейл'} style={inp} />
+              <select value={editDraft.status} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, status: event.target.value as BookingStatus } : draft)} style={inp}>
+                <option value="pending">{statusCfg(locale).pending.label}</option>
+                <option value="confirmed">{statusCfg(locale).confirmed.label}</option>
+                <option value="completed">{statusCfg(locale).completed.label}</option>
+                <option value="cancelled">{statusCfg(locale).cancelled.label}</option>
+              </select>
+              <input value={editDraft.serviceName} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, serviceName: event.target.value } : draft)} placeholder={isEn ? 'Service' : 'Услуга'} style={inp} />
+              <select
+                value={editDraft.staffMemberId ?? ''}
+                onChange={(event) => {
+                  const staffMemberId = event.target.value || null;
+                  const selected = staffOptions.find((member) => member.id === staffMemberId);
+                  setEditDraft((draft) => draft ? {
+                    ...draft,
+                    staffMemberId,
+                    staffMemberName: selected?.name ?? '',
+                  } : draft);
+                }}
+                style={inp}
+              >
+                <option value="">{isEn ? 'No trainer/staff' : 'Без треньор/служител'}</option>
+                {staffOptions.map((member) => (
+                  <option key={member.id} value={member.id}>{member.name}</option>
+                ))}
+              </select>
+              <input type="date" value={editDraft.date} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, date: event.target.value } : draft)} style={inp} />
+              <input type="time" value={editDraft.time} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, time: event.target.value } : draft)} style={inp} />
+              <input value={editDraft.servicePrice ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, servicePrice: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Price' : 'Цена'} inputMode="decimal" style={inp} />
+              <input value={editDraft.serviceDuration ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, serviceDuration: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Duration min' : 'Продължителност мин'} inputMode="numeric" style={inp} />
+              <input value={editDraft.bookingQuantity ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, bookingQuantity: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Spots/beds' : 'Места/легла'} inputMode="numeric" style={inp} />
+            </div>
+
+            <textarea value={editDraft.notes} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, notes: event.target.value } : draft)} placeholder={isEn ? 'Notes' : 'Бележки'} style={{ ...inp, minHeight: 92, resize: 'vertical' }} />
+            {editError ? <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 700 }}>{editError}</p> : null}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => { if (!editSaving) { setEditDraft(null); setEditBookingId(null); } }} style={btn('ghost')} disabled={editSaving}>
+                {isEn ? 'Cancel' : 'Отказ'}
+              </button>
+              <button type="button" onClick={() => void submitEditBooking()} style={btn('primary')} disabled={editSaving}>
+                {editSaving ? (isEn ? 'Saving...' : 'Запис...') : (isEn ? 'Save booking' : 'Запази резервацията')}
               </button>
             </div>
           </div>
@@ -1389,6 +1552,7 @@ export function BookingsPanel({
                             isMobile={isMobile}
                             T={T}
                             updateBookingStatus={updateBookingStatus}
+                            onEditBooking={openEditBooking}
                             deleteBooking={deleteBooking}
                             locale={locale}
                           />
@@ -1466,6 +1630,7 @@ export function BookingsPanel({
                       isMobile={isMobile}
                       T={T}
                       updateBookingStatus={updateBookingStatus}
+                      onEditBooking={openEditBooking}
                       deleteBooking={deleteBooking}
                       locale={locale}
                     />
@@ -1482,7 +1647,34 @@ export function BookingsPanel({
 
 type EditDraft = { key: string; id: string; name: string; phone: string; email: string };
 type ClientSort = 'newest' | 'visits' | 'alpha';
+
+const CLIENT_NAME_COLLATOR = new Intl.Collator(['bg', 'en'], {
+  sensitivity: 'base',
+  numeric: true,
+  ignorePunctuation: true,
+});
+
+function compareClientNames(a: ClientSummary, b: ClientSummary) {
+  const aName = a.name.trim();
+  const bName = b.name.trim();
+  if (!aName && !bName) return a.key.localeCompare(b.key);
+  if (!aName) return 1;
+  if (!bName) return -1;
+  return CLIENT_NAME_COLLATOR.compare(aName, bName) || a.key.localeCompare(b.key);
+}
 type MembershipImportMode = 'preview' | 'import';
+type MembershipImportField =
+  | 'name'
+  | 'phone'
+  | 'email'
+  | 'packageName'
+  | 'totalSessions'
+  | 'usedSessions'
+  | 'remainingSessions'
+  | 'price'
+  | 'validFrom'
+  | 'validTo';
+type MembershipImportColumnMap = Partial<Record<MembershipImportField, number>>;
 type MembershipImportRow = {
   rowNumber: number;
   name: string;
@@ -1501,6 +1693,9 @@ type MembershipImportRow = {
 };
 type MembershipImportResult = {
   ok: boolean;
+  headers: string[];
+  detectedColumnMap: MembershipImportColumnMap;
+  columnMap: MembershipImportColumnMap;
   rows: MembershipImportRow[];
   summary: {
     totalRows: number;
@@ -1511,64 +1706,170 @@ type MembershipImportResult = {
     skippedPackages: number;
   };
 };
+type PackageDefinition = {
+  id: string;
+  name: string;
+  description: string | null;
+  totalSessions: number;
+  price: number | null;
+  validityDays: number;
+  serviceIds: string[];
+  isActive: boolean;
+};
+type PackageDraft = {
+  id?: string;
+  name: string;
+  description: string;
+  totalSessions: string;
+  price: string;
+  validityDays: string;
+  serviceIds: string[];
+  isActive: boolean;
+};
+
+function packageToDraft(pkg?: PackageDefinition): PackageDraft {
+  return {
+    id: pkg?.id,
+    name: pkg?.name ?? '',
+    description: pkg?.description ?? '',
+    totalSessions: String(pkg?.totalSessions ?? 8),
+    price: pkg?.price == null ? '' : String(pkg.price),
+    validityDays: String(pkg?.validityDays ?? 30),
+    serviceIds: pkg?.serviceIds ?? [],
+    isActive: pkg?.isActive !== false,
+  };
+}
 
 
 export function PackagesPanel({
-  site,
-  setSite,
+  slug,
+  services,
   isMobile,
   T,
-  busyKey,
-  saveSiteSettings,
   onImportMemberships,
   locale,
 }: {
-  site: AdminSitePayload;
-  setSite: Dispatch<SetStateAction<AdminSitePayload>>;
+  slug: string;
+  services: ServiceItem[];
   isMobile: boolean;
   T: ThemePalette;
-  busyKey: string;
-  saveSiteSettings: () => void;
-  onImportMemberships: (csvText: string, mode: MembershipImportMode) => Promise<MembershipImportResult>;
+  onImportMemberships: (csvText: string, mode: MembershipImportMode, columnMap?: MembershipImportColumnMap) => Promise<MembershipImportResult>;
   locale: Locale;
 }) {
   const isEn = locale === 'en';
-  const [packageLocale, setPackageLocale] = React.useState<'bg' | 'en'>(locale === 'en' ? 'en' : 'bg');
+  const [packages, setPackages] = React.useState<PackageDefinition[]>([]);
+  const [packagesLoaded, setPackagesLoaded] = React.useState(false);
+  const [packageDraft, setPackageDraft] = React.useState<PackageDraft>(() => packageToDraft());
+  const [packageBusy, setPackageBusy] = React.useState(false);
+  const [packageError, setPackageError] = React.useState('');
   const [importText, setImportText] = React.useState('');
   const [importBusy, setImportBusy] = React.useState<MembershipImportMode | null>(null);
   const [importResult, setImportResult] = React.useState<MembershipImportResult | null>(null);
+  const [importColumnMap, setImportColumnMap] = React.useState<MembershipImportColumnMap>({});
   const [importError, setImportError] = React.useState('');
-  const packageContent = packageLocale === 'en' ? site.siteContentEn : site.siteContent;
-  const priceItems = packageContent.pricing.items;
 
-  function updatePackageContent(updater: (prev: SiteContent) => SiteContent) {
-    setSite((prev) =>
-      packageLocale === 'en'
-        ? { ...prev, siteContentEn: updater(prev.siteContentEn) }
-        : { ...prev, siteContent: updater(prev.siteContent) },
-    );
-  }
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/admin/package-definitions?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { packages?: PackageDefinition[] } | null) => {
+        if (cancelled) return;
+        setPackages(Array.isArray(data?.packages) ? data.packages : []);
+        setPackagesLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setPackagesLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, [slug]);
 
-  function updatePriceItems(items: SiteContentPriceItem[]) {
-    updatePackageContent((prev) => ({
-      ...prev,
-      pricing: {
-        ...prev.pricing,
-        items,
-      },
+  function toggleDraftService(serviceId: string) {
+    setPackageDraft((draft) => ({
+      ...draft,
+      serviceIds: draft.serviceIds.includes(serviceId)
+        ? draft.serviceIds.filter((id) => id !== serviceId)
+        : [...draft.serviceIds, serviceId],
     }));
   }
 
-  function updatePriceItem(index: number, patch: Partial<SiteContentPriceItem>) {
-    updatePriceItems(priceItems.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
+  async function savePackageDefinition() {
+    setPackageBusy(true);
+    setPackageError('');
+    try {
+      const body = {
+        id: packageDraft.id,
+        name: packageDraft.name.trim(),
+        description: packageDraft.description.trim() || null,
+        totalSessions: Math.max(1, Math.round(Number(packageDraft.totalSessions) || 1)),
+        price: packageDraft.price.trim() ? Math.max(0, Number(packageDraft.price) || 0) : null,
+        validityDays: Math.max(1, Math.round(Number(packageDraft.validityDays) || 30)),
+        serviceIds: packageDraft.serviceIds,
+        isActive: packageDraft.isActive,
+      };
+      const res = await fetch(`/api/admin/package-definitions?slug=${encodeURIComponent(slug)}`, {
+        method: body.id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({})) as { package?: PackageDefinition; error?: string };
+      if (!res.ok || !data.package) throw new Error(data.error ?? (isEn ? 'Could not save package.' : 'Пакетът не беше запазен.'));
+      setPackages((prev) => {
+        const exists = prev.some((pkg) => pkg.id === data.package!.id);
+        return exists
+          ? prev.map((pkg) => pkg.id === data.package!.id ? data.package! : pkg)
+          : [...prev, data.package!];
+      });
+      setPackageDraft(packageToDraft());
+    } catch (err) {
+      setPackageError(err instanceof Error ? err.message : (isEn ? 'Could not save package.' : 'Пакетът не беше запазен.'));
+    } finally {
+      setPackageBusy(false);
+    }
   }
 
-  async function runMembershipImport(mode: MembershipImportMode) {
+  async function deletePackageDefinition(id: string) {
+    const ok = window.confirm(isEn ? 'Delete this package definition?' : 'Да изтрия ли този пакет?');
+    if (!ok) return;
+    setPackageError('');
+    const previous = packages;
+    setPackages((prev) => prev.filter((pkg) => pkg.id !== id));
+    try {
+      const res = await fetch(`/api/admin/package-definitions?slug=${encodeURIComponent(slug)}&id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error(isEn ? 'Could not delete package.' : 'Пакетът не беше изтрит.');
+      if (packageDraft.id === id) setPackageDraft(packageToDraft());
+    } catch (err) {
+      setPackages(previous);
+      setPackageError(err instanceof Error ? err.message : (isEn ? 'Could not delete package.' : 'Пакетът не беше изтрит.'));
+    }
+  }
+
+  const importFields: { id: MembershipImportField; label: string; required?: boolean }[] = React.useMemo(() => [
+    { id: 'name', label: isEn ? 'Client name' : 'Име на клиент', required: true },
+    { id: 'phone', label: isEn ? 'Phone' : 'Телефон' },
+    { id: 'email', label: isEn ? 'Email' : 'Имейл' },
+    { id: 'packageName', label: isEn ? 'Package' : 'Пакет' },
+    { id: 'totalSessions', label: isEn ? 'Total credits' : 'Общо кредити', required: true },
+    { id: 'usedSessions', label: isEn ? 'Used' : 'Използвани' },
+    { id: 'remainingSessions', label: isEn ? 'Remaining' : 'Оставащи' },
+    { id: 'price', label: isEn ? 'Price' : 'Цена' },
+    { id: 'validFrom', label: isEn ? 'Valid from' : 'Валиден от' },
+    { id: 'validTo', label: isEn ? 'Valid to' : 'Валиден до' },
+  ], [isEn]);
+
+  const effectiveImportColumnMap = React.useMemo<MembershipImportColumnMap>(
+    () => ({ ...(importResult?.columnMap ?? {}), ...importColumnMap }),
+    [importResult, importColumnMap],
+  );
+
+  async function runMembershipImport(mode: MembershipImportMode, columnMap: MembershipImportColumnMap = effectiveImportColumnMap) {
     setImportBusy(mode);
     setImportError('');
     try {
-      const result = await onImportMemberships(importText, mode);
+      const result = await onImportMemberships(importText, mode, columnMap);
       setImportResult(result);
+      setImportColumnMap(result.columnMap ?? {});
       if (mode === 'import' && result.ok) setImportText('');
     } catch (err) {
       setImportError(err instanceof Error ? err.message : (isEn ? 'Import failed.' : 'Import неуспешен.'));
@@ -1582,156 +1883,200 @@ export function PackagesPanel({
     const text = await file.text();
     setImportText(text);
     setImportResult(null);
+    setImportColumnMap({});
     setImportError('');
   }
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'grid', gap: 4 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
-              {isEn ? 'Package definitions' : 'Пакетни дефиниции'}
-            </h3>
-            <p style={{ margin: 0, fontSize: 13, color: T.muted }}>
-              {isEn
-                ? 'Create the packages shown on the public site. Client memberships can be imported below.'
-                : 'Създай пакетите, които се показват на публичния сайт. Клиентските членства се импортират по-долу.'}
-            </p>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
+            {isEn ? 'Package builder' : 'Създаване на пакети'}
+          </h3>
+          <p style={{ margin: 0, fontSize: 13, color: T.muted }}>
+            {isEn
+              ? 'Build packages from services. Combo packages can include multiple different services.'
+              : 'Създай пакет от услуги. Комбо пакетите могат да включват няколко различни услуги.'}
+          </p>
+        </div>
+
+        {packageError ? (
+          <div style={{ marginTop: 12, border: '1px solid rgba(239,68,68,0.35)', borderRadius: 10, padding: '9px 10px', color: '#b91c1c', fontSize: 12 }}>
+            {packageError}
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'inline-flex', border: `1px solid ${T.border}`, borderRadius: 999, overflow: 'hidden' }}>
-              {(['bg', 'en'] as const).map((lang) => {
-                const active = packageLocale === lang;
-                return (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => setPackageLocale(lang)}
-                    style={{ border: 'none', background: active ? '#111' : '#fff', color: active ? '#fff' : T.muted, padding: '7px 11px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
-                  >
-                    {lang.toUpperCase()}
-                  </button>
-                );
-              })}
+        ) : null}
+
+        <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.55fr 0.55fr 0.55fr', gap: 8 }}>
+            <input
+              value={packageDraft.name}
+              onChange={(event) => setPackageDraft((draft) => ({ ...draft, name: event.target.value }))}
+              placeholder={isEn ? 'Package name' : 'Име на пакет'}
+              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+            />
+            <input
+              value={packageDraft.totalSessions}
+              onChange={(event) => setPackageDraft((draft) => ({ ...draft, totalSessions: event.target.value }))}
+              placeholder={isEn ? 'Credits' : 'Кредити'}
+              inputMode="numeric"
+              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+            />
+            <input
+              value={packageDraft.price}
+              onChange={(event) => setPackageDraft((draft) => ({ ...draft, price: event.target.value }))}
+              placeholder={isEn ? 'Price' : 'Цена'}
+              inputMode="decimal"
+              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+            />
+            <input
+              value={packageDraft.validityDays}
+              onChange={(event) => setPackageDraft((draft) => ({ ...draft, validityDays: event.target.value }))}
+              placeholder={isEn ? 'Valid days' : 'Валидност дни'}
+              inputMode="numeric"
+              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+            />
+          </div>
+
+          <textarea
+            value={packageDraft.description}
+            onChange={(event) => setPackageDraft((draft) => ({ ...draft, description: event.target.value }))}
+            placeholder={isEn ? 'Internal description' : 'Вътрешно описание'}
+            style={{ minHeight: 72, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, lineHeight: 1.45, color: '#111', background: '#fff' }}
+          />
+
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 850, color: '#111' }}>
+              {isEn ? 'Included services' : 'Включени услуги'}
             </div>
+            {services.length === 0 ? (
+              <div style={{ border: `1px dashed ${T.border}`, borderRadius: 12, padding: 14, color: T.muted, fontSize: 13 }}>
+                {isEn ? 'Add services first, then build packages from them.' : 'Първо добави услуги, после създай пакети от тях.'}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(210px, 1fr))', gap: 8 }}>
+                {services.map((service) => {
+                  const serviceId = String(service.id ?? service.name);
+                  const checked = packageDraft.serviceIds.includes(serviceId);
+                  return (
+                    <label key={serviceId} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', border: `1px solid ${checked ? '#111' : T.border}`, borderRadius: 12, padding: 10, background: checked ? '#f4f4f5' : '#fff', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleDraftService(serviceId)}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#111', overflowWrap: 'anywhere' }}>{service.name}</span>
+                        <span style={{ fontSize: 12, color: T.muted }}>
+                          {formatSalonPrice(service.price)} · {service.duration_min} {isEn ? 'min' : 'мин'}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: T.muted, fontSize: 12, fontWeight: 800 }}>
+              <input
+                type="checkbox"
+                checked={packageDraft.isActive}
+                onChange={(event) => setPackageDraft((draft) => ({ ...draft, isActive: event.target.checked }))}
+              />
+              {isEn ? 'Active' : 'Активен'}
+            </label>
             <button
               type="button"
-              onClick={saveSiteSettings}
-              disabled={busyKey === 'site'}
-              style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '8px 14px', fontSize: 12, fontWeight: 850, cursor: busyKey === 'site' ? 'wait' : 'pointer', opacity: busyKey === 'site' ? 0.65 : 1 }}
+              disabled={packageBusy || !packageDraft.name.trim() || packageDraft.serviceIds.length === 0}
+              onClick={() => void savePackageDefinition()}
+              style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '9px 14px', fontSize: 12, fontWeight: 850, cursor: packageBusy ? 'wait' : 'pointer', opacity: packageBusy || !packageDraft.name.trim() || packageDraft.serviceIds.length === 0 ? 0.45 : 1 }}
             >
-              {busyKey === 'site' ? (isEn ? 'Saving…' : 'Запис…') : (isEn ? 'Save packages' : 'Запази пакетите')}
+              {packageBusy ? (isEn ? 'Saving…' : 'Запис…') : packageDraft.id ? (isEn ? 'Save changes' : 'Запази промените') : (isEn ? 'Create package' : 'Създай пакет')}
             </button>
+            {packageDraft.id ? (
+              <button
+                type="button"
+                onClick={() => setPackageDraft(packageToDraft())}
+                style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '9px 13px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+              >
+                {isEn ? 'New package' : 'Нов пакет'}
+              </button>
+            ) : null}
           </div>
         </div>
 
-        <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-            <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 800, color: '#111' }}>
-              {isEn ? 'Section title' : 'Заглавие на секцията'}
-              <input
-                value={packageContent.pricing.title}
-                onChange={(event) =>
-                  updatePackageContent((prev) => ({
-                    ...prev,
-                    pricing: { ...prev.pricing, title: event.target.value },
-                  }))
-                }
-                style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-              />
-            </label>
-            <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 800, color: '#111' }}>
-              {isEn ? 'Intro' : 'Подзаглавие'}
-              <input
-                value={packageContent.pricing.intro}
-                onChange={(event) =>
-                  updatePackageContent((prev) => ({
-                    ...prev,
-                    pricing: { ...prev.pricing, intro: event.target.value },
-                  }))
-                }
-                style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-              />
-            </label>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <p style={{ margin: 0, fontSize: 12, color: T.muted }}>
-              {priceItems.length} {isEn ? 'packages' : 'пакета'}
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                updatePriceItems([
-                  ...priceItems,
-                  {
-                    id: `price-${Date.now()}`,
-                    name: packageLocale === 'en' ? 'New package' : 'Нов пакет',
-                    price: '',
-                    text: '',
-                  },
-                ])
-              }
-              style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '8px 12px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
-            >
-              {isEn ? '+ Add package' : '+ Добави пакет'}
-            </button>
-          </div>
-
-          {priceItems.length === 0 ? (
+        <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
+          {!packagesLoaded ? (
+            <div style={{ color: T.muted, fontSize: 13 }}>{isEn ? 'Loading packages…' : 'Зареждане на пакети…'}</div>
+          ) : packages.length === 0 ? (
             <div style={{ border: `1px dashed ${T.border}`, borderRadius: 12, padding: 18, color: T.muted, textAlign: 'center', fontSize: 13 }}>
               {isEn ? 'No package definitions yet.' : 'Все още няма създадени пакети.'}
             </div>
-          ) : (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {priceItems.map((item, index) => (
-                <div key={item.id || `price-${index}`} style={{ display: 'grid', gap: 9, border: `1px solid ${T.border}`, borderRadius: 12, background: '#fafafa', padding: 12 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1.2fr) minmax(120px,0.5fr) auto', gap: 8 }}>
-                    <input
-                      value={item.name}
-                      onChange={(event) => updatePriceItem(index, { name: event.target.value })}
-                      placeholder={isEn ? 'Package name' : 'Име на пакет'}
-                      style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-                    />
-                    <input
-                      value={item.price}
-                      onChange={(event) => updatePriceItem(index, { price: event.target.value })}
-                      placeholder={isEn ? 'Price' : 'Цена'}
-                      style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-                    />
+          ) : packages.map((pkg) => {
+            const included = services.filter((service) => pkg.serviceIds.includes(String(service.id ?? service.name)));
+            return (
+              <div key={pkg.id} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: '#fafafa', display: 'grid', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 850, color: '#111' }}>{pkg.name}</div>
+                    <div style={{ marginTop: 3, fontSize: 12, color: T.muted }}>
+                      {pkg.totalSessions} {isEn ? 'credits' : 'кредита'} · {pkg.validityDays} {isEn ? 'days' : 'дни'}
+                      {pkg.price != null ? ` · ${formatSalonPrice(pkg.price)}` : ''}
+                      {!pkg.isActive ? ` · ${isEn ? 'inactive' : 'неактивен'}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
                     <button
                       type="button"
-                      onClick={() => updatePriceItems(priceItems.filter((_, itemIndex) => itemIndex !== index))}
-                      style={{ border: `1px solid ${T.border}`, borderRadius: 10, background: '#fff', color: '#b91c1c', padding: '0 12px', minHeight: 40, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+                      onClick={() => setPackageDraft(packageToDraft(pkg))}
+                      style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '7px 11px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+                    >
+                      {isEn ? 'Edit' : 'Редактирай'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deletePackageDefinition(pkg.id)}
+                      style={{ border: '1px solid rgba(220,38,38,0.24)', borderRadius: 999, background: '#FEF2F2', color: '#B91C1C', padding: '7px 11px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
                     >
                       {isEn ? 'Delete' : 'Изтрий'}
                     </button>
                   </div>
-                  <textarea
-                    value={item.text}
-                    onChange={(event) => updatePriceItem(index, { text: event.target.value })}
-                    placeholder={isEn ? 'Short description' : 'Кратко описание'}
-                    style={{ minHeight: 76, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, lineHeight: 1.45, color: '#111', background: '#fff' }}
-                  />
                 </div>
-              ))}
-            </div>
-          )}
+                {pkg.description ? <div style={{ fontSize: 12, color: T.muted }}>{pkg.description}</div> : null}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {included.length > 0 ? included.map((service) => (
+                    <span key={String(service.id ?? service.name)} style={{ borderRadius: 999, background: '#fff', border: `1px solid ${T.border}`, padding: '4px 8px', fontSize: 12, fontWeight: 700, color: '#111' }}>
+                      {service.name}
+                    </span>
+                  )) : (
+                    <span style={{ fontSize: 12, color: '#b91c1c' }}>{isEn ? 'No matching services selected' : 'Няма избрани услуги'}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'grid', gap: 4 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#111' }}>
-            {isEn ? 'Import client packages' : 'Import на клиентски пакети'}
-          </h3>
-          <p style={{ margin: 0, fontSize: 13, color: T.muted }}>
-            {isEn ? 'Upload a CSV file or paste rows copied from Google Sheets/Excel.' : 'Качи CSV файл или постави редове от Google Sheets/Excel.'}
-          </p>
-        </div>
+      <details style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 10 : 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
+        <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+          <span style={{ display: 'grid', gap: 2 }}>
+            <span style={{ fontSize: 14, fontWeight: 850, color: '#111' }}>
+              {isEn ? 'CSV import for client packages' : 'CSV import на клиентски пакети'}
+            </span>
+            <span style={{ fontSize: 12, color: T.muted }}>
+              {isEn ? 'Upload or paste, check columns, then import.' : 'Качи или постави данни, провери колоните и импортирай.'}
+            </span>
+          </span>
+          <span style={{ borderRadius: 999, border: `1px solid ${T.border}`, padding: '6px 10px', fontSize: 12, fontWeight: 800, color: '#111', background: '#fff', whiteSpace: 'nowrap' }}>
+            {isEn ? 'Open' : 'Отвори'}
+          </span>
+        </summary>
 
-        <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+        <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
           <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 800, color: '#111' }}>
             {isEn ? 'CSV file' : 'CSV файл'}
             <input
@@ -1746,11 +2091,52 @@ export function PackagesPanel({
             {isEn ? 'Or paste rows' : 'Или постави редове'}
             <textarea
               value={importText}
-              onChange={(e) => { setImportText(e.target.value); setImportResult(null); setImportError(''); }}
+              onChange={(e) => { setImportText(e.target.value); setImportResult(null); setImportColumnMap({}); setImportError(''); }}
               placeholder={isEn ? 'name, phone, email, package, total credits, used, valid to\nMaria, 0888123456, maria@example.com, 8 trainings, 8, 2, 31.12.2026' : 'име, телефон, имейл, пакет, общо, използвани, валиден до\nМария, 0888123456, maria@example.com, 8 тренировки, 8, 2, 31.12.2026'}
-              style={{ minHeight: 130, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.45, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#111', outline: 'none' }}
+              style={{ minHeight: 86, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.45, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#111', outline: 'none' }}
             />
           </label>
+
+          {importResult?.headers?.length ? (
+            <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, display: 'grid', gap: 10, background: '#fafafa' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 850, color: '#111' }}>
+                  {isEn ? 'Check matched columns before import' : 'Провери разпознатите колони преди import'}
+                </div>
+                <div style={{ marginTop: 3, fontSize: 12, color: T.muted }}>
+                  {isEn ? 'Change any column if the automatic match is wrong, then preview again.' : 'Смени колона, ако автоматичното разпознаване е грешно, после пусни преглед отново.'}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                {importFields.map((field) => (
+                  <label key={field.id} style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                    {field.label}{field.required ? ' *' : ''}
+                    <select
+                      value={effectiveImportColumnMap[field.id] ?? ''}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setImportColumnMap((current) => {
+                          const next = { ...current };
+                          if (value === '') delete next[field.id];
+                          else next[field.id] = Number(value);
+                          return next;
+                        });
+                        setImportResult((current) => current ? { ...current, ok: false } : current);
+                      }}
+                      style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '8px 10px', fontSize: 13, color: '#111', background: '#fff' }}
+                    >
+                      <option value="">{isEn ? 'Not used' : 'Не се използва'}</option>
+                      {importResult.headers.map((header, index) => (
+                        <option key={`${index}-${header}`} value={index}>
+                          {index + 1}. {header || (isEn ? 'Empty header' : 'Празна колона')}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
@@ -1759,7 +2145,7 @@ export function PackagesPanel({
               onClick={() => void runMembershipImport('preview')}
               style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '9px 13px', fontSize: 12, fontWeight: 850, cursor: importBusy ? 'wait' : 'pointer', opacity: !importText.trim() || importBusy ? 0.55 : 1 }}
             >
-              {importBusy === 'preview' ? (isEn ? 'Previewing…' : 'Преглед…') : (isEn ? 'Preview' : 'Преглед')}
+              {importBusy === 'preview' ? (isEn ? 'Previewing…' : 'Преглед…') : (isEn ? 'Preview / rematch columns' : 'Преглед / разпознай колоните')}
             </button>
             <button
               type="button"
@@ -1819,7 +2205,7 @@ export function PackagesPanel({
             </div>
           ) : null}
         </div>
-      </div>
+      </details>
     </div>
   );
 }
@@ -1859,7 +2245,7 @@ export function ClientsPanel({
 
   const sortedClients = React.useMemo(() => {
     const arr = [...clients];
-    if (sortBy === 'alpha') return arr.sort((a, b) => a.name.localeCompare(b.name, 'bg'));
+    if (sortBy === 'alpha') return arr.sort(compareClientNames);
     if (sortBy === 'visits') return arr.sort((a, b) => b.visits - a.visits || b.lastVisit.localeCompare(a.lastVisit));
     return arr.sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
   }, [clients, sortBy]);
@@ -1885,7 +2271,7 @@ export function ClientsPanel({
   const SORT_OPTIONS: { id: ClientSort; label: string }[] = [
     { id: 'newest', label: isEn ? 'Newest' : 'Най-нови' },
     { id: 'visits', label: isEn ? 'Bookings' : 'Резервации' },
-    { id: 'alpha', label: isEn ? 'A–Z' : 'А–Я' },
+    { id: 'alpha', label: isEn ? 'A-Z / А-Я' : 'А-Я / A-Z' },
   ];
 
   async function runMembershipImport(mode: MembershipImportMode) {
