@@ -855,14 +855,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: ADMIN_T.text }}>
-                {isEn ? 'Trainer revenue by period' : 'Пари на треньорите по период'}
-              </h3>
-              <p style={{ margin: '3px 0 0', fontSize: 12, color: ADMIN_T.muted }}>
-                {isEn ? 'Shows this week by default. Change the dates for another period.' : 'По подразбиране показва тази седмица. Смени датите за друг период.'}
-              </p>
-            </div>
+            <div />
             <button
               type="button"
               onClick={() => void loadRevenue()}
@@ -916,15 +909,15 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#047857' }}>{formatEuroAmount(revenueTotals.bookedRevenue)}</p>
             </div>
             <div style={{ borderRadius: 8, background: '#eff6ff', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Completed classes' : 'Извършени класове'}</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Held classes' : 'Проведени класове'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{revenueTotals.completedClassesCount}</p>
             </div>
             <div style={{ borderRadius: 8, background: '#eff6ff', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Completed people' : 'Извършени хора'}</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Attended people' : 'Посетили хора'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{revenueTotals.completedPeopleCount}</p>
             </div>
             <div style={{ borderRadius: 8, background: '#f5f3ff', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: '#5b21b6', fontWeight: 700 }}>{isEn ? 'Completed revenue' : 'Оборот извършени'}</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#5b21b6', fontWeight: 700 }}>{isEn ? 'Actual revenue' : 'Реален оборот'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#5b21b6' }}>{formatEuroAmount(revenueTotals.completedRevenue)}</p>
             </div>
           </div>
@@ -952,8 +945,8 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                 <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Booked classes: ' : 'Записани класове: '}{row.bookedClassesCount}</span>
                 <span style={{ color: ADMIN_T.muted }}>{isEn ? 'People: ' : 'Хора: '}{row.bookedPeopleCount}</span>
                 <span style={{ color: '#047857', fontWeight: 700 }}>{formatEuroAmount(row.bookedRevenue)}</span>
-                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Completed classes: ' : 'Извършени класове: '}{row.completedClassesCount}</span>
-                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'People: ' : 'Хора: '}{row.completedPeopleCount}</span>
+                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Held classes: ' : 'Проведени класове: '}{row.completedClassesCount}</span>
+                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Attended: ' : 'Посетили: '}{row.completedPeopleCount}</span>
                 <span style={{ color: '#1d4ed8', fontWeight: 700 }}>{formatEuroAmount(row.completedRevenue)}</span>
               </div>
             ))}
@@ -1056,7 +1049,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                             color: '#1d4ed8',
                           }}
                         >
-                          {isEn ? 'Completed: ' : 'Извършени: '}{member.completedClassesCount} · {formatEuroAmount(member.completedRevenue)}
+                          {isEn ? 'Held: ' : 'Проведени: '}{member.completedClassesCount} · {formatEuroAmount(member.completedRevenue)}
                         </span>
                       </div>
                     </div>
