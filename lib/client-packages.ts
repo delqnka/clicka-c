@@ -200,3 +200,60 @@ export async function consumePackageForCompletedBooking(input: {
     expiresAt: String(row.expires_at ?? ''),
   };
 }
+
+export async function updateClientPackage(input: {
+  salonId: string;
+  packageId: string;
+  packageName?: string | null;
+  totalSessions: number;
+  usedSessions: number;
+  price?: number | null;
+  validTo?: string | null;
+}) {
+  await ensureClientPackagesSchema();
+  const totalSessions = Math.max(1, Math.round(Number(input.totalSessions) || 1));
+  const usedSessions = Math.min(totalSessions, Math.max(0, Math.round(Number(input.usedSessions) || 0)));
+  const rows = await sql`
+    UPDATE client_packages
+    SET
+      package_name = COALESCE(NULLIF(trim(${input.packageName ?? ''}), ''), package_name),
+      total_sessions = ${totalSessions},
+      used_sessions = ${usedSessions},
+      price = ${input.price ?? null},
+      expires_at = COALESCE(${input.validTo?.trim() || null}::date, expires_at),
+      updated_at = now()
+    WHERE id = ${input.packageId}::uuid
+      AND salon_id = ${input.salonId}
+    RETURNING id, package_name, total_sessions, used_sessions, expires_at
+  ` as {
+    id: string;
+    package_name: string;
+    total_sessions: number;
+    used_sessions: number;
+    expires_at: string;
+  }[];
+  const row = rows[0];
+  if (!row) throw new Error('Пакетът не е намерен.');
+  return {
+    id: String(row.id),
+    packageName: String(row.package_name ?? ''),
+    totalSessions: Math.max(1, Number(row.total_sessions) || 1),
+    usedSessions: Math.max(0, Number(row.used_sessions) || 0),
+    remainingSessions: Math.max(0, (Number(row.total_sessions) || 1) - (Number(row.used_sessions) || 0)),
+    expiresAt: String(row.expires_at ?? ''),
+    status: 'active' as const,
+  };
+}
+
+export async function deactivateClientPackage(input: { salonId: string; packageId: string }) {
+  await ensureClientPackagesSchema();
+  const rows = await sql`
+    UPDATE client_packages
+    SET expires_at = CURRENT_DATE - interval '1 day',
+        updated_at = now()
+    WHERE id = ${input.packageId}::uuid
+      AND salon_id = ${input.salonId}
+    RETURNING id
+  `;
+  if (rows.length === 0) throw new Error('Пакетът не е намерен.');
+}

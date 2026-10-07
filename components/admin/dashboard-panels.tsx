@@ -1688,6 +1688,8 @@ type EditDraft = { key: string; id: string; name: string; phone: string; email: 
 type ClientSort = 'newest' | 'visits' | 'alpha';
 type PackageActivationDraft = {
   clientKey: string;
+  packageId?: string;
+  mode: 'create' | 'edit';
   packageDefinitionId: string;
   packageName: string;
   totalSessions: string;
@@ -2262,6 +2264,8 @@ export function ClientsPanel({
   onDelete,
   onEdit,
   onAddPackage,
+  onUpdatePackage,
+  onDeactivatePackage,
   onImportMemberships,
   locale,
 }: {
@@ -2280,6 +2284,15 @@ export function ClientsPanel({
     validTo: string | null;
     validityDays: number | null;
   }) => Promise<void>;
+  onUpdatePackage?: (client: ClientSummary, data: {
+    packageId: string;
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    price: number | null;
+    validTo: string | null;
+  }) => Promise<void>;
+  onDeactivatePackage?: (client: ClientSummary, packageId: string) => Promise<void>;
   onImportMemberships?: (csvText: string, mode: MembershipImportMode) => Promise<MembershipImportResult>;
   locale: Locale;
 }) {
@@ -2355,6 +2368,7 @@ export function ClientsPanel({
     setActivationError('');
     setActivationDraft({
       clientKey: client.key,
+      mode: 'create',
       packageDefinitionId: firstPackage?.id ?? '',
       packageName: firstPackage?.name ?? '',
       totalSessions: String(firstPackage?.totalSessions ?? 8),
@@ -2363,6 +2377,24 @@ export function ClientsPanel({
       validFrom: todayKey(),
       validTo: defaultValidTo(validityDays),
       validityDays: String(validityDays),
+    });
+  }
+
+  function openPackageEdit(client: ClientSummary) {
+    if (!client.activePackage) return;
+    setActivationError('');
+    setActivationDraft({
+      clientKey: client.key,
+      packageId: client.activePackage.id,
+      mode: 'edit',
+      packageDefinitionId: '',
+      packageName: client.activePackage.packageName,
+      totalSessions: String(client.activePackage.totalSessions),
+      usedSessions: String(client.activePackage.usedSessions),
+      price: '',
+      validFrom: '',
+      validTo: client.activePackage.expiresAt,
+      validityDays: '',
     });
   }
 
@@ -2396,15 +2428,28 @@ export function ClientsPanel({
     setPackageBusyKey(client.key);
     setActivationError('');
     try {
-      await onAddPackage(client, {
-        packageName: activationDraft.packageName.trim(),
-        totalSessions,
-        usedSessions,
-        price: activationDraft.price.trim() ? Math.max(0, Number(activationDraft.price) || 0) : null,
-        validFrom: activationDraft.validFrom || null,
-        validTo: activationDraft.validTo || null,
-        validityDays: activationDraft.validityDays.trim() ? Math.max(1, Math.round(Number(activationDraft.validityDays) || 30)) : null,
-      });
+      const price = activationDraft.price.trim() ? Math.max(0, Number(activationDraft.price) || 0) : null;
+      if (activationDraft.mode === 'edit' && activationDraft.packageId) {
+        if (!onUpdatePackage) return;
+        await onUpdatePackage(client, {
+          packageId: activationDraft.packageId,
+          packageName: activationDraft.packageName.trim(),
+          totalSessions,
+          usedSessions,
+          price,
+          validTo: activationDraft.validTo || null,
+        });
+      } else {
+        await onAddPackage(client, {
+          packageName: activationDraft.packageName.trim(),
+          totalSessions,
+          usedSessions,
+          price,
+          validFrom: activationDraft.validFrom || null,
+          validTo: activationDraft.validTo || null,
+          validityDays: activationDraft.validityDays.trim() ? Math.max(1, Math.round(Number(activationDraft.validityDays) || 30)) : null,
+        });
+      }
       setActivationDraft(null);
     } catch (err) {
       setActivationError(err instanceof Error ? err.message : (isEn ? 'Could not activate package.' : 'Пакетът не беше активиран.'));
@@ -2494,7 +2539,9 @@ export function ClientsPanel({
                 {isEn ? 'Client package' : 'Клиентски пакет'}
               </p>
               <h3 style={{ margin: '5px 0 0', fontSize: 18, fontWeight: 850, color: '#111' }}>
-                {isEn ? 'Activate package' : 'Активирай пакет'}
+                {activationDraft.mode === 'edit'
+                  ? (isEn ? 'Edit package' : 'Редактирай пакет')
+                  : (isEn ? 'Activate package' : 'Активирай пакет')}
               </h3>
             </div>
             <button type="button" onClick={() => !packageBusyKey && setActivationDraft(null)} style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', padding: '6px 10px', cursor: 'pointer' }}>
@@ -2502,7 +2549,7 @@ export function ClientsPanel({
             </button>
           </div>
 
-          {packageDefinitions.length > 0 ? (
+          {activationDraft.mode === 'create' && packageDefinitions.length > 0 ? (
             <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
               {isEn ? 'Use saved package' : 'Избери създаден пакет'}
               <select
@@ -2535,10 +2582,12 @@ export function ClientsPanel({
               {isEn ? 'Price' : 'Цена'}
               <input value={activationDraft.price} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, price: event.target.value } : draft)} inputMode="decimal" style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
             </label>
-            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
-              {isEn ? 'Valid from' : 'Валиден от'}
-              <input type="date" value={activationDraft.validFrom} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, validFrom: event.target.value } : draft)} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
-            </label>
+            {activationDraft.mode === 'create' ? (
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Valid from' : 'Валиден от'}
+                <input type="date" value={activationDraft.validFrom} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, validFrom: event.target.value } : draft)} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
+              </label>
+            ) : null}
             <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
               {isEn ? 'Valid to' : 'Валиден до'}
               <input type="date" value={activationDraft.validTo} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, validTo: event.target.value } : draft)} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
@@ -2552,7 +2601,9 @@ export function ClientsPanel({
               {isEn ? 'Cancel' : 'Отказ'}
             </button>
             <button type="button" disabled={Boolean(packageBusyKey)} onClick={() => void submitPackageActivation()} style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '9px 14px', fontSize: 12, fontWeight: 850, cursor: packageBusyKey ? 'wait' : 'pointer', opacity: packageBusyKey ? 0.55 : 1 }}>
-              {packageBusyKey ? (isEn ? 'Activating…' : 'Активиране…') : (isEn ? 'Activate package' : 'Активирай пакет')}
+              {packageBusyKey
+                ? (activationDraft.mode === 'edit' ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Activating…' : 'Активиране…'))
+                : (activationDraft.mode === 'edit' ? (isEn ? 'Save package' : 'Запази пакет') : (isEn ? 'Activate package' : 'Активирай пакет'))}
             </button>
           </div>
         </div>
@@ -2719,6 +2770,8 @@ export function ClientsPanel({
                 {client.activePackage ? (
                   <span style={{ display: 'inline-flex', borderRadius: 999, background: '#ecfdf5', color: '#047857', padding: '4px 9px', fontSize: 12, fontWeight: 700 }}>
                     {isEn ? 'Package: ' : 'Пакет: '}
+                    {client.activePackage.packageName}
+                    {' · '}
                     {client.activePackage.remainingSessions}/{client.activePackage.totalSessions}
                     {' · '}
                     {isEn ? 'valid until ' : 'до '}
@@ -2737,6 +2790,35 @@ export function ClientsPanel({
                     style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key ? 0.6 : 1 }}
                   >
                     {packageBusyKey === client.key ? '…' : (isEn ? 'Activate package' : 'Активирай пакет')}
+                  </button>
+                ) : null}
+                {client.activePackage && onUpdatePackage ? (
+                  <button
+                    type="button"
+                    disabled={packageBusyKey === client.key}
+                    onClick={() => openPackageEdit(client)}
+                    style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key ? 0.6 : 1 }}
+                  >
+                    {isEn ? 'Edit package' : 'Редактирай пакет'}
+                  </button>
+                ) : null}
+                {client.activePackage && onDeactivatePackage ? (
+                  <button
+                    type="button"
+                    disabled={packageBusyKey === client.key}
+                    onClick={async () => {
+                      const ok = window.confirm(isEn ? 'Deactivate this package?' : 'Да деактивирам ли този пакет?');
+                      if (!ok || !client.activePackage) return;
+                      setPackageBusyKey(client.key);
+                      try {
+                        await onDeactivatePackage(client, client.activePackage.id);
+                      } finally {
+                        setPackageBusyKey(null);
+                      }
+                    }}
+                    style={{ border: '1px solid rgba(220,38,38,0.24)', borderRadius: 999, background: '#FEF2F2', color: '#B91C1C', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key ? 0.6 : 1 }}
+                  >
+                    {isEn ? 'Deactivate' : 'Деактивирай'}
                   </button>
                 ) : null}
               </div>

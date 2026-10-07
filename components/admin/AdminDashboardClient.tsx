@@ -2901,6 +2901,35 @@ export default function AdminDashboardClient({
                     }
                     setNotice(locale === 'en' ? 'Package activated.' : `Активиран е пакет „${packageInput.packageName}“.`);
                   }}
+                  onUpdatePackage={async (client, packageInput) => {
+                    const res = await fetch(`/api/admin/client-packages?slug=${encodeURIComponent(slug)}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(packageInput),
+                    });
+                    const json = await res.json().catch(() => ({})) as { package?: ClientSummary['activePackage']; error?: string };
+                    if (!res.ok || !json.package) {
+                      throw new Error(json.error ?? (locale === 'en' ? 'Package update failed.' : 'Пакетът не беше обновен.'));
+                    }
+                    const activePackage = json.package;
+                    setExtraClients((prev) => {
+                      const existingIndex = prev.findIndex((c) => clientsReferToSamePerson(c, client));
+                      if (existingIndex >= 0) return prev.map((c, index) => index === existingIndex ? { ...c, activePackage } : c);
+                      return [...prev, { ...client, key: client.key.startsWith('sc-') ? client.key : `pkg-${Date.now()}`, activePackage }];
+                    });
+                    setNotice(locale === 'en' ? 'Package updated.' : 'Пакетът е обновен.');
+                  }}
+                  onDeactivatePackage={async (client, packageId) => {
+                    const res = await fetch(`/api/admin/client-packages?slug=${encodeURIComponent(slug)}&packageId=${encodeURIComponent(packageId)}`, {
+                      method: 'DELETE',
+                    });
+                    const json = await res.json().catch(() => ({})) as { error?: string };
+                    if (!res.ok) {
+                      throw new Error(json.error ?? (locale === 'en' ? 'Package deactivation failed.' : 'Пакетът не беше деактивиран.'));
+                    }
+                    setExtraClients((prev) => prev.map((c) => clientsReferToSamePerson(c, client) ? { ...c, activePackage: null } : c));
+                    setNotice(locale === 'en' ? 'Package deactivated.' : 'Пакетът е деактивиран.');
+                  }}
                   locale={locale}
                 />
               </Section>
