@@ -19,7 +19,7 @@ export async function ensureClientPackagesSchema() {
     CREATE TABLE IF NOT EXISTS client_packages (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       salon_id text NOT NULL,
-      client_id uuid REFERENCES salon_clients(id) ON DELETE SET NULL,
+      client_id text,
       client_name text NOT NULL,
       client_phone text,
       client_email text,
@@ -85,7 +85,7 @@ export async function createClientPackage(input: {
     )
     VALUES (
       ${input.salonId},
-      ${client.id}::uuid,
+      ${client.id},
       ${input.clientName.trim()},
       ${input.clientPhone?.trim() || null},
       ${input.clientEmail?.trim().toLowerCase() || null},
