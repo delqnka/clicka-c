@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import {
   ensureAdminAuthSchema,
-  getPrimaryOwnerForSalon,
+  getOwnerForSalonByEmail,
   normalizeEmail,
   resolveSalonBySlugOrHost,
   sha256,
@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
   });
   if (!salon) return NextResponse.json({ error: 'Салонът не е намерен' }, { status: 404 });
 
-  const primaryOwner = await getPrimaryOwnerForSalon(salon.salonId);
-  const allowedEmail = normalizeEmail(primaryOwner?.email ?? salon.email ?? '');
-  if (!allowedEmail || allowedEmail !== email) {
+  const owner = await getOwnerForSalonByEmail({ salonId: salon.salonId, email });
+  if (!owner) {
     return NextResponse.json({ success: true });
   }
+  const allowedEmail = normalizeEmail(owner.email);
 
   const token = crypto.randomBytes(32).toString('hex');
   const tokenHash = sha256(token);
