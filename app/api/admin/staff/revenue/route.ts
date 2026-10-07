@@ -12,6 +12,7 @@ type RevenueRow = {
   completed_classes_count: number | string | null;
   completed_people_count: number | string | null;
   completed_revenue: number | string | null;
+  bookings: unknown;
 };
 
 function isIsoDate(value: string | null): value is string {
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest) {
       COALESCE(stats.booked_revenue, 0) AS booked_revenue,
       COALESCE(stats.completed_classes_count, 0) AS completed_classes_count,
       COALESCE(stats.completed_people_count, 0) AS completed_people_count,
-      COALESCE(stats.completed_revenue, 0) AS completed_revenue
+      COALESCE(stats.completed_revenue, 0) AS completed_revenue,
+      COALESCE(stats.bookings, '[]'::jsonb) AS bookings
     FROM staff_members sm
     LEFT JOIN LATERAL (
       SELECT
@@ -90,7 +92,20 @@ export async function GET(request: NextRequest) {
                 )
               ELSE false
             END
-        ), 0)::float AS completed_revenue
+        ), 0)::float AS completed_revenue,
+        COALESCE(jsonb_agg(
+          jsonb_build_object(
+            'id', b.id,
+            'clientName', b.client_name,
+            'serviceName', b.service_name,
+            'date', b.date,
+            'time', b.time,
+            'peopleCount', GREATEST(1, COALESCE(b.booking_quantity, 1)),
+            'revenue', COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)),
+            'status', b.status
+          )
+          ORDER BY b.date ASC, b.time ASC, b.created_at ASC
+        ) FILTER (WHERE b.id IS NOT NULL), '[]'::jsonb) AS bookings
       FROM bookings b
       WHERE b.salon_id = sm.salon_id
         AND b.staff_member_id = sm.id
@@ -115,6 +130,7 @@ export async function GET(request: NextRequest) {
       completedClassesCount: Math.max(0, Math.round(Number(row.completed_classes_count ?? 0) || 0)),
       completedPeopleCount: Math.max(0, Math.round(Number(row.completed_people_count ?? 0) || 0)),
       completedRevenue: Math.max(0, Number(row.completed_revenue ?? 0) || 0),
+      bookings: Array.isArray(row.bookings) ? row.bookings : [],
     })),
   });
 }

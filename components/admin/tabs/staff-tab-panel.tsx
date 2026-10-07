@@ -25,6 +25,18 @@ type StaffRevenueRow = {
   completedClassesCount: number;
   completedPeopleCount: number;
   completedRevenue: number;
+  bookings: StaffRevenueBooking[];
+};
+
+type StaffRevenueBooking = {
+  id: string;
+  clientName: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  peopleCount: number;
+  revenue: number;
+  status?: string | null;
 };
 
 function Badge({ active, locale }: { active: boolean; locale: Locale }) {
@@ -59,6 +71,12 @@ function toDateInputValue(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function formatDateShort(date: string, locale: Locale): string {
+  const parsed = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return parsed.toLocaleDateString(locale === 'en' ? 'en-US' : 'bg-BG', { day: '2-digit', month: '2-digit' });
 }
 
 function currentWeekStart(): string {
@@ -604,6 +622,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
   const [revenueRows, setRevenueRows] = useState<StaffRevenueRow[]>([]);
   const [revenueBusy, setRevenueBusy] = useState(false);
   const [revenueError, setRevenueError] = useState<string | null>(null);
+  const [revenueDetail, setRevenueDetail] = useState<{ title: string; bookings: StaffRevenueBooking[] } | null>(null);
 
   const showNotice = useCallback((type: 'ok' | 'err', text: string) => {
     setNotice({ type, text });
@@ -722,6 +741,13 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
     }),
     { bookedClassesCount: 0, bookedPeopleCount: 0, bookedRevenue: 0, completedClassesCount: 0, completedPeopleCount: 0, completedRevenue: 0 },
   );
+  const allRevenueBookings = revenueRows.flatMap((row) => row.bookings.map((booking) => ({
+    ...booking,
+    id: `${row.staffId}-${booking.id}`,
+  })));
+  const openRevenueDetail = useCallback((title: string, bookings: StaffRevenueBooking[]) => {
+    setRevenueDetail({ title, bookings });
+  }, []);
 
   const inp: React.CSSProperties = {
     width: '100%', padding: '8px 10px', borderRadius: 8,
@@ -739,6 +765,58 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
           busy={busy === `delete-${confirmDelete.id}`}
           locale={locale}
         />
+      ) : null}
+
+      {revenueDetail ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.38)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => setRevenueDetail(null)}
+        >
+          <div
+            style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 14px 42px rgba(0,0,0,0.18)' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, color: ADMIN_T.text }}>{revenueDetail.title}</h3>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: ADMIN_T.muted }}>
+                  {revenueDetail.bookings.length} {isEn ? 'bookings' : 'резервации'}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={isEn ? 'Close' : 'Затвори'}
+                onClick={() => setRevenueDetail(null)}
+                style={{ border: `1px solid ${ADMIN_T.border}`, background: '#fff', borderRadius: 999, width: 30, height: 30, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+            {revenueDetail.bookings.length === 0 ? (
+              <p style={{ margin: 0, color: ADMIN_T.muted, fontSize: 13 }}>{isEn ? 'No bookings for this selection.' : 'Няма резервации за този избор.'}</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {revenueDetail.bookings.map((booking) => (
+                  <div key={booking.id} style={{ display: 'grid', gap: 4, padding: '10px 0', borderBottom: `1px solid ${ADMIN_T.border}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: 13, color: ADMIN_T.text }}>{booking.clientName || (isEn ? 'Client' : 'Клиент')}</strong>
+                      <span style={{ fontSize: 12, color: ADMIN_T.muted }}>
+                        {formatDateShort(booking.date, locale)} · {booking.time}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 12, color: ADMIN_T.muted }}>
+                      <span>{booking.serviceName}</span>
+                      <span>{booking.peopleCount} {isEn ? 'people' : 'човека'}</span>
+                      <span style={{ color: '#047857', fontWeight: 750 }}>{formatEuroAmount(booking.revenue)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       ) : null}
 
       <AdminSection
@@ -894,18 +972,30 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
           ) : null}
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-            <div style={{ borderRadius: 10, background: '#f7f7f8', padding: 12 }}>
+            <button
+              type="button"
+              onClick={() => openRevenueDetail(isEn ? 'Classes' : 'Класове', allRevenueBookings)}
+              style={{ textAlign: 'left', border: 'none', borderRadius: 10, background: '#f7f7f8', padding: 12, cursor: 'pointer' }}
+            >
               <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'Classes' : 'Класове'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: ADMIN_T.text }}>{revenueTotals.bookedClassesCount}</p>
-            </div>
-            <div style={{ borderRadius: 10, background: '#f7f7f8', padding: 12 }}>
+            </button>
+            <button
+              type="button"
+              onClick={() => openRevenueDetail(isEn ? 'People' : 'Хора', allRevenueBookings)}
+              style={{ textAlign: 'left', border: 'none', borderRadius: 10, background: '#f7f7f8', padding: 12, cursor: 'pointer' }}
+            >
               <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'People' : 'Хора'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: ADMIN_T.text }}>{revenueTotals.bookedPeopleCount}</p>
-            </div>
-            <div style={{ borderRadius: 10, background: '#ecfdf5', padding: 12 }}>
+            </button>
+            <button
+              type="button"
+              onClick={() => openRevenueDetail(isEn ? 'Expected turnover' : 'Очакван оборот', allRevenueBookings)}
+              style={{ textAlign: 'left', border: 'none', borderRadius: 10, background: '#ecfdf5', padding: 12, cursor: 'pointer' }}
+            >
               <p style={{ margin: 0, fontSize: 11, color: '#047857', fontWeight: 700 }}>{isEn ? 'Expected turnover' : 'Очакван оборот'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#047857' }}>{formatEuroAmount(revenueTotals.bookedRevenue)}</p>
-            </div>
+            </button>
           </div>
 
           <div style={{ display: 'grid', gap: 6 }}>
@@ -928,11 +1018,35 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                   fontSize: 12,
                 }}
               >
-                <strong style={{ color: ADMIN_T.text, fontSize: 13 }}>{row.staffName}</strong>
+                <button
+                  type="button"
+                  onClick={() => openRevenueDetail(row.staffName, row.bookings)}
+                  style={{ border: 'none', background: 'transparent', padding: 0, color: ADMIN_T.text, fontSize: 13, fontWeight: 800, cursor: 'pointer', textAlign: 'left' }}
+                >
+                  {row.staffName}
+                </button>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', color: ADMIN_T.muted }}>
-                  <span>{isEn ? `${row.bookedClassesCount} classes` : `${row.bookedClassesCount} класа`}</span>
-                  <span>{isEn ? `${row.bookedPeopleCount} people` : `${row.bookedPeopleCount} човека`}</span>
-                  <span style={{ color: '#047857', fontWeight: 750 }}>{formatEuroAmount(row.bookedRevenue)}</span>
+                  <button
+                    type="button"
+                    onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'classes' : 'класове'}`, row.bookings)}
+                    style={{ border: 'none', background: 'transparent', padding: 0, color: ADMIN_T.muted, cursor: 'pointer', fontSize: 12 }}
+                  >
+                    {isEn ? `${row.bookedClassesCount} classes` : `${row.bookedClassesCount} класа`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'people' : 'хора'}`, row.bookings)}
+                    style={{ border: 'none', background: 'transparent', padding: 0, color: ADMIN_T.muted, cursor: 'pointer', fontSize: 12 }}
+                  >
+                    {isEn ? `${row.bookedPeopleCount} people` : `${row.bookedPeopleCount} човека`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'turnover' : 'оборот'}`, row.bookings)}
+                    style={{ border: 'none', background: 'transparent', padding: 0, color: '#047857', fontWeight: 750, cursor: 'pointer', fontSize: 12 }}
+                  >
+                    {formatEuroAmount(row.bookedRevenue)}
+                  </button>
                   {row.completedClassesCount > 0 || row.completedPeopleCount > 0 || row.completedRevenue > 0 ? (
                     <span style={{ color: '#1d4ed8', fontWeight: 700 }}>
                       {isEn ? 'Held: ' : 'Проведени: '}
