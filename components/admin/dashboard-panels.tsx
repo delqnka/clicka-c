@@ -644,31 +644,6 @@ export function BookingsPanel({
         ? historyBookingGroups(locale)
         : allBookingGroups(locale);
   const today = todayKey();
-  const selectedDayBookings = React.useMemo(
-    () =>
-      selectedCalendarDate
-        ? bookings.filter((booking) => normalizeDateKey(booking.date) === selectedCalendarDate)
-        : visibleBookings,
-    [bookings, selectedCalendarDate, visibleBookings],
-  );
-  const selectedDayActiveBookings = React.useMemo(
-    () => selectedDayBookings.filter(isActiveBookingForCapacity),
-    [selectedDayBookings],
-  );
-  const selectedDayBeds = React.useMemo(
-    () => selectedDayActiveBookings.reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
-    [selectedDayActiveBookings],
-  );
-  const selectedDaySlots = React.useMemo(
-    () =>
-      selectedCalendarDate
-        ? getClassSlotsForDate(classSchedule, selectedCalendarDate).length
-        : new Set(selectedDayActiveBookings.map((booking) => String(booking.time ?? '').slice(0, 5)).filter(Boolean)).size,
-    [classSchedule, selectedCalendarDate, selectedDayActiveBookings],
-  );
-  const selectedDayCapacity = selectedCalendarDate
-    ? getClassSlotsForDate(classSchedule, selectedCalendarDate).reduce((sum, slot) => sum + Math.max(1, Number(slot.capacity) || 1), 0)
-    : selectedDaySlots * 5;
   const panelVisibleBookings = React.useMemo(
     () => visibleBookings.filter((booking) => bookingMatchesSearch(booking, searchQuery)),
     [visibleBookings, searchQuery],
@@ -743,6 +718,30 @@ export function BookingsPanel({
   const displayedTimelineRows = selectedCalendarDate ? dailyTimelineRows : timelineRows;
   const useTimelineView = Boolean(selectedCalendarDate) && (statusFilter === 'upcoming' || statusFilter === 'pending' || statusFilter === 'all');
   const timelineEmpty = useTimelineView && displayedTimelineRows.length === 0;
+  const selectedDayActiveBookings = React.useMemo(() => {
+    if (!selectedCalendarDate) return panelVisibleBookings.filter(isActiveBookingForCapacity);
+    const unique = new Map<string, BookingRecord>();
+    for (const row of dailyTimelineRows) {
+      for (const booking of row.rows) {
+        if (isActiveBookingForCapacity(booking)) unique.set(booking.id, booking);
+      }
+    }
+    return [...unique.values()];
+  }, [dailyTimelineRows, panelVisibleBookings, selectedCalendarDate]);
+  const selectedDayBeds = React.useMemo(
+    () => selectedDayActiveBookings.reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
+    [selectedDayActiveBookings],
+  );
+  const selectedDaySlots = React.useMemo(
+    () =>
+      selectedCalendarDate
+        ? getClassSlotsForDate(classSchedule, selectedCalendarDate).length
+        : new Set(selectedDayActiveBookings.map((booking) => String(booking.time ?? '').slice(0, 5)).filter(Boolean)).size,
+    [classSchedule, selectedCalendarDate, selectedDayActiveBookings],
+  );
+  const selectedDayCapacity = selectedCalendarDate
+    ? dailyTimelineRows.reduce((sum, slot) => sum + Math.max(1, Number(slot.capacity) || 1), 0)
+    : selectedDaySlots * 5;
   const sortedAddClientOptions = React.useMemo(
     () => [...clients].sort(compareClientNames),
     [clients],
