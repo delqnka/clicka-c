@@ -846,16 +846,29 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
         <div
           style={{
             marginBottom: 16,
-            padding: 14,
-            borderRadius: 10,
-            border: `1px solid ${ADMIN_T.border}`,
-            background: '#fff',
+            padding: 0,
+            borderRadius: 0,
+            border: 'none',
+            background: 'transparent',
             display: 'grid',
-            gap: 12,
+            gap: 14,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div />
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, flex: '1 1 360px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>
+                  {isEn ? 'From' : 'От дата'}
+                </label>
+                <input type="date" value={revenueFrom} onChange={(e) => setRevenueFrom(e.target.value)} style={inp} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>
+                  {isEn ? 'To' : 'До дата'}
+                </label>
+                <input type="date" value={revenueTo} onChange={(e) => setRevenueTo(e.target.value)} style={inp} />
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => void loadRevenue()}
@@ -876,49 +889,22 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>
-                {isEn ? 'From' : 'От дата'}
-              </label>
-              <input type="date" value={revenueFrom} onChange={(e) => setRevenueFrom(e.target.value)} style={inp} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: ADMIN_T.muted, marginBottom: 4 }}>
-                {isEn ? 'To' : 'До дата'}
-              </label>
-              <input type="date" value={revenueTo} onChange={(e) => setRevenueTo(e.target.value)} style={inp} />
-            </div>
-          </div>
-
           {revenueError ? (
             <p style={{ margin: 0, color: '#b91c1c', fontSize: 12, fontWeight: 600 }}>{revenueError}</p>
           ) : null}
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(6, minmax(0, 1fr))', gap: 8 }}>
-            <div style={{ borderRadius: 8, background: '#f4f4f5', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'Booked classes' : 'Записани класове'}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+            <div style={{ borderRadius: 10, background: '#f7f7f8', padding: 12 }}>
+              <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'Classes' : 'Класове'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: ADMIN_T.text }}>{revenueTotals.bookedClassesCount}</p>
             </div>
-            <div style={{ borderRadius: 8, background: '#f4f4f5', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'Booked people' : 'Записани хора'}</p>
+            <div style={{ borderRadius: 10, background: '#f7f7f8', padding: 12 }}>
+              <p style={{ margin: 0, fontSize: 11, color: ADMIN_T.muted, fontWeight: 700 }}>{isEn ? 'People' : 'Хора'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: ADMIN_T.text }}>{revenueTotals.bookedPeopleCount}</p>
             </div>
-            <div style={{ borderRadius: 8, background: '#ecfdf5', padding: 10 }}>
+            <div style={{ borderRadius: 10, background: '#ecfdf5', padding: 12 }}>
               <p style={{ margin: 0, fontSize: 11, color: '#047857', fontWeight: 700 }}>{isEn ? 'Expected turnover' : 'Очакван оборот'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#047857' }}>{formatEuroAmount(revenueTotals.bookedRevenue)}</p>
-            </div>
-            <div style={{ borderRadius: 8, background: '#eff6ff', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Held classes' : 'Проведени класове'}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{revenueTotals.completedClassesCount}</p>
-            </div>
-            <div style={{ borderRadius: 8, background: '#eff6ff', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Attended people' : 'Посетили хора'}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{revenueTotals.completedPeopleCount}</p>
-            </div>
-            <div style={{ borderRadius: 8, background: '#f5f3ff', padding: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, color: '#5b21b6', fontWeight: 700 }}>{isEn ? 'Actual revenue' : 'Реален оборот'}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#5b21b6' }}>{formatEuroAmount(revenueTotals.completedRevenue)}</p>
             </div>
           </div>
 
@@ -931,23 +917,29 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
               <div
                 key={row.staffId}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : 'minmax(150px, 1fr) repeat(6, minmax(82px, auto))',
+                  display: 'flex',
                   gap: 8,
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '9px 10px',
-                  borderRadius: 8,
-                  border: `1px solid ${ADMIN_T.border}`,
+                  flexWrap: 'wrap',
+                  padding: '10px 2px',
+                  borderRadius: 0,
+                  border: 'none',
                   fontSize: 12,
                 }}
               >
                 <strong style={{ color: ADMIN_T.text, fontSize: 13 }}>{row.staffName}</strong>
-                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Booked classes: ' : 'Записани класове: '}{row.bookedClassesCount}</span>
-                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'People: ' : 'Хора: '}{row.bookedPeopleCount}</span>
-                <span style={{ color: '#047857', fontWeight: 700 }}>{formatEuroAmount(row.bookedRevenue)}</span>
-                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Held classes: ' : 'Проведени класове: '}{row.completedClassesCount}</span>
-                <span style={{ color: ADMIN_T.muted }}>{isEn ? 'Attended: ' : 'Посетили: '}{row.completedPeopleCount}</span>
-                <span style={{ color: '#1d4ed8', fontWeight: 700 }}>{formatEuroAmount(row.completedRevenue)}</span>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', color: ADMIN_T.muted }}>
+                  <span>{isEn ? `${row.bookedClassesCount} classes` : `${row.bookedClassesCount} класа`}</span>
+                  <span>{isEn ? `${row.bookedPeopleCount} people` : `${row.bookedPeopleCount} човека`}</span>
+                  <span style={{ color: '#047857', fontWeight: 750 }}>{formatEuroAmount(row.bookedRevenue)}</span>
+                  {row.completedClassesCount > 0 || row.completedPeopleCount > 0 || row.completedRevenue > 0 ? (
+                    <span style={{ color: '#1d4ed8', fontWeight: 700 }}>
+                      {isEn ? 'Held: ' : 'Проведени: '}
+                      {row.completedClassesCount} · {row.completedPeopleCount} · {formatEuroAmount(row.completedRevenue)}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>
