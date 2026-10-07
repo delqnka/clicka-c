@@ -64,11 +64,13 @@ export async function GET(request: NextRequest) {
       LEFT JOIN LATERAL (
         SELECT jsonb_build_object(
           'id', cp.id,
+          'clientName', cp.client_name,
+          'clientEmail', cp.client_email,
           'packageName', cp.package_name,
           'totalSessions', cp.total_sessions,
           'usedSessions', cp.used_sessions,
           'remainingSessions', GREATEST(0, cp.total_sessions - cp.used_sessions),
-          'expiresAt', cp.expires_at,
+          'expiresAt', to_char(cp.expires_at, 'YYYY-MM-DD'),
           'status',
             CASE
               WHEN cp.expires_at < CURRENT_DATE THEN 'expired'

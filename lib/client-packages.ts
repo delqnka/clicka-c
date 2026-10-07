@@ -224,9 +224,11 @@ export async function updateClientPackage(input: {
       updated_at = now()
     WHERE id = ${input.packageId}::uuid
       AND salon_id = ${input.salonId}
-    RETURNING id, package_name, total_sessions, used_sessions, expires_at
+    RETURNING id, client_name, client_email, package_name, total_sessions, used_sessions, expires_at::text AS expires_at
   ` as {
     id: string;
+    client_name: string | null;
+    client_email: string | null;
     package_name: string;
     total_sessions: number;
     used_sessions: number;
@@ -236,6 +238,8 @@ export async function updateClientPackage(input: {
   if (!row) throw new Error('Пакетът не е намерен.');
   return {
     id: String(row.id),
+    clientName: String(row.client_name ?? ''),
+    clientEmail: row.client_email ? String(row.client_email) : null,
     packageName: String(row.package_name ?? ''),
     totalSessions: Math.max(1, Number(row.total_sessions) || 1),
     usedSessions: Math.max(0, Number(row.used_sessions) || 0),

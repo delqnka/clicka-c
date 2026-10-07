@@ -39,6 +39,8 @@ type ClientSummary = {
   isNew?: boolean;
   activePackage?: {
     id: string;
+    clientName?: string | null;
+    clientEmail?: string | null;
     packageName: string;
     totalSessions: number;
     usedSessions: number;
@@ -2393,7 +2395,7 @@ export function ClientsPanel({
       usedSessions: String(client.activePackage.usedSessions),
       price: '',
       validFrom: '',
-      validTo: client.activePackage.expiresAt,
+      validTo: normalizeDateKey(client.activePackage.expiresAt),
       validityDays: '',
     });
   }
@@ -2775,7 +2777,7 @@ export function ClientsPanel({
                     {client.activePackage.remainingSessions}/{client.activePackage.totalSessions}
                     {' · '}
                     {isEn ? 'valid until ' : 'до '}
-                    {new Date(`${client.activePackage.expiresAt}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}
+                    {new Date(`${normalizeDateKey(client.activePackage.expiresAt)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}
                   </span>
                 ) : (
                   <span style={{ display: 'inline-flex', borderRadius: 999, background: '#f4f4f5', color: T.subtle, padding: '4px 9px', fontSize: 12, fontWeight: 600 }}>
@@ -2806,7 +2808,7 @@ export function ClientsPanel({
                           totalSessions: client.activePackage.totalSessions + 1,
                           usedSessions: client.activePackage.usedSessions,
                           price: null,
-                          validTo: client.activePackage.expiresAt,
+                          validTo: normalizeDateKey(client.activePackage.expiresAt),
                         });
                       } finally {
                         setPackageBusyKey(null);
@@ -2814,7 +2816,7 @@ export function ClientsPanel({
                     }}
                     style={{ border: '1px solid rgba(5,150,105,0.28)', borderRadius: 999, background: '#ECFDF5', color: '#047857', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key ? 0.6 : 1 }}
                   >
-                    {isEn ? '+ Credit' : '+ кредит'}
+                    {isEn ? 'Add credit' : 'Добави кредит'}
                   </button>
                 ) : null}
                 {client.activePackage && onUpdatePackage ? (
@@ -2831,7 +2833,7 @@ export function ClientsPanel({
                           totalSessions: client.activePackage.totalSessions,
                           usedSessions: Math.min(client.activePackage.totalSessions, client.activePackage.usedSessions + 1),
                           price: null,
-                          validTo: client.activePackage.expiresAt,
+                          validTo: normalizeDateKey(client.activePackage.expiresAt),
                         });
                       } finally {
                         setPackageBusyKey(null);
@@ -2839,7 +2841,7 @@ export function ClientsPanel({
                     }}
                     style={{ border: '1px solid rgba(220,38,38,0.24)', borderRadius: 999, background: '#FEF2F2', color: '#B91C1C', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key || client.activePackage.remainingSessions <= 0 ? 0.55 : 1 }}
                   >
-                    {isEn ? '- Credit' : '- кредит'}
+                    {isEn ? 'Remove credit' : 'Отнеми кредит'}
                   </button>
                 ) : null}
                 {client.activePackage && onUpdatePackage ? (

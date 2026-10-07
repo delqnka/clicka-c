@@ -112,8 +112,8 @@ export async function PATCH(request: NextRequest) {
     validTo: body.validTo,
   });
 
-  const clientEmail = body.clientEmail?.trim().toLowerCase() || '';
-  const clientName = body.clientName?.trim() || 'Клиент';
+  const clientEmail = body.clientEmail?.trim().toLowerCase() || pkg.clientEmail?.trim().toLowerCase() || '';
+  const clientName = body.clientName?.trim() || pkg.clientName?.trim() || 'Клиент';
   if (clientEmail) {
     runAfterResponse(sendClientPackageCreditAdjustmentEmail(clientEmail, {
       salonId: auth.salon.salonId,

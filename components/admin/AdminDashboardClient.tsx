@@ -224,6 +224,8 @@ type ClientSummary = {
   isNew?: boolean;
   activePackage?: {
     id: string;
+    clientName?: string | null;
+    clientEmail?: string | null;
     packageName: string;
     totalSessions: number;
     usedSessions: number;
@@ -2860,6 +2862,8 @@ export default function AdminDashboardClient({
                     const remainingSessions = Math.max(0, packageInput.totalSessions - packageInput.usedSessions);
                     const activePackage = {
                       id: json.packageId ?? `new-${Date.now()}`,
+                      clientName: client.name,
+                      clientEmail: client.email || null,
                       packageName: packageInput.packageName,
                       totalSessions: packageInput.totalSessions,
                       usedSessions: packageInput.usedSessions,
@@ -2905,10 +2909,13 @@ export default function AdminDashboardClient({
                     const previous = client.activePackage;
                     const totalDelta = previous ? packageInput.totalSessions - previous.totalSessions : 0;
                     const usedDelta = previous ? packageInput.usedSessions - previous.usedSessions : 0;
+                    const creditWord = (count: number) => Math.abs(count) === 1 ? 'кредит' : 'кредита';
                     const changeLabel = totalDelta > 0
-                      ? `Добавен е ${totalDelta} кредит към пакета „${packageInput.packageName}“.`
+                      ? `Заредени са още ${totalDelta} ${creditWord(totalDelta)} към пакета „${packageInput.packageName}“.`
                       : usedDelta > 0
-                        ? `Отнет е ${usedDelta} кредит от пакета „${packageInput.packageName}“.`
+                        ? `Отнети са ${usedDelta} ${creditWord(usedDelta)} от пакета „${packageInput.packageName}“.`
+                        : usedDelta < 0
+                          ? `Върнати са ${Math.abs(usedDelta)} ${creditWord(usedDelta)} към пакета „${packageInput.packageName}“.`
                         : `Пакетът „${packageInput.packageName}“ е обновен.`;
                     const res = await fetch(`/api/admin/client-packages?slug=${encodeURIComponent(slug)}`, {
                       method: 'PATCH',
@@ -2916,7 +2923,7 @@ export default function AdminDashboardClient({
                       body: JSON.stringify({
                         ...packageInput,
                         clientName: client.name,
-                        clientEmail: client.email || null,
+                        clientEmail: client.email || previous?.clientEmail || null,
                         changeLabel,
                       }),
                     });
