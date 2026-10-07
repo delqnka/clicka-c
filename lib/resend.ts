@@ -236,6 +236,10 @@ export interface ClientPackageActivationDetails {
   language?: string | null;
 }
 
+export interface ClientPackageCreditAdjustmentDetails extends ClientPackageActivationDetails {
+  changeLabel: string;
+}
+
 export interface BookingCancellationDetails {
   salonId?: string;
   salonName: string;
@@ -247,6 +251,7 @@ export interface BookingCancellationDetails {
   date: string;
   time: string;
   refundMessage?: string | null;
+  clientPolicyMessage?: string | null;
   language?: string | null;
 }
 
@@ -289,10 +294,77 @@ export async function sendBookingCancellationNotification(
           ${renderRow(isEn ? 'Service' : 'Услуга', details.serviceName)}
           ${renderRow(isEn ? 'Date and time' : 'Дата и час', isEn ? `${dateFmt} at ${details.time}` : `${dateFmt} в ${details.time}`)}
           ${details.refundMessage ? renderRow(isEn ? 'Cancellation policy' : 'Политика при отказ', details.refundMessage) : ''}
+          ${details.clientPolicyMessage ? renderRow(isEn ? 'Client policy' : 'Политика към клиента', details.clientPolicyMessage) : ''}
         </table>
         <p style="margin-top: 20px; line-height: 1.7; color: #555;">
           ${isEn ? 'The slot was released in the schedule.' : 'Часът е освободен в графика.'}
         </p>
+      </div>
+    `,
+  }, 4, client);
+}
+
+export async function sendClientBookingCancellationNotification(
+  clientEmail: string,
+  details: BookingCancellationDetails,
+): Promise<void> {
+  const locale = resolveSalonLocale(details.language);
+  const isEn = locale === 'en';
+  const { client, from } = await getSalonResend(details.salonId, details.salonName);
+  const dateFmt = formatDateDMY(details.date, locale);
+
+  await sendResendWithRetry({
+    from,
+    to: clientEmail,
+    subject: isEn
+      ? `Your booking was cancelled — ${details.salonName}`
+      : `Вашата резервация е отказана — ${details.salonName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Booking cancelled' : 'Резервацията е отказана'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(details.clientName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          ${isEn
+            ? `Your booking at <strong>${escapeHtml(details.salonName)}</strong> has been cancelled.`
+            : `Вашата резервация в <strong>${escapeHtml(details.salonName)}</strong> е отказана.`}
+        </p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          ${renderRow(isEn ? 'Service' : 'Услуга', details.serviceName)}
+          ${renderRow(isEn ? 'Date and time' : 'Дата и час', isEn ? `${dateFmt} at ${details.time}` : `${dateFmt} в ${details.time}`)}
+          ${details.clientPolicyMessage ? renderRow(isEn ? 'Cancellation policy' : 'Политика при отказ', details.clientPolicyMessage) : ''}
+        </table>
+      </div>
+    `,
+  }, 4, client);
+}
+
+export async function sendClientPackageCreditAdjustmentEmail(
+  clientEmail: string,
+  details: ClientPackageCreditAdjustmentDetails,
+): Promise<void> {
+  const locale = resolveSalonLocale(details.language);
+  const isEn = locale === 'en';
+  const { client, from } = await getSalonResend(details.salonId, details.salonName);
+  const validTo = formatDateDMY(details.validTo, locale);
+
+  await sendResendWithRetry({
+    from,
+    to: clientEmail,
+    subject: isEn
+      ? `Package credits updated — ${details.salonName}`
+      : `Промяна по кредитите в пакета — ${details.salonName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Your package credits were updated' : 'Кредитите по пакета са обновени'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(details.clientName)}</strong>!</p>
+        <p style="line-height: 1.7;">${escapeHtml(details.changeLabel)}</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          ${renderRow(isEn ? 'Package' : 'Пакет', details.packageName)}
+          ${renderRow(isEn ? 'Total credits' : 'Общо кредити', String(details.totalSessions))}
+          ${renderRow(isEn ? 'Used credits' : 'Използвани кредити', String(details.usedSessions))}
+          ${renderRow(isEn ? 'Remaining credits' : 'Оставащи кредити', String(details.remainingSessions))}
+          ${renderRow(isEn ? 'Valid to' : 'Валиден до', validTo)}
+        </table>
       </div>
     `,
   }, 4, client);
@@ -560,6 +632,12 @@ export async function sendBookingNotification(
     renderRow(isEn ? 'Date' : 'Дата', formattedDate),
     renderRow(isEn ? 'Time' : 'Час', booking.time),
     booking.notes ? renderRow(isEn ? 'Notes' : 'Бележка', booking.notes) : '',
+    renderRow(
+      isEn ? 'Cancellation policy' : 'Политика при отказ',
+      isEn
+        ? 'You may cancel up to 12 hours before your booking without penalty. For cancellations less than 12 hours before the booking, one package credit is deducted. If you do not have an active package, 50% of the cancelled appointment price will be charged at your next visit.'
+        : 'Можете да откажете до 12 часа преди резервацията без наказание. При отказ по-малко от 12 часа преди часа се отнема 1 кредит от активния пакет. Ако нямате активен пакет, при следващо посещение се начислява такса 50% от цената на отказания час.',
+    ),
   ].join('');
 
   const { client, from } = await getSalonResend(booking.salonId, booking.salonName);

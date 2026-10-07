@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { createClientPackage, deactivateClientPackage, updateClientPackage } from '@/lib/client-packages';
 import { runAfterResponse } from '@/lib/run-after-response';
-import { sendClientPackageActivatedEmail } from '@/lib/resend';
+import { sendClientPackageActivatedEmail, sendClientPackageCreditAdjustmentEmail } from '@/lib/resend';
 
 export async function POST(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -82,6 +82,9 @@ export async function PATCH(request: NextRequest) {
     usedSessions?: number;
     price?: number | null;
     validTo?: string | null;
+    clientName?: string | null;
+    clientEmail?: string | null;
+    changeLabel?: string | null;
   };
   try {
     body = await request.json();
@@ -108,6 +111,22 @@ export async function PATCH(request: NextRequest) {
     price: body.price ?? null,
     validTo: body.validTo,
   });
+
+  const clientEmail = body.clientEmail?.trim().toLowerCase() || '';
+  const clientName = body.clientName?.trim() || 'Клиент';
+  if (clientEmail) {
+    runAfterResponse(sendClientPackageCreditAdjustmentEmail(clientEmail, {
+      salonId: auth.salon.salonId,
+      salonName: auth.salon.name,
+      clientName,
+      packageName: pkg.packageName,
+      totalSessions: pkg.totalSessions,
+      usedSessions: pkg.usedSessions,
+      remainingSessions: pkg.remainingSessions,
+      validTo: pkg.expiresAt,
+      changeLabel: body.changeLabel?.trim() || `Кредитите по пакета „${pkg.packageName}“ са обновени.`,
+    }));
+  }
 
   return NextResponse.json({ ok: true, package: pkg });
 }

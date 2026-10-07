@@ -257,3 +257,42 @@ export async function deactivateClientPackage(input: { salonId: string; packageI
   `;
   if (rows.length === 0) throw new Error('Пакетът не е намерен.');
 }
+
+export async function restorePackageCreditForBooking(input: { salonId: string; bookingId: string }) {
+  await ensureClientPackagesSchema();
+  const rows = await sql`
+    WITH usage AS (
+      DELETE FROM client_package_usages
+      WHERE salon_id = ${input.salonId}
+        AND booking_id = ${input.bookingId}::uuid
+      RETURNING package_id
+    ),
+    upd AS (
+      UPDATE client_packages cp
+      SET used_sessions = GREATEST(0, cp.used_sessions - 1),
+          updated_at = now()
+      FROM usage
+      WHERE cp.id = usage.package_id
+      RETURNING cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at
+    )
+    SELECT id, package_name, total_sessions, used_sessions, expires_at FROM upd
+  ` as {
+    id: string;
+    package_name: string;
+    total_sessions: number;
+    used_sessions: number;
+    expires_at: string;
+  }[];
+  const row = rows[0];
+  if (!row) return null;
+  const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
+  const usedSessions = Math.min(totalSessions, Math.max(0, Number(row.used_sessions) || 0));
+  return {
+    id: String(row.id),
+    packageName: String(row.package_name ?? ''),
+    totalSessions,
+    usedSessions,
+    remainingSessions: Math.max(0, totalSessions - usedSessions),
+    expiresAt: String(row.expires_at ?? ''),
+  };
+}

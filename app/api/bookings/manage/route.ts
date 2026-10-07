@@ -14,6 +14,8 @@ import {
   formatPolicySummary,
   type CancelPolicyAction,
 } from '@/lib/cancellation-policy';
+import { restorePackageCreditForBooking } from '@/lib/client-packages';
+import { parseSofiaAppointment } from '@/lib/sofia-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -182,6 +184,10 @@ export async function PATCH(request: NextRequest) {
   if (body.action === 'cancel') {
     // Evaluate cancellation policy and issue Stripe refund if applicable
     let refundMessage: string | null = null;
+    let clientPolicyMessage: string | null = null;
+    const bookingDatetime = parseSofiaAppointment(booking.date, booking.time);
+    const hoursUntil = (bookingDatetime.getTime() - Date.now()) / (1000 * 60 * 60);
+    const isFreeCancelByStudioPolicy = hoursUntil >= 12;
 
     if (booking.payment_status === 'paid' && booking.amount_paid && booking.stripe_checkout_session_id && stripeAccountId) {
       const services = parseSalonServices(servicesJson);
@@ -193,7 +199,6 @@ export async function PATCH(request: NextRequest) {
       const cancelPolicyAction: CancelPolicyAction =
         (matchedService?.cancel_policy_action as CancelPolicyAction | undefined) ?? 'keep_deposit';
 
-      const bookingDatetime = new Date(`${booking.date}T${booking.time}:00`);
       const policy = evaluateCancellationPolicy({
         bookingDatetime,
         amountPaidCents: booking.amount_paid,
@@ -232,6 +237,26 @@ export async function PATCH(request: NextRequest) {
       refundMessage = policy.policyMessage;
     }
 
+    if (isFreeCancelByStudioPolicy) {
+      const restored = await restorePackageCreditForBooking({
+        salonId: booking.salon_id,
+        bookingId: booking.id,
+      }).catch((err) => {
+        console.error('[manage] package credit restore failed:', err);
+        return null;
+      });
+      clientPolicyMessage = restored
+        ? `Отказът е направен повече от 12 часа преди часа. Кредитът е върнат към пакета „${restored.packageName}“. Остават ${restored.remainingSessions} кредита, валидни до ${restored.expiresAt}.`
+        : 'Отказът е направен повече от 12 часа преди часа. Няма наказание.';
+    } else {
+      clientPolicyMessage = 'Отказът е направен по-малко от 12 часа преди часа. Ако резервацията е била покрита от пакет, 1 кредит остава използван. Ако няма активен пакет, при следващо посещение се начислява такса 50% от цената на отказания час.';
+      await sql`
+        UPDATE bookings
+        SET notes = trim(coalesce(notes, '') || E'\n' || ${'[Политика при отказ] Отказ под 12 часа: ако клиентът няма активен пакет, при следващо посещение се дължи 50% от цената на отказания час.'})
+        WHERE id = ${id}
+      `;
+    }
+
     await sql`
       UPDATE bookings SET status = 'cancelled' WHERE id = ${id}
     `;
@@ -254,6 +279,7 @@ export async function PATCH(request: NextRequest) {
         date: booking.date,
         time: booking.time,
         refundMessage,
+        clientPolicyMessage,
         language,
       }).catch((err) => console.error('[manage] cancellation email notify', err)),
     );

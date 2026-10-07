@@ -2796,6 +2796,56 @@ export function ClientsPanel({
                   <button
                     type="button"
                     disabled={packageBusyKey === client.key}
+                    onClick={async () => {
+                      if (!client.activePackage) return;
+                      setPackageBusyKey(client.key);
+                      try {
+                        await onUpdatePackage(client, {
+                          packageId: client.activePackage.id,
+                          packageName: client.activePackage.packageName,
+                          totalSessions: client.activePackage.totalSessions + 1,
+                          usedSessions: client.activePackage.usedSessions,
+                          price: null,
+                          validTo: client.activePackage.expiresAt,
+                        });
+                      } finally {
+                        setPackageBusyKey(null);
+                      }
+                    }}
+                    style={{ border: '1px solid rgba(5,150,105,0.28)', borderRadius: 999, background: '#ECFDF5', color: '#047857', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key ? 0.6 : 1 }}
+                  >
+                    {isEn ? '+ Credit' : '+ кредит'}
+                  </button>
+                ) : null}
+                {client.activePackage && onUpdatePackage ? (
+                  <button
+                    type="button"
+                    disabled={packageBusyKey === client.key || client.activePackage.remainingSessions <= 0}
+                    onClick={async () => {
+                      if (!client.activePackage) return;
+                      setPackageBusyKey(client.key);
+                      try {
+                        await onUpdatePackage(client, {
+                          packageId: client.activePackage.id,
+                          packageName: client.activePackage.packageName,
+                          totalSessions: client.activePackage.totalSessions,
+                          usedSessions: Math.min(client.activePackage.totalSessions, client.activePackage.usedSessions + 1),
+                          price: null,
+                          validTo: client.activePackage.expiresAt,
+                        });
+                      } finally {
+                        setPackageBusyKey(null);
+                      }
+                    }}
+                    style={{ border: '1px solid rgba(220,38,38,0.24)', borderRadius: 999, background: '#FEF2F2', color: '#B91C1C', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key || client.activePackage.remainingSessions <= 0 ? 0.55 : 1 }}
+                  >
+                    {isEn ? '- Credit' : '- кредит'}
+                  </button>
+                ) : null}
+                {client.activePackage && onUpdatePackage ? (
+                  <button
+                    type="button"
+                    disabled={packageBusyKey === client.key}
                     onClick={() => openPackageEdit(client)}
                     style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key ? 0.6 : 1 }}
                   >

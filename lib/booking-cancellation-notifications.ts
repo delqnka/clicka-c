@@ -1,4 +1,8 @@
-import { sendBookingCancellationNotification, type BookingCancellationDetails } from '@/lib/resend';
+import {
+  sendBookingCancellationNotification,
+  sendClientBookingCancellationNotification,
+  type BookingCancellationDetails,
+} from '@/lib/resend';
 import { getStaffMemberById } from '@/lib/staff-members';
 import { loadOwnerNotificationEmails, mergeEmailRecipients } from '@/lib/notification-emails';
 
@@ -28,9 +32,13 @@ export async function sendBookingCancellationEmails(input: CancellationEmailInpu
     recipients.push({ email: staffEmail, salonOwnerName: staffMember?.name || input.salonOwnerName });
   }
 
-  await Promise.allSettled(
-    recipients.map(({ email, salonOwnerName }) =>
-      sendBookingCancellationNotification(email, { ...input, salonOwnerName }),
-    ),
+  const notifications: Array<Promise<void>> = recipients.map(({ email, salonOwnerName }) =>
+    sendBookingCancellationNotification(email, { ...input, salonOwnerName }),
   );
+  const clientEmail = normalizeEmail(input.clientEmail);
+  if (clientEmail) {
+    notifications.push(sendClientBookingCancellationNotification(clientEmail, input));
+  }
+
+  await Promise.allSettled(notifications);
 }

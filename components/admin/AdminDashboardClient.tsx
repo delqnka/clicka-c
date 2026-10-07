@@ -2902,10 +2902,23 @@ export default function AdminDashboardClient({
                     setNotice(locale === 'en' ? 'Package activated.' : `Активиран е пакет „${packageInput.packageName}“.`);
                   }}
                   onUpdatePackage={async (client, packageInput) => {
+                    const previous = client.activePackage;
+                    const totalDelta = previous ? packageInput.totalSessions - previous.totalSessions : 0;
+                    const usedDelta = previous ? packageInput.usedSessions - previous.usedSessions : 0;
+                    const changeLabel = totalDelta > 0
+                      ? `Добавен е ${totalDelta} кредит към пакета „${packageInput.packageName}“.`
+                      : usedDelta > 0
+                        ? `Отнет е ${usedDelta} кредит от пакета „${packageInput.packageName}“.`
+                        : `Пакетът „${packageInput.packageName}“ е обновен.`;
                     const res = await fetch(`/api/admin/client-packages?slug=${encodeURIComponent(slug)}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(packageInput),
+                      body: JSON.stringify({
+                        ...packageInput,
+                        clientName: client.name,
+                        clientEmail: client.email || null,
+                        changeLabel,
+                      }),
                     });
                     const json = await res.json().catch(() => ({})) as { package?: ClientSummary['activePackage']; error?: string };
                     if (!res.ok || !json.package) {
