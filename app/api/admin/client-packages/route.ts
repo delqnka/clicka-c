@@ -11,8 +11,13 @@ export async function POST(request: NextRequest) {
     clientName?: string;
     clientPhone?: string | null;
     clientEmail?: string | null;
+    packageName?: string | null;
     totalSessions?: number;
+    usedSessions?: number | null;
     price?: number | null;
+    validFrom?: string | null;
+    validTo?: string | null;
+    validityDays?: number | null;
   };
   try {
     body = await request.json();
@@ -22,8 +27,12 @@ export async function POST(request: NextRequest) {
 
   const clientName = body.clientName?.trim();
   const totalSessions = Math.round(Number(body.totalSessions) || 0);
-  if (!clientName || ![4, 8].includes(totalSessions)) {
-    return NextResponse.json({ error: 'Изберете клиент и пакет 4 или 8 тренировки.' }, { status: 400 });
+  const usedSessions = Math.max(0, Math.round(Number(body.usedSessions ?? 0) || 0));
+  if (!clientName || totalSessions < 1) {
+    return NextResponse.json({ error: 'Изберете клиент и въведете поне 1 кредит.' }, { status: 400 });
+  }
+  if (usedSessions > totalSessions) {
+    return NextResponse.json({ error: 'Използваните кредити не могат да са повече от общите.' }, { status: 400 });
   }
 
   const pkg = await createClientPackage({
@@ -31,8 +40,13 @@ export async function POST(request: NextRequest) {
     clientName,
     clientPhone: body.clientPhone,
     clientEmail: body.clientEmail,
+    packageName: body.packageName,
     totalSessions,
+    usedSessions,
     price: body.price ?? null,
+    validFrom: body.validFrom,
+    validTo: body.validTo,
+    validityDays: body.validityDays,
     source: 'admin',
   });
 

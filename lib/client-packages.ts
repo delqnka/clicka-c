@@ -60,7 +60,12 @@ export async function createClientPackage(input: {
   clientPhone?: string | null;
   clientEmail?: string | null;
   totalSessions: 4 | 8 | number;
+  usedSessions?: number | null;
+  packageName?: string | null;
   price?: number | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  validityDays?: number | null;
   source?: 'admin' | 'online';
 }) {
   await ensureClientPackagesSchema();
@@ -69,11 +74,14 @@ export async function createClientPackage(input: {
     email: input.clientEmail ?? undefined,
   });
   const totalSessions = Math.max(1, Math.round(Number(input.totalSessions) || 1));
-  const packageName = `${totalSessions} тренировки`;
+  const usedSessions = Math.min(totalSessions, Math.max(0, Math.round(Number(input.usedSessions ?? 0) || 0)));
+  const packageName = input.packageName?.trim() || `${totalSessions} тренировки`;
+  const validityDays = Math.max(1, Math.round(Number(input.validityDays ?? 30) || 30));
+  const validTo = input.validTo?.trim() || null;
   const rows = await sql`
     INSERT INTO client_packages (
       salon_id, client_id, client_name, client_phone, client_email,
-      package_name, total_sessions, price, expires_at, source
+      package_name, total_sessions, used_sessions, price, purchased_at, expires_at, source
     )
     VALUES (
       ${input.salonId},
@@ -83,8 +91,10 @@ export async function createClientPackage(input: {
       ${input.clientEmail?.trim().toLowerCase() || null},
       ${packageName},
       ${totalSessions},
+      ${usedSessions},
       ${input.price ?? null},
-      (CURRENT_DATE + interval '30 days')::date,
+      COALESCE(${input.validFrom?.trim() || null}::date, now()),
+      COALESCE(${validTo}::date, (CURRENT_DATE + (${validityDays}::int * interval '1 day'))::date),
       ${input.source ?? 'admin'}
     )
     RETURNING id
@@ -144,4 +154,3 @@ export async function consumePackageForCompletedBooking(input: {
   `;
   return rows.length > 0;
 }
-

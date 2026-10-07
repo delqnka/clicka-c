@@ -1025,42 +1025,78 @@ export function BookingsPanel({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-              <input value={editDraft.clientName} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientName: event.target.value } : draft)} placeholder={isEn ? 'Client name' : 'Име на клиента'} style={inp} />
-              <input value={editDraft.clientPhone} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientPhone: event.target.value } : draft)} placeholder={isEn ? 'Phone' : 'Телефон'} style={inp} />
-              <input value={editDraft.clientEmail} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientEmail: event.target.value } : draft)} placeholder={isEn ? 'Email' : 'Имейл'} style={inp} />
-              <select value={editDraft.status} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, status: event.target.value as BookingStatus } : draft)} style={inp}>
-                <option value="pending">{statusCfg(locale).pending.label}</option>
-                <option value="confirmed">{statusCfg(locale).confirmed.label}</option>
-                <option value="completed">{statusCfg(locale).completed.label}</option>
-                <option value="cancelled">{statusCfg(locale).cancelled.label}</option>
-              </select>
-              <input value={editDraft.serviceName} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, serviceName: event.target.value } : draft)} placeholder={isEn ? 'Service' : 'Услуга'} style={inp} />
-              <select
-                value={editDraft.staffMemberId ?? ''}
-                onChange={(event) => {
-                  const staffMemberId = event.target.value || null;
-                  const selected = staffOptions.find((member) => member.id === staffMemberId);
-                  setEditDraft((draft) => draft ? {
-                    ...draft,
-                    staffMemberId,
-                    staffMemberName: selected?.name ?? '',
-                  } : draft);
-                }}
-                style={inp}
-              >
-                <option value="">{isEn ? 'No trainer/staff' : 'Без треньор/служител'}</option>
-                {staffOptions.map((member) => (
-                  <option key={member.id} value={member.id}>{member.name}</option>
-                ))}
-              </select>
-              <input type="date" value={editDraft.date} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, date: event.target.value } : draft)} style={inp} />
-              <input type="time" value={editDraft.time} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, time: event.target.value } : draft)} style={inp} />
-              <input value={editDraft.servicePrice ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, servicePrice: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Price' : 'Цена'} inputMode="decimal" style={inp} />
-              <input value={editDraft.serviceDuration ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, serviceDuration: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Duration min' : 'Продължителност мин'} inputMode="numeric" style={inp} />
-              <input value={editDraft.bookingQuantity ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, bookingQuantity: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Spots/beds' : 'Места/легла'} inputMode="numeric" style={inp} />
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Client name' : 'Име на клиента'}
+                <input value={editDraft.clientName} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientName: event.target.value } : draft)} placeholder={isEn ? 'Client name' : 'Име на клиента'} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Phone' : 'Телефон'}
+                <input value={editDraft.clientPhone} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientPhone: event.target.value } : draft)} placeholder={isEn ? 'Phone' : 'Телефон'} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Email' : 'Имейл'}
+                <input value={editDraft.clientEmail} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, clientEmail: event.target.value } : draft)} placeholder={isEn ? 'Email' : 'Имейл'} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Status' : 'Статус'}
+                <select value={editDraft.status} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, status: event.target.value as BookingStatus } : draft)} style={inp}>
+                  <option value="pending">{statusCfg(locale).pending.label}</option>
+                  <option value="confirmed">{statusCfg(locale).confirmed.label}</option>
+                  <option value="completed">{statusCfg(locale).completed.label}</option>
+                  <option value="cancelled">{statusCfg(locale).cancelled.label}</option>
+                </select>
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Service / class' : 'Услуга / клас'}
+                <input value={editDraft.serviceName} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, serviceName: event.target.value } : draft)} placeholder={isEn ? 'Service' : 'Услуга'} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Trainer / staff' : 'Треньор / служител'}
+                <select
+                  value={editDraft.staffMemberId ?? ''}
+                  onChange={(event) => {
+                    const staffMemberId = event.target.value || null;
+                    const selected = staffOptions.find((member) => member.id === staffMemberId);
+                    setEditDraft((draft) => draft ? {
+                      ...draft,
+                      staffMemberId,
+                      staffMemberName: selected?.name ?? '',
+                    } : draft);
+                  }}
+                  style={inp}
+                >
+                  <option value="">{isEn ? 'No trainer/staff' : 'Без треньор/служител'}</option>
+                  {staffOptions.map((member) => (
+                    <option key={member.id} value={member.id}>{member.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Date' : 'Дата'}
+                <input type="date" value={editDraft.date} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, date: event.target.value } : draft)} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Time' : 'Час'}
+                <input type="time" value={editDraft.time} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, time: event.target.value } : draft)} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Price' : 'Цена'}
+                <input value={editDraft.servicePrice ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, servicePrice: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Price' : 'Цена'} inputMode="decimal" style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Duration in minutes' : 'Продължителност в минути'}
+                <input value={editDraft.serviceDuration ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, serviceDuration: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Duration min' : 'Продължителност мин'} inputMode="numeric" style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'People / beds' : 'Хора / легла'}
+                <input value={editDraft.bookingQuantity ?? ''} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, bookingQuantity: event.target.value.trim() ? Number(event.target.value) : null } : draft)} placeholder={isEn ? 'Spots/beds' : 'Места/легла'} inputMode="numeric" style={inp} />
+              </label>
             </div>
 
-            <textarea value={editDraft.notes} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, notes: event.target.value } : draft)} placeholder={isEn ? 'Notes' : 'Бележки'} style={{ ...inp, minHeight: 92, resize: 'vertical' }} />
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Notes' : 'Бележки'}
+              <textarea value={editDraft.notes} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, notes: event.target.value } : draft)} placeholder={isEn ? 'Notes' : 'Бележки'} style={{ ...inp, minHeight: 92, resize: 'vertical' }} />
+            </label>
             {editError ? <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 700 }}>{editError}</p> : null}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => { if (!editSaving) { setEditDraft(null); setEditBookingId(null); } }} style={btn('ghost')} disabled={editSaving}>
@@ -1647,6 +1683,17 @@ export function BookingsPanel({
 
 type EditDraft = { key: string; id: string; name: string; phone: string; email: string };
 type ClientSort = 'newest' | 'visits' | 'alpha';
+type PackageActivationDraft = {
+  clientKey: string;
+  packageDefinitionId: string;
+  packageName: string;
+  totalSessions: string;
+  usedSessions: string;
+  price: string;
+  validFrom: string;
+  validTo: string;
+  validityDays: string;
+};
 
 const CLIENT_NAME_COLLATOR = new Intl.Collator(['bg', 'en'], {
   sensitivity: 'base',
@@ -1909,41 +1956,34 @@ export function PackagesPanel({
 
         <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.55fr 0.55fr 0.55fr', gap: 8 }}>
-            <input
-              value={packageDraft.name}
-              onChange={(event) => setPackageDraft((draft) => ({ ...draft, name: event.target.value }))}
-              placeholder={isEn ? 'Package name' : 'Име на пакет'}
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-            />
-            <input
-              value={packageDraft.totalSessions}
-              onChange={(event) => setPackageDraft((draft) => ({ ...draft, totalSessions: event.target.value }))}
-              placeholder={isEn ? 'Credits' : 'Кредити'}
-              inputMode="numeric"
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-            />
-            <input
-              value={packageDraft.price}
-              onChange={(event) => setPackageDraft((draft) => ({ ...draft, price: event.target.value }))}
-              placeholder={isEn ? 'Price' : 'Цена'}
-              inputMode="decimal"
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-            />
-            <input
-              value={packageDraft.validityDays}
-              onChange={(event) => setPackageDraft((draft) => ({ ...draft, validityDays: event.target.value }))}
-              placeholder={isEn ? 'Valid days' : 'Валидност дни'}
-              inputMode="numeric"
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
-            />
+            {[
+              { key: 'name', label: isEn ? 'Package name' : 'Име на пакет', value: packageDraft.name, placeholder: isEn ? 'Example: 8 Pilates classes' : 'Напр. 8 тренировки пилатес', inputMode: undefined },
+              { key: 'totalSessions', label: isEn ? 'Credits / sessions' : 'Кредити / посещения', value: packageDraft.totalSessions, placeholder: '8', inputMode: 'numeric' },
+              { key: 'price', label: isEn ? 'Package price' : 'Цена на пакета', value: packageDraft.price, placeholder: '160', inputMode: 'decimal' },
+              { key: 'validityDays', label: isEn ? 'Validity in days' : 'Валидност в дни', value: packageDraft.validityDays, placeholder: '30', inputMode: 'numeric' },
+            ].map((field) => (
+              <label key={field.key} style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {field.label}
+                <input
+                  value={field.value}
+                  onChange={(event) => setPackageDraft((draft) => ({ ...draft, [field.key]: event.target.value }))}
+                  placeholder={field.placeholder}
+                  inputMode={field.inputMode as React.HTMLAttributes<HTMLInputElement>['inputMode']}
+                  style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+                />
+              </label>
+            ))}
           </div>
 
-          <textarea
-            value={packageDraft.description}
-            onChange={(event) => setPackageDraft((draft) => ({ ...draft, description: event.target.value }))}
-            placeholder={isEn ? 'Internal description' : 'Вътрешно описание'}
-            style={{ minHeight: 72, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, lineHeight: 1.45, color: '#111', background: '#fff' }}
-          />
+          <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+            {isEn ? 'Internal description' : 'Вътрешно описание'}
+            <textarea
+              value={packageDraft.description}
+              onChange={(event) => setPackageDraft((draft) => ({ ...draft, description: event.target.value }))}
+              placeholder={isEn ? 'Optional note for the admin panel' : 'Бележка по желание за админа'}
+              style={{ minHeight: 72, resize: 'vertical', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, lineHeight: 1.45, color: '#111', background: '#fff' }}
+            />
+          </label>
 
           <div style={{ display: 'grid', gap: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 850, color: '#111' }}>
@@ -2212,6 +2252,7 @@ export function PackagesPanel({
 
 
 export function ClientsPanel({
+  slug,
   clients,
   isMobile,
   T,
@@ -2221,12 +2262,21 @@ export function ClientsPanel({
   onImportMemberships,
   locale,
 }: {
+  slug: string;
   clients: ClientSummary[];
   isMobile: boolean;
   T: ThemePalette;
   onDelete?: (key: string) => void;
   onEdit?: (key: string, data: { name: string; phone: string; email: string }) => void;
-  onAddPackage?: (client: ClientSummary, totalSessions: 4 | 8) => Promise<void>;
+  onAddPackage?: (client: ClientSummary, data: {
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    price: number | null;
+    validFrom: string | null;
+    validTo: string | null;
+    validityDays: number | null;
+  }) => Promise<void>;
   onImportMemberships?: (csvText: string, mode: MembershipImportMode) => Promise<MembershipImportResult>;
   locale: Locale;
 }) {
@@ -2235,6 +2285,9 @@ export function ClientsPanel({
   const [editDraft, setEditDraft] = React.useState<EditDraft | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [packageBusyKey, setPackageBusyKey] = React.useState<string | null>(null);
+  const [packageDefinitions, setPackageDefinitions] = React.useState<PackageDefinition[]>([]);
+  const [activationDraft, setActivationDraft] = React.useState<PackageActivationDraft | null>(null);
+  const [activationError, setActivationError] = React.useState('');
   const [sortBy, setSortBy] = React.useState<ClientSort>('newest');
   const frozenOrderRef = React.useRef<string[] | null>(null);
   const [importOpen, setImportOpen] = React.useState(false);
@@ -2273,6 +2326,89 @@ export function ClientsPanel({
     { id: 'visits', label: isEn ? 'Bookings' : 'Резервации' },
     { id: 'alpha', label: isEn ? 'A-Z / А-Я' : 'А-Я / A-Z' },
   ];
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/admin/package-definitions?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { packages?: PackageDefinition[] } | null) => {
+        if (!cancelled) setPackageDefinitions(Array.isArray(data?.packages) ? data.packages.filter((pkg) => pkg.isActive !== false) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setPackageDefinitions([]);
+      });
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  function defaultValidTo(days = 30) {
+    const date = new Date();
+    date.setDate(date.getDate() + Math.max(1, days));
+    return date.toISOString().slice(0, 10);
+  }
+
+  function openPackageActivation(client: ClientSummary) {
+    const firstPackage = packageDefinitions[0];
+    const validityDays = firstPackage?.validityDays ?? 30;
+    setActivationError('');
+    setActivationDraft({
+      clientKey: client.key,
+      packageDefinitionId: firstPackage?.id ?? '',
+      packageName: firstPackage?.name ?? '',
+      totalSessions: String(firstPackage?.totalSessions ?? 8),
+      usedSessions: '0',
+      price: firstPackage?.price == null ? '' : String(firstPackage.price),
+      validFrom: todayKey(),
+      validTo: defaultValidTo(validityDays),
+      validityDays: String(validityDays),
+    });
+  }
+
+  function applyPackageDefinition(packageDefinitionId: string) {
+    const selected = packageDefinitions.find((pkg) => pkg.id === packageDefinitionId);
+    setActivationDraft((draft) => draft ? {
+      ...draft,
+      packageDefinitionId,
+      packageName: selected?.name ?? draft.packageName,
+      totalSessions: selected ? String(selected.totalSessions) : draft.totalSessions,
+      price: selected?.price == null ? draft.price : String(selected.price),
+      validityDays: selected ? String(selected.validityDays) : draft.validityDays,
+      validTo: selected ? defaultValidTo(selected.validityDays) : draft.validTo,
+    } : draft);
+  }
+
+  async function submitPackageActivation() {
+    if (!activationDraft || !onAddPackage) return;
+    const client = clients.find((item) => item.key === activationDraft.clientKey);
+    if (!client) return;
+    const totalSessions = Math.max(1, Math.round(Number(activationDraft.totalSessions) || 0));
+    const usedSessions = Math.max(0, Math.round(Number(activationDraft.usedSessions) || 0));
+    if (!activationDraft.packageName.trim() || totalSessions < 1) {
+      setActivationError(isEn ? 'Package name and credits are required.' : 'Име на пакет и кредити са задължителни.');
+      return;
+    }
+    if (usedSessions > totalSessions) {
+      setActivationError(isEn ? 'Used credits cannot be more than total credits.' : 'Използваните кредити не могат да са повече от общите.');
+      return;
+    }
+    setPackageBusyKey(client.key);
+    setActivationError('');
+    try {
+      await onAddPackage(client, {
+        packageName: activationDraft.packageName.trim(),
+        totalSessions,
+        usedSessions,
+        price: activationDraft.price.trim() ? Math.max(0, Number(activationDraft.price) || 0) : null,
+        validFrom: activationDraft.validFrom || null,
+        validTo: activationDraft.validTo || null,
+        validityDays: activationDraft.validityDays.trim() ? Math.max(1, Math.round(Number(activationDraft.validityDays) || 30)) : null,
+      });
+      setActivationDraft(null);
+    } catch (err) {
+      setActivationError(err instanceof Error ? err.message : (isEn ? 'Could not activate package.' : 'Пакетът не беше активиран.'));
+    } finally {
+      setPackageBusyKey(null);
+    }
+  }
 
   async function runMembershipImport(mode: MembershipImportMode) {
     if (!onImportMemberships) return;
@@ -2332,6 +2468,88 @@ export function ClientsPanel({
               style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${T.border}`, background: 'transparent', fontSize: 14, cursor: 'pointer', color: T.muted }}
             >
               {isEn ? 'Cancel' : 'Отказ'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {activationDraft && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{ position: 'fixed', inset: 0, zIndex: 305, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.42)', padding: 16 }}
+        onClick={() => !packageBusyKey && setActivationDraft(null)}
+      >
+        <div
+          style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 520, maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', display: 'grid', gap: 12, boxSizing: 'border-box' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {isEn ? 'Client package' : 'Клиентски пакет'}
+              </p>
+              <h3 style={{ margin: '5px 0 0', fontSize: 18, fontWeight: 850, color: '#111' }}>
+                {isEn ? 'Activate package' : 'Активирай пакет'}
+              </h3>
+            </div>
+            <button type="button" onClick={() => !packageBusyKey && setActivationDraft(null)} style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', padding: '6px 10px', cursor: 'pointer' }}>
+              ×
+            </button>
+          </div>
+
+          {packageDefinitions.length > 0 ? (
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Use saved package' : 'Избери създаден пакет'}
+              <select
+                value={activationDraft.packageDefinitionId}
+                onChange={(event) => applyPackageDefinition(event.target.value)}
+                style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111', background: '#fff' }}
+              >
+                <option value="">{isEn ? 'Manual package' : 'Ръчен пакет'}</option>
+                {packageDefinitions.map((pkg) => (
+                  <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Package name' : 'Име на пакет'}
+              <input value={activationDraft.packageName} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, packageName: event.target.value } : draft)} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
+            </label>
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Total credits' : 'Общо кредити'}
+              <input value={activationDraft.totalSessions} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, totalSessions: event.target.value } : draft)} inputMode="numeric" style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
+            </label>
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Already used credits' : 'Вече използвани кредити'}
+              <input value={activationDraft.usedSessions} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, usedSessions: event.target.value } : draft)} inputMode="numeric" style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
+            </label>
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Price' : 'Цена'}
+              <input value={activationDraft.price} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, price: event.target.value } : draft)} inputMode="decimal" style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
+            </label>
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Valid from' : 'Валиден от'}
+              <input type="date" value={activationDraft.validFrom} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, validFrom: event.target.value } : draft)} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
+            </label>
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Valid to' : 'Валиден до'}
+              <input type="date" value={activationDraft.validTo} onChange={(event) => setActivationDraft((draft) => draft ? { ...draft, validTo: event.target.value } : draft)} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 11px', fontSize: 13, color: '#111' }} />
+            </label>
+          </div>
+
+          {activationError ? <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 750 }}>{activationError}</p> : null}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => !packageBusyKey && setActivationDraft(null)} style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '9px 13px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}>
+              {isEn ? 'Cancel' : 'Отказ'}
+            </button>
+            <button type="button" disabled={Boolean(packageBusyKey)} onClick={() => void submitPackageActivation()} style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '9px 14px', fontSize: 12, fontWeight: 850, cursor: packageBusyKey ? 'wait' : 'pointer', opacity: packageBusyKey ? 0.55 : 1 }}>
+              {packageBusyKey ? (isEn ? 'Activating…' : 'Активиране…') : (isEn ? 'Activate package' : 'Активирай пакет')}
             </button>
           </div>
         </div>
@@ -2508,27 +2726,16 @@ export function ClientsPanel({
                     {isEn ? 'No active package' : 'Няма активен пакет'}
                   </span>
                 )}
-                {onAddPackage ? ([4, 8] as const).map((count) => {
-                  const busy = packageBusyKey === `${client.key}:${count}`;
-                  return (
-                    <button
-                      key={count}
-                      type="button"
-                      disabled={busy}
-                      onClick={async () => {
-                        setPackageBusyKey(`${client.key}:${count}`);
-                        try {
-                          await onAddPackage(client, count);
-                        } finally {
-                          setPackageBusyKey(null);
-                        }
-                      }}
-                      style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '4px 9px', fontSize: 12, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}
-                    >
-                      {busy ? '…' : `+${count}`}
-                    </button>
-                  );
-                }) : null}
+                {onAddPackage ? (
+                  <button
+                    type="button"
+                    disabled={packageBusyKey === client.key}
+                    onClick={() => openPackageActivation(client)}
+                    style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '4px 10px', fontSize: 12, fontWeight: 750, cursor: packageBusyKey === client.key ? 'wait' : 'pointer', opacity: packageBusyKey === client.key ? 0.6 : 1 }}
+                  >
+                    {packageBusyKey === client.key ? '…' : (isEn ? 'Activate package' : 'Активирай пакет')}
+                  </button>
+                ) : null}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0, minWidth: 0 }}>

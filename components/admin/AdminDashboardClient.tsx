@@ -1542,6 +1542,7 @@ export default function AdminDashboardClient({
       });
       await guardResponse(res);
       setNotice(locale === 'en' ? 'The booking was deleted.' : 'Резервацията е изтрита.');
+      await loadBookings();
     } catch (e) {
       setBookings(previous);
       handleErr(e);
@@ -2488,11 +2489,11 @@ export default function AdminDashboardClient({
           {/* ── Услуги ── */}
           {activeTab === 'services' && (
             <Section
-              title={locale === 'en' ? 'Prices and packages' : 'Цени и пакети'}
-              desc={isMobile ? undefined : (locale === 'en' ? 'Manage booking services, prices, durations, package definitions, and package imports.' : 'Управлявай услуги, цени, продължителност, пакетни продукти и import на клиентски пакети.')}
+              title={locale === 'en' ? 'Services and prices' : 'Услуги и цени'}
+              desc={isMobile ? undefined : (locale === 'en' ? 'Edit services, prices and durations. Package creation and client package import are below.' : 'Редактирай услуги, цени и продължителност. Създаването на пакети и import-ът са по-долу.')}
               compact={isMobile}
               action={
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 6, flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 10, flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
                   <button
                     type="button"
                     style={{
@@ -2781,6 +2782,7 @@ export default function AdminDashboardClient({
                 }
               >
                 <ClientsPanel
+                  slug={slug}
                   clients={mergedVisibleClients}
                   isMobile={isMobile}
                   T={T}
@@ -2833,7 +2835,7 @@ export default function AdminDashboardClient({
                       setHiddenClientKeys((prev) => new Set([...prev, key]));
                     }
                   }}
-                  onAddPackage={async (client, totalSessions) => {
+                  onAddPackage={async (client, packageInput) => {
                     const res = await fetch(`/api/admin/client-packages?slug=${encodeURIComponent(slug)}`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -2841,20 +2843,28 @@ export default function AdminDashboardClient({
                         clientName: client.name,
                         clientPhone: client.phone || null,
                         clientEmail: client.email || null,
-                        totalSessions,
+                        packageName: packageInput.packageName,
+                        totalSessions: packageInput.totalSessions,
+                        usedSessions: packageInput.usedSessions,
+                        price: packageInput.price,
+                        validFrom: packageInput.validFrom,
+                        validTo: packageInput.validTo,
+                        validityDays: packageInput.validityDays,
                       }),
                     });
                     if (!res.ok) {
                       const json = await res.json().catch(() => ({})) as { error?: string };
                       throw new Error(json.error ?? 'Package creation failed');
                     }
+                    const json = await res.json().catch(() => ({})) as { packageId?: string };
+                    const remainingSessions = Math.max(0, packageInput.totalSessions - packageInput.usedSessions);
                     const activePackage = {
-                      id: `new-${Date.now()}`,
-                      packageName: `${totalSessions} тренировки`,
-                      totalSessions,
-                      usedSessions: 0,
-                      remainingSessions: totalSessions,
-                      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                      id: json.packageId ?? `new-${Date.now()}`,
+                      packageName: packageInput.packageName,
+                      totalSessions: packageInput.totalSessions,
+                      usedSessions: packageInput.usedSessions,
+                      remainingSessions,
+                      expiresAt: packageInput.validTo ?? new Date(Date.now() + (packageInput.validityDays ?? 30) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
                       status: 'active' as const,
                     };
                     setExtraClients((prev) => {
@@ -2864,7 +2874,8 @@ export default function AdminDashboardClient({
                       }
                       return [...prev, { ...client, key: client.key.startsWith('sc-') ? client.key : `pkg-${Date.now()}`, activePackage }];
                     });
-                    setNotice(locale === 'en' ? 'Package added.' : `Добавен е пакет ${totalSessions} тренировки.`);
+                    setExtraClientsLoaded(false);
+                    setNotice(locale === 'en' ? 'Package activated.' : `Активиран е пакет „${packageInput.packageName}“.`);
                   }}
                   locale={locale}
                 />

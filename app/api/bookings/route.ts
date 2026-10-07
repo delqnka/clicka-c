@@ -794,7 +794,7 @@ export async function PATCH(request: NextRequest) {
         notes = CASE WHEN ${hasNotes} THEN ${String(body.notes ?? '').trim() || null} ELSE notes END,
         staff_member_id = CASE WHEN ${hasStaffMemberId} THEN ${staffMemberId}::uuid ELSE staff_member_id END,
         completed_at = CASE WHEN ${status ?? null} = 'completed' THEN now() ELSE completed_at END
-    WHERE id = ${bookingId} AND salon_id = ${salonId}
+    WHERE CAST(id AS text) = ${bookingId} AND salon_id = ${salonId}
     RETURNING id, client_email, client_name, service_name, client_phone,
               service_duration, date, time, notes, status
   `;
@@ -825,7 +825,7 @@ export async function PATCH(request: NextRequest) {
     const inviteLock = await sql`
       UPDATE bookings
       SET google_review_invite_sent_at = now()
-      WHERE id = ${bookingId}
+      WHERE CAST(id AS text) = ${bookingId}
         AND salon_id = ${salonId}
         AND google_review_invite_sent_at IS NULL
       RETURNING id
@@ -894,7 +894,7 @@ export async function DELETE(request: NextRequest) {
   const salonId = String((resolved.salon as Record<string, unknown>).salon_id ?? '');
   const deleted = await sql`
     DELETE FROM bookings
-    WHERE id = ${bookingId} AND salon_id = ${salonId}
+    WHERE CAST(id AS text) = ${bookingId} AND salon_id = ${salonId}
     RETURNING id
   `;
 
