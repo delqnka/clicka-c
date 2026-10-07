@@ -12,6 +12,7 @@ import type { Locale } from '@/lib/i18n';
 type BookingStatus = BookingRecord['status'];
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
 export type BookingListFilter = 'all' | 'upcoming' | 'history' | BookingStatus;
+type AddClientSortMode = 'bg' | 'latin';
 
 type ThemePalette = {
   text: string;
@@ -628,6 +629,7 @@ export function BookingsPanel({
   } | null>(null);
   const [addError, setAddError] = React.useState('');
   const [addSaving, setAddSaving] = React.useState(false);
+  const [addClientSortMode, setAddClientSortMode] = React.useState<AddClientSortMode>('bg');
   const [editBookingId, setEditBookingId] = React.useState<string | null>(null);
   const [editDraft, setEditDraft] = React.useState<AdminBookingUpdate | null>(null);
   const [editError, setEditError] = React.useState('');
@@ -743,8 +745,8 @@ export function BookingsPanel({
     ? dailyTimelineRows.reduce((sum, slot) => sum + Math.max(1, Number(slot.capacity) || 1), 0)
     : selectedDaySlots * 5;
   const sortedAddClientOptions = React.useMemo(
-    () => [...clients].sort(compareClientNames),
-    [clients],
+    () => [...clients].sort((a, b) => compareClientNames(a, b, addClientSortMode)),
+    [addClientSortMode, clients],
   );
 
   function openAddClient(slot: TimelineRow, explicitDate?: string | null) {
@@ -924,22 +926,53 @@ export function BookingsPanel({
               </button>
             </div>
 
-            <select
-              value={addDraft.clientKey}
-              onChange={(event) => selectAddClient(event.target.value)}
-              style={inp}
-            >
-              <option value="">
-                {isEn ? 'Choose existing client or type manually' : 'Избери съществуващ клиент или въведи ръчно'}
-              </option>
-              {sortedAddClientOptions.map((client) => (
-                <option key={client.key} value={client.key}>
-                  {client.name}
-                  {client.phone ? ` · ${client.phone}` : ''}
-                  {client.email ? ` · ${client.email}` : ''}
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ color: T.muted, fontSize: 12, fontWeight: 750 }}>
+                  {isEn ? 'Client order' : 'Подредба на клиентите'}
+                </span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['bg', 'latin'] as const).map((mode) => {
+                    const active = addClientSortMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setAddClientSortMode(mode)}
+                        style={{
+                          border: `1px solid ${active ? T.accent : T.border}`,
+                          background: active ? '#ECFDF5' : '#fff',
+                          color: active ? T.accent : T.muted,
+                          borderRadius: 999,
+                          padding: '6px 10px',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {mode === 'bg' ? 'А-Я' : 'A-Z'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <select
+                value={addDraft.clientKey}
+                onChange={(event) => selectAddClient(event.target.value)}
+                style={inp}
+              >
+                <option value="">
+                  {isEn ? 'Choose existing client or type manually' : 'Избери съществуващ клиент или въведи ръчно'}
                 </option>
-              ))}
-            </select>
+                {sortedAddClientOptions.map((client) => (
+                  <option key={client.key} value={client.key}>
+                    {client.name}
+                    {client.phone ? ` · ${client.phone}` : ''}
+                    {client.email ? ` · ${client.email}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <input
@@ -1713,13 +1746,22 @@ const CLIENT_NAME_COLLATOR = new Intl.Collator(['bg', 'en'], {
   ignorePunctuation: true,
 });
 
-function compareClientNames(a: ClientSummary, b: ClientSummary) {
+const CLIENT_NAME_COLLATORS: Record<AddClientSortMode, Intl.Collator> = {
+  bg: CLIENT_NAME_COLLATOR,
+  latin: new Intl.Collator(['en', 'bg'], {
+    sensitivity: 'base',
+    numeric: true,
+    ignorePunctuation: true,
+  }),
+};
+
+function compareClientNames(a: ClientSummary, b: ClientSummary, mode: AddClientSortMode = 'bg') {
   const aName = a.name.trim();
   const bName = b.name.trim();
   if (!aName && !bName) return a.key.localeCompare(b.key);
   if (!aName) return 1;
   if (!bName) return -1;
-  return CLIENT_NAME_COLLATOR.compare(aName, bName) || a.key.localeCompare(b.key);
+  return CLIENT_NAME_COLLATORS[mode].compare(aName, bName) || a.key.localeCompare(b.key);
 }
 type MembershipImportMode = 'preview' | 'import';
 type MembershipImportField =
