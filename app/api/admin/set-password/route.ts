@@ -16,6 +16,7 @@ import { sql } from '@/lib/db';
 import {
   createOwnerSession,
   ensureAdminAuthSchema,
+  getOwnerForSalonByEmail,
   hashPassword,
   normalizeEmail,
   setAdminSessionCookie,
@@ -86,10 +87,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Mark token used
   await sql`UPDATE admin_login_tokens SET used_at = now() WHERE id = ${row.id}`;
 
-  // Ensure owner exists for this salon
+  // Use an existing membership when this is a password reset. Falling back to
+  // transfer keeps older invite links working without changing roles on reset.
   const salonEmail = String(salon.email ?? '');
   const tokenEmail = normalizeEmail(String(row.email_norm ?? salonEmail));
-  const owner = await transferSalonOwnerToEmail({ salonId, email: tokenEmail || salonEmail });
+  const owner =
+    (await getOwnerForSalonByEmail({ salonId, email: tokenEmail || salonEmail })) ??
+    (await transferSalonOwnerToEmail({ salonId, email: tokenEmail || salonEmail }));
 
   const existingHashRows = await sql`
     SELECT password_hash, display_name FROM site_owners WHERE id = ${owner.ownerId} LIMIT 1
