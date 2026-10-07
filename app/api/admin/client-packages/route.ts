@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { createClientPackage } from '@/lib/client-packages';
+import { runAfterResponse } from '@/lib/run-after-response';
+import { sendClientPackageActivatedEmail } from '@/lib/resend';
 
 export async function POST(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -50,5 +52,20 @@ export async function POST(request: NextRequest) {
     source: 'admin',
   });
 
-  return NextResponse.json({ ok: true, packageId: pkg.id });
+  const clientEmail = body.clientEmail?.trim().toLowerCase() || '';
+  if (clientEmail) {
+    runAfterResponse(sendClientPackageActivatedEmail(clientEmail, {
+      salonId: auth.salon.salonId,
+      salonName: auth.salon.name,
+      clientName,
+      packageName: pkg.packageName,
+      totalSessions: pkg.totalSessions,
+      usedSessions: pkg.usedSessions,
+      remainingSessions: pkg.remainingSessions,
+      validFrom: body.validFrom ?? pkg.purchasedAt,
+      validTo: pkg.expiresAt,
+    }));
+  }
+
+  return NextResponse.json({ ok: true, packageId: pkg.id, package: pkg, emailSent: Boolean(clientEmail) });
 }

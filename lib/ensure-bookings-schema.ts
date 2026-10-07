@@ -35,6 +35,10 @@ export async function ensureBookingsSchema() {
       `;
       await sql`
         ALTER TABLE bookings
+        ALTER COLUMN notes DROP NOT NULL
+      `;
+      await sql`
+        ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS offer_id uuid
       `;
       await sql`

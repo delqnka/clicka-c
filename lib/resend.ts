@@ -214,6 +214,26 @@ export interface BookingDetails {
   paymentType?: string | null;
   bookingStatus?: 'pending' | 'confirmed';
   language?: string | null;
+  packageUsage?: {
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+    expiresAt: string;
+  } | null;
+}
+
+export interface ClientPackageActivationDetails {
+  salonId?: string;
+  salonName: string;
+  clientName: string;
+  packageName: string;
+  totalSessions: number;
+  usedSessions: number;
+  remainingSessions: number;
+  validFrom?: string | null;
+  validTo: string;
+  language?: string | null;
 }
 
 export interface BookingCancellationDetails {
@@ -285,6 +305,49 @@ function renderRow(label: string, value: string) {
       <td style="padding: 10px 12px; border: 1px solid #000;">${escapeHtml(value)}</td>
     </tr>
   `;
+}
+
+export async function sendClientPackageActivatedEmail(
+  clientEmail: string,
+  details: ClientPackageActivationDetails,
+): Promise<void> {
+  const locale = resolveSalonLocale(details.language);
+  const isEn = locale === 'en';
+  const { client, from } = await getSalonResend(details.salonId, details.salonName);
+  const validFrom = details.validFrom ? formatDateDMY(details.validFrom, locale) : null;
+  const validTo = formatDateDMY(details.validTo, locale);
+
+  await sendResendWithRetry({
+    from,
+    to: clientEmail,
+    subject: isEn
+      ? `Your package was activated — ${details.salonName}`
+      : `Активиран пакет — ${details.salonName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="margin: 0 0 16px; color: #000;">${isEn ? 'Your package is active' : 'Вашият пакет е активен'}</h2>
+        <p style="line-height: 1.7;">${isEn ? 'Hello' : 'Здравейте'}, <strong>${escapeHtml(details.clientName)}</strong>!</p>
+        <p style="line-height: 1.7;">
+          ${isEn
+            ? `A package has been activated for you at <strong>${escapeHtml(details.salonName)}</strong>.`
+            : `Активиран ви е пакет в <strong>${escapeHtml(details.salonName)}</strong>.`}
+        </p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+          ${renderRow(isEn ? 'Package' : 'Пакет', details.packageName)}
+          ${renderRow(isEn ? 'Total credits' : 'Общо кредити', String(details.totalSessions))}
+          ${renderRow(isEn ? 'Used credits' : 'Използвани кредити', String(details.usedSessions))}
+          ${renderRow(isEn ? 'Remaining credits' : 'Оставащи кредити', String(details.remainingSessions))}
+          ${validFrom ? renderRow(isEn ? 'Valid from' : 'Валиден от', validFrom) : ''}
+          ${renderRow(isEn ? 'Valid to' : 'Валиден до', validTo)}
+        </table>
+        <p style="margin-top: 20px; line-height: 1.7; color: #555;">
+          ${isEn
+            ? 'When you book with the same email, phone or name, the system will track the package credits automatically.'
+            : 'Когато запазите час със същия имейл, телефон или име, системата ще следи кредитите по пакета автоматично.'}
+        </p>
+      </div>
+    `,
+  }, 4, client);
 }
 
 function normalizedBookingQuantity(booking: Pick<BookingDetails, 'bookingQuantity'>): number | null {
@@ -618,6 +681,12 @@ export async function sendBookingConfirmation(
     booking.salonPhone ? renderRow(isEn ? 'Salon phone' : 'Телефон на салона', booking.salonPhone) : '',
     booking.salonAddress ? renderRow(isEn ? 'Address' : 'Адрес', booking.salonAddress) : '',
     booking.notes ? renderRow(isEn ? 'Notes' : 'Бележка', booking.notes) : '',
+    booking.packageUsage ? renderRow(
+      isEn ? 'Package credits' : 'Кредити по пакет',
+      isEn
+        ? `${booking.packageUsage.packageName}: ${booking.packageUsage.remainingSessions} remaining, valid until ${formatDateDMY(booking.packageUsage.expiresAt, locale)}`
+        : `${booking.packageUsage.packageName}: остават ${booking.packageUsage.remainingSessions}, валидни до ${formatDateDMY(booking.packageUsage.expiresAt, locale)}`,
+    ) : '',
   ].join('');
   await sendResendWithRetry({
     from,

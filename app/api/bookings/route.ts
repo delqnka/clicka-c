@@ -624,6 +624,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const packageUsage = bookingStatus === 'confirmed'
+    ? await consumePackageForCompletedBooking({
+        salonId,
+        bookingId: insertedBooking.id,
+        clientName,
+        clientPhone,
+        clientEmail: normalizedClientEmail,
+      }).catch((err) => {
+        console.error('[bookings POST] package consume failed', err);
+        return null;
+      })
+    : null;
+
   const bookingDetails = {
     bookingId: insertedBooking.id,
     manageToken: insertedBooking.manageToken,
@@ -640,6 +653,7 @@ export async function POST(request: NextRequest) {
     time,
     notes: normalizedNotes || undefined,
     bookingStatus: bookingStatus as 'pending' | 'confirmed',
+    packageUsage,
     salonName: resolved.salon.name,
     salonCustomDomain: resolved.salon.custom_domain ? String(resolved.salon.custom_domain) : null,
     salonOwnerName: resolved.salon.owner_name ? String(resolved.salon.owner_name) : undefined,
@@ -791,7 +805,7 @@ export async function PATCH(request: NextRequest) {
         booking_quantity = CASE WHEN ${hasBookingQuantity} THEN ${body.bookingQuantity == null ? null : Math.max(1, Math.round(Number(body.bookingQuantity) || 1))} ELSE booking_quantity END,
         date = CASE WHEN ${hasDate} THEN ${body.date?.trim() ?? ''} ELSE date END,
         time = CASE WHEN ${hasTime} THEN ${body.time?.trim() ?? ''} ELSE time END,
-        notes = CASE WHEN ${hasNotes} THEN ${String(body.notes ?? '').trim() || null} ELSE notes END,
+        notes = CASE WHEN ${hasNotes} THEN ${String(body.notes ?? '').trim()} ELSE notes END,
         staff_member_id = CASE WHEN ${hasStaffMemberId} THEN ${staffMemberId}::uuid ELSE staff_member_id END,
         completed_at = CASE WHEN ${status ?? null} = 'completed' THEN now() ELSE completed_at END
     WHERE CAST(id AS text) = ${bookingId} AND salon_id = ${salonId}

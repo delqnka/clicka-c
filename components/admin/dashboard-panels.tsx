@@ -1066,6 +1066,9 @@ export function BookingsPanel({
                   style={inp}
                 >
                   <option value="">{isEn ? 'No trainer/staff' : 'Без треньор/служител'}</option>
+                  {staffOptions.length === 0 ? (
+                    <option value="" disabled>{isEn ? 'No trainers added yet' : 'Няма добавени треньори'}</option>
+                  ) : null}
                   {staffOptions.map((member) => (
                     <option key={member.id} value={member.id}>{member.name}</option>
                   ))}
@@ -2726,7 +2729,7 @@ export function ClientsPanel({
                     {isEn ? 'No active package' : 'Няма активен пакет'}
                   </span>
                 )}
-                {onAddPackage ? (
+                {onAddPackage && !client.activePackage ? (
                   <button
                     type="button"
                     disabled={packageBusyKey === client.key}

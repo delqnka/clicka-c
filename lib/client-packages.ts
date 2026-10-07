@@ -12,6 +12,15 @@ export type ClientPackageSummary = {
   status: 'active' | 'expired' | 'used';
 };
 
+export type ClientPackageUsageSummary = {
+  id: string;
+  packageName: string;
+  totalSessions: number;
+  usedSessions: number;
+  remainingSessions: number;
+  expiresAt: string;
+};
+
 export async function ensureClientPackagesSchema() {
   await ensureSalonClientsSchema();
   await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
@@ -97,9 +106,27 @@ export async function createClientPackage(input: {
       COALESCE(${validTo}::date, (CURRENT_DATE + (${validityDays}::int * interval '1 day'))::date),
       ${input.source ?? 'admin'}
     )
-    RETURNING id
-  `;
-  return { id: String((rows[0] as { id: string }).id) };
+    RETURNING id, package_name, total_sessions, used_sessions, expires_at, purchased_at
+  ` as {
+    id: string;
+    package_name: string;
+    total_sessions: number;
+    used_sessions: number;
+    expires_at: string;
+    purchased_at: string;
+  }[];
+  const row = rows[0]!;
+  const returnedTotalSessions = Math.max(1, Number(row.total_sessions) || totalSessions);
+  const returnedUsedSessions = Math.min(returnedTotalSessions, Math.max(0, Number(row.used_sessions) || 0));
+  return {
+    id: String(row.id),
+    packageName: String(row.package_name ?? packageName),
+    totalSessions: returnedTotalSessions,
+    usedSessions: returnedUsedSessions,
+    remainingSessions: Math.max(0, returnedTotalSessions - returnedUsedSessions),
+    expiresAt: String(row.expires_at ?? validTo ?? ''),
+    purchasedAt: String(row.purchased_at ?? input.validFrom ?? ''),
+  };
 }
 
 export async function consumePackageForCompletedBooking(input: {
@@ -108,7 +135,7 @@ export async function consumePackageForCompletedBooking(input: {
   clientName: string;
   clientPhone?: string | null;
   clientEmail?: string | null;
-}) {
+}): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
   const email = input.clientEmail?.trim().toLowerCase() || '';
   const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
@@ -141,7 +168,7 @@ export async function consumePackageForCompletedBooking(input: {
       FROM pkg
       WHERE cp.id = pkg.id
         AND cp.used_sessions < cp.total_sessions
-      RETURNING cp.id
+      RETURNING cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at
     ),
     usage AS (
       INSERT INTO client_package_usages (salon_id, package_id, booking_id)
@@ -150,7 +177,26 @@ export async function consumePackageForCompletedBooking(input: {
       ON CONFLICT (salon_id, booking_id) DO NOTHING
       RETURNING package_id
     )
-    SELECT package_id FROM usage
-  `;
-  return rows.length > 0;
+    SELECT upd.id, upd.package_name, upd.total_sessions, upd.used_sessions, upd.expires_at
+    FROM upd
+    INNER JOIN usage ON usage.package_id = upd.id
+  ` as {
+    id: string;
+    package_name: string;
+    total_sessions: number;
+    used_sessions: number;
+    expires_at: string;
+  }[];
+  const row = rows[0];
+  if (!row) return null;
+  const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
+  const usedSessions = Math.min(totalSessions, Math.max(0, Number(row.used_sessions) || 0));
+  return {
+    id: String(row.id),
+    packageName: String(row.package_name ?? ''),
+    totalSessions,
+    usedSessions,
+    remainingSessions: Math.max(0, totalSessions - usedSessions),
+    expiresAt: String(row.expires_at ?? ''),
+  };
 }

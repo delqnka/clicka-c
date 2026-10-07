@@ -289,7 +289,7 @@ function mergeBookingAndExtraClients(bookingClients: ClientSummary[], extraClien
     if (!existing.phone && extra.phone) existing.phone = extra.phone;
     if (!existing.email && extra.email) existing.email = extra.email;
     if (existing.name === 'Клиент' && extra.name) existing.name = extra.name;
-    if (!existing.activePackage && extra.activePackage) existing.activePackage = extra.activePackage;
+    if (extra.activePackage) existing.activePackage = extra.activePackage;
     if (extra.isNew && existing.visits === 0) existing.isNew = true;
   }
 
@@ -1135,7 +1135,7 @@ export default function AdminDashboardClient({
   }, [bookingsLoaded, activeTopLevelTab, loadBookings]);
 
   useEffect(() => {
-    if (activeTab !== 'staff') return;
+    if (activeTab !== 'staff' && activeTopLevelTab !== 'bookings') return;
     if (staffLoaded) return;
     let cancelled = false;
     const run = async () => {
@@ -1152,7 +1152,7 @@ export default function AdminDashboardClient({
     };
     void run();
     return () => { cancelled = true; };
-  }, [activeTab, staffLoaded, slug]);
+  }, [activeTab, activeTopLevelTab, staffLoaded, slug]);
 
   const fetchGoogleReviews = useCallback(async (overrides?: { placeId?: string; mapsUrl?: string }) => {
     const placeId = String(overrides?.placeId ?? site.googlePlaceId).trim();
@@ -2874,7 +2874,31 @@ export default function AdminDashboardClient({
                       }
                       return [...prev, { ...client, key: client.key.startsWith('sc-') ? client.key : `pkg-${Date.now()}`, activePackage }];
                     });
-                    setExtraClientsLoaded(false);
+                    setHiddenClientKeys((prev) => client.key.startsWith('sc-') ? prev : new Set([...prev, client.key]));
+                    const refreshed = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' }).catch(() => null);
+                    if (refreshed?.ok) {
+                      const data = await refreshed.json().catch(() => null) as { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null; active_package?: ClientSummary['activePackage'] }[] } | null;
+                      if (data?.clients) {
+                        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                        setExtraClients(data.clients.map((c) => ({
+                          key: `sc-${c.id}`,
+                          name: c.name,
+                          phone: c.phone ?? '',
+                          email: c.email ?? '',
+                          visits: Math.max(0, Number(c.visits ?? 0) || 0),
+                          totalSpent: Math.max(0, Number(c.total_spent ?? 0) || 0),
+                          lastVisit: String(c.last_visit ?? ''),
+                          lastBookingQuantity: c.last_booking_quantity == null ? undefined : Math.max(1, Number(c.last_booking_quantity) || 1),
+                          activePackage: c.active_package ?? null,
+                          isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
+                        })));
+                        setExtraClientsLoaded(true);
+                      } else {
+                        setExtraClientsLoaded(false);
+                      }
+                    } else {
+                      setExtraClientsLoaded(false);
+                    }
                     setNotice(locale === 'en' ? 'Package activated.' : `Активиран е пакет „${packageInput.packageName}“.`);
                   }}
                   locale={locale}
