@@ -821,11 +821,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
 
       <AdminSection
         title={isEn ? 'Team / trainers' : 'Екип / треньори'}
-        desc={
-          isEn
-            ? `${nonOwners.length} trainers. Their photo and bio appear on the public site and in the booking “View bio” link.`
-            : `${nonOwners.length} треньорки. Снимката и био-то им се показват в сайта и във “Виж био” в booking-а.`
-        }
+        desc={undefined}
         action={
           canAdd ? (
             <button
@@ -1025,33 +1021,26 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                 >
                   {row.staffName}
                 </button>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', color: ADMIN_T.muted }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', color: ADMIN_T.muted }}>
                   <button
                     type="button"
-                    onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'classes' : 'класове'}`, row.bookings)}
-                    style={{ border: 'none', background: 'transparent', padding: 0, color: ADMIN_T.muted, cursor: 'pointer', fontSize: 12 }}
+                    onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'booked' : 'записани'}`, row.bookings)}
+                    style={{ border: 'none', background: 'transparent', padding: 0, color: ADMIN_T.muted, cursor: 'pointer', fontSize: 12, textAlign: 'left' }}
                   >
-                    {isEn ? `${row.bookedClassesCount} classes` : `${row.bookedClassesCount} класа`}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'people' : 'хора'}`, row.bookings)}
-                    style={{ border: 'none', background: 'transparent', padding: 0, color: ADMIN_T.muted, cursor: 'pointer', fontSize: 12 }}
-                  >
-                    {isEn ? `${row.bookedPeopleCount} people` : `${row.bookedPeopleCount} човека`}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'turnover' : 'оборот'}`, row.bookings)}
-                    style={{ border: 'none', background: 'transparent', padding: 0, color: '#047857', fontWeight: 750, cursor: 'pointer', fontSize: 12 }}
-                  >
-                    {formatEuroAmount(row.bookedRevenue)}
+                    {isEn
+                      ? `Booked: ${row.bookedClassesCount} classes · ${row.bookedPeopleCount} people · ${formatEuroAmount(row.bookedRevenue)} expected`
+                      : `Записани: ${row.bookedClassesCount} класа · ${row.bookedPeopleCount} човека · ${formatEuroAmount(row.bookedRevenue)} очаквано`}
                   </button>
                   {row.completedClassesCount > 0 || row.completedPeopleCount > 0 || row.completedRevenue > 0 ? (
-                    <span style={{ color: '#1d4ed8', fontWeight: 700 }}>
-                      {isEn ? 'Held: ' : 'Проведени: '}
-                      {row.completedClassesCount} · {row.completedPeopleCount} · {formatEuroAmount(row.completedRevenue)}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openRevenueDetail(`${row.staffName} · ${isEn ? 'held' : 'проведени'}`, row.bookings)}
+                      style={{ border: 'none', background: 'transparent', padding: 0, color: '#1d4ed8', fontWeight: 700, cursor: 'pointer', fontSize: 12, textAlign: 'left' }}
+                    >
+                      {isEn
+                        ? `Held: ${row.completedClassesCount} classes · ${row.completedPeopleCount} people · ${formatEuroAmount(row.completedRevenue)} actual`
+                        : `Проведени: ${row.completedClassesCount} класа · ${row.completedPeopleCount} човека · ${formatEuroAmount(row.completedRevenue)} реално`}
+                    </button>
                   ) : null}
                 </div>
               </div>
@@ -1114,50 +1103,6 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                       <p style={{ fontSize: 11, color: ADMIN_T.subtle, marginTop: 2 }}>
                         /book/{member.slug}
                       </p>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            borderRadius: 999,
-                            background: '#f4f4f5',
-                            padding: '3px 8px',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: ADMIN_T.text,
-                          }}
-                        >
-                          {isEn ? 'Booked: ' : 'Записани: '}{member.bookedClassesCount}
-                        </span>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            borderRadius: 999,
-                            background: '#ecfdf5',
-                            padding: '3px 8px',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: '#047857',
-                          }}
-                        >
-                          {isEn ? 'Expected turnover: ' : 'Очакван оборот: '}{formatEuroAmount(member.bookedRevenue)}
-                        </span>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            borderRadius: 999,
-                            background: '#eff6ff',
-                            padding: '3px 8px',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: '#1d4ed8',
-                          }}
-                        >
-                          {isEn ? 'Held: ' : 'Проведени: '}{member.completedClassesCount} · {formatEuroAmount(member.completedRevenue)}
-                        </span>
-                      </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

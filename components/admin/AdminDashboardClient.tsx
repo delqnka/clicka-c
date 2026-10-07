@@ -486,10 +486,22 @@ export default function AdminDashboardClient({
   const sheetDragRef = useRef({ startY: 0, offset: 0, dragging: false });
   const knownBookingIdsRef = useRef<Set<string> | null>(null);
   const bookingSoundEnabledRef = useRef(false);
+  const previousActiveTabRef = useRef<TabId>(activeTab);
 
   useEffect(() => {
     bookingSoundEnabledRef.current = bookingSoundEnabled;
   }, [bookingSoundEnabled]);
+
+  useEffect(() => {
+    if (activeTab === 'bookings' && previousActiveTabRef.current !== 'bookings') {
+      const today = todayKey();
+      const now = new Date();
+      setCalendarCursor(() => new Date(now.getFullYear(), now.getMonth(), 1));
+      setSelectedCalendarDate(today);
+      setStatusFilter('upcoming');
+    }
+    previousActiveTabRef.current = activeTab;
+  }, [activeTab]);
 
   const playNewBookingSound = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -2492,7 +2504,7 @@ export default function AdminDashboardClient({
           {activeTab === 'services' && (
             <Section
               title={locale === 'en' ? 'Services and prices' : 'Услуги и цени'}
-              desc={isMobile ? undefined : (locale === 'en' ? 'Edit services, prices and durations. Package creation and client package import are below.' : 'Редактирай услуги, цени и продължителност. Създаването на пакети и import-ът са по-долу.')}
+              desc={undefined}
               compact={isMobile}
               action={
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 10, flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
@@ -2503,20 +2515,20 @@ export default function AdminDashboardClient({
                       alignItems: 'center',
                       gap: 5,
                       borderRadius: 8,
-                      border: 'none',
-                      color: '#fff',
-                      background: tokens.color.primary,
-                      boxShadow: tokens.shadow.primary,
-                      padding: '6px 10px',
+                      border: `1px solid ${tokens.color.border}`,
+                      color: tokens.color.text,
+                      background: '#fff',
+                      boxShadow: '0 1px 2px rgba(15,23,42,0.06)',
+                      padding: '7px 11px',
                       fontSize: 12,
-                      fontWeight: 600,
+                      fontWeight: 750,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
                     }}
                     onClick={() => setServiceModalOpen(true)}
                   >
                     <Plus size={13} />
-                    {locale === 'en' ? 'Add' : 'Добави'}
+                    {locale === 'en' ? 'Add service' : 'Добави услуга'}
                   </button>
                   <AdminSaveBtn
                     label={locale === 'en' ? 'Save' : 'Запази'}
@@ -3303,23 +3315,25 @@ function AdminSaveBtn({
 
   const gradStyle: CSSProperties = {
     border: 'none',
-    background: 'none',
-    padding: '4px 8px',
+    borderRadius: 8,
+    background: saved ? '#DCFCE7' : green ? '#16A34A' : tokens.color.primary,
+    padding: '7px 12px',
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: busy ? 'wait' : 'pointer',
     whiteSpace: 'nowrap',
-    color: saved ? tokens.color.success.text : tokens.color.text,
+    color: saved ? '#166534' : '#fff',
     display: 'inline-flex',
     alignItems: 'center',
     flexShrink: 0,
-    transition: 'color 160ms ease, opacity 160ms ease',
+    boxShadow: saved ? 'none' : '0 6px 16px rgba(22,163,74,0.22)',
+    transition: 'background 160ms ease, color 160ms ease, opacity 160ms ease',
     opacity: busy ? 0.6 : 1,
   };
 
   return (
     <button type="button" onClick={onClick} disabled={busy} style={gradStyle}>
-      {busy ? 'Запазване…' : saved ? '✓ Запазено' : 'Запази'}
+      {busy ? 'Запазване…' : saved ? '✓ Запазено' : label}
     </button>
   );
 }

@@ -743,6 +743,10 @@ export function BookingsPanel({
   const displayedTimelineRows = selectedCalendarDate ? dailyTimelineRows : timelineRows;
   const useTimelineView = Boolean(selectedCalendarDate) && (statusFilter === 'upcoming' || statusFilter === 'pending' || statusFilter === 'all');
   const timelineEmpty = useTimelineView && displayedTimelineRows.length === 0;
+  const sortedAddClientOptions = React.useMemo(
+    () => [...clients].sort(compareClientNames),
+    [clients],
+  );
 
   function openAddClient(slot: TimelineRow, explicitDate?: string | null) {
     const draftDate = explicitDate ?? slot.date ?? selectedCalendarDate ?? '';
@@ -929,7 +933,7 @@ export function BookingsPanel({
               <option value="">
                 {isEn ? 'Choose existing client or type manually' : 'Избери съществуващ клиент или въведи ръчно'}
               </option>
-              {clients.map((client) => (
+              {sortedAddClientOptions.map((client) => (
                 <option key={client.key} value={client.key}>
                   {client.name}
                   {client.phone ? ` · ${client.phone}` : ''}
@@ -1251,20 +1255,21 @@ export function BookingsPanel({
             const hasClicka = count > 0;
             const hasExternal = externalCount > 0;
             const hasClasses = classCount > 0;
+            const isToday = key === today;
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => setSelectedCalendarDate(active ? null : key)}
                 style={{
-                  border: hasExternal && !hasClicka ? '2px solid #FB923C' : 'none',
+                  border: isToday ? '2px solid #111827' : hasExternal && !hasClicka ? '2px solid #FB923C' : 'none',
                   borderRadius: isMobile ? 10 : 12,
                   minHeight: isMobile ? 0 : 42,
                   aspectRatio: isMobile ? '1 / 1' : undefined,
-                  background: active && hasClicka ? '#047857' : active ? T.accent : hasClicka ? '#16A34A' : hasClasses ? '#E2E8F0' : hasExternal ? '#FFF7ED' : '#F4F4F5',
-                  color: active || hasClicka ? '#fff' : hasClasses ? '#334155' : hasExternal ? '#9A3412' : T.text,
+                  background: active && isToday ? '#111827' : active && hasClicka ? '#047857' : active ? T.accent : isToday ? '#FEF3C7' : hasClicka ? '#16A34A' : hasClasses ? '#E2E8F0' : hasExternal ? '#FFF7ED' : '#F4F4F5',
+                  color: active || hasClicka ? '#fff' : isToday ? '#111827' : hasClasses ? '#334155' : hasExternal ? '#9A3412' : T.text,
                   fontSize: isMobile ? 11 : 13,
-                  fontWeight: 600,
+                  fontWeight: isToday ? 900 : 600,
                   cursor: 'pointer',
                   padding: isMobile ? 2 : '6px 4px',
                   minWidth: 0,
@@ -1273,6 +1278,7 @@ export function BookingsPanel({
                   boxSizing: 'border-box',
                   lineHeight: 1.1,
                   overflow: 'hidden',
+                  boxShadow: isToday ? '0 0 0 3px rgba(17,24,39,0.14)' : 'none',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -1687,7 +1693,7 @@ export function BookingsPanel({
 }
 
 type EditDraft = { key: string; id: string; name: string; phone: string; email: string };
-type ClientSort = 'newest' | 'visits' | 'alpha';
+type ClientSort = 'newest' | 'visits' | 'alpha' | 'packages';
 type PackageActivationDraft = {
   clientKey: string;
   packageId?: string;
@@ -2317,6 +2323,20 @@ export function ClientsPanel({
   const sortedClients = React.useMemo(() => {
     const arr = [...clients];
     if (sortBy === 'alpha') return arr.sort(compareClientNames);
+    if (sortBy === 'packages') {
+      return arr.sort((a, b) => {
+        const aHasPackage = a.activePackage ? 1 : 0;
+        const bHasPackage = b.activePackage ? 1 : 0;
+        if (aHasPackage !== bHasPackage) return bHasPackage - aHasPackage;
+        if (a.activePackage && b.activePackage) {
+          const packageNameCompare = CLIENT_NAME_COLLATOR.compare(a.activePackage.packageName, b.activePackage.packageName);
+          if (packageNameCompare !== 0) return packageNameCompare;
+          const remainingCompare = b.activePackage.remainingSessions - a.activePackage.remainingSessions;
+          if (remainingCompare !== 0) return remainingCompare;
+        }
+        return compareClientNames(a, b);
+      });
+    }
     if (sortBy === 'visits') return arr.sort((a, b) => b.visits - a.visits || b.lastVisit.localeCompare(a.lastVisit));
     return arr.sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
   }, [clients, sortBy]);
@@ -2343,6 +2363,7 @@ export function ClientsPanel({
     { id: 'newest', label: isEn ? 'Newest' : 'Най-нови' },
     { id: 'visits', label: isEn ? 'Bookings' : 'Резервации' },
     { id: 'alpha', label: isEn ? 'A-Z / А-Я' : 'А-Я / A-Z' },
+    { id: 'packages', label: isEn ? 'With packages' : 'С пакети' },
   ];
 
   React.useEffect(() => {
