@@ -21,6 +21,11 @@ const DAY_KEY_TO_CLASS_DAY: Record<DayKey, ClassDayKey> = {
   saturday: '6',
 };
 
+function todayInputValue() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
 export function HoursTabPanel({
   site,
   setSite,
@@ -43,6 +48,8 @@ export function HoursTabPanel({
   const isEn = locale === 'en';
   const dayDefs = getAdminDays(locale);
   const [activeDayKey, setActiveDayKey] = useState<DayKey>('monday');
+  const [blockDayPickerOpen, setBlockDayPickerOpen] = useState(false);
+  const [blockDayDraft, setBlockDayDraft] = useState(() => todayInputValue());
   const classServiceOptions = site.services
     .map((service) => ({
       id: service.id || service.name,
@@ -74,13 +81,24 @@ export function HoursTabPanel({
     ...extra,
   });
 
-  function addBookingBlock() {
-    const today = new Date();
-    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  function addBookingBlock(date: string) {
     setSite((p) => ({
       ...p,
       bookingBlocks: [...p.bookingBlocks, { date, allDay: true }],
     }));
+  }
+
+  function confirmAddBlockedDay() {
+    if (!blockDayDraft) return;
+    const formattedDate = new Date(`${blockDayDraft}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG');
+    const ok = window.confirm(
+      isEn
+        ? `Block the whole day ${formattedDate}?`
+        : `Да блокирам ли целия ден ${formattedDate}?`,
+    );
+    if (!ok) return;
+    addBookingBlock(blockDayDraft);
+    setBlockDayPickerOpen(false);
   }
 
   function addClassSlot(dayKey: DayKey = activeDayKey) {
@@ -482,6 +500,7 @@ export function HoursTabPanel({
   }
 
   return (
+    <>
     <AdminSection
       title={isEn ? 'Hours & classes' : 'Раб.време и класове'}
       compact={isMobile}
@@ -489,7 +508,10 @@ export function HoursTabPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           <button
             type="button"
-            onClick={addBookingBlock}
+            onClick={() => {
+              setBlockDayDraft(todayInputValue());
+              setBlockDayPickerOpen(true);
+            }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -797,5 +819,82 @@ export function HoursTabPanel({
         </div>
       </div>
     </AdminSection>
+    {blockDayPickerOpen ? (
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 95,
+          background: 'rgba(15,23,42,0.32)',
+          display: 'grid',
+          placeItems: 'center',
+          padding: 18,
+        }}
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setBlockDayPickerOpen(false);
+        }}
+      >
+        <div
+          style={{
+            width: 'min(390px, 100%)',
+            borderRadius: 16,
+            background: '#fff',
+            border: `1px solid ${ADMIN_T.border}`,
+            boxShadow: '0 24px 70px rgba(15,23,42,0.22)',
+            padding: 18,
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <div>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 750, color: ADMIN_T.text }}>
+              {isEn ? 'Block a day' : 'Блокирай ден'}
+            </p>
+            <p style={{ margin: '5px 0 0', fontSize: 13, lineHeight: 1.45, color: ADMIN_T.muted }}>
+              {isEn ? 'Choose which date should be unavailable for bookings.' : 'Избери коя дата да бъде недостъпна за резервации.'}
+            </p>
+          </div>
+          <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 650, color: ADMIN_T.text }}>
+            {isEn ? 'Date' : 'Дата'}
+            <input
+              type="date"
+              value={blockDayDraft}
+              onChange={(event) => setBlockDayDraft(event.target.value)}
+              style={blockInp({ width: '100%', minHeight: 40 })}
+            />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setBlockDayPickerOpen(false)}
+              style={{ ...btn('ghost'), padding: '8px 12px' }}
+            >
+              {isEn ? 'Cancel' : 'Отказ'}
+            </button>
+            <button
+              type="button"
+              disabled={!blockDayDraft}
+              onClick={confirmAddBlockedDay}
+              style={{
+                border: 'none',
+                borderRadius: 8,
+                background: '#111827',
+                color: '#fff',
+                padding: '8px 12px',
+                fontSize: 12,
+                fontWeight: 750,
+                cursor: blockDayDraft ? 'pointer' : 'not-allowed',
+                opacity: blockDayDraft ? 1 : 0.5,
+              }}
+            >
+              {isEn ? 'Block day' : 'Блокирай деня'}
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }

@@ -2144,7 +2144,7 @@ export function PackagesPanel({
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: T.muted, fontSize: 12, fontWeight: 800 }}>
               <input
                 type="checkbox"
@@ -2153,27 +2153,40 @@ export function PackagesPanel({
               />
               {isEn ? 'Active' : 'Активен'}
             </label>
-            <button
-              type="button"
-              disabled={packageBusy || !packageDraft.name.trim() || packageDraft.serviceIds.length === 0}
-              onClick={() => void savePackageDefinition()}
-              style={{ border: 'none', borderRadius: 999, background: '#111', color: '#fff', padding: '9px 14px', fontSize: 12, fontWeight: 850, cursor: packageBusy ? 'wait' : 'pointer', opacity: packageBusy || !packageDraft.name.trim() || packageDraft.serviceIds.length === 0 ? 0.45 : 1 }}
-            >
-              {packageBusy ? (isEn ? 'Saving…' : 'Запис…') : packageDraft.id ? (isEn ? 'Save changes' : 'Запази промените') : (isEn ? 'Create package' : 'Създай пакет')}
-            </button>
-            {packageDraft.id ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
+              {packageDraft.id ? (
+                <button
+                  type="button"
+                  onClick={() => setPackageDraft(packageToDraft())}
+                  style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '9px 13px', fontSize: 12, fontWeight: 750, cursor: 'pointer' }}
+                >
+                  {isEn ? 'New package' : 'Нов пакет'}
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => setPackageDraft(packageToDraft())}
-                style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '9px 13px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+                disabled={packageBusy || !packageDraft.name.trim() || packageDraft.serviceIds.length === 0}
+                onClick={() => void savePackageDefinition()}
+                style={{ border: 'none', borderRadius: 999, background: '#047857', color: '#fff', padding: '9px 14px', fontSize: 12, fontWeight: 800, cursor: packageBusy ? 'wait' : 'pointer', opacity: packageBusy || !packageDraft.name.trim() || packageDraft.serviceIds.length === 0 ? 0.45 : 1 }}
               >
-                {isEn ? 'New package' : 'Нов пакет'}
+                {packageBusy ? (isEn ? 'Saving…' : 'Запис…') : packageDraft.id ? (isEn ? 'Save changes' : 'Запази промените') : (isEn ? 'Create package' : 'Създай пакет')}
               </button>
-            ) : null}
+            </div>
           </div>
         </div>
+      </div>
 
-        <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
+      <div style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: '#fff', padding: isMobile ? 12 : 16, boxShadow: '0 4px 16px rgba(0,0,0,0.04)', display: 'grid', gap: 10 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 760, color: '#111' }}>
+            {isEn ? 'Created packages' : 'Създадени пакети'}
+          </h3>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: T.muted }}>
+            {isEn ? 'Edit or remove packages that can be activated for clients.' : 'Редактирай или премахвай пакети, които могат да се активират за клиенти.'}
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: 8 }}>
           {!packagesLoaded ? (
             <div style={{ color: T.muted, fontSize: 13 }}>{isEn ? 'Loading packages…' : 'Зареждане на пакети…'}</div>
           ) : packages.length === 0 ? (
