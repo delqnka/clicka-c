@@ -37,6 +37,13 @@ function normalizeOriginalPrice(value: unknown, currentPrice: number): number | 
   return normalized > currentPrice ? normalized : undefined;
 }
 
+function parseMoneyInput(value: unknown, fallback = 0): number {
+  const normalized = String(value ?? '').replace(',', '.').replace(/\s+/g, '').trim();
+  if (!normalized) return 0;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+}
+
 function compactInp(base: CSSProperties): CSSProperties {
   return {
     ...base,
@@ -308,11 +315,12 @@ const ServiceCardRow = memo(function ServiceCardRow({
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={draft.price}
                 onChange={(e) =>
                   updateDraft((s) => {
-                    const nextPrice = Math.max(0, Number(e.target.value) || 0);
+                    const nextPrice = parseMoneyInput(e.target.value, Math.max(0, Number(s.price) || 0));
                     return {
                       ...s,
                       price: nextPrice,
@@ -320,6 +328,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     };
                   })
                 }
+                onFocus={(e) => e.currentTarget.select()}
                 style={{
                   ...numInp,
                   flex: 1,
@@ -357,7 +366,8 @@ const ServiceCardRow = memo(function ServiceCardRow({
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={draft.original_price ?? ''}
                 onChange={(e) =>
                   updateDraft((s) => ({
@@ -365,9 +375,13 @@ const ServiceCardRow = memo(function ServiceCardRow({
                     original_price:
                       e.target.value === ''
                         ? undefined
-                        : normalizeOriginalPrice(e.target.value, Math.max(0, Number(s.price) || 0)),
+                        : normalizeOriginalPrice(
+                            parseMoneyInput(e.target.value, Math.max(0, Number(s.original_price ?? s.price) || 0)),
+                            Math.max(0, Number(s.price) || 0),
+                          ),
                   }))
                 }
+                onFocus={(e) => e.currentTarget.select()}
                 style={{
                   ...numInp,
                   flex: 1,
@@ -711,7 +725,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
                 />
                 <div style={{ position: 'relative', ...(isMobile ? { gridArea: 'price', minWidth: 0 } : {}) }}>
                   <input
-                    type="number"
+                    type="text"
                     name={`${fieldPrefix}-variant-price-${variantIndex}`}
                     inputMode="decimal"
                     min={0}
@@ -722,11 +736,12 @@ const ServiceCardRow = memo(function ServiceCardRow({
                         const prevVariants = mapVariants(serviceRow);
                         prevVariants[variantIndex] = {
                           ...prevVariants[variantIndex],
-                          price: Math.max(0, Number(e.target.value) || 0),
+                          price: parseMoneyInput(e.target.value, Math.max(0, Number(prevVariants[variantIndex]?.price) || 0)),
                         };
                         return { ...serviceRow, variants: prevVariants };
                       })
                     }
+                    onFocus={(e) => e.currentTarget.select()}
                     style={{ ...fieldInp, padding: '5px 24px 5px 6px', fontSize: 12, fontWeight: 700 }}
                     placeholder="0"
                     aria-label={isEn ? 'Price' : 'Цена'}

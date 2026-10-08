@@ -126,6 +126,7 @@ const TABS = [
   { id: 'images',        labelKey: 'adminDashboard.tabs.images', Icon: ImageIcon },
   { id: 'specialist',    labelKey: 'adminDashboard.tabs.specialist', Icon: UserRound },
   { id: 'services',      labelKey: 'adminDashboard.tabs.services', Icon: Scissors },
+  { id: 'packages',      labelKey: 'adminDashboard.tabs.packages', Icon: Tag },
   { id: 'offers',        labelKey: 'adminDashboard.tabs.offers', Icon: Tag },
   { id: 'hours',         labelKey: 'adminDashboard.tabs.hours', Icon: Clock3 },
   { id: 'payments',      labelKey: 'adminDashboard.tabs.payments', Icon: CreditCard },
@@ -135,7 +136,7 @@ const TABS = [
 ] as const;
 
 const WEBSITE_TAB_IDS = ['site', 'faq', 'images', 'specialist', 'offers'] as const;
-const BOOKING_TAB_IDS = ['bookings', 'services', 'hours'] as const;
+const BOOKING_TAB_IDS = ['bookings', 'services', 'packages', 'hours'] as const;
 const ACCOUNT_TAB_IDS = ['account', 'legal', 'payments', 'integrations'] as const;
 
 const TOP_LEVEL_TAB_IDS = ['bookings', 'clients', 'staff', 'site', 'account'] as const;
@@ -2500,13 +2501,14 @@ export default function AdminDashboardClient({
             />
           ) : null}
 
-          {/* ── Услуги ── */}
+          {/* ── Класове ── */}
           {activeTab === 'services' && (
             <Section
-              title={locale === 'en' ? 'Services and prices' : 'Услуги и цени'}
+              title=""
               desc={undefined}
               compact={isMobile}
-              action={
+            >
+              <div style={{ display: 'grid', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 10, flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
                   <button
                     type="button"
@@ -2528,7 +2530,7 @@ export default function AdminDashboardClient({
                     onClick={() => setServiceModalOpen(true)}
                   >
                     <Plus size={13} />
-                    {locale === 'en' ? 'Add service' : 'Добави услуга'}
+                    {locale === 'en' ? 'Add class' : 'Добави клас'}
                   </button>
                   <AdminSaveBtn
                     label={locale === 'en' ? 'Save' : 'Запази'}
@@ -2538,9 +2540,8 @@ export default function AdminDashboardClient({
                     onClick={() => void saveServices()}
                   />
                 </div>
-              }
-            >
-              <div style={{ marginBottom: 10 }}>
+
+                <div>
                 <PriceListServicesImport
                   urls={priceListUrls}
                   busy={busyKey === 'upload-pricelist'}
@@ -2552,6 +2553,7 @@ export default function AdminDashboardClient({
                   onReanalyze={() => void runPriceListAnalysis(priceListUrls)}
                   locale={locale}
                 />
+                </div>
               </div>
 
               <ServicesEditorPanel
@@ -2567,38 +2569,44 @@ export default function AdminDashboardClient({
                 btn={btn}
                 locale={locale}
               />
+            </Section>
+          )}
 
-              <div style={{ marginTop: 18 }}>
-                <PackagesPanel
-                  slug={slug}
-                  services={site.services}
-                  isMobile={isMobile}
-                  T={T}
-                  locale={locale}
-                  onImportMemberships={async (csvText, mode, columnMap) => {
-                    const res = await fetch(`/api/admin/client-packages/import?slug=${encodeURIComponent(slug)}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ csvText, mode, columnMap }),
-                    });
-                    const json = await res.json().catch(() => ({}));
-                    if (!res.ok && !json?.rows) {
-                      throw new Error(
-                        typeof json?.error === 'string'
-                          ? json.error
-                          : locale === 'en'
-                            ? 'Import failed.'
-                            : 'Import неуспешен.',
-                      );
-                    }
-                    if (mode === 'import' && json?.ok) {
-                      setExtraClientsLoaded(false);
-                      setNotice(locale === 'en' ? 'Memberships imported.' : 'Пакетите са импортирани.');
-                    }
-                    return json;
-                  }}
-                />
-              </div>
+          {activeTab === 'packages' && (
+            <Section
+              title={locale === 'en' ? 'Packages' : 'Пакети'}
+              desc={undefined}
+              compact={isMobile}
+            >
+              <PackagesPanel
+                slug={slug}
+                services={site.services}
+                isMobile={isMobile}
+                T={T}
+                locale={locale}
+                onImportMemberships={async (csvText, mode, columnMap) => {
+                  const res = await fetch(`/api/admin/client-packages/import?slug=${encodeURIComponent(slug)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ csvText, mode, columnMap }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (!res.ok && !json?.rows) {
+                    throw new Error(
+                      typeof json?.error === 'string'
+                        ? json.error
+                        : locale === 'en'
+                          ? 'Import failed.'
+                          : 'Import неуспешен.',
+                    );
+                  }
+                  if (mode === 'import' && json?.ok) {
+                    setExtraClientsLoaded(false);
+                    setNotice(locale === 'en' ? 'Memberships imported.' : 'Пакетите са импортирани.');
+                  }
+                  return json;
+                }}
+              />
             </Section>
           )}
 

@@ -25,6 +25,13 @@ type ButtonFactory = (
   variant: 'primary' | 'ghost' | 'danger' | 'sm-ghost'
 ) => CSSProperties;
 
+function parseMoneyInput(value: unknown, fallback = 0): number {
+  const normalized = String(value ?? '').replace(',', '.').replace(/\s+/g, '').trim();
+  if (!normalized) return 0;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+}
+
 export function ServiceCreateModal({
   open,
   isMobile,
@@ -148,7 +155,7 @@ export function ServiceCreateModal({
           }}
         >
           <p id="add-service-modal-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: T.text }}>
-            Добави услуга
+            Добави клас
           </p>
           <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
             <div>
@@ -191,13 +198,14 @@ export function ServiceCreateModal({
                 <input
                   id="new-service-price"
                   name="new-service-price"
-                  type="number"
+                  type="text"
                   inputMode="decimal"
                   min={0}
                   autoComplete="off"
                   style={inp}
                   value={newServiceDraft.price}
-                  onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
+                  onChange={(e) => setNewServiceDraft((p) => ({ ...p, price: parseMoneyInput(e.target.value, p.price) }))}
+                  onFocus={(e) => e.currentTarget.select()}
                 />
               </div>
               <div>
@@ -205,7 +213,7 @@ export function ServiceCreateModal({
                 <input
                   id="new-service-original-price"
                   name="new-service-original-price"
-                  type="number"
+                  type="text"
                   inputMode="decimal"
                   min={0}
                   autoComplete="off"
@@ -214,9 +222,10 @@ export function ServiceCreateModal({
                   onChange={(e) =>
                     setNewServiceDraft((p) => ({
                       ...p,
-                      original_price: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value) || 0),
+                      original_price: e.target.value === '' ? undefined : parseMoneyInput(e.target.value, p.original_price ?? p.price),
                     }))
                   }
+                  onFocus={(e) => e.currentTarget.select()}
                 />
               </div>
             </div>
@@ -270,7 +279,7 @@ export function ServiceCreateModal({
                       style={{ ...inp, ...(isMobile ? { gridArea: 'label' } : {}) }}
                     />
                     <input
-                      type="number"
+                      type="text"
                       name={`new-service-variant-price-${idx}`}
                       inputMode="decimal"
                       min={0}
@@ -281,10 +290,11 @@ export function ServiceCreateModal({
                         setNewServiceDraft((prev) => ({
                           ...prev,
                           variants: prev.variants.map((v, i) =>
-                            i === idx ? { ...v, price: Math.max(0, Number(e.target.value) || 0) } : v
+                            i === idx ? { ...v, price: parseMoneyInput(e.target.value, v.price) } : v
                           ),
                         }))
                       }
+                      onFocus={(e) => e.currentTarget.select()}
                       placeholder="€"
                       aria-label="Цена на вариант"
                     />

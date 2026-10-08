@@ -630,6 +630,7 @@ export function BookingsPanel({
   const [addError, setAddError] = React.useState('');
   const [addSaving, setAddSaving] = React.useState(false);
   const [addClientSortMode, setAddClientSortMode] = React.useState<AddClientSortMode>('bg');
+  const [addClientSearch, setAddClientSearch] = React.useState('');
   const [editBookingId, setEditBookingId] = React.useState<string | null>(null);
   const [editDraft, setEditDraft] = React.useState<AdminBookingUpdate | null>(null);
   const [editError, setEditError] = React.useState('');
@@ -748,6 +749,24 @@ export function BookingsPanel({
     () => [...clients].sort((a, b) => compareClientNames(a, b, addClientSortMode)),
     [addClientSortMode, clients],
   );
+  const filteredAddClientOptions = React.useMemo(() => {
+    const query = addClientSearch.trim().toLocaleLowerCase();
+    if (!query) return sortedAddClientOptions;
+    return sortedAddClientOptions
+      .filter((client) =>
+        [client.name, client.phone, client.email]
+          .filter(Boolean)
+          .some((value) => String(value).toLocaleLowerCase().includes(query)),
+      )
+      .sort((a, b) => {
+        const aName = a.name.toLocaleLowerCase();
+        const bName = b.name.toLocaleLowerCase();
+        const aStarts = aName.startsWith(query) ? 1 : 0;
+        const bStarts = bName.startsWith(query) ? 1 : 0;
+        if (aStarts !== bStarts) return bStarts - aStarts;
+        return compareClientNames(a, b, addClientSortMode);
+      });
+  }, [addClientSearch, addClientSortMode, sortedAddClientOptions]);
 
   function openAddClient(slot: TimelineRow, explicitDate?: string | null) {
     const draftDate = explicitDate ?? slot.date ?? selectedCalendarDate ?? '';
@@ -756,6 +775,7 @@ export function BookingsPanel({
       return;
     }
     setAddError('');
+    setAddClientSearch('');
     setAddDraft({
       slot,
       date: draftDate,
@@ -809,6 +829,7 @@ export function BookingsPanel({
 
   function selectAddClient(clientKey: string) {
     const client = clients.find((item) => item.key === clientKey);
+    if (client) setAddClientSearch(client.name);
     setAddDraft((prev) => prev
       ? {
           ...prev,
@@ -956,21 +977,36 @@ export function BookingsPanel({
                   })}
                 </div>
               </div>
+              <input
+                type="search"
+                value={addClientSearch}
+                onChange={(event) => {
+                  setAddClientSearch(event.target.value);
+                  setAddDraft((prev) => prev ? { ...prev, clientKey: '' } : prev);
+                }}
+                placeholder={isEn ? 'Search client by name, phone or email' : 'Търси клиент по име, телефон или имейл'}
+                style={inp}
+              />
               <select
                 value={addDraft.clientKey}
                 onChange={(event) => selectAddClient(event.target.value)}
                 style={inp}
               >
                 <option value="">
-                  {isEn ? 'Choose existing client or type manually' : 'Избери съществуващ клиент или въведи ръчно'}
+                  {isEn ? 'Choose existing client' : 'Избери съществуващ клиент'}
                 </option>
-                {sortedAddClientOptions.map((client) => (
+                {filteredAddClientOptions.map((client) => (
                   <option key={client.key} value={client.key}>
                     {client.name}
                     {client.phone ? ` · ${client.phone}` : ''}
                     {client.email ? ` · ${client.email}` : ''}
                   </option>
                 ))}
+                {addClientSearch.trim() && filteredAddClientOptions.length === 0 ? (
+                  <option value="" disabled>
+                    {isEn ? 'No matching clients' : 'Няма намерени клиенти'}
+                  </option>
+                ) : null}
               </select>
             </div>
 
@@ -2365,10 +2401,7 @@ export function ClientsPanel({
     const arr = [...clients];
     if (sortBy === 'alpha') return arr.sort(compareClientNames);
     if (sortBy === 'packages') {
-      return arr.sort((a, b) => {
-        const aHasPackage = a.activePackage ? 1 : 0;
-        const bHasPackage = b.activePackage ? 1 : 0;
-        if (aHasPackage !== bHasPackage) return bHasPackage - aHasPackage;
+      return arr.filter((client) => client.activePackage).sort((a, b) => {
         if (a.activePackage && b.activePackage) {
           const packageNameCompare = CLIENT_NAME_COLLATOR.compare(a.activePackage.packageName, b.activePackage.packageName);
           if (packageNameCompare !== 0) return packageNameCompare;
