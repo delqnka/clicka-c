@@ -767,6 +767,10 @@ export function BookingsPanel({
         return compareClientNames(a, b, addClientSortMode);
       });
   }, [addClientSearch, addClientSortMode, sortedAddClientOptions]);
+  const visibleAddClientSuggestions = React.useMemo(
+    () => addClientSearch.trim() && !addDraft?.clientKey ? filteredAddClientOptions.slice(0, 6) : [],
+    [addClientSearch, addDraft?.clientKey, filteredAddClientOptions],
+  );
 
   function openAddClient(slot: TimelineRow, explicitDate?: string | null) {
     const draftDate = explicitDate ?? slot.date ?? selectedCalendarDate ?? '';
@@ -987,6 +991,37 @@ export function BookingsPanel({
                 placeholder={isEn ? 'Search client by name, phone or email' : 'Търси клиент по име, телефон или имейл'}
                 style={inp}
               />
+              {visibleAddClientSuggestions.length > 0 ? (
+                <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 8px 24px rgba(15,23,42,0.10)' }}>
+                  {visibleAddClientSuggestions.map((client) => (
+                    <button
+                      key={client.key}
+                      type="button"
+                      onClick={() => selectAddClient(client.key)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        border: 'none',
+                        borderBottom: `1px solid ${T.border}`,
+                        background: '#fff',
+                        color: T.text,
+                        padding: '9px 11px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 800 }}>{client.name}</span>
+                      <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {[client.phone, client.email].filter(Boolean).join(' · ')}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : addClientSearch.trim() && !addDraft.clientKey ? (
+                <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '9px 11px', color: T.muted, fontSize: 12, background: '#FAFAFA' }}>
+                  {isEn ? 'No matching clients' : 'Няма намерени клиенти'}
+                </div>
+              ) : null}
               <select
                 value={addDraft.clientKey}
                 onChange={(event) => selectAddClient(event.target.value)}
@@ -2148,37 +2183,56 @@ export function PackagesPanel({
           ) : packages.map((pkg) => {
             const included = services.filter((service) => pkg.serviceIds.includes(String(service.id ?? service.name)));
             return (
-              <div key={pkg.id} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: '#fafafa', display: 'grid', gap: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 850, color: '#111' }}>{pkg.name}</div>
-                    <div style={{ marginTop: 3, fontSize: 12, color: T.muted }}>
-                      {pkg.totalSessions} {isEn ? 'credits' : 'кредита'} · {pkg.validityDays} {isEn ? 'days' : 'дни'}
-                      {pkg.price != null ? ` · ${formatSalonPrice(pkg.price)}` : ''}
-                      {!pkg.isActive ? ` · ${isEn ? 'inactive' : 'неактивен'}` : ''}
+              <div key={pkg.id} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: isMobile ? 12 : 14, background: '#fff', display: 'grid', gap: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'grid', gap: 5, minWidth: 0, flex: '1 1 220px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 15, fontWeight: 760, color: '#111', overflowWrap: 'anywhere' }}>{pkg.name}</div>
+                      <span style={{ borderRadius: 999, background: pkg.isActive ? '#ECFDF5' : '#F4F4F5', color: pkg.isActive ? '#047857' : T.muted, padding: '3px 8px', fontSize: 11, fontWeight: 700 }}>
+                        {pkg.isActive ? (isEn ? 'Active' : 'Активен') : (isEn ? 'Inactive' : 'Неактивен')}
+                      </span>
                     </div>
+                    {pkg.description ? <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.45 }}>{pkg.description}</div> : null}
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <button
                       type="button"
                       onClick={() => setPackageDraft(packageToDraft(pkg))}
-                      style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '7px 11px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+                      style={{ border: `1px solid ${T.border}`, borderRadius: 8, background: '#fff', color: '#111', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                     >
                       {isEn ? 'Edit' : 'Редактирай'}
                     </button>
                     <button
                       type="button"
                       onClick={() => void deletePackageDefinition(pkg.id)}
-                      style={{ border: '1px solid rgba(220,38,38,0.24)', borderRadius: 999, background: '#FEF2F2', color: '#B91C1C', padding: '7px 11px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+                      style={{ border: '1px solid rgba(220,38,38,0.22)', borderRadius: 8, background: '#fff', color: '#B91C1C', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                     >
                       {isEn ? 'Delete' : 'Изтрий'}
                     </button>
                   </div>
                 </div>
-                {pkg.description ? <div style={{ fontSize: 12, color: T.muted }}>{pkg.description}</div> : null}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+                  {[
+                    { label: isEn ? 'Credits' : 'Кредити', value: String(pkg.totalSessions) },
+                    { label: isEn ? 'Valid' : 'Валидност', value: `${pkg.validityDays} ${isEn ? 'days' : 'дни'}` },
+                    { label: isEn ? 'Price' : 'Цена', value: pkg.price != null ? formatSalonPrice(pkg.price) : (isEn ? 'Not set' : 'Не е зададена') },
+                  ].map((item) => (
+                    <div key={item.label} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '8px 10px', background: '#fff' }}>
+                      <div style={{ fontSize: 11, color: T.subtle, fontWeight: 650 }}>{item.label}</div>
+                      <div style={{ marginTop: 3, fontSize: 13, color: '#111', fontWeight: 720 }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {included.length > 0 ? (
+                    <span style={{ fontSize: 12, color: T.muted, marginRight: 2 }}>
+                      {isEn ? 'Includes:' : 'Включва:'}
+                    </span>
+                  ) : null}
                   {included.length > 0 ? included.map((service) => (
-                    <span key={String(service.id ?? service.name)} style={{ borderRadius: 999, background: '#fff', border: `1px solid ${T.border}`, padding: '4px 8px', fontSize: 12, fontWeight: 700, color: '#111' }}>
+                    <span key={String(service.id ?? service.name)} style={{ borderRadius: 999, background: '#F9FAFB', border: `1px solid ${T.border}`, padding: '4px 8px', fontSize: 12, fontWeight: 650, color: '#111' }}>
                       {service.name}
                     </span>
                   )) : (

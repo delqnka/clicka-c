@@ -2509,7 +2509,7 @@ export default function AdminDashboardClient({
               compact={isMobile}
             >
               <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 10, flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexShrink: 0, flexWrap: 'wrap', width: '100%' }}>
                   <button
                     type="button"
                     style={{
