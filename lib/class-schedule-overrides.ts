@@ -1,7 +1,9 @@
 import 'server-only';
 
-import { sql } from '@/lib/db';
+import { sql, sqlTransaction } from '@/lib/db';
 import { normalizeClassScheduleOverrides, type ClassScheduleOverride } from '@/lib/class-schedule';
+import { formatLegacyDateDMY } from '@/lib/booking-time';
+import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
 
 let ensurePromise: Promise<void> | null = null;
 
@@ -115,6 +117,127 @@ export async function upsertClassScheduleOverride(
     RETURNING *
   `;
   return normalizeClassScheduleOverrides([mapOverrideRow(row as Record<string, unknown>)])[0]!;
+}
+
+export type UpdateClassOverrideBookingsOptions = {
+  updateExistingBookings: boolean;
+  originalEnd?: string;
+  newStaffMemberId?: string | null;
+  originalStaffMemberId?: string | null;
+};
+
+export type ClassScheduleOverrideMutationResult = {
+  override: ClassScheduleOverride;
+  updatedBookingsCount: number;
+};
+
+function minutesFromTime(value: string): number | null {
+  const match = String(value ?? '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+export async function upsertClassScheduleOverrideMutation(
+  salonId: string,
+  input: ClassScheduleOverride,
+  options: UpdateClassOverrideBookingsOptions,
+): Promise<ClassScheduleOverrideMutationResult> {
+  await ensureClassScheduleOverridesSchema();
+  await ensureBookingsSchema();
+
+  const originalStart = minutesFromTime(input.originalTime);
+  const originalEnd = minutesFromTime(options.originalEnd ?? '') ?? originalStart;
+  const normalizedOriginalEnd = originalStart != null && originalEnd != null && originalEnd > originalStart
+    ? originalEnd
+    : originalStart == null
+      ? null
+      : originalStart + Math.max(5, minutesFromTime(input.end)! - minutesFromTime(input.start)!);
+  const nextDuration = Math.max(5, (minutesFromTime(input.end) ?? 0) - (minutesFromTime(input.start) ?? 0));
+  const hasClassName = Boolean(input.className?.trim());
+  const shouldUpdateStaff = options.newStaffMemberId !== undefined;
+  const hasOriginalStaff = Boolean(options.originalStaffMemberId);
+  const legacyOriginalDate = formatLegacyDateDMY(input.originalDate) ?? input.originalDate;
+
+  const [, updatedRows, overrideRows] = await sqlTransaction<[unknown[], Record<string, unknown>[], Record<string, unknown>[]]>((txn) => [
+    txn`SELECT pg_advisory_xact_lock(hashtext(${`${salonId}:${input.originalDate}:${input.originalTime}:${input.originalTrainer}`}))`,
+    options.updateExistingBookings
+      ? txn`
+          UPDATE bookings b
+          SET
+            date = ${input.date},
+            time = ${input.start},
+            service_duration = ${nextDuration},
+            service_name = CASE WHEN ${hasClassName} THEN ${input.className ?? ''} ELSE service_name END,
+            service_price = CASE WHEN ${input.price != null} THEN ${input.price ?? null} ELSE service_price END,
+            staff_member_id = CASE
+              WHEN ${shouldUpdateStaff} THEN ${options.newStaffMemberId ?? null}::uuid
+              ELSE staff_member_id
+            END
+          WHERE b.salon_id = ${salonId}
+            AND b.date IN (${input.originalDate}, ${legacyOriginalDate})
+            AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
+            AND (
+              substring(trim(b.time) from '^\\d{1,2}:\\d{2}') = ${input.originalTime}
+              OR (
+                (
+                  COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60
+                  + COALESCE(NULLIF(split_part(trim(b.time), ':', 2), '')::int, 0)
+                ) < ${normalizedOriginalEnd ?? originalStart ?? 0}
+                AND (
+                  (
+                    COALESCE(NULLIF(split_part(trim(b.time), ':', 1), '')::int, 0) * 60
+                    + COALESCE(NULLIF(split_part(trim(b.time), ':', 2), '')::int, 0)
+                  ) + GREATEST(5, COALESCE(b.service_duration, ${nextDuration}))
+                ) > ${originalStart ?? 0}
+              )
+            )
+            AND (
+              ${!hasOriginalStaff}
+              OR b.staff_member_id = ${options.originalStaffMemberId ?? null}::uuid
+              OR b.staff_member_id IS NULL
+            )
+            AND (
+              ${!input.originalClassName.trim()}
+              OR lower(trim(b.service_name)) = lower(trim(${input.originalClassName}))
+              OR lower(b.service_name) LIKE '%' || lower(trim(${input.originalClassName})) || '%'
+              OR ${hasOriginalStaff}
+            )
+          RETURNING id
+        `
+      : txn`SELECT id FROM bookings WHERE false`,
+    txn`
+      INSERT INTO class_schedule_overrides (
+        salon_id, original_date, original_time, original_class_name, original_trainer,
+        date, start_time, end_time, service_id, class_name, trainer, capacity, price, note
+      ) VALUES (
+        ${salonId}, ${input.originalDate}, ${input.originalTime}, ${input.originalClassName}, ${input.originalTrainer},
+        ${input.date}, ${input.start}, ${input.end}, ${input.serviceId ?? null}, ${input.className ?? null},
+        ${input.trainer}, ${input.capacity}, ${input.price ?? null}, ${input.note ?? null}
+      )
+      ON CONFLICT (salon_id, original_date, original_time, original_class_name, original_trainer)
+      DO UPDATE SET
+        date = EXCLUDED.date,
+        start_time = EXCLUDED.start_time,
+        end_time = EXCLUDED.end_time,
+        service_id = EXCLUDED.service_id,
+        class_name = EXCLUDED.class_name,
+        trainer = EXCLUDED.trainer,
+        capacity = EXCLUDED.capacity,
+        price = EXCLUDED.price,
+        note = EXCLUDED.note,
+        updated_at = now()
+      RETURNING *
+    `,
+  ], { isolationMode: 'Serializable' });
+
+  return {
+    override: normalizeClassScheduleOverrides([mapOverrideRow(overrideRows[0] as Record<string, unknown>)])[0]!,
+    updatedBookingsCount: updatedRows.length,
+  };
 }
 
 export async function deleteClassScheduleOverride(

@@ -86,6 +86,7 @@ type BookingsPanelProps = {
   updateBooking: (bookingId: string, data: AdminBookingUpdate) => Promise<void>;
   deleteBooking: (bookingId: string) => Promise<void>;
   createAdminBooking: (input: AdminBookingInput) => Promise<void>;
+  onBookingsChanged?: () => void | Promise<void>;
   inp: CSSProperties;
   btn: ButtonFactory;
   T: ThemePalette;
@@ -641,6 +642,7 @@ export function BookingsPanel({
   updateBooking,
   deleteBooking,
   createAdminBooking,
+  onBookingsChanged,
   inp,
   btn,
   T,
@@ -672,6 +674,7 @@ export function BookingsPanel({
     originalTime: string;
     originalClassName: string;
     originalTrainer: string;
+    originalEnd: string;
     date: string;
     start: string;
     end: string;
@@ -681,8 +684,10 @@ export function BookingsPanel({
     capacity: number;
     price: string;
     note: string;
+    updateExistingBookings: boolean;
   } | null>(null);
   const [classEditError, setClassEditError] = React.useState('');
+  const [classEditNotice, setClassEditNotice] = React.useState('');
   const [classEditSaving, setClassEditSaving] = React.useState(false);
   const staffOptions = React.useMemo(
     () => staffMembers.filter((member) => !member.isOwner),
@@ -844,11 +849,13 @@ export function BookingsPanel({
     const startMin = timeToMinutes(start);
     const endMin = timeToMinutes(end);
     setClassEditError('');
+    setClassEditNotice('');
     setClassDraft({
       originalDate: slot.originalDate ?? slot.date ?? selectedCalendarDate ?? '',
       originalTime: slot.originalTime ?? slot.time,
       originalClassName: slot.originalClassName ?? (slot.className ?? ''),
       originalTrainer: slot.originalTrainer ?? (slot.trainer ?? ''),
+      originalEnd: end,
       date: slot.date ?? selectedCalendarDate ?? '',
       start,
       end,
@@ -858,6 +865,7 @@ export function BookingsPanel({
       capacity: Math.max(1, Number(slot.capacity ?? 1) || 1),
       price: slot.price == null ? '' : String(slot.price),
       note: slot.note ?? '',
+      updateExistingBookings: true,
     });
   }
 
@@ -876,6 +884,8 @@ export function BookingsPanel({
       capacity: Math.max(1, Math.round(Number(classDraft.capacity) || 1)),
       price: classDraft.price.trim() ? Number(classDraft.price) : undefined,
       note: classDraft.note.trim() || undefined,
+      originalEnd: classDraft.originalEnd,
+      updateExistingBookings: classDraft.updateExistingBookings,
     };
     if (!payload.date || !payload.start || !payload.end || !payload.trainer) {
       setClassEditError(isEn ? 'Date, time and trainer are required.' : 'Дата, час и треньор са задължителни.');
@@ -883,13 +893,14 @@ export function BookingsPanel({
     }
     setClassEditSaving(true);
     setClassEditError('');
+    setClassEditNotice('');
     try {
       const res = await fetch(`/api/admin/class-overrides?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json().catch(() => ({})) as { override?: unknown; error?: string };
+      const data = await res.json().catch(() => ({})) as { override?: unknown; error?: string; updatedBookingsCount?: number; warnings?: string[] };
       if (!res.ok) throw new Error(data.error || (isEn ? 'Could not save class.' : 'Класът не беше запазен.'));
       const [override] = normalizeClassScheduleOverrides([data.override]);
       if (override) {
@@ -903,6 +914,19 @@ export function BookingsPanel({
           override,
         ]);
       }
+      const updatedCount = Math.max(0, Math.round(Number(data.updatedBookingsCount ?? 0) || 0));
+      const warnings = Array.isArray(data.warnings)
+        ? data.warnings.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        : [];
+      setClassEditNotice([
+        classDraft.updateExistingBookings
+          ? updatedCount === 1
+            ? (isEn ? 'Updated 1 existing booking in this class.' : 'Обновена е 1 съществуваща резервация в този клас.')
+            : (isEn ? `Updated ${updatedCount} existing bookings in this class.` : `Обновени са ${updatedCount} съществуващи резервации в този клас.`)
+          : (isEn ? 'Saved class override. Existing bookings were not changed.' : 'Промяната за класа е запазена. Съществуващите резервации не са променени.'),
+        ...warnings,
+      ].join(' '));
+      if (updatedCount > 0) await onBookingsChanged?.();
       setClassDraft(null);
     } catch (err) {
       setClassEditError(err instanceof Error ? err.message : (isEn ? 'Could not save class.' : 'Класът не беше запазен.'));
@@ -915,6 +939,7 @@ export function BookingsPanel({
     if (!classDraft) return;
     setClassEditSaving(true);
     setClassEditError('');
+    setClassEditNotice('');
     try {
       const params = new URLSearchParams({
         slug,
@@ -932,6 +957,7 @@ export function BookingsPanel({
         item.originalClassName === classDraft.originalClassName &&
         item.originalTrainer === classDraft.originalTrainer
       )));
+      setClassEditNotice(isEn ? 'This class override was reset.' : 'Еднократната промяна за този клас е нулирана.');
       setClassDraft(null);
     } catch (err) {
       setClassEditError(err instanceof Error ? err.message : (isEn ? 'Could not reset class.' : 'Класът не беше нулиран.'));
@@ -1420,6 +1446,37 @@ export function BookingsPanel({
                 : 'Промяната важи само за тази дата и час. Седмичният график не се променя.'}
             </div>
 
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                borderRadius: 12,
+                background: '#ECFDF5',
+                border: '1px solid #BBF7D0',
+                padding: '10px 12px',
+                color: '#064E3B',
+                fontSize: 13,
+                fontWeight: 750,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={classDraft.updateExistingBookings}
+                onChange={(event) => setClassDraft((draft) => draft ? { ...draft, updateExistingBookings: event.target.checked } : draft)}
+                style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0 }}
+              />
+              <span>
+                {isEn ? 'Update existing bookings in this class' : 'Обнови и записаните клиенти в този клас'}
+                <span style={{ display: 'block', marginTop: 3, color: '#047857', fontSize: 12, fontWeight: 600 }}>
+                  {isEn
+                    ? 'When enabled, client booking rows move to the new date/time/trainer so reports stay correct.'
+                    : 'Когато е включено, резервациите се местят към новата дата, час и треньор, за да са точни справките.'}
+                </span>
+              </span>
+            </label>
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
                 {isEn ? 'Class name' : 'Име на клас'}
@@ -1753,6 +1810,24 @@ export function BookingsPanel({
           }}
         />
       </div>
+
+      {classEditNotice ? (
+        <div
+          style={{
+            marginBottom: 14,
+            borderRadius: 14,
+            background: '#ECFDF5',
+            border: '1px solid #BBF7D0',
+            color: '#065F46',
+            padding: '10px 12px',
+            fontSize: 13,
+            fontWeight: 750,
+            lineHeight: 1.45,
+          }}
+        >
+          {classEditNotice}
+        </div>
+      ) : null}
 
       {selectedCalendarDate && displayedTimelineRows.length === 0 && dailyScheduleSlots.length > 0 ? (
         <div style={{ marginBottom: 14, display: 'grid', gap: 6 }}>

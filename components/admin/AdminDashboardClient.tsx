@@ -2762,6 +2762,7 @@ export default function AdminDashboardClient({
                   updateBooking={updateBooking}
                   deleteBooking={deleteBooking}
                   createAdminBooking={createAdminBooking}
+                  onBookingsChanged={() => void loadBookings()}
                   inp={inp}
                   btn={btn}
                   T={T}
