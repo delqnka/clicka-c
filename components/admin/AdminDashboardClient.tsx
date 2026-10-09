@@ -2737,6 +2737,7 @@ export default function AdminDashboardClient({
                 }
               >
                 <BookingsPanel
+                  slug={slug}
                   isMobile={isMobile}
                   bookings={bookings}
                   statusFilter={statusFilter}

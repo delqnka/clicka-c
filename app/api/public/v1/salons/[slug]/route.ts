@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { listClassScheduleOverrides } from '@/lib/class-schedule-overrides';
 
 const PUBLIC_CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -56,5 +57,17 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ salon: rows[0] }, { headers: PUBLIC_CORS });
+  const salon = rows[0] as Record<string, unknown>;
+  const openingHours = salon.opening_hours && typeof salon.opening_hours === 'object'
+    ? { ...(salon.opening_hours as Record<string, unknown>) }
+    : {};
+  const today = new Date();
+  const from = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const horizon = new Date(today);
+  const advanceDays = Number(openingHours.booking_advance_days);
+  horizon.setDate(today.getDate() + (Number.isFinite(advanceDays) && advanceDays >= 1 ? Math.round(advanceDays) : 60));
+  const to = `${horizon.getFullYear()}-${String(horizon.getMonth() + 1).padStart(2, '0')}-${String(horizon.getDate()).padStart(2, '0')}`;
+  openingHours.class_schedule_overrides = await listClassScheduleOverrides(String(salon.id ?? ''), from, to).catch(() => []);
+
+  return NextResponse.json({ salon: { ...salon, opening_hours: openingHours } }, { headers: PUBLIC_CORS });
 }

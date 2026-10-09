@@ -20,7 +20,8 @@ import type { SalonOfferRow } from '@/lib/salon-offers';
 import { requireAdminRequestAccess, resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 import { normalizeServices } from '@/lib/salon-services';
 import { isDateBlockedAllDay, isBlockedForStartTime, normalizeBookingBlocks } from '@/lib/booking-blocks';
-import { findClassSlotForBooking, getClassSlotsForDate, normalizeClassSchedule, normalizeTrainerName } from '@/lib/class-schedule';
+import { findClassSlotForBooking, getClassSlotsForDate, getClassSlotsForDateWithOverrides, normalizeClassSchedule, normalizeTrainerName } from '@/lib/class-schedule';
+import { listClassScheduleOverrides } from '@/lib/class-schedule-overrides';
 import { runAfterResponse } from '@/lib/run-after-response';
 import { sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resend';
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
@@ -465,14 +466,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const classSlotsForDay = getClassSlotsForDate(classSchedule, date);
+  const classOverrides = await listClassScheduleOverrides(salonId, date, date).catch(() => []);
+  const effectiveClassSchedule = classOverrides.length > 0
+    ? { [String(new Date(`${date}T12:00:00`).getDay())]: getClassSlotsForDateWithOverrides(classSchedule, date, classOverrides) }
+    : classSchedule;
+  const classSlotsForDay = getClassSlotsForDate(effectiveClassSchedule, date);
   let classSlotCapacity: number | null = null;
   const salonServicesRaw = await sql`SELECT services FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
   const salonServices = normalizeServices((salonServicesRaw[0] as Record<string, unknown> | undefined)?.services ?? []);
   if (classSlotsForDay.length > 0) {
     const staffMember = staffMemberId ? await getStaffMemberById(staffMemberId).catch(() => null) : null;
     const requestedTrainerName = staffMember?.name ?? staffMemberName;
-    const classSlot = findClassSlotForBooking(classSchedule, date, time, requestedTrainerName);
+    const classSlot = findClassSlotForBooking(effectiveClassSchedule, date, time, requestedTrainerName);
     if (!classSlot || !requestedTrainerName) {
       return NextResponse.json(
         { error: 'Избраният час не е част от активния график. Моля изберете час от графика.' },
@@ -500,6 +505,7 @@ export async function POST(request: NextRequest) {
       priceValue = Number.isFinite(Number(classSlotService.price)) ? Number(classSlotService.price) : priceValue;
     } else if (classSlot.className?.trim()) {
       resolvedServiceName = classSlot.className.trim();
+      if (classSlot.price != null) priceValue = classSlot.price;
     } else if (isAdminCreate) {
       const likelyClassService = salonServices.find((service) => {
         const capacity = Math.max(1, Number(service.capacity ?? 1) || 1);
@@ -510,6 +516,7 @@ export async function POST(request: NextRequest) {
         priceValue = Number.isFinite(Number(likelyClassService.price)) ? Number(likelyClassService.price) : priceValue;
       }
     }
+    if (classSlot.price != null) priceValue = classSlot.price;
   }
   if (isBlockedForStartTime(bookingBlocks, date, time, durationValue ?? 30)) {
     return NextResponse.json(

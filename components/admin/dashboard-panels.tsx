@@ -4,7 +4,7 @@ import React from 'react';
 import type { CSSProperties } from 'react';
 import type { BookingRecord, ServiceItem, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
-import type { BookingClassSchedule, BookingClassSlot } from '@/lib/class-schedule';
+import { getClassSlotsForDateWithOverrides, normalizeClassScheduleOverrides, normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot, type ClassScheduleOverride } from '@/lib/class-schedule';
 import type { StaffMember } from '@/lib/staff-members';
 import { formatSalonPrice } from '@/lib/salon-currency';
 import type { Locale } from '@/lib/i18n';
@@ -61,6 +61,7 @@ type ExternalCalendarEventRow = {
 };
 
 type BookingsPanelProps = {
+  slug: string;
   isMobile: boolean;
   bookings: BookingRecord[];
   statusFilter: BookingListFilter;
@@ -187,6 +188,14 @@ function getClassSlotsForDate(classSchedule: BookingClassSchedule, date: string)
   return (classSchedule?.[dayKey] ?? []).slice().sort((a, b) => a.start.localeCompare(b.start));
 }
 
+function getClassSlotsForDateEffective(
+  classSchedule: BookingClassSchedule,
+  date: string,
+  overrides: ClassScheduleOverride[],
+): BookingClassSlot[] {
+  return getClassSlotsForDateWithOverrides(classSchedule, date, overrides);
+}
+
 function getBookingStaffName(booking: BookingRecord): string {
   return String((booking as BookingRecord & { staff_name?: string | null }).staff_name ?? '').trim();
 }
@@ -217,12 +226,19 @@ type TimelineRow = {
   beds: number;
   status?: 'free' | 'booked' | 'blocked';
   blocks?: ExternalCalendarEventRow[];
+  originalDate?: string;
+  originalTime?: string;
+  originalClassName?: string;
+  originalTrainer?: string;
+  price?: number;
+  note?: string;
 };
 
 function buildDailyTimelineRows({
   date,
   bookingBlocks,
   classSchedule,
+  classOverrides,
   externalEvents,
   bookings,
   slotIntervalMin,
@@ -231,6 +247,7 @@ function buildDailyTimelineRows({
   date: string;
   bookingBlocks: BookingBlock[];
   classSchedule: BookingClassSchedule;
+  classOverrides: ClassScheduleOverride[];
   externalEvents: ExternalCalendarEventRow[];
   bookings: BookingRecord[];
   slotIntervalMin: number;
@@ -243,7 +260,7 @@ function buildDailyTimelineRows({
     const status = String(booking.status ?? '').trim().toLowerCase();
     return normalizeDateKey(booking.date) === date && status === 'cancelled';
   });
-  const classSlots = getClassSlotsForDate(classSchedule, date);
+  const classSlots = getClassSlotsForDateEffective(classSchedule, date, classOverrides);
 
   const rows: TimelineRow[] = [];
   for (const classSlot of classSlots) {
@@ -274,6 +291,13 @@ function buildDailyTimelineRows({
           return blockStart != null && blockEnd != null && overlaps(start, end, blockStart, blockEnd);
         });
 
+    const matchedOverride = classOverrides.find((override) => (
+      override.date === date &&
+      override.start === classSlot.start &&
+      normalizeTrainerName(override.trainer) === normalizeTrainerName(classSlot.trainer) &&
+      normalizeTrainerName(override.className ?? '') === normalizeTrainerName(classSlot.className ?? '')
+    ));
+
     rows.push({
       date,
       time: classSlot.start,
@@ -281,11 +305,17 @@ function buildDailyTimelineRows({
       className: classSlot.className,
       trainer: classSlot.trainer,
       capacity: classSlot.capacity,
+      price: classSlot.price,
+      note: classSlot.note,
       rows: slotBookings,
       cancelledRows,
       beds: slotBookings.reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
       status: slotBookings.length > 0 ? 'booked' : blocks.length > 0 ? 'blocked' : 'free',
       blocks,
+      originalDate: matchedOverride?.originalDate ?? date,
+      originalTime: matchedOverride?.originalTime ?? classSlot.start,
+      originalClassName: matchedOverride?.originalClassName ?? (classSlot.className ?? ''),
+      originalTrainer: matchedOverride?.originalTrainer ?? classSlot.trainer,
     });
   }
   return rows;
@@ -587,6 +617,7 @@ function BookingCard({
 }
 
 export function BookingsPanel({
+  slug,
   isMobile,
   bookings,
   statusFilter,
@@ -635,6 +666,24 @@ export function BookingsPanel({
   const [editDraft, setEditDraft] = React.useState<AdminBookingUpdate | null>(null);
   const [editError, setEditError] = React.useState('');
   const [editSaving, setEditSaving] = React.useState(false);
+  const [classOverrides, setClassOverrides] = React.useState<ClassScheduleOverride[]>([]);
+  const [classDraft, setClassDraft] = React.useState<{
+    originalDate: string;
+    originalTime: string;
+    originalClassName: string;
+    originalTrainer: string;
+    date: string;
+    start: string;
+    end: string;
+    duration: number;
+    className: string;
+    trainer: string;
+    capacity: number;
+    price: string;
+    note: string;
+  } | null>(null);
+  const [classEditError, setClassEditError] = React.useState('');
+  const [classEditSaving, setClassEditSaving] = React.useState(false);
   const staffOptions = React.useMemo(
     () => staffMembers.filter((member) => !member.isOwner),
     [staffMembers],
@@ -710,13 +759,14 @@ export function BookingsPanel({
             date: selectedCalendarDate,
             bookingBlocks,
             classSchedule,
+            classOverrides,
             externalEvents: externalCalendarEvents,
             bookings,
             slotIntervalMin,
             locale,
           })
         : [],
-    [selectedCalendarDate, bookingBlocks, classSchedule, externalCalendarEvents, bookings, slotIntervalMin, locale],
+    [selectedCalendarDate, bookingBlocks, classSchedule, classOverrides, externalCalendarEvents, bookings, slotIntervalMin, locale],
   );
   const displayedTimelineRows = selectedCalendarDate ? dailyTimelineRows : timelineRows;
   const useTimelineView = Boolean(selectedCalendarDate) && (statusFilter === 'upcoming' || statusFilter === 'pending' || statusFilter === 'all');
@@ -738,9 +788,9 @@ export function BookingsPanel({
   const selectedDaySlots = React.useMemo(
     () =>
       selectedCalendarDate
-        ? getClassSlotsForDate(classSchedule, selectedCalendarDate).length
+        ? getClassSlotsForDateEffective(classSchedule, selectedCalendarDate, classOverrides).length
         : new Set(selectedDayActiveBookings.map((booking) => String(booking.time ?? '').slice(0, 5)).filter(Boolean)).size,
-    [classSchedule, selectedCalendarDate, selectedDayActiveBookings],
+    [classSchedule, classOverrides, selectedCalendarDate, selectedDayActiveBookings],
   );
   const selectedDayCapacity = selectedCalendarDate
     ? dailyTimelineRows.reduce((sum, slot) => sum + Math.max(1, Number(slot.capacity) || 1), 0)
@@ -771,6 +821,124 @@ export function BookingsPanel({
     () => addClientSearch.trim() && !addDraft?.clientKey ? filteredAddClientOptions.slice(0, 6) : [],
     [addClientSearch, addDraft?.clientKey, filteredAddClientOptions],
   );
+
+  React.useEffect(() => {
+    const from = ymdKey(calendarMeta.year, calendarMeta.month, 1);
+    const to = ymdKey(calendarMeta.year, calendarMeta.month, calendarMeta.daysInMonth);
+    let cancelled = false;
+    fetch(`/api/admin/class-overrides?slug=${encodeURIComponent(slug)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+      cache: 'no-store',
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { overrides?: unknown } | null) => {
+        if (cancelled) return;
+        setClassOverrides(normalizeClassScheduleOverrides(data?.overrides));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [calendarMeta.daysInMonth, calendarMeta.month, calendarMeta.year, slug]);
+
+  function openEditClass(slot: TimelineRow) {
+    const start = slot.time;
+    const end = slot.endTime ?? slot.time;
+    const startMin = timeToMinutes(start);
+    const endMin = timeToMinutes(end);
+    setClassEditError('');
+    setClassDraft({
+      originalDate: slot.originalDate ?? slot.date ?? selectedCalendarDate ?? '',
+      originalTime: slot.originalTime ?? slot.time,
+      originalClassName: slot.originalClassName ?? (slot.className ?? ''),
+      originalTrainer: slot.originalTrainer ?? (slot.trainer ?? ''),
+      date: slot.date ?? selectedCalendarDate ?? '',
+      start,
+      end,
+      duration: startMin != null && endMin != null && endMin > startMin ? endMin - startMin : 50,
+      className: slot.className ?? '',
+      trainer: slot.trainer ?? '',
+      capacity: Math.max(1, Number(slot.capacity ?? 1) || 1),
+      price: slot.price == null ? '' : String(slot.price),
+      note: slot.note ?? '',
+    });
+  }
+
+  async function submitClassOverride() {
+    if (!classDraft) return;
+    const payload = {
+      originalDate: classDraft.originalDate,
+      originalTime: classDraft.originalTime,
+      originalClassName: classDraft.originalClassName,
+      originalTrainer: classDraft.originalTrainer,
+      date: classDraft.date,
+      start: classDraft.start,
+      end: classDraft.end,
+      className: classDraft.className.trim(),
+      trainer: classDraft.trainer.trim(),
+      capacity: Math.max(1, Math.round(Number(classDraft.capacity) || 1)),
+      price: classDraft.price.trim() ? Number(classDraft.price) : undefined,
+      note: classDraft.note.trim() || undefined,
+    };
+    if (!payload.date || !payload.start || !payload.end || !payload.trainer) {
+      setClassEditError(isEn ? 'Date, time and trainer are required.' : 'Дата, час и треньор са задължителни.');
+      return;
+    }
+    setClassEditSaving(true);
+    setClassEditError('');
+    try {
+      const res = await fetch(`/api/admin/class-overrides?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({})) as { override?: unknown; error?: string };
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Could not save class.' : 'Класът не беше запазен.'));
+      const [override] = normalizeClassScheduleOverrides([data.override]);
+      if (override) {
+        setClassOverrides((prev) => [
+          ...prev.filter((item) => !(
+            item.originalDate === override.originalDate &&
+            item.originalTime === override.originalTime &&
+            item.originalClassName === override.originalClassName &&
+            item.originalTrainer === override.originalTrainer
+          )),
+          override,
+        ]);
+      }
+      setClassDraft(null);
+    } catch (err) {
+      setClassEditError(err instanceof Error ? err.message : (isEn ? 'Could not save class.' : 'Класът не беше запазен.'));
+    } finally {
+      setClassEditSaving(false);
+    }
+  }
+
+  async function resetClassOverride() {
+    if (!classDraft) return;
+    setClassEditSaving(true);
+    setClassEditError('');
+    try {
+      const params = new URLSearchParams({
+        slug,
+        originalDate: classDraft.originalDate,
+        originalTime: classDraft.originalTime,
+        originalClassName: classDraft.originalClassName,
+        originalTrainer: classDraft.originalTrainer,
+      });
+      const res = await fetch(`/api/admin/class-overrides?${params.toString()}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Could not reset class.' : 'Класът не беше нулиран.'));
+      setClassOverrides((prev) => prev.filter((item) => !(
+        item.originalDate === classDraft.originalDate &&
+        item.originalTime === classDraft.originalTime &&
+        item.originalClassName === classDraft.originalClassName &&
+        item.originalTrainer === classDraft.originalTrainer
+      )));
+      setClassDraft(null);
+    } catch (err) {
+      setClassEditError(err instanceof Error ? err.message : (isEn ? 'Could not reset class.' : 'Класът не беше нулиран.'));
+    } finally {
+      setClassEditSaving(false);
+    }
+  }
 
   function openAddClient(slot: TimelineRow, explicitDate?: string | null) {
     const draftDate = explicitDate ?? slot.date ?? selectedCalendarDate ?? '';
@@ -1222,6 +1390,130 @@ export function BookingsPanel({
         </div>
       ) : null}
 
+      {classDraft ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: 'fixed', inset: 0, zIndex: 96, background: 'rgba(15,23,42,0.42)', display: 'grid', placeItems: 'center', padding: 18 }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !classEditSaving) setClassDraft(null);
+          }}
+        >
+          <div style={{ width: 'min(720px, 100%)', maxHeight: 'calc(100dvh - 36px)', overflowY: 'auto', borderRadius: 18, background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.24)', padding: isMobile ? 18 : 22, display: 'grid', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {isEn ? 'Specific class only' : 'Само конкретният клас'}
+                </p>
+                <h3 style={{ margin: '5px 0 0', fontSize: 20, lineHeight: 1.2, color: T.text }}>
+                  {isEn ? 'Edit class occurrence' : 'Редактирай клас'}
+                </h3>
+              </div>
+              <button type="button" onClick={() => !classEditSaving && setClassDraft(null)} style={{ ...btn('ghost'), padding: '6px 10px' }}>
+                ×
+              </button>
+            </div>
+
+            <div style={{ borderRadius: 12, background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '10px 12px', color: '#475569', fontSize: 13, fontWeight: 650 }}>
+              {isEn
+                ? 'This changes only this date and time. The weekly class schedule stays unchanged.'
+                : 'Промяната важи само за тази дата и час. Седмичният график не се променя.'}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Class name' : 'Име на клас'}
+                <input value={classDraft.className} onChange={(event) => setClassDraft((draft) => draft ? { ...draft, className: event.target.value } : draft)} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Trainer' : 'Треньор'}
+                <select
+                  value={classDraft.trainer}
+                  onChange={(event) => setClassDraft((draft) => draft ? { ...draft, trainer: event.target.value } : draft)}
+                  style={inp}
+                >
+                  <option value="">{isEn ? 'Choose trainer' : 'Избери треньор'}</option>
+                  {classDraft.trainer && !staffOptions.some((member) => member.name === classDraft.trainer) ? (
+                    <option value={classDraft.trainer}>{classDraft.trainer}</option>
+                  ) : null}
+                  {staffOptions.map((member) => (
+                    <option key={member.id} value={member.name}>{member.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Date' : 'Дата'}
+                <input type="date" value={classDraft.date} onChange={(event) => setClassDraft((draft) => draft ? { ...draft, date: event.target.value } : draft)} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Start time' : 'Начален час'}
+                <input type="time" value={classDraft.start} onChange={(event) => {
+                  const start = event.target.value;
+                  const startMin = timeToMinutes(start);
+                  setClassDraft((draft) => draft ? {
+                    ...draft,
+                    start,
+                    end: startMin == null ? draft.end : minutesToTime(startMin + Math.max(5, Number(draft.duration) || 50)),
+                  } : draft);
+                }} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'End time' : 'Краен час'}
+                <input type="time" value={classDraft.end} onChange={(event) => {
+                  const end = event.target.value;
+                  const startMin = timeToMinutes(classDraft.start);
+                  const endMin = timeToMinutes(end);
+                  setClassDraft((draft) => draft ? {
+                    ...draft,
+                    end,
+                    duration: startMin != null && endMin != null && endMin > startMin ? endMin - startMin : draft.duration,
+                  } : draft);
+                }} style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Duration in minutes' : 'Продължителност в минути'}
+                <input value={classDraft.duration} onChange={(event) => {
+                  const duration = Math.max(5, Math.round(Number(event.target.value) || 50));
+                  const startMin = timeToMinutes(classDraft.start);
+                  setClassDraft((draft) => draft ? {
+                    ...draft,
+                    duration,
+                    end: startMin == null ? draft.end : minutesToTime(startMin + duration),
+                  } : draft);
+                }} inputMode="numeric" style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Capacity / beds' : 'Капацитет / легла'}
+                <input value={classDraft.capacity} onChange={(event) => setClassDraft((draft) => draft ? { ...draft, capacity: Math.max(1, Math.round(Number(event.target.value) || 1)) } : draft)} inputMode="numeric" style={inp} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+                {isEn ? 'Price optional' : 'Цена по желание'}
+                <input value={classDraft.price} onChange={(event) => setClassDraft((draft) => draft ? { ...draft, price: event.target.value } : draft)} inputMode="decimal" style={inp} />
+              </label>
+            </div>
+
+            <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
+              {isEn ? 'Note optional' : 'Бележка по желание'}
+              <textarea value={classDraft.note} onChange={(event) => setClassDraft((draft) => draft ? { ...draft, note: event.target.value } : draft)} style={{ ...inp, minHeight: 88, resize: 'vertical' }} />
+            </label>
+            {classEditError ? <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 700 }}>{classEditError}</p> : null}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => void resetClassOverride()} style={{ ...btn('ghost'), color: '#B91C1C' }} disabled={classEditSaving}>
+                {isEn ? 'Reset this occurrence' : 'Нулирай този клас'}
+              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => !classEditSaving && setClassDraft(null)} style={btn('ghost')} disabled={classEditSaving}>
+                  {isEn ? 'Cancel' : 'Отказ'}
+                </button>
+                <button type="button" onClick={() => void submitClassOverride()} style={btn('primary')} disabled={classEditSaving}>
+                  {classEditSaving ? (isEn ? 'Saving...' : 'Запис...') : (isEn ? 'Save one-off change' : 'Запази еднократна промяна')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {isMobile && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           {([
@@ -1353,7 +1645,7 @@ export function BookingsPanel({
             const key = ymdKey(calendarMeta.year, calendarMeta.month, day);
             const count = bookingsCountByDate.get(key) ?? 0;
             const externalCount = externalCalendarByDate.get(key) ?? 0;
-            const classCount = getClassSlotsForDate(classSchedule, key).length;
+            const classCount = getClassSlotsForDateEffective(classSchedule, key, classOverrides).length;
             const active = selectedCalendarDate === key;
             const hasClicka = count > 0;
             const hasExternal = externalCount > 0;
@@ -1672,8 +1964,35 @@ export function BookingsPanel({
                             {isEn ? 'Add client' : 'Добави клиент'}
                           </button>
                         ) : null}
+                        {slot.originalDate && slot.originalTime ? (
+                          <button
+                            type="button"
+                            onClick={() => openEditClass(slot)}
+                            style={{
+                              borderRadius: 999,
+                              border: `1px solid ${T.border}`,
+                              background: '#fff',
+                              color: '#111827',
+                              padding: '5px 10px',
+                              fontSize: 12,
+                              fontWeight: 850,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {isEn ? 'Edit class' : 'Редактирай клас'}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
+
+                    {slot.note || slot.price != null ? (
+                      <p style={{ margin: 0, color: '#64748B', fontSize: 12, fontWeight: 650, lineHeight: 1.45 }}>
+                        {slot.price != null ? `${isEn ? 'Price' : 'Цена'}: ${formatSalonPrice(slot.price)}` : ''}
+                        {slot.price != null && slot.note ? ' · ' : ''}
+                        {slot.note ?? ''}
+                      </p>
+                    ) : null}
 
                     {isFree || isBlocked ? (
                       <div

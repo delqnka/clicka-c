@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isDateBlockedAllDay, isBlockedForStartTime } from '@/lib/booking-blocks';
-import { findClassSlotForBooking, getClassSlotsForDate, normalizeTrainerName } from '@/lib/class-schedule';
+import { findClassSlotForBooking, getClassSlotsForDateWithOverrides, normalizeTrainerName } from '@/lib/class-schedule';
 import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-events';
 import { useT } from '@/lib/i18n-react';
 import type {
@@ -66,6 +66,7 @@ export function useBookingFlow({
   openingHours,
   bookingBlocks,
   classSchedule,
+  classScheduleOverrides,
   slotIntervalMin,
   bookingAdvanceDays,
   bookingServices,
@@ -224,13 +225,22 @@ export function useBookingFlow({
           selectedStaffMember?.name ?? null,
         )
       : null;
+    const overrideClassSlot = selectedDate && selectedTime
+      ? findClassSlotForBooking(
+          { [String(new Date(`${selectedDate}T12:00:00`).getDay())]: getClassSlotsForDateWithOverrides(classSchedule ?? {}, selectedDate, classScheduleOverrides ?? []) },
+          selectedDate,
+          selectedTime,
+          selectedStaffMember?.name ?? null,
+        )
+      : null;
+    if (overrideClassSlot) return overrideClassSlot.capacity;
     if (classSlot) return classSlot.capacity;
     if (selectedServices.length === 0) return 1;
     return Math.max(
       1,
       Math.min(...selectedServices.map((s) => Math.max(1, Math.round(Number(s.capacity ?? 1) || 1)))),
     );
-  }, [classSchedule, selectedDate, selectedServices, selectedStaffMember, selectedTime]);
+  }, [classSchedule, classScheduleOverrides, selectedDate, selectedServices, selectedStaffMember, selectedTime]);
 
   const usedQuantityForSlot = useCallback((
     date: string,
@@ -310,7 +320,7 @@ export function useBookingFlow({
         : date;
       const occupied = occupiedByDate[cacheKey] ?? [];
       const selectedStaffName = selectedStaffMember?.name ?? null;
-      const classSlots = getClassSlotsForDate(classSchedule ?? {}, date);
+      const classSlots = getClassSlotsForDateWithOverrides(classSchedule ?? {}, date, classScheduleOverrides ?? []);
       const selectedServiceIds = selectedServices.map((service) => service.id).filter(Boolean);
 
       if (classSlots.length > 0) {
@@ -370,7 +380,7 @@ export function useBookingFlow({
       }
       return slots;
     },
-    [openingHours, bookingBlocks, classSchedule, occupiedByDate, selectedCapacity, selectedServices, selectedStaffMember, selectedStaffMemberId, slotIntervalMin],
+    [openingHours, bookingBlocks, classSchedule, classScheduleOverrides, occupiedByDate, selectedCapacity, selectedServices, selectedStaffMember, selectedStaffMemberId, slotIntervalMin],
   );
 
   const timeSlots = useMemo<string[] | 'closed' | null>(

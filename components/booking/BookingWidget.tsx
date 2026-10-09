@@ -14,7 +14,7 @@ import {
 } from '@/lib/salon-service-categories';
 import { mergeOpeningHours } from '@/lib/salon-opening-hours';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
-import { normalizeClassSchedule } from '@/lib/class-schedule';
+import { normalizeClassSchedule, normalizeClassScheduleOverrides } from '@/lib/class-schedule';
 import type { BookingCatalogService } from '@/lib/booking-modal-catalog';
 import { useBookingFlow } from './useBookingFlow';
 import type { BookingServiceItem, BookingWidgetHandle, BookingWidgetProps } from './types';
@@ -36,6 +36,7 @@ type InnerProps = {
   openingHours: ReturnType<typeof mergeOpeningHours>;
   bookingBlocks: ReturnType<typeof normalizeBookingBlocks>;
   classSchedule: ReturnType<typeof normalizeClassSchedule>;
+  classScheduleOverrides: ReturnType<typeof normalizeClassScheduleOverrides>;
   classScheduleStartDate?: string;
   staffProfileBasePath?: string;
   slotIntervalMin: number;
@@ -65,6 +66,7 @@ function BookingWidgetInner({
   openingHours,
   bookingBlocks,
   classSchedule,
+  classScheduleOverrides,
   classScheduleStartDate,
   staffProfileBasePath,
   slotIntervalMin,
@@ -89,6 +91,7 @@ function BookingWidgetInner({
     openingHours,
     bookingBlocks,
     classSchedule,
+    classScheduleOverrides,
     slotIntervalMin,
     bookingAdvanceDays,
     bookingServices,
@@ -118,6 +121,7 @@ function BookingWidgetInner({
       serviceCatalog={serviceCatalog}
       categoryTabs={categoryTabs}
       classSchedule={classSchedule}
+      classScheduleOverrides={classScheduleOverrides}
       classScheduleStartDate={classScheduleStartDate}
       staffProfileBasePath={staffProfileBasePath}
       services={bookingServices}
@@ -173,7 +177,7 @@ function BookingWidgetInner({
 // ── Public component ───────────────────────────────────────────────────────────
 
 export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>(
-  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, classSchedule: classScheduleProp, classScheduleStartDate, staffProfileBasePath, basePath = '', engineUrl = '', apiKey, accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
+  function BookingWidget({ slug, salon, openingHours: openingHoursProp, bookingBlocks: blocksProp, classSchedule: classScheduleProp, classScheduleOverrides: classScheduleOverridesProp, classScheduleStartDate, staffProfileBasePath, basePath = '', engineUrl = '', apiKey, accentGradient, successUrl, cancelUrl, locale: localeProp, formatPrice, onEvent }, ref) {
 
     // ── Opening hours ──────────────────────────────────────────────────
     const openingHours = useMemo(
@@ -198,6 +202,11 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
     const fallbackClassSchedule = normalizeClassSchedule(classScheduleProp);
     const resolvedClassSchedule =
       Object.keys(salonClassSchedule).length > 0 ? salonClassSchedule : fallbackClassSchedule;
+    const resolvedClassScheduleOverrides = normalizeClassScheduleOverrides(
+      salon.opening_hours && typeof salon.opening_hours === 'object'
+        ? (salon.opening_hours as Record<string, unknown>).class_schedule_overrides
+        : classScheduleOverridesProp,
+    );
 
     // ── Slot config from salon settings ───────────────────────────────
     const slotIntervalMin = useMemo((): number => {
@@ -272,6 +281,7 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
           openingHours={resolvedHours}
           bookingBlocks={resolvedBlocks}
           classSchedule={resolvedClassSchedule}
+          classScheduleOverrides={resolvedClassScheduleOverrides}
           classScheduleStartDate={classScheduleStartDate}
           staffProfileBasePath={staffProfileBasePath}
           slotIntervalMin={slotIntervalMin}

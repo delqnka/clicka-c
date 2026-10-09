@@ -1,9 +1,9 @@
 import type { OpeningDayRecord } from '@/lib/salon-opening-hours';
 import type { BookingBlock } from '@/lib/booking-blocks';
-import type { BookingClassSchedule } from '@/lib/class-schedule';
+import type { BookingClassSchedule, ClassScheduleOverride } from '@/lib/class-schedule';
 import type { CancelPolicyAction } from '@/lib/cancellation-policy';
 
-export type { OpeningDayRecord, BookingBlock, BookingClassSchedule };
+export type { OpeningDayRecord, BookingBlock, BookingClassSchedule, ClassScheduleOverride };
 
 export type OccupiedSlot = { time: string; duration: number; quantity?: number; blocksAll?: boolean };
 
@@ -55,6 +55,7 @@ export type UseBookingFlowOptions = {
   bookingBlocks: BookingBlock[];
   /** Optional fixed class timetable. When populated, only these starts are bookable. */
   classSchedule?: BookingClassSchedule;
+  classScheduleOverrides?: ClassScheduleOverride[];
   /** Minutes between bookable slot starts. Must be one of 15|20|30|45|60. */
   slotIntervalMin: number;
   /** How many calendar days ahead to allow bookings. */
@@ -160,6 +161,8 @@ export type BookingWidgetProps = {
   bookingBlocks?: BookingBlock[];
   /** Fixed class timetable. Derived from salon.opening_hours.class_schedule if omitted. */
   classSchedule?: BookingClassSchedule;
+  /** One-off class occurrence edits for concrete dates. */
+  classScheduleOverrides?: ClassScheduleOverride[];
   /** Optional ISO date (`YYYY-MM-DD`) before which class cards are hidden. */
   classScheduleStartDate?: string;
   /** Public base path for staff profiles. Default: `/book`. */
@@ -201,6 +204,7 @@ export type BookingProviderScheduleProps = {
    * `salon.opening_hours.class_schedule` wins when it has rows.
    */
   classSchedule?: BookingClassSchedule;
+  classScheduleOverrides?: ClassScheduleOverride[];
   /** Optional ISO date (`YYYY-MM-DD`) before which class cards are hidden. */
   classScheduleStartDate?: string;
   /** Public base path for staff profiles. Default: `/book`. */

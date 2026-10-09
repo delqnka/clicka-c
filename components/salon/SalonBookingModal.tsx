@@ -3,7 +3,7 @@
 import { CalendarDays, Check, ChevronDown, Clock, Loader2, Plus, User, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n-react';
-import { normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot } from '@/lib/class-schedule';
+import { getClassSlotsForDateWithOverrides, normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot, type ClassScheduleOverride } from '@/lib/class-schedule';
 import {
   getBookingRowIndex,
   getCatalogDisplayPriceDuration,
@@ -59,6 +59,7 @@ type SalonBookingModalProps = {
   services: BookingServiceOption[];
   categoryTabs: ServiceCategoryTab[];
   classSchedule?: BookingClassSchedule;
+  classScheduleOverrides?: ClassScheduleOverride[];
   classScheduleStartDate?: string;
   staffProfileBasePath?: string;
   selectedServiceIdxs: number[];
@@ -144,12 +145,6 @@ function isoDateAtOffset(baseIso: string, offsetDays: number): string {
   const date = new Date(`${baseIso}T12:00:00`);
   date.setDate(date.getDate() + offsetDays);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function getClassSlotsForIsoDate(schedule: BookingClassSchedule | undefined, iso: string): BookingClassSlot[] {
-  if (!schedule || !iso) return [];
-  const dayKey = String(new Date(`${iso}T12:00:00`).getDay());
-  return schedule[dayKey] ?? [];
 }
 
 function toLocalISODate(date: Date): string {
@@ -261,6 +256,7 @@ export function SalonBookingModal({
   services,
   categoryTabs,
   classSchedule,
+  classScheduleOverrides,
   classScheduleStartDate,
   selectedServiceIdxs,
   lockedService = false,
@@ -437,7 +433,7 @@ export function SalonBookingModal({
     const length = Math.max(1, Math.min(60, Math.floor((end - start) / DAY_MS) + 1));
     for (let index = 0; index < length; index += 1) {
       const iso = isoDateAtOffset(classBaseFirstDate, index);
-      const hasMatchingSlot = getClassSlotsForIsoDate(classSchedule, iso)
+      const hasMatchingSlot = getClassSlotsForDateWithOverrides(classSchedule ?? {}, iso, classScheduleOverrides ?? [])
         .filter((slot) => !isTooSoonClassSlotForToday(iso, slot))
         .some((slot) => {
           if (trainerFilter && normalizeTrainerName(slot.trainer) !== trainerFilter) return false;
@@ -453,6 +449,7 @@ export function SalonBookingModal({
   }, [
     classBaseFirstDate,
     classSchedule,
+    classScheduleOverrides,
     classTrainerFilterName,
     fallbackClassServiceIndex,
     maxDate,
@@ -481,7 +478,7 @@ export function SalonBookingModal({
     onDateChange(displayDate);
   }, [classMode, displayDate, onDateChange, open, selectedDate]);
   const visibleClassSlots = useMemo(() => {
-    const slots = getClassSlotsForIsoDate(classSchedule, displayDate)
+    const slots = getClassSlotsForDateWithOverrides(classSchedule ?? {}, displayDate, classScheduleOverrides ?? [])
       .filter((slot) => !isTooSoonClassSlotForToday(displayDate, slot));
     const trainerFilter = normalizeTrainerName(classTrainerFilterName ?? '');
     return slots.filter((slot) => {
@@ -493,6 +490,7 @@ export function SalonBookingModal({
     });
   }, [
     classSchedule,
+    classScheduleOverrides,
     classTrainerFilterName,
     displayDate,
     fallbackClassServiceIndex,
@@ -724,7 +722,7 @@ export function SalonBookingModal({
                   <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
                     {classDateOptions.map((d) => {
                       const active = displayDate === d.iso;
-                      const classCount = getClassSlotsForIsoDate(classSchedule, d.iso).filter(
+                      const classCount = getClassSlotsForDateWithOverrides(classSchedule ?? {}, d.iso, classScheduleOverrides ?? []).filter(
                         (slot) => !isTooSoonClassSlotForToday(d.iso, slot),
                       ).length;
                       return (
@@ -784,7 +782,7 @@ export function SalonBookingModal({
                       const slotServiceIndex = getClassSlotServiceIndex(services, slot, fallbackClassServiceIndex);
                       const slotService = slotServiceIndex >= 0 ? services[slotServiceIndex] : null;
                       const serviceName = slot.className?.trim() || slotService?.name || classService?.name || 'Клас';
-                      const price = Number(slotService?.price ?? classService?.price ?? 0) || 0;
+                      const price = Number(slot.price ?? slotService?.price ?? classService?.price ?? 0) || 0;
                       const duration = Math.max(5, Number(slotService?.duration ?? classService?.duration ?? 50) || 50);
                       const remainingCapacity = getRemainingCapacityForSlot?.(
                         displayDate,
@@ -852,6 +850,11 @@ export function SalonBookingModal({
                                 · {duration} мин
                               </span>
                             </p>
+                            {slot.note ? (
+                              <p className="text-[13px] font-medium leading-relaxed text-black/50">
+                                {slot.note}
+                              </p>
+                            ) : null}
                           </div>
 
                           <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/10 pt-4">
