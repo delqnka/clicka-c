@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { listClassScheduleOverrides } from '@/lib/class-schedule-overrides';
+import { listClientPackageDefinitions } from '@/lib/client-package-definitions';
 
 const PUBLIC_CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -67,7 +68,24 @@ export async function GET(
   const advanceDays = Number(openingHours.booking_advance_days);
   horizon.setDate(today.getDate() + (Number.isFinite(advanceDays) && advanceDays >= 1 ? Math.round(advanceDays) : 60));
   const to = `${horizon.getFullYear()}-${String(horizon.getMonth() + 1).padStart(2, '0')}-${String(horizon.getDate()).padStart(2, '0')}`;
-  openingHours.class_schedule_overrides = await listClassScheduleOverrides(String(salon.id ?? ''), from, to).catch(() => []);
+  const salonId = String(salon.id ?? '');
+  const packageDefinitions = (await listClientPackageDefinitions(salonId).catch(() => []))
+    .filter((pkg) => pkg.isActive !== false);
+  openingHours.class_schedule_overrides = await listClassScheduleOverrides(salonId, from, to).catch(() => []);
 
-  return NextResponse.json({ salon: { ...salon, opening_hours: openingHours } }, { headers: PUBLIC_CORS });
+  const salonPayload = {
+    ...salon,
+    opening_hours: openingHours,
+    packageDefinitions,
+    package_definitions: packageDefinitions,
+  };
+
+  return NextResponse.json(
+    {
+      salon: salonPayload,
+      packageDefinitions,
+      package_definitions: packageDefinitions,
+    },
+    { headers: PUBLIC_CORS },
+  );
 }
