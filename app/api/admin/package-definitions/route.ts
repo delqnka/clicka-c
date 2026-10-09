@@ -5,6 +5,7 @@ import {
   listClientPackageDefinitions,
   upsertClientPackageDefinition,
 } from '@/lib/client-package-definitions';
+import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 type PackageDefinitionBody = {
   id?: string;
@@ -51,6 +52,10 @@ export async function POST(request: NextRequest) {
     serviceIds: Array.isArray(body.serviceIds) ? body.serviceIds : [],
     isActive: body.isActive !== false,
   });
+  deferRevalidateSalonPublicCache({
+    slug: auth.salon.slug,
+    customDomain: auth.salon.customDomain,
+  });
 
   return NextResponse.json({ package: pkg });
 }
@@ -82,6 +87,10 @@ export async function PATCH(request: NextRequest) {
     serviceIds: Array.isArray(body.serviceIds) ? body.serviceIds : [],
     isActive: body.isActive !== false,
   });
+  deferRevalidateSalonPublicCache({
+    slug: auth.salon.slug,
+    customDomain: auth.salon.customDomain,
+  });
 
   return NextResponse.json({ package: pkg });
 }
@@ -95,5 +104,9 @@ export async function DELETE(request: NextRequest) {
   if (!id) return NextResponse.json({ error: 'Липсва id.' }, { status: 400 });
 
   await deleteClientPackageDefinition({ salonId: auth.salon.salonId, id });
+  deferRevalidateSalonPublicCache({
+    slug: auth.salon.slug,
+    customDomain: auth.salon.customDomain,
+  });
   return NextResponse.json({ ok: true });
 }

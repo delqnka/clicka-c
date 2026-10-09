@@ -4,6 +4,7 @@ import { ensureBlogSchema } from '@/lib/ensure-blog-schema';
 import { isCustomSiteBlogEnabled } from '@/lib/custom-site-features';
 import { ensureOffersSchema } from '@/lib/ensure-offers-schema';
 import { ensureGoogleReviewsSchema } from '@/lib/ensure-google-reviews-schema';
+import { listClientPackageDefinitions } from '@/lib/client-package-definitions';
 import {
   buildStaticMapUrl,
   resolveGooglePlaceId,
@@ -109,7 +110,7 @@ async function fetchPublicSalonPageData({
   // All secondary fetches run in parallel once we have salonId.
   // Ensures that gate their own table are chained directly with their query
   // so the ensure→query pipeline overlaps with other parallel branches.
-  const [offersResult, blogResult, reviewsResult, placeId] = await Promise.all([
+  const [offersResult, blogResult, reviewsResult, packageDefinitionsResult, placeId] = await Promise.all([
     // Offers: ensure table exists, then fetch
     ensureOffersSchema()
       .then(() =>
@@ -147,6 +148,8 @@ async function fetchPublicSalonPageData({
       ORDER BY created_at DESC
     `.catch(() => [] as unknown[]),
 
+    listClientPackageDefinitions(salonId).catch(() => []),
+
     // Place ID: sync string parsing — no network call
     resolveGooglePlaceId({
       explicitPlaceId: typeof salon.google_place_id === 'string' ? salon.google_place_id : '',
@@ -159,6 +162,7 @@ async function fetchPublicSalonPageData({
 
   const offers = Array.isArray(offersResult) ? offersResult : [];
   const reviews = Array.isArray(reviewsResult) ? reviewsResult : [];
+  const packageDefinitions = Array.isArray(packageDefinitionsResult) ? packageDefinitionsResult : [];
   const hasPublishedBlogPosts =
     Array.isArray(blogResult) &&
     blogResult.length > 0 &&
@@ -192,6 +196,7 @@ async function fetchPublicSalonPageData({
     salon,
     offers,
     reviews,
+    packageDefinitions,
     googleReviews,
     staticMapUrl,
     publishedBlogCount: hasPublishedBlogPosts ? 1 : 0,

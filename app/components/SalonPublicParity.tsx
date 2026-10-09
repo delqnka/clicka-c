@@ -58,6 +58,7 @@ import { trackBookingStarted, trackBookingCompleted } from '@/lib/tracking-event
 import { I18nProvider } from '@/lib/i18n-react';
 import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 import type { SiteContent } from '@/lib/site-content';
+import type { ClientPackageDefinition } from '@/lib/client-package-definitions';
 
 const SalonAiBotWidget = dynamic(
   () => import('@/components/salon/salon-ai-bot-widget').then((m) => ({ default: m.SalonAiBotWidget })),
@@ -140,6 +141,7 @@ export type SalonPublicParityProps = {
   bookingBlocks: BookingBlock[];
   publicTeamMembers: Array<{ id: string; name: string; role: string; bio: string; photoUrl: string }>;
   siteContent: SiteContent;
+  packageDefinitions?: ClientPackageDefinition[];
 };
 
 function wireMediaUri(raw: string | null | undefined): string {
@@ -515,6 +517,7 @@ export default function SalonPublicParity({
   bookingBlocks,
   publicTeamMembers,
   siteContent,
+  packageDefinitions = [],
   children,
 }: SalonPublicParityProps & { children?: ReactNode }) {
   const highlightReviewId = (highlightReviewIdProp ?? '').trim() || null;
@@ -537,6 +540,29 @@ export default function SalonPublicParity({
   const name = String(rawSalon.name ?? 'Салон');
   const salonLocale = resolveSalonLocale(typeof rawSalon.language === 'string' ? rawSalon.language : 'bg');
   const bookingLocale = toLocaleTag(salonLocale);
+  const activePackagePricingItems = useMemo(() => {
+    return packageDefinitions
+      .filter((pkg) => pkg.isActive !== false)
+      .map((pkg) => {
+        const details = [
+          `${pkg.totalSessions} ${salonLocale === 'en' ? (pkg.totalSessions === 1 ? 'training' : 'trainings') : (pkg.totalSessions === 1 ? 'тренировка' : 'тренировки')}`,
+          pkg.validityDays > 0
+            ? salonLocale === 'en'
+              ? `valid ${pkg.validityDays} days`
+              : `валидност ${pkg.validityDays} дни`
+            : '',
+        ].filter(Boolean);
+        return {
+          id: pkg.id,
+          name: pkg.name,
+          price: pkg.price == null ? '' : formatDualEurText(String(pkg.price)),
+          text: [pkg.description?.trim(), details.join(' · ')].filter(Boolean).join(' · '),
+        };
+      });
+  }, [packageDefinitions, salonLocale]);
+  const publicPricingItems = activePackagePricingItems.length > 0
+    ? activePackagePricingItems
+    : siteContent.pricing.items;
   const heroTitle = String(salonLocale === 'en' ? rawSalon.hero_title_en ?? rawSalon.hero_title : rawSalon.hero_title ?? '').trim() || name;
   const heroSubtitle = String(salonLocale === 'en' ? rawSalon.hero_subtitle_en ?? rawSalon.hero_subtitle : rawSalon.hero_subtitle ?? '').trim();
   const description = String(salonLocale === 'en' ? rawSalon.about_en ?? rawSalon.about : rawSalon.about ?? '').trim() || siteContent.reformer.body;
@@ -1691,7 +1717,7 @@ export default function SalonPublicParity({
                     <p className="mt-2 max-w-[62ch] text-[0.95rem] leading-relaxed text-[#4a4a4a]">{siteContent.pricing.intro}</p>
                   ) : null}
                   <div className="mt-3 grid gap-3 md:grid-cols-3">
-                    {siteContent.pricing.items.map((item) => (
+                    {publicPricingItems.map((item) => (
                       <article key={item.id} className="rounded-[1.35rem] border border-black/8 bg-white p-5 shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
                         <div className="flex items-start justify-between gap-3">
                           <p className="text-sm font-semibold text-[#1a1a1a]">{item.name}</p>

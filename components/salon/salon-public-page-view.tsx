@@ -158,6 +158,7 @@ export async function SalonPublicPageView({ pageData, highlightReviewId, tabPara
         bookingBlocks={bookingBlocks}
         publicTeamMembers={publicTeamMembers}
         siteContent={siteContent}
+        packageDefinitions={pageData.packageDefinitions}
       >
         {lcp ? <SalonHeroLcp src={lcp.src} alt={lcp.alt} /> : null}
       </SalonPublicParity>
