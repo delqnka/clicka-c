@@ -826,6 +826,32 @@ export function BookingsPanel({
     () => addClientSearch.trim() && !addDraft?.clientKey ? filteredAddClientOptions.slice(0, 6) : [],
     [addClientSearch, addDraft?.clientKey, filteredAddClientOptions],
   );
+  const mobileDialogBottomGap = 'calc(88px + env(safe-area-inset-bottom, 0px))';
+  const dialogOverlayStyle = (zIndex: number, background: string): CSSProperties => ({
+    position: 'fixed',
+    inset: 0,
+    zIndex,
+    background,
+    display: 'grid',
+    placeItems: isMobile ? 'end center' : 'center',
+    padding: isMobile ? `12px 12px ${mobileDialogBottomGap}` : 18,
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  });
+  const scrollDialogStyle = (): CSSProperties => ({
+    width: 'min(720px, 100%)',
+    maxHeight: isMobile ? 'calc(100dvh - 112px - env(safe-area-inset-bottom, 0px))' : 'calc(100dvh - 36px)',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    overscrollBehavior: 'contain',
+    borderRadius: isMobile ? 18 : 18,
+    background: '#fff',
+    boxShadow: '0 24px 70px rgba(15,23,42,0.24)',
+    padding: isMobile ? 18 : 22,
+    display: 'grid',
+    gap: 14,
+    boxSizing: 'border-box',
+  });
 
   React.useEffect(() => {
     const from = ymdKey(calendarMeta.year, calendarMeta.month, 1);
@@ -1295,7 +1321,7 @@ export function BookingsPanel({
         <div
           role="dialog"
           aria-modal="true"
-          style={{ position: 'fixed', inset: 0, zIndex: 95, background: 'rgba(15,23,42,0.4)', display: 'grid', placeItems: 'center', padding: 18 }}
+          style={dialogOverlayStyle(95, 'rgba(15,23,42,0.4)')}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !editSaving) {
               setEditDraft(null);
@@ -1303,7 +1329,7 @@ export function BookingsPanel({
             }
           }}
         >
-          <div style={{ width: 'min(720px, 100%)', maxHeight: 'calc(100dvh - 36px)', overflowY: 'auto', borderRadius: 18, background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.24)', padding: isMobile ? 18 : 22, display: 'grid', gap: 14 }}>
+          <div style={scrollDialogStyle()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start' }}>
               <div>
                 <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -1420,12 +1446,12 @@ export function BookingsPanel({
         <div
           role="dialog"
           aria-modal="true"
-          style={{ position: 'fixed', inset: 0, zIndex: 96, background: 'rgba(15,23,42,0.42)', display: 'grid', placeItems: 'center', padding: 18 }}
+          style={dialogOverlayStyle(96, 'rgba(15,23,42,0.42)')}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !classEditSaving) setClassDraft(null);
           }}
         >
-          <div style={{ width: 'min(720px, 100%)', maxHeight: 'calc(100dvh - 36px)', overflowY: 'auto', borderRadius: 18, background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.24)', padding: isMobile ? 18 : 22, display: 'grid', gap: 14 }}>
+          <div style={scrollDialogStyle()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start' }}>
               <div>
                 <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
