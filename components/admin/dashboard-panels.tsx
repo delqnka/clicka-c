@@ -1128,30 +1128,12 @@ export function BookingsPanel({
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 90,
-            background: 'rgba(15,23,42,0.36)',
-            display: 'grid',
-            placeItems: 'center',
-            padding: 18,
-          }}
+          style={dialogOverlayStyle(90, 'rgba(15,23,42,0.36)')}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !addSaving) setAddDraft(null);
           }}
         >
-          <div
-            style={{
-              width: 'min(520px, 100%)',
-              borderRadius: 18,
-              background: '#fff',
-              boxShadow: '0 24px 70px rgba(15,23,42,0.24)',
-              padding: isMobile ? 18 : 22,
-              display: 'grid',
-              gap: 14,
-            }}
-          >
+          <div style={{ ...scrollDialogStyle(), width: 'min(520px, 100%)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start' }}>
               <div>
                 <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
