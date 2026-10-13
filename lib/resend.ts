@@ -4,10 +4,15 @@ import { formatSalonPrice } from '@/lib/salon-currency';
 import { sleep } from '@/lib/http-retry';
 import { sql } from '@/lib/db';
 import { BRAND } from '@/lib/brand';
+import { getLegalDocumentUrl } from '@/lib/domain-routing';
 import { tryDecryptSecret } from '@/lib/encryption';
 import { resolveSalonLocale, toLocaleTag } from '@/lib/salon-locale';
 import type { Locale } from '@/lib/i18n';
 import { mergeEmailRecipients } from '@/lib/notification-emails';
+import {
+  shouldUseResetBodyCancellationPolicy,
+  shortResetBodyCancellationPolicySummary,
+} from '@/lib/cancellation-policy';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -379,6 +384,39 @@ function renderRow(label: string, value: string) {
   `;
 }
 
+function renderHtmlRow(label: string, htmlValue: string) {
+  return `
+    <tr>
+      <td style="padding: 10px 12px; border: 1px solid #000; font-weight: 700; width: 34%;">${escapeHtml(label)}</td>
+      <td style="padding: 10px 12px; border: 1px solid #000;">${htmlValue}</td>
+    </tr>
+  `;
+}
+
+function bookingCancellationPolicyCopy(booking: Pick<BookingDetails, 'salonName' | 'salonSlug' | 'salonCustomDomain' | 'language'>) {
+  const locale = resolveSalonLocale(booking.language);
+  const isEn = locale === 'en';
+  const isResetBody = shouldUseResetBodyCancellationPolicy({
+    salonName: booking.salonName,
+    salonSlug: booking.salonSlug,
+  });
+  const fallback = isEn
+    ? 'You may cancel up to 12 hours before your booking without penalty. For cancellations less than 12 hours before the booking, one package credit is deducted. If you do not have an active package, 50% of the cancelled appointment price will be charged at your next visit.'
+    : 'Можете да откажете до 12 часа преди резервацията без наказание. При отказ по-малко от 12 часа преди часа се отнема 1 кредит от активния пакет. Ако нямате активен пакет, при следващо посещение се начислява такса 50% от цената на отказания час.';
+
+  const text = isResetBody ? shortResetBodyCancellationPolicySummary(locale) : fallback;
+  const termsUrl = booking.salonSlug
+    ? getLegalDocumentUrl({
+        slug: booking.salonSlug,
+        customDomain: booking.salonCustomDomain,
+        document: 'terms',
+      })
+    : null;
+
+  if (!termsUrl) return escapeHtml(text);
+  return `${escapeHtml(text)} <a href="${escapeHtml(termsUrl)}" style="color: #000; font-weight: 700;">${isEn ? 'Full terms' : 'Пълни условия'}</a>`;
+}
+
 export async function sendClientPackageActivatedEmail(
   clientEmail: string,
   details: ClientPackageActivationDetails,
@@ -632,11 +670,9 @@ export async function sendBookingNotification(
     renderRow(isEn ? 'Date' : 'Дата', formattedDate),
     renderRow(isEn ? 'Time' : 'Час', booking.time),
     booking.notes ? renderRow(isEn ? 'Notes' : 'Бележка', booking.notes) : '',
-    renderRow(
+    renderHtmlRow(
       isEn ? 'Cancellation policy' : 'Политика при отказ',
-      isEn
-        ? 'You may cancel up to 12 hours before your booking without penalty. For cancellations less than 12 hours before the booking, one package credit is deducted. If you do not have an active package, 50% of the cancelled appointment price will be charged at your next visit.'
-        : 'Можете да откажете до 12 часа преди резервацията без наказание. При отказ по-малко от 12 часа преди часа се отнема 1 кредит от активния пакет. Ако нямате активен пакет, при следващо посещение се начислява такса 50% от цената на отказания час.',
+      bookingCancellationPolicyCopy(booking),
     ),
   ].join('');
 
@@ -765,6 +801,7 @@ export async function sendBookingConfirmation(
         ? `${booking.packageUsage.packageName}: ${booking.packageUsage.remainingSessions} remaining, valid until ${formatDateDMY(booking.packageUsage.expiresAt, locale)}`
         : `${booking.packageUsage.packageName}: остават ${booking.packageUsage.remainingSessions}, валидни до ${formatDateDMY(booking.packageUsage.expiresAt, locale)}`,
     ) : '',
+    renderHtmlRow(isEn ? 'Cancellation policy' : 'Политика при отказ', bookingCancellationPolicyCopy(booking)),
   ].join('');
   await sendResendWithRetry({
     from,

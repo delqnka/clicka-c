@@ -644,10 +644,10 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   }}
                 >
                   {action === 'full_refund'
-                    ? (isEn ? 'Full refund' : 'Пълен refund')
+                    ? (isEn ? 'Full refund' : 'Пълно възстановяване')
                     : action === 'keep_deposit'
                     ? (isEn ? 'Keep deposit' : 'Задържи депозит')
-                    : (isEn ? 'No refund' : 'Без refund')}
+                    : (isEn ? 'No refund' : 'Без възстановяване')}
                 </button>
               ))}
               <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>{isEn ? 'after the window' : 'след срока'}</span>

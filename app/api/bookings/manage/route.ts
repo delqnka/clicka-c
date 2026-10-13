@@ -10,8 +10,11 @@ import { getStaffMemberById } from '@/lib/staff-members';
 import { stripe } from '@/lib/stripe';
 import { parseSalonServices } from '@/lib/salon-services';
 import {
+  evaluateResetBodyCancellationPolicy,
   evaluateCancellationPolicy,
   formatPolicySummary,
+  formatResetBodyCancellationPolicySummary,
+  shouldUseResetBodyCancellationPolicy,
   type CancelPolicyAction,
 } from '@/lib/cancellation-policy';
 import { restorePackageCreditForBooking } from '@/lib/client-packages';
@@ -23,6 +26,10 @@ function formatBgDate(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function resolveLanguageCode(language?: string | null): 'bg' | 'en' {
+  return String(language ?? '').trim().toLowerCase().startsWith('en') ? 'en' : 'bg';
 }
 
 type BookingRow = {
@@ -128,6 +135,10 @@ export async function GET(request: NextRequest) {
   const hasCancelPolicy =
     (booking.payment_status === 'paid') &&
     (matchedService?.payment_type === 'deposit' || matchedService?.payment_type === 'full');
+  const useResetBodyPolicy = shouldUseResetBodyCancellationPolicy({
+    salonName,
+    salonSlug: result.salonSlug,
+  });
 
   return NextResponse.json({
     id: booking.id,
@@ -142,11 +153,13 @@ export async function GET(request: NextRequest) {
     canModify: !isCancelledStatus(booking.status) && booking.status !== 'completed',
     cancelPolicy: hasCancelPolicy
       ? {
-          summary: formatPolicySummary({
-            cancelPolicyHours,
-            cancelPolicyAction,
-            depositAmountEuros: matchedService?.deposit_amount,
-          }),
+          summary: useResetBodyPolicy
+            ? formatResetBodyCancellationPolicySummary(resolveLanguageCode(result.language))
+            : formatPolicySummary({
+                cancelPolicyHours,
+                cancelPolicyAction,
+                depositAmountEuros: matchedService?.deposit_amount,
+              }),
           policyHours: cancelPolicyHours,
           policyAction: cancelPolicyAction,
           amountPaidEuros: booking.amount_paid ? booking.amount_paid / 100 : 0,
@@ -186,8 +199,13 @@ export async function PATCH(request: NextRequest) {
     let refundMessage: string | null = null;
     let clientPolicyMessage: string | null = null;
     const bookingDatetime = parseSofiaAppointment(booking.date, booking.time);
-    const hoursUntil = (bookingDatetime.getTime() - Date.now()) / (1000 * 60 * 60);
-    const isFreeCancelByStudioPolicy = hoursUntil >= 12;
+    const useResetBodyPolicy = shouldUseResetBodyCancellationPolicy({ salonName, salonSlug: result.salonSlug });
+    const resetBodyPolicy = useResetBodyPolicy
+      ? evaluateResetBodyCancellationPolicy({
+          bookingDatetime,
+          amountPaidCents: booking.amount_paid ?? 0,
+        })
+      : null;
 
     if (booking.payment_status === 'paid' && booking.amount_paid && booking.stripe_checkout_session_id && stripeAccountId) {
       const services = parseSalonServices(servicesJson);
@@ -199,13 +217,13 @@ export async function PATCH(request: NextRequest) {
       const cancelPolicyAction: CancelPolicyAction =
         (matchedService?.cancel_policy_action as CancelPolicyAction | undefined) ?? 'keep_deposit';
 
-      const policy = evaluateCancellationPolicy({
-        bookingDatetime,
-        amountPaidCents: booking.amount_paid,
-        depositAmountEuros: matchedService?.deposit_amount,
-        cancelPolicyHours,
-        cancelPolicyAction,
-      });
+      const policy = resetBodyPolicy ?? evaluateCancellationPolicy({
+          bookingDatetime,
+          amountPaidCents: booking.amount_paid,
+          depositAmountEuros: matchedService?.deposit_amount,
+          cancelPolicyHours,
+          cancelPolicyAction,
+        });
 
       if (policy.refundCents > 0) {
         try {
@@ -237,7 +255,11 @@ export async function PATCH(request: NextRequest) {
       refundMessage = policy.policyMessage;
     }
 
-    if (isFreeCancelByStudioPolicy) {
+    const shouldRestorePackageCredit = resetBodyPolicy
+      ? resetBodyPolicy.creditShouldBeRestored
+      : ((bookingDatetime.getTime() - Date.now()) / (1000 * 60 * 60)) >= 12;
+
+    if (shouldRestorePackageCredit) {
       const restored = await restorePackageCreditForBooking({
         salonId: booking.salon_id,
         bookingId: booking.id,
@@ -245,14 +267,23 @@ export async function PATCH(request: NextRequest) {
         console.error('[manage] package credit restore failed:', err);
         return null;
       });
-      clientPolicyMessage = restored
-        ? `Отказът е направен повече от 12 часа преди часа. Кредитът е върнат към пакета „${restored.packageName}“. Остават ${restored.remainingSessions} кредита, валидни до ${restored.expiresAt}.`
-        : 'Отказът е направен повече от 12 часа преди часа. Няма наказание.';
+      clientPolicyMessage = resetBodyPolicy
+        ? resetBodyPolicy.creditMessage(restored ? {
+            packageName: restored.packageName,
+            remainingSessions: restored.remainingSessions,
+            expiresAt: restored.expiresAt,
+          } : undefined)
+        : (restored
+            ? `Отказът е направен повече от 12 часа преди часа. Кредитът е върнат към пакета „${restored.packageName}“. Остават ${restored.remainingSessions} кредита, валидни до ${restored.expiresAt}.`
+            : 'Отказът е направен повече от 12 часа преди часа. Няма наказание.');
     } else {
-      clientPolicyMessage = 'Отказът е направен по-малко от 12 часа преди часа. Ако резервацията е била покрита от пакет, 1 кредит остава използван. Ако няма активен пакет, при следващо посещение се начислява такса 50% от цената на отказания час.';
+      clientPolicyMessage = resetBodyPolicy?.creditMessage()
+        ?? 'Отказът е направен по-малко от 12 часа преди часа. Ако резервацията е била покрита от пакет, 1 кредит остава използван. Ако няма активен пакет, при следващо посещение се начислява такса 50% от цената на отказания час.';
       await sql`
         UPDATE bookings
-        SET notes = trim(coalesce(notes, '') || E'\n' || ${'[Политика при отказ] Отказ под 12 часа: ако клиентът няма активен пакет, при следващо посещение се дължи 50% от цената на отказания час.'})
+        SET notes = trim(coalesce(notes, '') || E'\n' || ${resetBodyPolicy
+          ? '[Политика при отказ] Късна отмяна според правилата на Reset Body Lab: ако резервацията е с пакет, един кредит остава използван; при платена резервация сумата не се възстановява.'
+          : '[Политика при отказ] Отказ под 12 часа: ако клиентът няма активен пакет, при следващо посещение се дължи 50% от цената на отказания час.'})
         WHERE id = ${id}
       `;
     }
