@@ -395,7 +395,7 @@ function TeamMembersRow({
             key={m.id}
             type="button"
             onClick={() => setSelected(m)}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'center', flexShrink: 0, width: 80 }}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'center', flexShrink: 0, width: 118 }}
           >
             <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', margin: '0 auto' }}>
               {m.photoUrl ? (
@@ -416,6 +416,22 @@ function TeamMembersRow({
             </div>
             <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 600, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{m.name}</p>
             {m.role ? <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(0,0,0,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{m.role}</p> : null}
+            {m.bio ? (
+              <p
+                style={{
+                  margin: '5px 0 0',
+                  fontSize: 11,
+                  lineHeight: 1.35,
+                  color: 'rgba(0,0,0,0.52)',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {m.bio}
+              </p>
+            ) : null}
           </button>
         ))}
       </div>
