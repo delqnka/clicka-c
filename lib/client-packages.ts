@@ -189,11 +189,15 @@ export async function consumePackageForCompletedBooking(input: {
   clientName: string;
   clientPhone?: string | null;
   clientEmail?: string | null;
+  /** The package selected during checkout. When supplied we must never fall
+   * back to another package with a matching client. */
+  packageId?: string | null;
 }): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
   const email = input.clientEmail?.trim().toLowerCase() || '';
   const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
   const name = input.clientName.trim();
+  const packageId = input.packageId?.trim() || null;
 
   const rows = await sql`
     WITH pkg AS (
@@ -208,12 +212,19 @@ export async function consumePackageForCompletedBooking(input: {
             AND u.booking_id = ${input.bookingId}::uuid
         )
         AND (
-          (${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
-          OR (${phoneDigits} <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
-          OR lower(trim(cp.client_name)) = lower(trim(${name}))
+          (${packageId}::uuid IS NOT NULL AND cp.id = ${packageId}::uuid)
+          OR (
+            ${packageId}::uuid IS NULL
+            AND (
+              (${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
+              OR (${phoneDigits} <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
+              OR lower(trim(cp.client_name)) = lower(trim(${name}))
+            )
+          )
         )
       ORDER BY cp.expires_at ASC, cp.created_at ASC
       LIMIT 1
+      FOR UPDATE SKIP LOCKED
     ),
     upd AS (
       UPDATE client_packages cp

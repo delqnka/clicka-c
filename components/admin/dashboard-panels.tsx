@@ -301,6 +301,7 @@ function OnlinePaymentSummary({
   const isEn = locale === 'en';
   const [summary, setSummary] = React.useState<PaymentSummary | null>(null);
   const [failedToLoad, setFailedToLoad] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
   const refreshKey = React.useMemo(
     () => bookings.map((booking) => `${booking.id}:${booking.payment_status ?? ''}:${booking.amount_paid ?? ''}:${booking.created_at ?? ''}`).join('|'),
     [bookings],
@@ -354,48 +355,64 @@ function OnlinePaymentSummary({
     },
   ] : [];
 
+  const monthlyTotal = summary
+    ? formatSalonPrice(Math.max(0, Number(summary.paidMonthCents) || 0) / 100)
+    : '…';
+
   return (
-    <section
-      aria-label={isEn ? 'Online payment overview' : 'Обзор на онлайн плащанията'}
-      style={{
-        marginBottom: 14,
-        borderRadius: isMobile ? 18 : 16,
-        padding: isMobile ? 14 : 16,
-        background: '#fff',
-        boxShadow: '0 4px 18px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
-        <div>
-          <p style={{ margin: 0, fontSize: 12, color: '#71717A', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {isEn ? 'Payments' : 'Плащания'}
-          </p>
-          <h3 style={{ margin: '3px 0 0', color: '#18181B', fontSize: isMobile ? 18 : 20, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-            {isEn ? 'Online payments' : 'Онлайн плащания'}
-          </h3>
-        </div>
-        <span style={{ color: '#71717A', fontSize: 11, fontWeight: 650, textAlign: 'right' }}>
-          {isEn ? 'Stripe-confirmed only' : 'Само потвърдени от Stripe'}
-        </span>
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          aria-haspopup="dialog"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            border: '1px solid rgba(16,185,129,0.24)', borderRadius: 999,
+            background: '#ECFDF5', color: '#047857', padding: '6px 10px',
+            fontSize: 11.5, fontWeight: 800, cursor: 'pointer',
+          }}
+        >
+          <span aria-hidden="true">▦</span>
+          <span>{isEn ? 'Payments' : 'Плащания'}</span>
+          <span style={{ color: '#065F46', fontVariantNumeric: 'tabular-nums' }}>{monthlyTotal}</span>
+        </button>
       </div>
-      {failedToLoad ? (
-        <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 650 }}>
-          {isEn ? 'Payment statistics could not be loaded.' : 'Статистиката за плащанията не можа да се зареди.'}
-        </p>
-      ) : summary ? (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-          {cards.map((card) => (
-            <div key={card.label} style={{ minWidth: 0, borderRadius: 13, padding: isMobile ? '10px 9px' : '11px 12px', background: card.tone.background, border: `1px solid ${card.tone.border}` }}>
-              <p style={{ margin: 0, color: card.tone.color, fontSize: 10.5, fontWeight: 800, lineHeight: 1.25 }}>{card.label}</p>
-              <p style={{ margin: '5px 0 0', color: '#18181B', fontSize: isMobile ? 18 : 20, fontWeight: 850, lineHeight: 1.1, letterSpacing: '-0.035em', fontVariantNumeric: 'tabular-nums' }}>{card.value}</p>
-              <p style={{ margin: '4px 0 0', color: '#71717A', fontSize: 10.5, lineHeight: 1.25 }}>{card.detail}</p>
+
+      {isOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={isEn ? 'Online payment overview' : 'Обзор на онлайн плащанията'}
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setIsOpen(false); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 95, display: 'grid', placeItems: isMobile ? 'end center' : 'center', padding: isMobile ? '12px 12px calc(88px + env(safe-area-inset-bottom, 0px))' : 18, background: 'rgba(15,23,42,0.36)' }}
+        >
+          <section style={{ width: 'min(560px, 100%)', borderRadius: isMobile ? 18 : 16, background: '#fff', padding: isMobile ? 16 : 18, boxShadow: '0 24px 70px rgba(15,23,42,0.24)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, color: '#71717A', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{isEn ? 'Payments' : 'Плащания'}</p>
+                <h3 style={{ margin: '4px 0 0', color: '#18181B', fontSize: 20, lineHeight: 1.2, letterSpacing: '-0.02em' }}>{isEn ? 'Online payments' : 'Онлайн плащания'}</h3>
+                <p style={{ margin: '5px 0 0', color: '#71717A', fontSize: 11.5 }}>{isEn ? 'Stripe-confirmed only' : 'Само потвърдени от Stripe'}</p>
+              </div>
+              <button type="button" onClick={() => setIsOpen(false)} aria-label={isEn ? 'Close' : 'Затвори'} style={{ width: 32, height: 32, border: '1px solid #E4E4E7', borderRadius: 999, background: '#fff', color: '#3F3F46', fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>×</button>
             </div>
-          ))}
+            {failedToLoad ? (
+              <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 650 }}>{isEn ? 'Payment statistics could not be loaded.' : 'Статистиката за плащанията не можа да се зареди.'}</p>
+            ) : summary ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                {cards.map((card) => (
+                  <div key={card.label} style={{ minWidth: 0, borderRadius: 13, padding: '11px 12px', background: card.tone.background, border: `1px solid ${card.tone.border}` }}>
+                    <p style={{ margin: 0, color: card.tone.color, fontSize: 10.5, fontWeight: 800, lineHeight: 1.25 }}>{card.label}</p>
+                    <p style={{ margin: '5px 0 0', color: '#18181B', fontSize: 20, fontWeight: 850, lineHeight: 1.1, letterSpacing: '-0.035em', fontVariantNumeric: 'tabular-nums' }}>{card.value}</p>
+                    <p style={{ margin: '4px 0 0', color: '#71717A', fontSize: 10.5, lineHeight: 1.25 }}>{card.detail}</p>
+                  </div>
+                ))}
+              </div>
+            ) : <div style={{ height: 154, borderRadius: 13, background: '#F4F4F5' }} />}
+          </section>
         </div>
-      ) : (
-        <div style={{ height: 96, borderRadius: 13, background: '#F4F4F5' }} aria-label={isEn ? 'Loading payment statistics' : 'Зареждане на статистиката за плащанията'} />
-      )}
-    </section>
+      ) : null}
+    </>
   );
 }
 

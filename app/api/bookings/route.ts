@@ -27,7 +27,7 @@ import { sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resen
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getStaffMemberById, getStaffMembers } from '@/lib/staff-members';
-import { consumePackageForCompletedBooking, findActiveClientPackage } from '@/lib/client-packages';
+import { consumePackageForCompletedBooking, findActiveClientPackage, restorePackageCreditForBooking } from '@/lib/client-packages';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 type OccupiedSlot = { time: string; duration: number; quantity: number; blocksAll?: boolean };
@@ -410,13 +410,14 @@ export async function POST(request: NextRequest) {
     }
   }
   const bookingId = crypto.randomUUID();
+  let selectedPackage: Awaited<ReturnType<typeof findActiveClientPackage>> = null;
   if (requestedPackage && !isAdminCreate) {
-    const activePackage = await findActiveClientPackage({
+    selectedPackage = await findActiveClientPackage({
       salonId,
       clientPhone,
       clientEmail: normalizedClientEmail,
     });
-    if (!activePackage) {
+    if (!selectedPackage) {
       return NextResponse.json(
         { error: 'Не открихме активен пакет с този телефон или имейл. Проверете данните или изберете друг начин на плащане.' },
         { status: 400 },
@@ -636,9 +637,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // A package booking reserves a credit immediately — the reservation may be
+  // pending the studio's confirmation, but the client must not be able to use
+  // the same final credit for a second booking in the meantime.
+  const packageUsage = requestedPackage
+    ? await consumePackageForCompletedBooking({
+        salonId,
+        bookingId: insertedBooking.id,
+        clientName,
+        clientPhone,
+        clientEmail: normalizedClientEmail,
+        packageId: selectedPackage?.id ?? null,
+      }).catch((err) => {
+        console.error('[bookings POST] package consume failed', err);
+        return null;
+      })
+    : null;
+
+  if (requestedPackage && !packageUsage) {
+    await deleteBookingById(insertedBooking.id, salonId).catch((err) => {
+      console.error('[bookings POST] rollback unavailable package booking failed', err);
+    });
+    return NextResponse.json(
+      { error: 'Този пакет вече няма свободен кредит. Моля обновете страницата и изберете друг начин на плащане.' },
+      { status: 409 },
+    );
+  }
+
   if (bookingOfferId) {
     const claimed = await claimOfferSlotAfterBooking(bookingOfferId, salonId);
     if (!claimed) {
+      if (packageUsage) {
+        await restorePackageCreditForBooking({ salonId, bookingId: insertedBooking.id }).catch((err) => {
+          console.error('[bookings POST] package restore after offer rejection failed', err);
+        });
+      }
       await deleteBookingById(insertedBooking.id, salonId);
       return NextResponse.json(
         { error: 'Всички места по тази оферта са заети.' },
@@ -646,19 +679,6 @@ export async function POST(request: NextRequest) {
       );
     }
   }
-
-  const packageUsage = requestedPackage && bookingStatus === 'confirmed'
-    ? await consumePackageForCompletedBooking({
-        salonId,
-        bookingId: insertedBooking.id,
-        clientName,
-        clientPhone,
-        clientEmail: normalizedClientEmail,
-      }).catch((err) => {
-        console.error('[bookings POST] package consume failed', err);
-        return null;
-      })
-    : null;
 
   const bookingDetails = {
     bookingId: insertedBooking.id,
@@ -840,6 +860,15 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Резервацията не е намерена' }, { status: 404 });
   }
 
+  // An administrator cancelling a booking explicitly releases a package
+  // credit. Customer self-service cancellations keep the salon's own
+  // 12-hour policy in app/api/bookings/manage.
+  if (status === 'cancelled') {
+    await restorePackageCreditForBooking({ salonId, bookingId }).catch((err) => {
+      console.error('[bookings PATCH] package restore failed', err);
+    });
+  }
+
   const reviewInvite = {
     attempted: false,
     sent: false,
@@ -850,14 +879,6 @@ export async function PATCH(request: NextRequest) {
     const booking = updated[0] as Record<string, unknown>;
     const clientEmail = String(booking.client_email ?? '').trim();
     const googlePlaceId = String((resolved.salon as Record<string, unknown>).google_place_id ?? '').trim();
-
-    await consumePackageForCompletedBooking({
-      salonId,
-      bookingId,
-      clientName: String(booking.client_name ?? ''),
-      clientPhone: String(booking.client_phone ?? ''),
-      clientEmail,
-    }).catch((err) => console.error('[bookings PATCH] package consume failed', err));
 
     const inviteLock = await sql`
       UPDATE bookings
@@ -938,6 +959,10 @@ export async function DELETE(request: NextRequest) {
   if (deleted.length === 0) {
     return NextResponse.json({ error: 'Резервацията не е намерена' }, { status: 404 });
   }
+
+  await restorePackageCreditForBooking({ salonId, bookingId }).catch((err) => {
+    console.error('[bookings DELETE] package restore failed', err);
+  });
 
   return NextResponse.json({ success: true });
 }
