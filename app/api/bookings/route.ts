@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
             CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
-            b.date, b.time, b.status, b.notes, b.created_at
+            b.date, b.time, b.status, b.payment_status, b.amount_paid, b.notes, b.created_at
           FROM bookings b
           LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
           WHERE b.salon_id = ${salonId}
@@ -242,7 +242,7 @@ export async function GET(request: NextRequest) {
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
             CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
-            b.date, b.time, b.status, b.notes, b.created_at
+            b.date, b.time, b.status, b.payment_status, b.amount_paid, b.notes, b.created_at
           FROM bookings b
           LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
           WHERE b.salon_id = ${salonId}
@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
             CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
-            b.date, b.time, b.status, b.notes, b.created_at
+            b.date, b.time, b.status, b.payment_status, b.amount_paid, b.notes, b.created_at
           FROM bookings b
           LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
           WHERE b.salon_id = ${salonId} AND b.status = ${status} AND b.date < ${before}
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
             CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
-            b.date, b.time, b.status, b.notes, b.created_at
+            b.date, b.time, b.status, b.payment_status, b.amount_paid, b.notes, b.created_at
           FROM bookings b
           LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
           WHERE b.salon_id = ${salonId} AND b.status = ${status}
@@ -295,7 +295,7 @@ export async function GET(request: NextRequest) {
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
             CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
-            b.date, b.time, b.status, b.notes, b.created_at
+            b.date, b.time, b.status, b.payment_status, b.amount_paid, b.notes, b.created_at
           FROM bookings b
           LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
           WHERE b.salon_id = ${salonId} AND b.date < ${before}
@@ -307,7 +307,7 @@ export async function GET(request: NextRequest) {
             b.service_name, b.service_price, b.service_duration, b.booking_quantity,
             CAST(b.staff_member_id AS text) AS staff_member_id,
             sm.name AS staff_name,
-            b.date, b.time, b.status, b.notes, b.created_at
+            b.date, b.time, b.status, b.payment_status, b.amount_paid, b.notes, b.created_at
           FROM bookings b
           LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
           WHERE b.salon_id = ${salonId}

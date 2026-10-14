@@ -50,6 +50,8 @@ export type BookingRecord = {
   date: string;
   time: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  payment_status?: 'free' | 'unpaid' | 'pending' | 'paid' | 'failed' | 'refunded' | string | null;
+  amount_paid?: number | null;
   notes: string | null;
   created_at: string;
   completed_at: string | null;
@@ -306,7 +308,8 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
       b.service_name, b.service_price, b.service_duration, b.booking_quantity,
       CAST(b.staff_member_id AS text) AS staff_member_id,
       sm.name AS staff_name,
-      b.date, b.time, b.status, b.notes, b.created_at, b.completed_at
+      b.date, b.time, b.status, b.payment_status, b.amount_paid,
+      b.notes, b.created_at, b.completed_at
     FROM bookings b
     LEFT JOIN staff_members sm ON sm.id = b.staff_member_id
     WHERE b.salon_id = ${salonId}

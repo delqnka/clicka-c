@@ -205,6 +205,79 @@ function getBookingQuantity(booking: BookingRecord): number {
   return Math.max(1, Number(booking.booking_quantity ?? 1) || 1);
 }
 
+function getBookingPaymentBadge(booking: BookingRecord, locale: Locale) {
+  const status = String(booking.payment_status ?? '').trim().toLowerCase();
+  if (status === 'paid') {
+    const paidEuros = booking.amount_paid != null ? Number(booking.amount_paid) / 100 : null;
+    return {
+      label: paidEuros && Number.isFinite(paidEuros)
+        ? `${locale === 'en' ? 'Paid online' : 'Платено онлайн'} · ${formatSalonPrice(paidEuros)}`
+        : (locale === 'en' ? 'Paid online' : 'Платено онлайн'),
+      bg: '#ECFDF5',
+      text: '#047857',
+      border: 'rgba(16,185,129,0.22)',
+    };
+  }
+  if (status === 'pending') {
+    return {
+      label: locale === 'en' ? 'Payment pending' : 'Чака плащане',
+      bg: '#FFFBEB',
+      text: '#92400E',
+      border: 'rgba(245,158,11,0.28)',
+    };
+  }
+  if (status === 'refunded') {
+    return {
+      label: locale === 'en' ? 'Refunded' : 'Възстановено',
+      bg: '#F4F4F5',
+      text: '#52525B',
+      border: 'rgba(113,113,122,0.24)',
+    };
+  }
+  if (status === 'failed') {
+    return {
+      label: locale === 'en' ? 'Payment failed' : 'Неуспешно плащане',
+      bg: '#FEF2F2',
+      text: '#B91C1C',
+      border: 'rgba(239,68,68,0.24)',
+    };
+  }
+  return null;
+}
+
+function BookingPaymentBadge({
+  booking,
+  locale,
+  compact = false,
+}: {
+  booking: BookingRecord;
+  locale: Locale;
+  compact?: boolean;
+}) {
+  const badge = getBookingPaymentBadge(booking, locale);
+  if (!badge) return null;
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        width: 'fit-content',
+        padding: compact ? '2px 7px' : '3px 9px',
+        borderRadius: 999,
+        border: `1px solid ${badge.border}`,
+        background: badge.bg,
+        color: badge.text,
+        fontSize: compact ? 10.5 : 11.5,
+        fontWeight: 800,
+        lineHeight: 1.2,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {badge.label}
+    </span>
+  );
+}
+
 function isActiveBookingForCapacity(booking: BookingRecord): boolean {
   const status = String(booking.status ?? '').trim().toLowerCase();
   return status !== 'cancelled';
@@ -517,6 +590,9 @@ function BookingCard({
           ) : null}
           {Number.isFinite(Number(booking.service_price)) ? ` · ${formatSalonPrice(Number(booking.service_price))}` : ''}
         </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
+          <BookingPaymentBadge booking={booking} locale={locale} />
+        </div>
         <p style={{ margin: '6px 0 0', fontSize: isMobile ? 15 : 14, color: '#18181B', fontWeight: 600, lineHeight: 1.4 }}>
           {formatBgDateDMY(booking.date, locale)} · {booking.time}
           {typeof booking.service_duration === 'number' ? ` · ${booking.service_duration} ${isEn ? 'min' : 'мин'}` : ''}
@@ -1871,9 +1947,21 @@ export function BookingsPanel({
                         : (isEn ? 'Free' : 'Свободен час')}
                   </p>
                   {booked ? (
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {slot.bookings.map((booking) => booking.service_name).join(', ')}
-                    </p>
+                    <>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {slot.bookings.map((booking) => booking.service_name).join(', ')}
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                        {slot.bookings.map((booking) => (
+                          <BookingPaymentBadge
+                            key={`payment-${booking.id}`}
+                            booking={booking}
+                            locale={locale}
+                            compact
+                          />
+                        ))}
+                      </div>
+                    </>
                   ) : null}
                   {slot.cancelledBookings.length > 0 ? (
                     <div style={{ display: 'grid', gap: 4, marginTop: booked || blocked ? 8 : 0 }}>
