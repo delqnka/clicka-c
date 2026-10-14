@@ -108,6 +108,7 @@ export function useBookingFlow({
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [payOnline, setPayOnline] = useState(false);
 
   // ── Staff (TEAM plan) ────────────────────────────────────────────────
   const [staffMembers, setStaffMembers] = useState<PublicStaffMember[]>([]);
@@ -489,7 +490,10 @@ export function useBookingFlow({
     const serviceName = selectedServices.map((s) => s.name).join(' + ');
     const duration    = totalDuration || 30;
     const firstSvc    = selectedServices[0];
-    const paymentType = firstSvc?.payment_type ?? 'none';
+    const configuredPaymentType = firstSvc?.payment_type ?? 'none';
+    const paymentType = configuredPaymentType === 'optional_full'
+      ? (payOnline ? 'full' : 'none')
+      : configuredPaymentType;
     const depositAmt  = firstSvc?.deposit_amount ?? 0;
     const amountEuros =
       paymentType === 'deposit' ? depositAmt :
@@ -583,7 +587,7 @@ export function useBookingFlow({
     }
   }, [
     api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, notes,
-    onEvent, requestHeaders, selectedDate, selectedServices, selectedStaffMember, selectedStaffMemberId, selectedTime,
+    onEvent, payOnline, requestHeaders, selectedDate, selectedServices, selectedStaffMember, selectedStaffMemberId, selectedTime,
     slug, slugPath, successUrl, t, totalDuration, totalPrice,
   ]);
 
@@ -600,6 +604,7 @@ export function useBookingFlow({
     staffMembers: effectiveStaffMembers, selectedStaffMemberId, setStaffMemberId,
     classTrainerFilterName, setClassTrainerFilterName,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,
+    payOnline, setPayOnline,
     submit,
   };
 }

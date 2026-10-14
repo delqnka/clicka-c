@@ -148,6 +148,8 @@ function BookingWidgetInner({
       timeSlots={flow.timeSlots}
       paymentType={firstSelected?.payment_type ?? 'none'}
       depositAmount={firstSelected?.deposit_amount}
+      payOnline={flow.payOnline}
+      onPayOnlineChange={flow.setPayOnline}
       cancelPolicyHours={firstSelected?.cancel_policy_hours}
       cancelPolicyAction={firstSelected?.cancel_policy_action}
       isSubmitting={flow.isSubmitting}

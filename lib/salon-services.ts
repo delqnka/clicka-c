@@ -4,7 +4,7 @@ function randomHex(bytes: number): string {
   return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export type PaymentType = 'none' | 'deposit' | 'full';
+export type PaymentType = 'none' | 'deposit' | 'full' | 'optional_full';
 export type CancelPolicyAction = 'full_refund' | 'keep_deposit' | 'keep_full';
 
 export type ServiceItem = {
@@ -141,7 +141,7 @@ export function parseSalonServices(raw: unknown): ParsedSalonService[] {
       : undefined;
 
     const paymentTypeRaw = String(row.payment_type ?? '');
-    const paymentType: PaymentType | undefined = ['none', 'deposit', 'full'].includes(paymentTypeRaw)
+    const paymentType: PaymentType | undefined = ['none', 'deposit', 'full', 'optional_full'].includes(paymentTypeRaw)
       ? (paymentTypeRaw as PaymentType)
       : undefined;
     const depositAmountRaw = Number(row.deposit_amount ?? NaN);
@@ -248,7 +248,7 @@ export function normalizeServices(raw: unknown): ServiceItem[] {
       ...(Array.isArray(s.assignedTeamMemberIds) && s.assignedTeamMemberIds.length > 0
         ? { assignedTeamMemberIds: s.assignedTeamMemberIds }
         : {}),
-      ...(['none', 'deposit', 'full'].includes(String((s as unknown as ServiceItem).payment_type ?? ''))
+      ...(['none', 'deposit', 'full', 'optional_full'].includes(String((s as unknown as ServiceItem).payment_type ?? ''))
         ? { payment_type: (s as unknown as ServiceItem).payment_type }
         : {}),
       ...((s as unknown as ServiceItem).deposit_amount != null && Number.isFinite(Number((s as unknown as ServiceItem).deposit_amount))

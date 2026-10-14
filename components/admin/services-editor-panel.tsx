@@ -554,7 +554,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         <div style={{ marginTop: 8, marginBottom: 4, minWidth: 0 }}>
           <FieldLabel>{isEn ? 'Payment on booking' : 'Плащане при резервация'}</FieldLabel>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            {(['none', 'deposit', 'full'] as const).map((pt) => (
+            {(['none', 'deposit', 'full', 'optional_full'] as const).map((pt) => (
               <button
                 key={pt}
                 type="button"
@@ -575,6 +575,8 @@ const ServiceCardRow = memo(function ServiceCardRow({
                   ? (isEn ? 'No payment' : 'Без плащане')
                   : pt === 'deposit'
                   ? (isEn ? 'Deposit' : 'Депозит')
+                  : pt === 'optional_full'
+                  ? (isEn ? 'Client chooses' : 'Клиентът избира')
                   : (isEn ? 'Full amount' : 'Пълна сума')}
               </button>
             ))}
@@ -599,7 +601,7 @@ const ServiceCardRow = memo(function ServiceCardRow({
         </div>
 
         {/* Cancellation policy — only relevant when payment is collected */}
-        {(draft.payment_type === 'deposit' || draft.payment_type === 'full') && (
+        {(draft.payment_type === 'deposit' || draft.payment_type === 'full' || draft.payment_type === 'optional_full') && (
           <div style={{ marginTop: 12, padding: '12px 14px', background: '#F9FAFB', borderRadius: 10, border: `1px solid ${T.border}` }}>
             <FieldLabel>{isEn ? 'Cancellation policy' : 'Политика при отказване'}</FieldLabel>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>

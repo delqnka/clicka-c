@@ -42,7 +42,7 @@ export type BookingServiceItem = {
   category?: string;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
-  payment_type?: 'none' | 'deposit' | 'full';
+  payment_type?: 'none' | 'deposit' | 'full' | 'optional_full';
   deposit_amount?: number;
   cancel_policy_hours?: number;
   cancel_policy_action?: CancelPolicyAction;
@@ -142,6 +142,8 @@ export type UseBookingFlowReturn = {
   bookingError: string;
   bookingSuccess: string;
   bookingSuccessDetails: BookingSuccessDetails | null;
+  payOnline: boolean;
+  setPayOnline: (v: boolean) => void;
   submit: (e: React.FormEvent) => Promise<void>;
 };
 

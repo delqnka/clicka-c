@@ -233,7 +233,7 @@ type ServiceRow = {
   category?: string;
   images?: string[];
   variants?: { label: string; price: number; duration?: number }[];
-  payment_type?: 'none' | 'deposit' | 'full';
+  payment_type?: 'none' | 'deposit' | 'full' | 'optional_full';
   deposit_amount?: number;
   cancel_policy_hours?: number;
   cancel_policy_action?: 'full_refund' | 'keep_deposit' | 'keep_full';
