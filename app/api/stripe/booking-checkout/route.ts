@@ -35,13 +35,17 @@ export async function POST(request: NextRequest) {
   const proto = host.includes('localhost') ? 'http' : 'https';
   const origin = `${proto}://${host}`;
   const returnOrigin = normalizeReturnOrigin(body.returnUrl);
-  const successUrl =
-    normalizeAbsoluteHttpUrl(body.successUrl) ??
+  const customSuccessUrl = normalizeAbsoluteHttpUrl(body.successUrl);
+  const customCancelUrl = normalizeAbsoluteHttpUrl(body.cancelUrl);
+  const successUrl = customSuccessUrl
+    ? appendQueryParam(customSuccessUrl, 'booking_id', bookingId)
+    :
     (returnOrigin
       ? `${returnOrigin}/booking/success?booking_id=${encodeURIComponent(bookingId)}`
       : `${origin}/booking/success?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`);
-  const cancelUrl =
-    normalizeAbsoluteHttpUrl(body.cancelUrl) ??
+  const cancelUrl = customCancelUrl
+    ? appendQueryParam(customCancelUrl, 'booking_id', bookingId)
+    :
     (returnOrigin
       ? `${returnOrigin}/booking/cancel?booking_id=${encodeURIComponent(bookingId)}`
       : `${origin}/booking/cancel?booking_id=${bookingId}&return=${encodeURIComponent(origin)}`);
@@ -111,4 +115,10 @@ function normalizeAbsoluteHttpUrl(raw: string | undefined) {
   } catch {
     return null;
   }
+}
+
+function appendQueryParam(rawUrl: string, key: string, value: string) {
+  const url = new URL(rawUrl);
+  url.searchParams.set(key, value);
+  return url.toString();
 }
