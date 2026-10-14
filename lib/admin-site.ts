@@ -52,6 +52,12 @@ export type BookingRecord = {
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   payment_status?: 'free' | 'unpaid' | 'pending' | 'paid' | 'failed' | 'refunded' | string | null;
   amount_paid?: number | null;
+  package_usage?: {
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+  } | null;
   notes: string | null;
   created_at: string;
   completed_at: string | null;

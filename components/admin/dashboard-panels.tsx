@@ -278,6 +278,36 @@ function BookingPaymentBadge({
   );
 }
 
+function BookingPackageBadge({
+  booking,
+  locale,
+  compact = false,
+}: {
+  booking: BookingRecord;
+  locale: Locale;
+  compact?: boolean;
+}) {
+  const usage = booking.package_usage;
+  if (!usage) return null;
+  const remaining = Math.max(0, Number(usage.remainingSessions) || 0);
+  const remainingLabel = locale === 'en'
+    ? `${remaining} left`
+    : `остават ${remaining} ${remaining === 1 ? 'кредит' : 'кредита'}`;
+  return (
+    <span
+      title={`${usage.packageName} · ${remainingLabel}`}
+      style={{
+        display: 'inline-flex', alignItems: 'center', width: 'fit-content',
+        padding: compact ? '2px 7px' : '3px 9px', borderRadius: 999,
+        border: '1px solid rgba(124,58,237,0.22)', background: '#F5F3FF', color: '#6D28D9',
+        fontSize: compact ? 10.5 : 11.5, fontWeight: 800, lineHeight: 1.2, whiteSpace: 'nowrap',
+      }}
+    >
+      {locale === 'en' ? 'Package' : 'Пакет'} · {remainingLabel}
+    </span>
+  );
+}
+
 type PaymentSummary = {
   paidTodayCents: number;
   paidTodayCount: number;
@@ -730,6 +760,7 @@ function BookingCard({
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
           <BookingPaymentBadge booking={booking} locale={locale} />
+          <BookingPackageBadge booking={booking} locale={locale} />
         </div>
         <p style={{ margin: '6px 0 0', fontSize: isMobile ? 15 : 14, color: '#18181B', fontWeight: 600, lineHeight: 1.4 }}>
           {formatBgDateDMY(booking.date, locale)} · {booking.time}
@@ -2098,12 +2129,10 @@ export function BookingsPanel({
                       </p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
                         {slot.bookings.map((booking) => (
-                          <BookingPaymentBadge
-                            key={`payment-${booking.id}`}
-                            booking={booking}
-                            locale={locale}
-                            compact
-                          />
+                          <React.Fragment key={booking.id}>
+                            <BookingPaymentBadge booking={booking} locale={locale} compact />
+                            <BookingPackageBadge booking={booking} locale={locale} compact />
+                          </React.Fragment>
                         ))}
                       </div>
                     </>

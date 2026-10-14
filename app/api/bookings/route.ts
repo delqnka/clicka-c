@@ -319,7 +319,37 @@ export async function GET(request: NextRequest) {
     ? String((rows[rows.length - 1] as Record<string, unknown>).date ?? '')
     : null;
 
-  return NextResponse.json({ bookings: rows, nextCursor });
+  // A package label in the admin schedule must come from the immutable usage
+  // record, never from a fuzzy name/phone match. That keeps past bookings
+  // correct even after a client buys another package or changes contacts.
+  const packageUsages = await sql`
+    SELECT
+      u.booking_id::text AS booking_id,
+      cp.package_name,
+      cp.total_sessions,
+      cp.used_sessions,
+      GREATEST(0, cp.total_sessions - cp.used_sessions)::int AS remaining_sessions
+    FROM client_package_usages u
+    INNER JOIN client_packages cp ON cp.id = u.package_id
+    WHERE u.salon_id = ${salonId}
+  `.catch(() => [] as Record<string, unknown>[]);
+  const packageUsageByBookingId = new Map(
+    packageUsages.map((usage) => [
+      String(usage.booking_id ?? ''),
+      {
+        packageName: String(usage.package_name ?? ''),
+        totalSessions: Math.max(1, Number(usage.total_sessions) || 1),
+        usedSessions: Math.max(0, Number(usage.used_sessions) || 0),
+        remainingSessions: Math.max(0, Number(usage.remaining_sessions) || 0),
+      },
+    ]),
+  );
+  const bookingsWithPackageUsage = rows.map((booking) => ({
+    ...booking,
+    package_usage: packageUsageByBookingId.get(String((booking as Record<string, unknown>).id ?? '')) ?? null,
+  }));
+
+  return NextResponse.json({ bookings: bookingsWithPackageUsage, nextCursor });
 }
 
 export async function POST(request: NextRequest) {
