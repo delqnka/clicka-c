@@ -42,6 +42,7 @@ type InnerProps = {
   slotIntervalMin: number;
   bookingAdvanceDays: number;
   bookingServices: BookingServiceItem[];
+  onlinePaymentsEnabled: boolean;
   serviceCatalog: BookingCatalogService[];
   categoryTabs: ReturnType<typeof buildServiceCategoryTabs>;
   engineUrl: string;
@@ -72,6 +73,7 @@ function BookingWidgetInner({
   slotIntervalMin,
   bookingAdvanceDays,
   bookingServices,
+  onlinePaymentsEnabled,
   serviceCatalog,
   categoryTabs,
   engineUrl,
@@ -95,6 +97,7 @@ function BookingWidgetInner({
     slotIntervalMin,
     bookingAdvanceDays,
     bookingServices,
+    onlinePaymentsEnabled,
     engineUrl,
     apiKey,
     successUrl,
@@ -109,6 +112,11 @@ function BookingWidgetInner({
   }), [flow.open, flow.close]);
 
   const firstSelected = flow.selectedServices[0];
+  const firstSelectedPaymentType = firstSelected?.payment_type ?? 'none';
+  const modalPaymentType =
+    firstSelectedPaymentType === 'none' && onlinePaymentsEnabled && Number(firstSelected?.price ?? 0) > 0
+      ? 'optional_full'
+      : firstSelectedPaymentType;
 
   return (
     <Suspense fallback={null}>
@@ -146,7 +154,7 @@ function BookingWidgetInner({
       minDate={flow.minDate}
       maxDate={flow.maxDate}
       timeSlots={flow.timeSlots}
-      paymentType={firstSelected?.payment_type ?? 'none'}
+      paymentType={modalPaymentType}
       depositAmount={firstSelected?.deposit_amount}
       payOnline={flow.payOnline}
       onPayOnlineChange={flow.setPayOnline}
@@ -270,6 +278,10 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
       return out;
     }, [serviceCatalog]);
 
+    const onlinePaymentsEnabled = Boolean(
+      salon.stripe_payments_enabled === true || salon.stripePaymentsEnabled === true,
+    );
+
     // ── Derived display props ─────────────────────────────────────────
     const primaryColor = typeof salon.primary_color === 'string' && salon.primary_color
       ? salon.primary_color
@@ -289,6 +301,7 @@ export const BookingWidget = forwardRef<BookingWidgetHandle, BookingWidgetProps>
           slotIntervalMin={slotIntervalMin}
           bookingAdvanceDays={bookingAdvanceDays}
           bookingServices={bookingServices}
+          onlinePaymentsEnabled={onlinePaymentsEnabled}
           serviceCatalog={serviceCatalog}
           categoryTabs={categoryTabs}
           engineUrl={engineUrl}

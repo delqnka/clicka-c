@@ -70,6 +70,7 @@ export function useBookingFlow({
   slotIntervalMin,
   bookingAdvanceDays,
   bookingServices,
+  onlinePaymentsEnabled = false,
   engineUrl = '',
   apiKey,
   successUrl,
@@ -254,7 +255,8 @@ export function useBookingFlow({
     const cacheKey = staffMemberId
       ? `${date}:${staffMemberId}`
       : date;
-    const occupied = occupiedByDate[cacheKey] ?? [];
+    const occupied = occupiedByDate[cacheKey] ?? (staffMemberId ? occupiedByDate[date] : undefined);
+    if (!occupied) return null;
     const [hh = 0, mm = 0] = time.split(':').map(Number);
     const start = hh * 60 + mm;
     const end = start + Math.max(5, durationMin || 30);
@@ -490,7 +492,10 @@ export function useBookingFlow({
     const serviceName = selectedServices.map((s) => s.name).join(' + ');
     const duration    = totalDuration || 30;
     const firstSvc    = selectedServices[0];
-    const configuredPaymentType = firstSvc?.payment_type ?? 'none';
+    const rawPaymentType = firstSvc?.payment_type ?? 'none';
+    const configuredPaymentType = rawPaymentType === 'none' && onlinePaymentsEnabled && Number(firstSvc?.price ?? 0) > 0
+      ? 'optional_full'
+      : rawPaymentType;
     const paymentType = configuredPaymentType === 'optional_full'
       ? (payOnline ? 'full' : 'none')
       : configuredPaymentType;
@@ -588,7 +593,7 @@ export function useBookingFlow({
   }, [
     api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, notes,
     onEvent, payOnline, requestHeaders, selectedDate, selectedServices, selectedStaffMember, selectedStaffMemberId, selectedTime,
-    slug, slugPath, successUrl, t, totalDuration, totalPrice,
+    slug, slugPath, successUrl, t, totalDuration, totalPrice, onlinePaymentsEnabled,
   ]);
 
   return {

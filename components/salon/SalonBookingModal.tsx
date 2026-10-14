@@ -788,11 +788,15 @@ export function SalonBookingModal({
                       const serviceName = slot.className?.trim() || slotService?.name || classService?.name || 'Клас';
                       const price = Number(slot.price ?? slotService?.price ?? classService?.price ?? 0) || 0;
                       const duration = Math.max(5, Number(slotService?.duration ?? classService?.duration ?? 50) || 50);
+                      const slotStaff = staffMembers.find(
+                        (member) => normalizeTrainerName(member.name) === normalizeTrainerName(slot.trainer),
+                      );
                       const remainingCapacity = getRemainingCapacityForSlot?.(
                         displayDate,
                         slot.start,
                         duration,
                         slot.capacity,
+                        slotStaff?.id,
                       ) ?? null;
                       const isFullClassSlot = remainingCapacity !== null && remainingCapacity <= 0;
                       const dateLabel = new Date(`${displayDate}T12:00:00`).toLocaleDateString(locale, {
@@ -805,9 +809,6 @@ export function SalonBookingModal({
                         selectedTime === slot.start &&
                         (slotServiceIndex < 0 || selectedServiceIdxs.includes(slotServiceIndex)) &&
                         normalizeTrainerName(selectedClassTrainerName) === normalizeTrainerName(slot.trainer);
-                      const slotStaff = staffMembers.find(
-                        (member) => normalizeTrainerName(member.name) === normalizeTrainerName(slot.trainer),
-                      );
                       return (
                         <article
                           key={`${displayDate}-${slot.start}-${slot.trainer}`}

@@ -45,7 +45,8 @@ export async function GET(
       instagram_username, facebook_username, tiktok_username, google_maps_url,
       working_hours, opening_hours, services, team,
       template_id, primary_color, primary_color_light,
-      language
+      language,
+      stripe_account_id, stripe_charges_enabled
     FROM salons
     WHERE slug = ${slug} AND is_active = true
     LIMIT 1
@@ -75,6 +76,10 @@ export async function GET(
 
   const salonPayload = {
     ...salon,
+    stripe_payments_enabled: Boolean(salon.stripe_account_id && salon.stripe_charges_enabled),
+    stripePaymentsEnabled: Boolean(salon.stripe_account_id && salon.stripe_charges_enabled),
+    stripe_account_id: undefined,
+    stripe_charges_enabled: undefined,
     opening_hours: openingHours,
     packageDefinitions,
     package_definitions: packageDefinitions,

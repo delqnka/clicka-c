@@ -62,6 +62,8 @@ export type UseBookingFlowOptions = {
   bookingAdvanceDays: number;
   /** Expanded flat list of bookable rows (variants already split out). */
   bookingServices: BookingServiceItem[];
+  /** Whether this public salon can accept Stripe payments. */
+  onlinePaymentsEnabled?: boolean;
   /** Engine origin for cross-domain API calls (Variant B separate repos). */
   engineUrl?: string;
   /** Optional public API key sent as `X-API-Key` to the engine. */
