@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, Check, ChevronDown, Clock, Loader2, Plus, User, Users, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, Clock, CreditCard, Loader2, MapPin, Plus, User, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n-react';
 import { getClassSlotsForDateWithOverrides, normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot, type ClassScheduleOverride } from '@/lib/class-schedule';
@@ -1424,29 +1424,45 @@ export function SalonBookingModal({
             ) : null}
 
             {((classMode && step === 2) || (!classMode && step === 3)) && paymentType === 'optional_full' ? (
-              <div className="mb-2.5 space-y-2 rounded-2xl border border-black/[0.06] bg-black/[0.025] p-2.5">
-                <p className="text-center text-[12px] font-semibold text-black/55">
-                  {t('booking.modal.optionalPaymentTitle')}
-                </p>
+              <div className="mb-2.5 space-y-2 px-1">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[12px] font-semibold text-black/55">
+                    {t('booking.modal.optionalPaymentTitle')}
+                  </p>
+                  <p className="text-[11px] font-medium text-black/35">
+                    {payOnline ? t('booking.modal.onlinePaymentHint') : t('booking.modal.studioPaymentHint')}
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => onPayOnlineChange?.(true)}
-                    className={`rounded-full px-3 py-2.5 text-[12px] font-semibold transition ${payOnline ? 'bg-black text-white' : 'bg-white text-black/60'}`}
+                    aria-pressed={payOnline}
+                    className={`flex min-h-11 items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-[12px] font-semibold transition active:scale-[0.98] ${
+                      payOnline
+                        ? 'border-transparent text-white'
+                        : 'border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
+                    }`}
+                    style={payOnline ? accentFillStyle : undefined}
                   >
+                    <CreditCard className="h-3.5 w-3.5" aria-hidden />
                     {t('booking.modal.payOnlineChoice')}
                   </button>
                   <button
                     type="button"
                     onClick={() => onPayOnlineChange?.(false)}
-                    className={`rounded-full px-3 py-2.5 text-[12px] font-semibold transition ${!payOnline ? 'bg-black text-white' : 'bg-white text-black/60'}`}
+                    aria-pressed={!payOnline}
+                    className={`flex min-h-11 items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-[12px] font-semibold transition active:scale-[0.98] ${
+                      !payOnline
+                        ? 'border-transparent text-white'
+                        : 'border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
+                    }`}
+                    style={!payOnline ? accentFillStyle : undefined}
                   >
+                    <MapPin className="h-3.5 w-3.5" aria-hidden />
                     {t('booking.modal.payAtStudioChoice')}
                   </button>
                 </div>
-                <p className="text-center text-[11px] leading-relaxed text-black/40">
-                  {t('booking.modal.optionalPaymentHint')}
-                </p>
               </div>
             ) : null}
 
@@ -1479,6 +1495,10 @@ export function SalonBookingModal({
             {(() => {
               const maxStep = classMode ? 2 : (isTeam ? 4 : 3);
               const isLastStep = step === maxStep;
+              const requiresOnlinePayment = paymentType !== 'none' && (paymentType !== 'optional_full' || payOnline);
+              const submitLabel = requiresOnlinePayment
+                ? (paymentType === 'optional_full' ? t('booking.modal.payOnlineCta', { price: fmtPrice(totalPrice) }) : t('booking.modal.payAndBook'))
+                : (paymentType === 'optional_full' ? t('booking.modal.reserveAtStudioCta') : t('booking.modal.sendRequest'));
               const nextDisabled =
                 classMode
                   ? step === 1 && (!hasServices || !selectedDate || !selectedTime || hasSelectedFullCapacitySlot)
@@ -1517,7 +1537,7 @@ export function SalonBookingModal({
                       style={accentFillStyle}
                     >
                       {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                      {paymentType !== 'none' && (paymentType !== 'optional_full' || payOnline) ? t('booking.modal.payAndBook') : t('booking.modal.sendRequest')}
+                      {submitLabel}
                     </button>
                   )}
                 </div>
