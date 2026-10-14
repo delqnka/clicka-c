@@ -94,8 +94,9 @@ export async function POST(request: NextRequest) {
             product_data: {
               name: pkg.name,
               description: [
-                `${pkg.totalSessions} ${pkg.totalSessions === 1 ? 'credit' : 'credits'}`,
-                `${pkg.validityDays} days validity`,
+                `${pkg.totalSessions} ${pkg.totalSessions === 1 ? 'кредит' : 'кредита'}`,
+                '1 кредит = 1 тренировка',
+                `Валидност: ${pkg.validityDays} дни`,
                 pkg.description,
               ].filter(Boolean).join(' · '),
             },
