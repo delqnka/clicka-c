@@ -278,6 +278,127 @@ function BookingPaymentBadge({
   );
 }
 
+type PaymentSummary = {
+  paidTodayCents: number;
+  paidTodayCount: number;
+  paidMonthCents: number;
+  paidMonthCount: number;
+  pendingCount: number;
+  failedCount: number;
+};
+
+function OnlinePaymentSummary({
+  slug,
+  bookings,
+  isMobile,
+  locale,
+}: {
+  slug: string;
+  bookings: BookingRecord[];
+  isMobile: boolean;
+  locale: Locale;
+}) {
+  const isEn = locale === 'en';
+  const [summary, setSummary] = React.useState<PaymentSummary | null>(null);
+  const [failedToLoad, setFailedToLoad] = React.useState(false);
+  const refreshKey = React.useMemo(
+    () => bookings.map((booking) => `${booking.id}:${booking.payment_status ?? ''}:${booking.amount_paid ?? ''}:${booking.created_at ?? ''}`).join('|'),
+    [bookings],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setFailedToLoad(false);
+    fetch(`/api/admin/payment-summary?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Payment summary unavailable');
+        return response.json() as Promise<PaymentSummary>;
+      })
+      .then((data) => {
+        if (!cancelled) setSummary(data);
+      })
+      .catch(() => {
+        if (!cancelled) setFailedToLoad(true);
+      });
+    return () => { cancelled = true; };
+  }, [slug, refreshKey]);
+
+  const cards = summary ? [
+    {
+      label: isEn ? 'Online today' : 'Онлайн днес',
+      value: formatSalonPrice(Math.max(0, Number(summary.paidTodayCents) || 0) / 100),
+      detail: summary.paidTodayCount === 1
+        ? (isEn ? '1 paid booking' : '1 платена резервация')
+        : (isEn ? `${summary.paidTodayCount} paid bookings` : `${summary.paidTodayCount} платени резервации`),
+      tone: { background: '#ECFDF5', color: '#047857', border: 'rgba(16,185,129,0.20)' },
+    },
+    {
+      label: isEn ? 'Online this month' : 'Онлайн този месец',
+      value: formatSalonPrice(Math.max(0, Number(summary.paidMonthCents) || 0) / 100),
+      detail: summary.paidMonthCount === 1
+        ? (isEn ? '1 paid booking' : '1 платена резервация')
+        : (isEn ? `${summary.paidMonthCount} paid bookings` : `${summary.paidMonthCount} платени резервации`),
+      tone: { background: '#EFF6FF', color: '#1D4ED8', border: 'rgba(37,99,235,0.18)' },
+    },
+    {
+      label: isEn ? 'Awaiting payment' : 'Чакащи плащане',
+      value: String(Math.max(0, Number(summary.pendingCount) || 0)),
+      detail: isEn ? 'Stripe checkouts' : 'Stripe плащания',
+      tone: { background: '#FFFBEB', color: '#92400E', border: 'rgba(245,158,11,0.24)' },
+    },
+    {
+      label: isEn ? 'Unsuccessful' : 'Неуспешни',
+      value: String(Math.max(0, Number(summary.failedCount) || 0)),
+      detail: isEn ? 'payments' : 'плащания',
+      tone: { background: '#FEF2F2', color: '#B91C1C', border: 'rgba(239,68,68,0.20)' },
+    },
+  ] : [];
+
+  return (
+    <section
+      aria-label={isEn ? 'Online payment overview' : 'Обзор на онлайн плащанията'}
+      style={{
+        marginBottom: 14,
+        borderRadius: isMobile ? 18 : 16,
+        padding: isMobile ? 14 : 16,
+        background: '#fff',
+        boxShadow: '0 4px 18px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 12, color: '#71717A', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {isEn ? 'Payments' : 'Плащания'}
+          </p>
+          <h3 style={{ margin: '3px 0 0', color: '#18181B', fontSize: isMobile ? 18 : 20, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+            {isEn ? 'Online payments' : 'Онлайн плащания'}
+          </h3>
+        </div>
+        <span style={{ color: '#71717A', fontSize: 11, fontWeight: 650, textAlign: 'right' }}>
+          {isEn ? 'Stripe-confirmed only' : 'Само потвърдени от Stripe'}
+        </span>
+      </div>
+      {failedToLoad ? (
+        <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 650 }}>
+          {isEn ? 'Payment statistics could not be loaded.' : 'Статистиката за плащанията не можа да се зареди.'}
+        </p>
+      ) : summary ? (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+          {cards.map((card) => (
+            <div key={card.label} style={{ minWidth: 0, borderRadius: 13, padding: isMobile ? '10px 9px' : '11px 12px', background: card.tone.background, border: `1px solid ${card.tone.border}` }}>
+              <p style={{ margin: 0, color: card.tone.color, fontSize: 10.5, fontWeight: 800, lineHeight: 1.25 }}>{card.label}</p>
+              <p style={{ margin: '5px 0 0', color: '#18181B', fontSize: isMobile ? 18 : 20, fontWeight: 850, lineHeight: 1.1, letterSpacing: '-0.035em', fontVariantNumeric: 'tabular-nums' }}>{card.value}</p>
+              <p style={{ margin: '4px 0 0', color: '#71717A', fontSize: 10.5, lineHeight: 1.25 }}>{card.detail}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ height: 96, borderRadius: 13, background: '#F4F4F5' }} aria-label={isEn ? 'Loading payment statistics' : 'Зареждане на статистиката за плащанията'} />
+      )}
+    </section>
+  );
+}
+
 function isActiveBookingForCapacity(booking: BookingRecord): boolean {
   const status = String(booking.status ?? '').trim().toLowerCase();
   return status !== 'cancelled';
@@ -1688,6 +1809,13 @@ export function BookingsPanel({
           })}
         </div>
       )}
+
+      <OnlinePaymentSummary
+        slug={slug}
+        bookings={bookings}
+        isMobile={isMobile}
+        locale={locale}
+      />
 
       <div
         style={{

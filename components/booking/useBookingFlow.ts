@@ -108,7 +108,10 @@ export function useBookingFlow({
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  // Kept internally for backward-compatible embedding APIs; the default modal
+  // no longer renders a notes field.
   const [notes, setNotes] = useState('');
+  const [usePackage, setUsePackage] = useState(false);
   const [payOnline, setPayOnline] = useState(false);
 
   // ── Staff (TEAM plan) ────────────────────────────────────────────────
@@ -422,6 +425,8 @@ export function useBookingFlow({
     setClientPhone('');
     setClientEmail('');
     setNotes('');
+    setUsePackage(false);
+    setPayOnline(false);
     setBookingOpen(true);
     if (onEvent) onEvent('booking_started');
     else trackBookingStarted();
@@ -429,6 +434,7 @@ export function useBookingFlow({
 
   const close = useCallback(() => {
     setBookingOpen(false);
+    setUsePackage(false);
     setBookingSuccessDetails(null);
     setLockedService(false);
     setSelectedStaffMemberIdState(null);
@@ -496,7 +502,7 @@ export function useBookingFlow({
     const configuredPaymentType = rawPaymentType === 'none' && onlinePaymentsEnabled && Number(firstSvc?.price ?? 0) > 0
       ? 'optional_full'
       : rawPaymentType;
-    const paymentType = configuredPaymentType === 'optional_full'
+    const paymentType = usePackage ? 'none' : configuredPaymentType === 'optional_full'
       ? (payOnline ? 'full' : 'none')
       : configuredPaymentType;
     const depositAmt  = firstSvc?.deposit_amount ?? 0;
@@ -521,7 +527,7 @@ export function useBookingFlow({
           bookingQuantity,
           date:               selectedDate,
           time:               selectedTime,
-          notes:              notes.trim() || undefined,
+          usePackage,
           requiresPayment,
           staffMemberId:      selectedStaffMemberId && !isVirtualStaffId(selectedStaffMemberId) ? selectedStaffMemberId : undefined,
           staffMemberName:    selectedStaffMember?.name ?? undefined,
@@ -591,7 +597,7 @@ export function useBookingFlow({
       setIsSubmitting(false);
     }
   }, [
-    api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, notes,
+    api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, usePackage,
     onEvent, payOnline, requestHeaders, selectedDate, selectedServices, selectedStaffMember, selectedStaffMemberId, selectedTime,
     slug, slugPath, successUrl, t, totalDuration, totalPrice, onlinePaymentsEnabled,
   ]);
@@ -606,6 +612,7 @@ export function useBookingFlow({
     clientPhone, setClientPhone,
     clientEmail, setClientEmail,
     notes, setNotes,
+    usePackage, setUsePackage,
     staffMembers: effectiveStaffMembers, selectedStaffMemberId, setStaffMemberId,
     classTrainerFilterName, setClassTrainerFilterName,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,

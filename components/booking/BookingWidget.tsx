@@ -147,7 +147,7 @@ function BookingWidgetInner({
       clientName={flow.clientName}
       clientPhone={flow.clientPhone}
       clientEmail={flow.clientEmail}
-      notes={flow.notes}
+      usePackage={flow.usePackage}
       salonName={salonName}
       termsHref={`${basePath}/terms`}
       privacyHref={`${basePath}/privacy`}
@@ -175,7 +175,7 @@ function BookingWidgetInner({
       onClientNameChange={flow.setClientName}
       onClientPhoneChange={flow.setClientPhone}
       onClientEmailChange={flow.setClientEmail}
-      onNotesChange={flow.setNotes}
+      onUsePackageChange={flow.setUsePackage}
       onStaffMemberChange={flow.setStaffMemberId}
       onClassTrainerFilterChange={flow.setClassTrainerFilterName}
       onSubmit={flow.submit}

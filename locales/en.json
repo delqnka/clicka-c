@@ -44,7 +44,8 @@
       "name": "Name",
       "phone": "Phone",
       "email": "Email",
-      "notes": "Notes (optional)",
+      "usePackageTitle": "I have an active package",
+      "usePackageHint": "We'll find it by your phone or email and use one session.",
       "smsConsentPre": "I agree to receive SMS reminders for this booking from",
       "smsConsentPost": "to the phone number provided. I have read the",
       "smsConsentAnd": "and",
@@ -69,6 +70,7 @@
       "payAndBook": "Pay & book",
       "payOnlineCta": "Pay {price}",
       "reserveAtStudioCta": "Reserve",
+      "reserveWithPackageCta": "Reserve with package",
       "disclaimerPre": "To complete your booking we need your name, phone and email — used only to manage your appointment, send confirmations and reminders.",
       "disclaimerAccept": "By submitting you accept the"
     },

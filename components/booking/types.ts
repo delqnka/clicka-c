@@ -129,8 +129,11 @@ export type UseBookingFlowReturn = {
   setClientPhone: (v: string) => void;
   clientEmail: string;
   setClientEmail: (v: string) => void;
+  /** Backward-compatible state for custom embeds; not rendered by the default modal. */
   notes: string;
   setNotes: (v: string) => void;
+  usePackage: boolean;
+  setUsePackage: (v: boolean) => void;
 
   // Staff (TEAM plan)
   staffMembers: PublicStaffMember[];

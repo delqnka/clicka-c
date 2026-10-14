@@ -21,6 +21,44 @@ export type ClientPackageUsageSummary = {
   expiresAt: string;
 };
 
+/** Finds a usable package without mutating its balance. Contact matching is
+ * intentionally limited to phone/email — a name alone is not sufficient. */
+export async function findActiveClientPackage(input: {
+  salonId: string;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+}): Promise<ClientPackageUsageSummary | null> {
+  await ensureClientPackagesSchema();
+  const email = input.clientEmail?.trim().toLowerCase() || '';
+  const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
+  if (!email && !phoneDigits) return null;
+  const rows = await sql`
+    SELECT id, package_name, total_sessions, used_sessions, expires_at::text AS expires_at
+    FROM client_packages
+    WHERE salon_id = ${input.salonId}
+      AND expires_at >= CURRENT_DATE
+      AND used_sessions < total_sessions
+      AND (
+        (${email} <> '' AND lower(trim(coalesce(client_email, ''))) = ${email})
+        OR (${phoneDigits} <> '' AND regexp_replace(coalesce(client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
+      )
+    ORDER BY expires_at ASC, created_at ASC
+    LIMIT 1
+  ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
+  const row = rows[0];
+  if (!row) return null;
+  const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
+  const usedSessions = Math.min(totalSessions, Math.max(0, Number(row.used_sessions) || 0));
+  return {
+    id: String(row.id),
+    packageName: String(row.package_name ?? ''),
+    totalSessions,
+    usedSessions,
+    remainingSessions: Math.max(0, totalSessions - usedSessions),
+    expiresAt: String(row.expires_at ?? ''),
+  };
+}
+
 export async function ensureClientPackagesSchema() {
   await ensureSalonClientsSchema();
   await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;

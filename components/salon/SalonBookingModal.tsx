@@ -82,7 +82,9 @@ type SalonBookingModalProps = {
   clientName: string;
   clientPhone: string;
   clientEmail: string;
-  notes: string;
+  /** Retained for backwards compatibility; the standard modal does not render notes. */
+  notes?: string;
+  usePackage?: boolean;
   salonName: string;
   termsHref: string;
   privacyHref: string;
@@ -107,7 +109,8 @@ type SalonBookingModalProps = {
   onClientNameChange: (v: string) => void;
   onClientPhoneChange: (v: string) => void;
   onClientEmailChange: (v: string) => void;
-  onNotesChange: (v: string) => void;
+  onNotesChange?: (v: string) => void;
+  onUsePackageChange?: (value: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   /** TEAM plan: pass all non-owner staff members. Empty = SOLO flow (no staff step). */
   staffMembers?: PublicStaffMember[];
@@ -274,7 +277,8 @@ export function SalonBookingModal({
   clientName,
   clientPhone,
   clientEmail,
-  notes,
+  notes: _notes,
+  usePackage = false,
   salonName,
   termsHref,
   privacyHref,
@@ -299,7 +303,8 @@ export function SalonBookingModal({
   onClientNameChange,
   onClientPhoneChange,
   onClientEmailChange,
-  onNotesChange,
+  onNotesChange: _onNotesChange,
+  onUsePackageChange,
   onSubmit,
   staffMembers = [],
   selectedStaffMemberId,
@@ -1372,17 +1377,27 @@ export function SalonBookingModal({
                     />
                   </div>
 
-                  <div className="min-w-0">
-                    <label className="block text-[13px] font-semibold text-black">
-                      {t('booking.modal.notes')}
-                    </label>
-                    <textarea
-                      className={`${fieldClass} resize-none`}
-                      rows={2}
-                      value={notes}
-                      onChange={(e) => onNotesChange(e.target.value)}
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onUsePackageChange?.(!usePackage)}
+                    aria-pressed={usePackage}
+                    className={`flex w-full items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${
+                      usePackage
+                        ? 'border-transparent bg-[color:var(--salon-primary)] text-white shadow-[0_4px_14px_rgba(0,0,0,0.14)]'
+                        : 'border-black/[0.08] bg-white text-black/75 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
+                    }`}
+                    style={usePackage ? accentFillStyle : undefined}
+                  >
+                    <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${usePackage ? 'border-white/70 bg-white/15' : 'border-black/25'}`} aria-hidden>
+                      {usePackage ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+                    </span>
+                    <span>
+                      <span className="block text-[13px] font-semibold">{t('booking.modal.usePackageTitle')}</span>
+                      <span className={`mt-0.5 block text-[12px] leading-snug ${usePackage ? 'text-white/80' : 'text-black/45'}`}>
+                        {t('booking.modal.usePackageHint')}
+                      </span>
+                    </span>
+                  </button>
 
                 </div>
               ) : null}
@@ -1423,7 +1438,7 @@ export function SalonBookingModal({
               </div>
             ) : null}
 
-            {((classMode && step === 2) || (!classMode && step === 3)) && paymentType === 'optional_full' ? (
+            {((classMode && step === 2) || (!classMode && step === 3)) && paymentType === 'optional_full' && !usePackage ? (
               <div className="mb-2.5 space-y-2 px-1">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[12px] font-semibold text-black/55">
@@ -1495,10 +1510,10 @@ export function SalonBookingModal({
             {(() => {
               const maxStep = classMode ? 2 : (isTeam ? 4 : 3);
               const isLastStep = step === maxStep;
-              const requiresOnlinePayment = paymentType !== 'none' && (paymentType !== 'optional_full' || payOnline);
+              const requiresOnlinePayment = !usePackage && paymentType !== 'none' && (paymentType !== 'optional_full' || payOnline);
               const submitLabel = requiresOnlinePayment
                 ? (paymentType === 'optional_full' ? t('booking.modal.payOnlineCta', { price: fmtPrice(totalPrice) }) : t('booking.modal.payAndBook'))
-                : (paymentType === 'optional_full' ? t('booking.modal.reserveAtStudioCta') : t('booking.modal.sendRequest'));
+                : (usePackage ? t('booking.modal.reserveWithPackageCta') : (paymentType === 'optional_full' ? t('booking.modal.reserveAtStudioCta') : t('booking.modal.sendRequest')));
               const nextDisabled =
                 classMode
                   ? step === 1 && (!hasServices || !selectedDate || !selectedTime || hasSelectedFullCapacitySlot)

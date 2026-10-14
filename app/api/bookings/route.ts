@@ -27,7 +27,7 @@ import { sendBookingConfirmation, sendGoogleReviewInvitation } from '@/lib/resen
 import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-events';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getStaffMemberById, getStaffMembers } from '@/lib/staff-members';
-import { consumePackageForCompletedBooking } from '@/lib/client-packages';
+import { consumePackageForCompletedBooking, findActiveClientPackage } from '@/lib/client-packages';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 type OccupiedSlot = { time: string; duration: number; quantity: number; blocksAll?: boolean };
@@ -347,6 +347,7 @@ export async function POST(request: NextRequest) {
     date: string;
     time: string;
     notes?: string;
+    usePackage?: boolean;
     offerId?: string;
     requiresPayment?: boolean;
     staffMemberId?: string;
@@ -371,6 +372,7 @@ export async function POST(request: NextRequest) {
     date,
     time,
     notes,
+    usePackage,
     offerId,
     requiresPayment,
     staffMemberId: rawStaffMemberId,
@@ -384,6 +386,7 @@ export async function POST(request: NextRequest) {
   const normalizedNotes = typeof notes === 'string' ? notes.trim() : '';
   const normalizedOfferId = typeof offerId === 'string' ? offerId.trim() : '';
   const skipNotifications = requiresPayment === true;
+  const requestedPackage = usePackage === true;
 
   if (!clientName || !clientPhone || (!isAdminCreate && !clientEmail) || !serviceName || !date || !time) {
     return NextResponse.json(
@@ -407,6 +410,19 @@ export async function POST(request: NextRequest) {
     }
   }
   const bookingId = crypto.randomUUID();
+  if (requestedPackage && !isAdminCreate) {
+    const activePackage = await findActiveClientPackage({
+      salonId,
+      clientPhone,
+      clientEmail: normalizedClientEmail,
+    });
+    if (!activePackage) {
+      return NextResponse.json(
+        { error: 'Не открихме активен пакет с този телефон или имейл. Проверете данните или изберете друг начин на плащане.' },
+        { status: 400 },
+      );
+    }
+  }
   let resolvedServiceName = String(serviceName).trim();
   let priceValue =
     servicePrice != null && Number.isFinite(Number(servicePrice)) ? Number(servicePrice) : null;
@@ -631,7 +647,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const packageUsage = bookingStatus === 'confirmed'
+  const packageUsage = requestedPackage && bookingStatus === 'confirmed'
     ? await consumePackageForCompletedBooking({
         salonId,
         bookingId: insertedBooking.id,
