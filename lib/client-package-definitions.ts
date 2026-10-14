@@ -86,6 +86,21 @@ export async function listClientPackageDefinitions(salonId: string) {
   return rows.map(rowToDefinition);
 }
 
+export async function getClientPackageDefinition(input: { salonId: string; id: string }) {
+  await ensureClientPackageDefinitionsSchema();
+  const rows = await sql`
+    SELECT
+      id, salon_id, name, description, total_sessions, price,
+      validity_days, service_ids, is_active, created_at, updated_at
+    FROM client_package_definitions
+    WHERE salon_id = ${input.salonId}
+      AND id = ${input.id}::uuid
+    LIMIT 1
+  ` as PackageDefinitionRow[];
+  const row = rows[0];
+  return row ? rowToDefinition(row) : null;
+}
+
 export async function upsertClientPackageDefinition(input: {
   id?: string | null;
   salonId: string;

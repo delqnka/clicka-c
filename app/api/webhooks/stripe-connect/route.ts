@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
+import type Stripe from 'stripe';
 import { sql } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
 import { dispatchBookingNotifications } from '@/lib/booking-notifications';
 import { getStaffMemberById } from '@/lib/staff-members';
 import { alertOwnerWebhookFailure } from '@/lib/webhook-alert';
+import { getClientPackageDefinition } from '@/lib/client-package-definitions';
+import { createClientPackage } from '@/lib/client-packages';
+import { sendClientPackageActivatedEmail } from '@/lib/resend';
 
 export const runtime = 'nodejs';
 
@@ -73,18 +77,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    let session = event.data.object as {
-      id: string;
-      amount_total: number | null;
-      metadata?: Record<string, string> | null;
-      payment_status: string;
-    };
+    let session = event.data.object as Stripe.Checkout.Session;
+    const connectedAccountId = (event as { account?: string }).account;
 
     // Thin payload — fetch full session to get metadata
-    if (!session.metadata?.bookingId && (event as { account?: string }).account) {
+    if ((!session.metadata?.bookingId || !session.customer_details) && connectedAccountId) {
       try {
-        const full = await stripe.checkout.sessions.retrieve(session.id, {}, { stripeAccount: (event as { account?: string }).account });
-        session = { ...session, metadata: full.metadata ?? {}, amount_total: full.amount_total };
+        session = await stripe.checkout.sessions.retrieve(session.id, {}, { stripeAccount: connectedAccountId });
       } catch (err) {
         console.error('[stripe-connect webhook] failed to fetch full session', err);
         Sentry.captureException(err, { extra: { sessionId: session.id } });
@@ -92,6 +91,79 @@ export async function POST(request: NextRequest) {
     }
 
     if (session.payment_status === 'paid') {
+      if (session.metadata?.type === 'package_purchase') {
+        const salonId = session.metadata.salonId?.trim();
+        const packageDefinitionId = session.metadata.packageDefinitionId?.trim();
+        if (!salonId || !packageDefinitionId) {
+          console.error('[stripe-connect webhook] missing package metadata', session.metadata);
+          Sentry.captureException(new Error('Missing package purchase metadata'), { extra: { eventId: event.id, sessionId: session.id } });
+          await unmarkEvent(event.id);
+          return NextResponse.json({ error: 'Missing package metadata' }, { status: 500 });
+        }
+
+        try {
+          const pkgDef = await getClientPackageDefinition({ salonId, id: packageDefinitionId });
+          if (!pkgDef || pkgDef.isActive === false) {
+            throw new Error(`Package definition not found or inactive: ${packageDefinitionId}`);
+          }
+
+          const customerEmail =
+            normalizeEmail(session.customer_details?.email ?? undefined) ??
+            normalizeEmail(session.metadata.clientEmail);
+          const customerPhone =
+            session.customer_details?.phone?.trim() ||
+            session.metadata.clientPhone?.trim() ||
+            null;
+          const customerName =
+            session.customer_details?.name?.trim() ||
+            session.metadata.clientName?.trim() ||
+            customerEmail?.split('@')[0] ||
+            'Клиент';
+
+          const created = await createClientPackage({
+            salonId,
+            clientName: customerName,
+            clientPhone: customerPhone,
+            clientEmail: customerEmail,
+            packageName: pkgDef.name,
+            totalSessions: pkgDef.totalSessions,
+            price: session.amount_total != null ? session.amount_total / 100 : pkgDef.price,
+            validityDays: pkgDef.validityDays,
+            source: 'online',
+            stripeCheckoutSessionId: session.id,
+          });
+
+          if (customerEmail) {
+            const salonRows = await sql`
+              SELECT name
+              FROM salons
+              WHERE CAST(id AS text) = ${salonId}
+              LIMIT 1
+            `.catch(() => []);
+            const salonName = String((salonRows[0] as Record<string, unknown> | undefined)?.name ?? '');
+            await sendClientPackageActivatedEmail(customerEmail, {
+              salonId,
+              salonName,
+              clientName: customerName,
+              packageName: created.packageName,
+              totalSessions: created.totalSessions,
+              usedSessions: created.usedSessions,
+              remainingSessions: created.remainingSessions,
+              validFrom: created.purchasedAt,
+              validTo: created.expiresAt,
+            }).catch((err) => console.error('[stripe-connect webhook] package activation email', err));
+          }
+        } catch (err) {
+          console.error('[stripe-connect webhook] package activation failed:', err);
+          Sentry.captureException(err, { extra: { eventId: event.id, sessionId: session.id, metadata: session.metadata } });
+          alertOwnerWebhookFailure({ label: 'Connect package activation failed', eventId: event.id, detail: `sessionId=${session.id}`, amountCents: session.amount_total ?? 0 });
+          await unmarkEvent(event.id);
+          return NextResponse.json({ error: 'Package activation failed' }, { status: 500 });
+        }
+
+        return NextResponse.json({ received: true });
+      }
+
       const bookingId = session.metadata?.bookingId;
       if (bookingId) {
         let updated: { id: string }[] = [];
@@ -206,4 +278,10 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+function normalizeEmail(raw: string | null | undefined) {
+  const email = raw?.trim().toLowerCase() ?? '';
+  if (!email) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }

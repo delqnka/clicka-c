@@ -39,9 +39,19 @@ export async function ensureClientPackagesSchema() {
       purchased_at timestamptz NOT NULL DEFAULT now(),
       expires_at date NOT NULL,
       source text NOT NULL DEFAULT 'admin',
+      stripe_checkout_session_id text,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
     )
+  `;
+  await sql`
+    ALTER TABLE client_packages
+    ADD COLUMN IF NOT EXISTS stripe_checkout_session_id text
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS client_packages_stripe_session_uniq
+      ON client_packages(stripe_checkout_session_id)
+      WHERE stripe_checkout_session_id IS NOT NULL
   `;
   await sql`
     CREATE INDEX IF NOT EXISTS client_packages_salon_client_idx
@@ -76,6 +86,7 @@ export async function createClientPackage(input: {
   validTo?: string | null;
   validityDays?: number | null;
   source?: 'admin' | 'online';
+  stripeCheckoutSessionId?: string | null;
 }) {
   await ensureClientPackagesSchema();
   const client = await upsertSalonClient(input.salonId, input.clientName, {
@@ -90,7 +101,8 @@ export async function createClientPackage(input: {
   const rows = await sql`
     INSERT INTO client_packages (
       salon_id, client_id, client_name, client_phone, client_email,
-      package_name, total_sessions, used_sessions, price, purchased_at, expires_at, source
+      package_name, total_sessions, used_sessions, price, purchased_at, expires_at,
+      source, stripe_checkout_session_id
     )
     VALUES (
       ${input.salonId},
@@ -104,8 +116,12 @@ export async function createClientPackage(input: {
       ${input.price ?? null},
       COALESCE(${input.validFrom?.trim() || null}::date, now()),
       COALESCE(${validTo}::date, (CURRENT_DATE + (${validityDays}::int * interval '1 day'))::date),
-      ${input.source ?? 'admin'}
+      ${input.source ?? 'admin'},
+      ${input.stripeCheckoutSessionId?.trim() || null}
     )
+    ON CONFLICT (stripe_checkout_session_id)
+    WHERE stripe_checkout_session_id IS NOT NULL
+    DO UPDATE SET updated_at = client_packages.updated_at
     RETURNING id, package_name, total_sessions, used_sessions, expires_at, purchased_at
   ` as {
     id: string;
