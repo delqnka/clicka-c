@@ -3144,10 +3144,11 @@ export function ClientsPanel({
   const [importResult, setImportResult] = React.useState<MembershipImportResult | null>(null);
   const [importError, setImportError] = React.useState('');
 
+  const packageDialogIsOpen = Boolean(activationDraft);
   React.useEffect(() => {
-    onPackageDialogOpenChange?.(Boolean(activationDraft));
+    onPackageDialogOpenChange?.(packageDialogIsOpen);
     return () => onPackageDialogOpenChange?.(false);
-  }, [activationDraft, onPackageDialogOpenChange]);
+  }, [packageDialogIsOpen, onPackageDialogOpenChange]);
 
   const sortedClients = React.useMemo(() => {
     const arr = [...clients];
@@ -3375,14 +3376,14 @@ export function ClientsPanel({
       <div
         role="dialog"
         aria-modal="true"
-        style={{ position: 'fixed', inset: 0, zIndex: 305, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.42)', padding: isMobile ? '12px 12px max(12px, env(safe-area-inset-bottom, 12px))' : 16, boxSizing: 'border-box', overflow: 'hidden' }}
+        style={{ position: 'fixed', inset: 0, zIndex: 305, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.42)', padding: isMobile ? '12px 12px max(12px, env(safe-area-inset-bottom, 12px))' : 16, boxSizing: 'border-box' }}
         onClick={() => !packageBusyKey && setActivationDraft(null)}
       >
         <div
-          style={{ background: '#fff', borderRadius: isMobile ? 18 : 16, padding: isMobile ? 18 : 20, width: '100%', maxWidth: 520, maxHeight: isMobile ? 'calc(100dvh - 24px - env(safe-area-inset-bottom, 0px))' : 'calc(100dvh - 32px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y', display: 'grid', gap: 12, boxSizing: 'border-box' }}
+          style={{ background: '#fff', borderRadius: isMobile ? 18 : 16, width: '100%', maxWidth: 520, height: isMobile ? 'calc(100dvh - 24px - env(safe-area-inset-bottom, 0px))' : undefined, maxHeight: isMobile ? undefined : 'calc(100dvh - 32px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', padding: isMobile ? '18px 18px 12px' : '20px 20px 12px', flexShrink: 0 }}>
             <div>
               <p style={{ margin: 0, fontSize: 12, color: T.subtle, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 {isEn ? 'Client package' : 'Клиентски пакет'}
@@ -3398,6 +3399,7 @@ export function ClientsPanel({
             </button>
           </div>
 
+          <div style={{ minHeight: 0, flex: '1 1 auto', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', padding: isMobile ? '0 18px 18px' : '0 20px 20px', display: 'grid', alignContent: 'start', gap: 12 }}>
           {activationDraft.mode === 'create' && packageDefinitions.length > 0 ? (
             <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 800, color: '#111' }}>
               {isEn ? 'Use saved package' : 'Избери създаден пакет'}
@@ -3444,8 +3446,9 @@ export function ClientsPanel({
           </div>
 
           {activationError ? <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 750 }}>{activationError}</p> : null}
+          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap', padding: isMobile ? '12px 18px max(18px, env(safe-area-inset-bottom, 0px))' : '12px 20px 20px', borderTop: `1px solid ${T.border}`, background: '#fff', flexShrink: 0 }}>
             <button type="button" onClick={() => !packageBusyKey && setActivationDraft(null)} style={{ border: `1px solid ${T.border}`, borderRadius: 999, background: '#fff', color: '#111', padding: '9px 13px', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}>
               {isEn ? 'Cancel' : 'Отказ'}
             </button>

@@ -899,7 +899,6 @@ export default function AdminDashboardClient({
       (isMobile && navOpen) ||
       serviceModalOpen ||
       clientModalOpen ||
-      packageDialogOpen ||
       qrOpen ||
       pwaInstallOpen;
 
@@ -918,7 +917,7 @@ export default function AdminDashboardClient({
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [isMobile, navOpen, serviceModalOpen, clientModalOpen, packageDialogOpen, qrOpen, pwaInstallOpen]);
+  }, [isMobile, navOpen, serviceModalOpen, clientModalOpen, qrOpen, pwaInstallOpen]);
 
   const hasGoogleReviewsCandidate = Boolean(
     site.googlePlaceId.trim() || site.googleMapsUrl.trim(),
