@@ -46,9 +46,22 @@ type ClientSummary = {
     totalSessions: number;
     usedSessions: number;
     remainingSessions: number;
+    price?: number | null;
+    purchasedAt?: string | null;
     expiresAt: string;
     status: 'active' | 'expired' | 'used';
   } | null;
+  packageHistory?: Array<{
+    id: string;
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+    price?: number | null;
+    purchasedAt?: string | null;
+    expiresAt: string;
+    status: 'active' | 'expired' | 'used';
+  }>;
 };
 
 type ExternalCalendarEventRow = {
@@ -3083,6 +3096,7 @@ export function ClientsPanel({
   onUpdatePackage,
   onDeactivatePackage,
   onImportMemberships,
+  onPackageDialogOpenChange,
   locale,
 }: {
   slug: string;
@@ -3110,6 +3124,7 @@ export function ClientsPanel({
   }) => Promise<void>;
   onDeactivatePackage?: (client: ClientSummary, packageId: string) => Promise<void>;
   onImportMemberships?: (csvText: string, mode: MembershipImportMode) => Promise<MembershipImportResult>;
+  onPackageDialogOpenChange?: (isOpen: boolean) => void;
   locale: Locale;
 }) {
   const isEn = locale === 'en';
@@ -3127,6 +3142,11 @@ export function ClientsPanel({
   const [importBusy, setImportBusy] = React.useState<MembershipImportMode | null>(null);
   const [importResult, setImportResult] = React.useState<MembershipImportResult | null>(null);
   const [importError, setImportError] = React.useState('');
+
+  React.useEffect(() => {
+    onPackageDialogOpenChange?.(Boolean(activationDraft));
+    return () => onPackageDialogOpenChange?.(false);
+  }, [activationDraft, onPackageDialogOpenChange]);
 
   const sortedClients = React.useMemo(() => {
     const arr = [...clients];
@@ -3354,11 +3374,11 @@ export function ClientsPanel({
       <div
         role="dialog"
         aria-modal="true"
-        style={{ position: 'fixed', inset: 0, zIndex: 305, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.42)', padding: 16 }}
+        style={{ position: 'fixed', inset: 0, zIndex: 305, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.42)', padding: isMobile ? '12px 12px max(12px, env(safe-area-inset-bottom, 12px))' : 16, boxSizing: 'border-box', overflow: 'hidden', touchAction: 'none' }}
         onClick={() => !packageBusyKey && setActivationDraft(null)}
       >
         <div
-          style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 520, maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', display: 'grid', gap: 12, boxSizing: 'border-box' }}
+          style={{ background: '#fff', borderRadius: isMobile ? 18 : 16, padding: isMobile ? 18 : 20, width: '100%', maxWidth: 520, maxHeight: isMobile ? 'calc(100dvh - 24px - env(safe-area-inset-bottom, 0px))' : 'calc(100dvh - 32px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y', display: 'grid', gap: 12, boxSizing: 'border-box' }}
           onClick={(e) => e.stopPropagation()}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
@@ -3610,6 +3630,12 @@ export function ClientsPanel({
                     {isEn ? 'No active package' : 'Няма активен пакет'}
                   </span>
                 )}
+                {client.activePackage?.purchasedAt ? (
+                  <span style={{ fontSize: 12, color: T.muted }}>
+                    {isEn ? 'Purchased: ' : 'Закупен: '}
+                    {new Date(client.activePackage.purchasedAt).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}
+                  </span>
+                ) : null}
                 {onAddPackage && !client.activePackage ? (
                   <button
                     type="button"
@@ -3700,6 +3726,22 @@ export function ClientsPanel({
                   </button>
                 ) : null}
               </div>
+              {client.packageHistory?.length ? (
+                <details style={{ marginTop: 10 }}>
+                  <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 750, color: '#111' }}>
+                    {isEn ? `Package history (${client.packageHistory.length})` : `История на пакетите (${client.packageHistory.length})`}
+                  </summary>
+                  <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                    {client.packageHistory.map((pkg) => (
+                      <div key={pkg.id} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '8px 10px', display: 'grid', gap: 3, fontSize: 12, color: '#111' }}>
+                        <strong>{pkg.packageName}</strong>
+                        <span>{isEn ? 'Purchased: ' : 'Закупен: '}{pkg.purchasedAt ? new Date(pkg.purchasedAt).toLocaleDateString(isEn ? 'en-US' : 'bg-BG') : '—'}</span>
+                        <span>{isEn ? 'Credits: ' : 'Кредити: '}{pkg.usedSessions}/{pkg.totalSessions} · {isEn ? 'valid to ' : 'валиден до '}{new Date(`${normalizeDateKey(pkg.expiresAt)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}{pkg.price != null ? ` · ${formatSalonPrice(pkg.price)}` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </div>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0, minWidth: 0 }}>
               <div style={{ textAlign: isMobile ? 'left' : 'right', minWidth: 0 }}>

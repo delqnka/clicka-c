@@ -231,9 +231,12 @@ type ClientSummary = {
     totalSessions: number;
     usedSessions: number;
     remainingSessions: number;
+    price?: number | null;
+    purchasedAt?: string | null;
     expiresAt: string;
     status: 'active' | 'expired' | 'used';
   } | null;
+  packageHistory?: NonNullable<ClientSummary['activePackage']>[];
 };
 type BookingGroupKey = 'upcoming' | 'past' | 'completed' | 'cancelled';
 type GoogleReviewsStatus = {
@@ -293,6 +296,7 @@ function mergeBookingAndExtraClients(bookingClients: ClientSummary[], extraClien
     if (!existing.email && extra.email) existing.email = extra.email;
     if (existing.name === 'Клиент' && extra.name) existing.name = extra.name;
     if (extra.activePackage) existing.activePackage = extra.activePackage;
+    if (extra.packageHistory?.length) existing.packageHistory = extra.packageHistory;
     if (extra.isNew && existing.visits === 0) existing.isNew = true;
   }
 
@@ -535,6 +539,7 @@ export default function AdminDashboardClient({
   const [pwaInstallOpen, setPwaInstallOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newClientDraft, setNewClientDraft] = useState({ name: '', phone: '', email: '' });
   const [clientSaving, setClientSaving] = useState(false);
   const [extraClients, setExtraClients] = useState<ClientSummary[]>([]);
@@ -833,7 +838,7 @@ export default function AdminDashboardClient({
     const timeout = window.setTimeout(() => {
       fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, { signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : null)
-      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null; active_package?: ClientSummary['activePackage'] }[] } | null) => {
+      .then((data: { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null; active_package?: ClientSummary['activePackage']; package_history?: ClientSummary['packageHistory'] }[] } | null) => {
         setExtraClientsLoaded(true);
         if (!data?.clients?.length) return;
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -847,6 +852,7 @@ export default function AdminDashboardClient({
           lastVisit: String(c.last_visit ?? ''),
           lastBookingQuantity: c.last_booking_quantity == null ? undefined : Math.max(1, Number(c.last_booking_quantity) || 1),
           activePackage: c.active_package ?? null,
+          packageHistory: c.package_history ?? [],
           isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
         })));
       })
@@ -893,6 +899,7 @@ export default function AdminDashboardClient({
       (isMobile && navOpen) ||
       serviceModalOpen ||
       clientModalOpen ||
+      packageDialogOpen ||
       qrOpen ||
       pwaInstallOpen;
 
@@ -911,7 +918,7 @@ export default function AdminDashboardClient({
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [isMobile, navOpen, serviceModalOpen, clientModalOpen, qrOpen, pwaInstallOpen]);
+  }, [isMobile, navOpen, serviceModalOpen, clientModalOpen, packageDialogOpen, qrOpen, pwaInstallOpen]);
 
   const hasGoogleReviewsCandidate = Boolean(
     site.googlePlaceId.trim() || site.googleMapsUrl.trim(),
@@ -2810,6 +2817,7 @@ export default function AdminDashboardClient({
                   clients={mergedVisibleClients}
                   isMobile={isMobile}
                   T={T}
+                  onPackageDialogOpenChange={setPackageDialogOpen}
                   onEdit={async (key, data) => {
                     if (key.startsWith('sc-')) {
                       const id = key.slice(3);
@@ -2903,7 +2911,7 @@ export default function AdminDashboardClient({
                     setHiddenClientKeys((prev) => client.key.startsWith('sc-') ? prev : new Set([...prev, client.key]));
                     const refreshed = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' }).catch(() => null);
                     if (refreshed?.ok) {
-                      const data = await refreshed.json().catch(() => null) as { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null; active_package?: ClientSummary['activePackage'] }[] } | null;
+                      const data = await refreshed.json().catch(() => null) as { clients?: { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits?: number | string | null; total_spent?: number | string | null; last_visit?: string | null; last_booking_quantity?: number | string | null; active_package?: ClientSummary['activePackage']; package_history?: ClientSummary['packageHistory'] }[] } | null;
                       if (data?.clients) {
                         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
                         setExtraClients(data.clients.map((c) => ({
@@ -2916,6 +2924,7 @@ export default function AdminDashboardClient({
                           lastVisit: String(c.last_visit ?? ''),
                           lastBookingQuantity: c.last_booking_quantity == null ? undefined : Math.max(1, Number(c.last_booking_quantity) || 1),
                           activePackage: c.active_package ?? null,
+                          packageHistory: c.package_history ?? [],
                           isNew: new Date(c.created_at).getTime() > thirtyDaysAgo,
                         })));
                         setExtraClientsLoaded(true);
@@ -3174,7 +3183,7 @@ export default function AdminDashboardClient({
       </div>
 
       {/* ── Mobile bottom tab bar (full-width glass bar) ─ */}
-      {isMobile && (
+      {isMobile && !packageDialogOpen && (
         <MobileBottomNav
           tabs={mobileBottomTabs}
           activeTab={activeTopLevelTab}

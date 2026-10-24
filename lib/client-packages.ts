@@ -9,6 +9,8 @@ export type ClientPackageSummary = {
   usedSessions: number;
   remainingSessions: number;
   expiresAt: string;
+  purchasedAt: string;
+  price: number | null;
   status: 'active' | 'expired' | 'used';
 };
 
@@ -289,7 +291,8 @@ export async function updateClientPackage(input: {
       updated_at = now()
     WHERE id = ${input.packageId}::uuid
       AND salon_id = ${input.salonId}
-    RETURNING id, client_name, client_email, package_name, total_sessions, used_sessions, expires_at::text AS expires_at
+    RETURNING id, client_name, client_email, package_name, total_sessions, used_sessions,
+      price, expires_at::text AS expires_at, purchased_at
   ` as {
     id: string;
     client_name: string | null;
@@ -297,7 +300,9 @@ export async function updateClientPackage(input: {
     package_name: string;
     total_sessions: number;
     used_sessions: number;
+    price: string | number | null;
     expires_at: string;
+    purchased_at: string;
   }[];
   const row = rows[0];
   if (!row) throw new Error('Пакетът не е намерен.');
@@ -310,6 +315,8 @@ export async function updateClientPackage(input: {
     usedSessions: Math.max(0, Number(row.used_sessions) || 0),
     remainingSessions: Math.max(0, (Number(row.total_sessions) || 1) - (Number(row.used_sessions) || 0)),
     expiresAt: String(row.expires_at ?? ''),
+    purchasedAt: String(row.purchased_at ?? ''),
+    price: row.price == null ? null : Number(row.price),
     status: 'active' as const,
   };
 }
