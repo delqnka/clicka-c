@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { CSSProperties } from 'react';
 import type { BookingRecord, ServiceItem, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
@@ -3370,11 +3371,11 @@ export function ClientsPanel({
       </div>
     )}
 
-    {activationDraft && (
+    {activationDraft && createPortal(
       <div
         role="dialog"
         aria-modal="true"
-        style={{ position: 'fixed', inset: 0, zIndex: 305, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.42)', padding: isMobile ? '12px 12px max(12px, env(safe-area-inset-bottom, 12px))' : 16, boxSizing: 'border-box', overflow: 'hidden', touchAction: 'none' }}
+        style={{ position: 'fixed', inset: 0, zIndex: 305, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.42)', padding: isMobile ? '12px 12px max(12px, env(safe-area-inset-bottom, 12px))' : 16, boxSizing: 'border-box', overflow: 'hidden' }}
         onClick={() => !packageBusyKey && setActivationDraft(null)}
       >
         <div
@@ -3455,7 +3456,8 @@ export function ClientsPanel({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     )}
 
     {onImportMemberships && (
