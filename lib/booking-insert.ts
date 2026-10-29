@@ -20,6 +20,12 @@ export type InsertBookingRow = {
   notes: string;
   offerId: string | null;
   status?: 'pending' | 'confirmed';
+  classOccurrence?: {
+    originalDate: string;
+    originalTime: string;
+    originalClassName: string;
+    originalTrainer: string;
+  } | null;
 };
 
 /** Atomically insert only when no active booking overlaps the requested time range. */
@@ -36,6 +42,7 @@ export async function insertBookingIfNoOverlap(
   const manageTokenHash = crypto.createHash('sha256').update(manageToken).digest('hex');
 
   const staffMemberId = row.staffMemberId ?? null;
+  const classOccurrence = row.classOccurrence ?? null;
   const capacity = Math.max(1, Math.round(Number(row.capacity ?? 1) || 1));
   const quantity = Math.max(1, Math.round(Number(row.quantity ?? 1) || 1));
   if (quantity > capacity) return null;
@@ -73,7 +80,11 @@ export async function insertBookingIfNoOverlap(
   }
 
   const lockKey = `${row.salonId}:${row.date}:${staffMemberId ?? 'all'}`;
-  const [, inserted] = await sqlTransaction<[unknown[], Record<string, unknown>[]]>((txn) => [
+  const classOccurrenceLockKey = classOccurrence
+    ? `${row.salonId}:${classOccurrence.originalDate}:${classOccurrence.originalTime}:${classOccurrence.originalTrainer}`
+    : null;
+  const [, , inserted] = await sqlTransaction<[unknown[], unknown[], Record<string, unknown>[]]>((txn) => [
+    txn`SELECT pg_advisory_xact_lock(hashtext(${classOccurrenceLockKey ?? lockKey}))`,
     txn`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
     txn`
       INSERT INTO bookings (
@@ -100,6 +111,17 @@ export async function insertBookingIfNoOverlap(
         ${row.offerId},
         ${manageTokenHash}
       WHERE (
+        ${!classOccurrence} OR NOT EXISTS (
+          SELECT 1
+          FROM class_schedule_overrides o
+          WHERE o.salon_id = ${row.salonId}
+            AND o.original_date = ${classOccurrence?.originalDate ?? ''}
+            AND o.original_time = ${classOccurrence?.originalTime ?? ''}
+            AND o.original_class_name = ${classOccurrence?.originalClassName ?? ''}
+            AND o.original_trainer = ${classOccurrence?.originalTrainer ?? ''}
+            AND o.is_cancelled = true
+        )
+      ) AND (
         SELECT COALESCE(SUM(GREATEST(1, COALESCE(b.booking_quantity, 1))), 0)
         FROM bookings b
         WHERE b.salon_id = ${row.salonId}

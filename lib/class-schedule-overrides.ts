@@ -28,9 +28,14 @@ export async function ensureClassScheduleOverridesSchema() {
           capacity integer NOT NULL DEFAULT 1,
           price numeric,
           note text,
+          is_cancelled boolean NOT NULL DEFAULT false,
           created_at timestamptz NOT NULL DEFAULT now(),
           updated_at timestamptz NOT NULL DEFAULT now()
         )
+      `;
+      await sql`
+        ALTER TABLE class_schedule_overrides
+        ADD COLUMN IF NOT EXISTS is_cancelled boolean NOT NULL DEFAULT false
       `;
       await sql`
         CREATE UNIQUE INDEX IF NOT EXISTS class_schedule_overrides_occurrence_uniq
@@ -66,6 +71,7 @@ function mapOverrideRow(row: Record<string, unknown>): ClassScheduleOverride {
     capacity: Math.max(1, Math.round(Number(row.capacity ?? 1) || 1)),
     price: row.price == null ? undefined : Number(row.price),
     note: row.note ? String(row.note) : undefined,
+    isCancelled: row.is_cancelled === true,
   };
 }
 
@@ -113,6 +119,7 @@ export async function upsertClassScheduleOverride(
       capacity = EXCLUDED.capacity,
       price = EXCLUDED.price,
       note = EXCLUDED.note,
+      is_cancelled = false,
       updated_at = now()
     RETURNING *
   `;
@@ -129,6 +136,11 @@ export type UpdateClassOverrideBookingsOptions = {
 export type ClassScheduleOverrideMutationResult = {
   override: ClassScheduleOverride;
   updatedBookingsCount: number;
+};
+
+export type CancelClassScheduleOccurrenceResult = {
+  override: ClassScheduleOverride;
+  activeBookingsCount: number;
 };
 
 function minutesFromTime(value: string): number | null {
@@ -237,6 +249,102 @@ export async function upsertClassScheduleOverrideMutation(
   return {
     override: normalizeClassScheduleOverrides([mapOverrideRow(overrideRows[0] as Record<string, unknown>)])[0]!,
     updatedBookingsCount: updatedRows.length,
+  };
+}
+
+/**
+ * Cancels one dated class occurrence. The recurring weekly timetable remains
+ * intact, but this occurrence is hidden from both admin and public booking.
+ * A class with active bookings may never be cancelled through this flow.
+ */
+export async function cancelClassScheduleOccurrence(
+  salonId: string,
+  input: ClassScheduleOverride,
+  options: Pick<UpdateClassOverrideBookingsOptions, 'originalStaffMemberId' | 'originalEnd'>,
+): Promise<CancelClassScheduleOccurrenceResult> {
+  await ensureClassScheduleOverridesSchema();
+  await ensureBookingsSchema();
+
+  const legacyOriginalDate = formatLegacyDateDMY(input.originalDate) ?? input.originalDate;
+  const legacyCurrentDate = formatLegacyDateDMY(input.date) ?? input.date;
+  const hasOriginalStaff = Boolean(options.originalStaffMemberId);
+  const hasClassName = Boolean(input.originalClassName.trim());
+  const lockKey = `${salonId}:${input.originalDate}:${input.originalTime}:${input.originalTrainer}`;
+
+  const [, activeBookings, overrideRows] = await sqlTransaction<[unknown[], Record<string, unknown>[], Record<string, unknown>[]]>((txn) => [
+    txn`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
+    txn`
+      SELECT id
+      FROM bookings b
+      WHERE b.salon_id = ${salonId}
+        AND b.date IN (${input.originalDate}, ${legacyOriginalDate}, ${input.date}, ${legacyCurrentDate})
+        AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана', 'completed')
+        AND substring(trim(b.time) from '^\\d{1,2}:\\d{2}') IN (${input.originalTime}, ${input.start})
+        AND (
+          ${!hasOriginalStaff}
+          OR b.staff_member_id = ${options.originalStaffMemberId ?? null}::uuid
+          OR b.staff_member_id IS NULL
+        )
+        AND (
+          ${!hasClassName}
+          OR lower(trim(b.service_name)) = lower(trim(${input.originalClassName}))
+          OR lower(b.service_name) LIKE '%' || lower(trim(${input.originalClassName})) || '%'
+          OR ${hasOriginalStaff}
+        )
+      FOR UPDATE
+    `,
+    txn`
+      INSERT INTO class_schedule_overrides (
+        salon_id, original_date, original_time, original_class_name, original_trainer,
+        date, start_time, end_time, service_id, class_name, trainer, capacity, price, note, is_cancelled
+      )
+      SELECT
+        ${salonId}, ${input.originalDate}, ${input.originalTime}, ${input.originalClassName}, ${input.originalTrainer},
+        ${input.date}, ${input.start}, ${input.end}, ${input.serviceId ?? null}, ${input.className ?? null},
+        ${input.trainer}, ${input.capacity}, ${input.price ?? null}, ${input.note ?? null}, true
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM bookings b
+        WHERE b.salon_id = ${salonId}
+          AND b.date IN (${input.originalDate}, ${legacyOriginalDate}, ${input.date}, ${legacyCurrentDate})
+          AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана', 'completed')
+          AND substring(trim(b.time) from '^\\d{1,2}:\\d{2}') IN (${input.originalTime}, ${input.start})
+          AND (
+            ${!hasOriginalStaff}
+            OR b.staff_member_id = ${options.originalStaffMemberId ?? null}::uuid
+            OR b.staff_member_id IS NULL
+          )
+          AND (
+            ${!hasClassName}
+            OR lower(trim(b.service_name)) = lower(trim(${input.originalClassName}))
+            OR lower(b.service_name) LIKE '%' || lower(trim(${input.originalClassName})) || '%'
+            OR ${hasOriginalStaff}
+          )
+      )
+      ON CONFLICT (salon_id, original_date, original_time, original_class_name, original_trainer)
+      DO UPDATE SET
+        date = EXCLUDED.date,
+        start_time = EXCLUDED.start_time,
+        end_time = EXCLUDED.end_time,
+        service_id = EXCLUDED.service_id,
+        class_name = EXCLUDED.class_name,
+        trainer = EXCLUDED.trainer,
+        capacity = EXCLUDED.capacity,
+        price = EXCLUDED.price,
+        note = EXCLUDED.note,
+        is_cancelled = true,
+        updated_at = now()
+      RETURNING *
+    `,
+  ], { isolationMode: 'Serializable' });
+
+  if (activeBookings.length > 0 || overrideRows.length === 0) {
+    return { override: { ...input, isCancelled: false }, activeBookingsCount: activeBookings.length };
+  }
+
+  return {
+    override: normalizeClassScheduleOverrides([mapOverrideRow(overrideRows[0] as Record<string, unknown>)])[0]!,
+    activeBookingsCount: 0,
   };
 }
 

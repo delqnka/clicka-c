@@ -1251,6 +1251,64 @@ export function BookingsPanel({
     }
   }
 
+  async function cancelClassOccurrence() {
+    if (!classDraft) return;
+    const confirmed = window.confirm(
+      isEn
+        ? 'Cancel this class occurrence? This cannot be undone unless you reset the occurrence. Cancellation is allowed only when there are no active bookings.'
+        : 'Да анулирам ли само този клас? Може да бъде анулиран единствено ако няма активни резервации.',
+    );
+    if (!confirmed) return;
+
+    const payload = {
+      originalDate: classDraft.originalDate,
+      originalTime: classDraft.originalTime,
+      originalClassName: classDraft.originalClassName,
+      originalTrainer: classDraft.originalTrainer,
+      date: classDraft.date,
+      start: classDraft.start,
+      end: classDraft.end,
+      className: classDraft.className.trim(),
+      trainer: classDraft.trainer.trim(),
+      capacity: Math.max(1, Math.round(Number(classDraft.capacity) || 1)),
+      price: classDraft.price.trim() ? Number(classDraft.price) : undefined,
+      note: classDraft.note.trim() || undefined,
+      originalEnd: classDraft.originalEnd,
+      cancelOccurrence: true,
+    };
+    setClassEditSaving(true);
+    setClassEditError('');
+    setClassEditNotice('');
+    try {
+      const res = await fetch(`/api/admin/class-overrides?slug=${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({})) as { override?: unknown; error?: string; activeBookingsCount?: number };
+      if (!res.ok) throw new Error(data.error || (isEn ? 'Could not cancel class.' : 'Класът не беше анулиран.'));
+      const [override] = normalizeClassScheduleOverrides([data.override]);
+      if (!override?.isCancelled) {
+        throw new Error(isEn ? 'The class was not cancelled. Please try again.' : 'Класът не е анулиран. Опитай отново.');
+      }
+      setClassOverrides((prev) => [
+        ...prev.filter((item) => !(
+          item.originalDate === override.originalDate &&
+          item.originalTime === override.originalTime &&
+          item.originalClassName === override.originalClassName &&
+          item.originalTrainer === override.originalTrainer
+        )),
+        override,
+      ]);
+      setClassEditNotice(isEn ? 'This class occurrence was cancelled and is no longer bookable.' : 'Този конкретен клас е анулиран и вече не може да бъде резервиран.');
+      setClassDraft(null);
+    } catch (err) {
+      setClassEditError(err instanceof Error ? err.message : (isEn ? 'Could not cancel class.' : 'Класът не беше анулиран.'));
+    } finally {
+      setClassEditSaving(false);
+    }
+  }
+
   function openAddClient(slot: TimelineRow, explicitDate?: string | null) {
     const draftDate = explicitDate ?? slot.date ?? selectedCalendarDate ?? '';
     if (!draftDate) {
@@ -1822,9 +1880,14 @@ export function BookingsPanel({
             </label>
             {classEditError ? <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 700 }}>{classEditError}</p> : null}
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => void resetClassOverride()} style={{ ...btn('ghost'), color: '#B91C1C' }} disabled={classEditSaving}>
-                {isEn ? 'Reset this occurrence' : 'Нулирай този клас'}
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => void cancelClassOccurrence()} style={{ ...btn('ghost'), color: '#B91C1C', borderColor: 'rgba(220,38,38,0.35)' }} disabled={classEditSaving}>
+                  {isEn ? 'Cancel this class' : 'Анулирай този клас'}
+                </button>
+                <button type="button" onClick={() => void resetClassOverride()} style={{ ...btn('ghost'), color: '#B91C1C' }} disabled={classEditSaving}>
+                  {isEn ? 'Reset this occurrence' : 'Нулирай промяната'}
+                </button>
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => !classEditSaving && setClassDraft(null)} style={btn('ghost')} disabled={classEditSaving}>
                   {isEn ? 'Cancel' : 'Отказ'}
@@ -3137,6 +3200,7 @@ export function ClientsPanel({
   const [activationDraft, setActivationDraft] = React.useState<PackageActivationDraft | null>(null);
   const [activationError, setActivationError] = React.useState('');
   const [sortBy, setSortBy] = React.useState<ClientSort>('newest');
+  const [searchQuery, setSearchQuery] = React.useState('');
   const frozenOrderRef = React.useRef<string[] | null>(null);
   const [importOpen, setImportOpen] = React.useState(false);
   const [importText, setImportText] = React.useState('');
@@ -3175,6 +3239,16 @@ export function ClientsPanel({
     }
     return sortedClients;
   }, [clients, sortedClients]);
+
+  const filteredClients = React.useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!query) return displayClients;
+    return displayClients.filter((client) =>
+      [client.name, client.phone, client.email]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase().includes(query)),
+    );
+  }, [displayClients, searchQuery]);
 
   function openEdit(client: ClientSummary) {
     frozenOrderRef.current = sortedClients.map(c => c.key);
@@ -3563,31 +3637,41 @@ export function ClientsPanel({
     ) : (
       <>
       {/* Sort controls */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {SORT_OPTIONS.map(opt => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => setSortBy(opt.id)}
-            style={{
-              padding: '5px 12px',
-              borderRadius: 20,
-              border: `1px solid ${sortBy === opt.id ? '#18181B' : T.border}`,
-              background: sortBy === opt.id ? '#18181B' : 'transparent',
-              color: sortBy === opt.id ? '#fff' : T.muted,
-              fontSize: 12,
-              fontWeight: sortBy === opt.id ? 600 : 400,
-              cursor: 'pointer',
-              transition: 'all 120ms',
-            }}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder={isEn ? 'Search by name, phone or email…' : 'Търси по име, телефон или имейл…'}
+          aria-label={isEn ? 'Search clients' : 'Търси клиенти'}
+          style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 10, background: '#FAFAFA', padding: '10px 12px', color: '#111', fontSize: 14, outline: 'none' }}
+        />
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {SORT_OPTIONS.map(opt => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setSortBy(opt.id)}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 20,
+                border: `1px solid ${sortBy === opt.id ? '#18181B' : T.border}`,
+                background: sortBy === opt.id ? '#18181B' : 'transparent',
+                color: sortBy === opt.id ? '#fff' : T.muted,
+                fontSize: 12,
+                fontWeight: sortBy === opt.id ? 600 : 400,
+                cursor: 'pointer',
+                transition: 'all 120ms',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
     <div style={{ display: 'grid', gap: isMobile ? 12 : 8 }}>
-      {displayClients.map(client => (
+      {filteredClients.map(client => (
         <div
           key={client.key}
           style={{
@@ -3802,6 +3886,11 @@ export function ClientsPanel({
           </div>
         </div>
       ))}
+      {filteredClients.length === 0 ? (
+        <div style={{ borderRadius: 12, padding: '20px 14px', color: T.muted, textAlign: 'center' }}>
+          {isEn ? 'No matching clients.' : 'Няма намерени клиенти.'}
+        </div>
+      ) : null}
     </div>
     </>
     )}

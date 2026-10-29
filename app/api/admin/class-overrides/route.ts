@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import {
+  cancelClassScheduleOccurrence,
   deleteClassScheduleOverride,
   listClassScheduleOverrides,
   upsertClassScheduleOverrideMutation,
@@ -57,6 +58,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const updateExistingBookings = bodyRecord.updateExistingBookings === true;
+  const cancelOccurrence = bodyRecord.cancelOccurrence === true;
   const trainerChanged = normalizeTrainerName(input.trainer) !== normalizeTrainerName(input.originalTrainer);
   const staff = updateExistingBookings ? await getStaffMembers(access.auth.salon.salonId).catch(() => []) : [];
   const newStaffMember = trainerChanged
@@ -70,14 +72,25 @@ export async function PATCH(request: NextRequest) {
     warnings.push('Треньорът не е намерен в екипа. Класът е променен, но приходите на съществуващите резервации остават към досегашния служител.');
   }
 
-  const result = await upsertClassScheduleOverrideMutation(access.auth.salon.salonId, input, {
-    updateExistingBookings,
-    originalEnd: typeof bodyRecord.originalEnd === 'string' ? bodyRecord.originalEnd : undefined,
-    originalStaffMemberId: originalStaffMember?.id ?? null,
-    newStaffMemberId: trainerChanged
-      ? (newStaffMember?.id ?? undefined)
-      : undefined,
-  });
+  const result = cancelOccurrence
+    ? await cancelClassScheduleOccurrence(access.auth.salon.salonId, input, {
+        originalEnd: typeof bodyRecord.originalEnd === 'string' ? bodyRecord.originalEnd : undefined,
+        originalStaffMemberId: originalStaffMember?.id ?? null,
+      })
+    : await upsertClassScheduleOverrideMutation(access.auth.salon.salonId, input, {
+        updateExistingBookings,
+        originalEnd: typeof bodyRecord.originalEnd === 'string' ? bodyRecord.originalEnd : undefined,
+        originalStaffMemberId: originalStaffMember?.id ?? null,
+        newStaffMemberId: trainerChanged
+          ? (newStaffMember?.id ?? undefined)
+          : undefined,
+      });
+  if (cancelOccurrence && 'activeBookingsCount' in result && result.activeBookingsCount > 0) {
+    return NextResponse.json({
+      error: `Класът има ${result.activeBookingsCount} активн${result.activeBookingsCount === 1 ? 'а резервация' : 'и резервации'} и не може да бъде анулиран.`,
+      activeBookingsCount: result.activeBookingsCount,
+    }, { status: 409 });
+  }
   deferRevalidateSalonPublicCache({
     slug: access.auth.salon.slug,
     customDomain: access.auth.salon.customDomain,
@@ -86,7 +99,8 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({
     success: true,
     override: result.override,
-    updatedBookingsCount: result.updatedBookingsCount,
+    updatedBookingsCount: 'updatedBookingsCount' in result ? result.updatedBookingsCount : 0,
+    cancelledOccurrence: cancelOccurrence,
     warnings,
   });
 }

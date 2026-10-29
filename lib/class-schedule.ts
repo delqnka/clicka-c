@@ -27,6 +27,8 @@ export type ClassScheduleOverride = {
   capacity: number;
   price?: number;
   note?: string;
+  /** Hides this single occurrence without changing the recurring timetable. */
+  isCancelled?: boolean;
 };
 
 const DAY_NAME_TO_INDEX: Record<string, number> = {
@@ -144,6 +146,7 @@ export function normalizeClassScheduleOverrides(raw: unknown): ClassScheduleOver
       const capacityRaw = Number(row.capacity);
       const priceRaw = Number(row.price);
       const note = String(row.note ?? '').trim();
+      const isCancelled = row.isCancelled === true || row.is_cancelled === true;
       const capacity = Number.isFinite(capacityRaw)
         ? Math.max(1, Math.min(99, Math.round(capacityRaw)))
         : 1;
@@ -168,6 +171,7 @@ export function normalizeClassScheduleOverrides(raw: unknown): ClassScheduleOver
         capacity,
         ...(price != null ? { price } : {}),
         ...(note ? { note } : {}),
+        ...(isCancelled ? { isCancelled: true } : {}),
       };
     })
     .filter((item): item is ClassScheduleOverride => item !== null);
@@ -197,7 +201,7 @@ export function getClassSlotsForDateWithOverrides(
     ));
   });
   const inserted = overrides
-    .filter((override) => override.date === date)
+    .filter((override) => override.date === date && !override.isCancelled)
     .map((override): BookingClassSlot => ({
       start: override.start,
       end: override.end,

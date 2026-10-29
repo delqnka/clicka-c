@@ -519,6 +519,12 @@ export async function POST(request: NextRequest) {
     : classSchedule;
   const classSlotsForDay = getClassSlotsForDate(effectiveClassSchedule, date);
   let classSlotCapacity: number | null = null;
+  let classOccurrence: {
+    originalDate: string;
+    originalTime: string;
+    originalClassName: string;
+    originalTrainer: string;
+  } | null = null;
   const salonServicesRaw = await sql`SELECT services FROM salons WHERE CAST(id AS text) = ${salonId} LIMIT 1`;
   const salonServices = normalizeServices((salonServicesRaw[0] as Record<string, unknown> | undefined)?.services ?? []);
   if (classSlotsForDay.length > 0) {
@@ -543,6 +549,18 @@ export async function POST(request: NextRequest) {
       staffMemberId = matchedStaff.id;
     }
     classSlotCapacity = classSlot.capacity;
+    const matchingOverride = classOverrides.find((override) => (
+      override.date === date &&
+      override.start === classSlot.start &&
+      normalizeTrainerName(override.trainer) === normalizeTrainerName(classSlot.trainer) &&
+      normalizeTrainerName(override.className ?? '') === normalizeTrainerName(classSlot.className ?? '')
+    ));
+    classOccurrence = {
+      originalDate: matchingOverride?.originalDate ?? date,
+      originalTime: matchingOverride?.originalTime ?? classSlot.start,
+      originalClassName: matchingOverride?.originalClassName ?? (classSlot.className ?? ''),
+      originalTrainer: matchingOverride?.originalTrainer ?? classSlot.trainer,
+    };
     durationValue = Math.max(5, parseTimeToMinutes(classSlot.end)! - parseTimeToMinutes(classSlot.start)!);
     const classSlotService = classSlot.serviceId
       ? salonServices.find((service) => service.id === classSlot.serviceId)
@@ -626,6 +644,7 @@ export async function POST(request: NextRequest) {
       notes: normalizedNotes,
       offerId: bookingOfferId,
       status: bookingStatus,
+      classOccurrence,
     });
   } catch (err) {
     const dbErr = err as { code?: string } | null;
