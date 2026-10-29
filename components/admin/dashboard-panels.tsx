@@ -480,7 +480,7 @@ type TimelineRow = {
   rows: BookingRecord[];
   cancelledRows?: BookingRecord[];
   beds: number;
-  status?: 'free' | 'booked' | 'blocked';
+  status?: 'free' | 'booked' | 'blocked' | 'cancelled';
   blocks?: ExternalCalendarEventRow[];
   originalDate?: string;
   originalTime?: string;
@@ -516,10 +516,29 @@ function buildDailyTimelineRows({
     const status = String(booking.status ?? '').trim().toLowerCase();
     return normalizeDateKey(booking.date) === date && status === 'cancelled';
   });
-  const classSlots = getClassSlotsForDateEffective(classSchedule, date, classOverrides);
+  const activeClassSlots = getClassSlotsForDateEffective(classSchedule, date, classOverrides);
+  const classSlots = [
+    ...activeClassSlots.map((slot) => ({ slot, isCancelled: false, override: undefined as ClassScheduleOverride | undefined })),
+    ...classOverrides
+      .filter((override) => override.isCancelled && override.date === date)
+      .map((override) => ({
+        slot: {
+          start: override.start,
+          end: override.end,
+          ...(override.serviceId ? { serviceId: override.serviceId } : {}),
+          ...(override.className ? { className: override.className } : {}),
+          trainer: override.trainer,
+          capacity: override.capacity,
+          ...(override.price != null ? { price: override.price } : {}),
+          ...(override.note ? { note: override.note } : {}),
+        },
+        isCancelled: true,
+        override,
+      })),
+  ].sort((a, b) => a.slot.start.localeCompare(b.slot.start));
 
   const rows: TimelineRow[] = [];
-  for (const classSlot of classSlots) {
+  for (const { slot: classSlot, isCancelled, override: cancelledOverride } of classSlots) {
     const start = timeToMinutes(classSlot.start);
     const end = timeToMinutes(classSlot.end);
     if (start == null || end == null || end <= start) continue;
@@ -547,7 +566,7 @@ function buildDailyTimelineRows({
           return blockStart != null && blockEnd != null && overlaps(start, end, blockStart, blockEnd);
         });
 
-    const matchedOverride = classOverrides.find((override) => (
+    const matchedOverride = cancelledOverride ?? classOverrides.find((override) => (
       override.date === date &&
       override.start === classSlot.start &&
       normalizeTrainerName(override.trainer) === normalizeTrainerName(classSlot.trainer) &&
@@ -566,7 +585,7 @@ function buildDailyTimelineRows({
       rows: slotBookings,
       cancelledRows,
       beds: slotBookings.reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
-      status: slotBookings.length > 0 ? 'booked' : blocks.length > 0 ? 'blocked' : 'free',
+      status: isCancelled ? 'cancelled' : slotBookings.length > 0 ? 'booked' : blocks.length > 0 ? 'blocked' : 'free',
       blocks,
       originalDate: matchedOverride?.originalDate ?? date,
       originalTime: matchedOverride?.originalTime ?? classSlot.start,
@@ -2291,6 +2310,7 @@ export function BookingsPanel({
               {displayedTimelineRows.map((slot) => {
                 const isFree = slot.status === 'free';
                 const isBlocked = slot.status === 'blocked';
+                const isCancelled = slot.status === 'cancelled';
                 const capacity = Math.max(1, Number(slot.capacity ?? 5) || 5);
                 const availableBeds = Math.max(0, capacity - slot.beds);
                 return (
@@ -2302,8 +2322,8 @@ export function BookingsPanel({
                     gap: isMobile ? 8 : 14,
                     alignItems: 'start',
                     borderRadius: isMobile ? 16 : 14,
-                    border: `1px solid ${isBlocked ? '#E7D7A8' : slot.rows.length > 0 ? '#CBD5E1' : '#E5E7EB'}`,
-                    background: '#fff',
+                    border: `1px solid ${isCancelled ? '#FCA5A5' : isBlocked ? '#E7D7A8' : slot.rows.length > 0 ? '#CBD5E1' : '#E5E7EB'}`,
+                    background: isCancelled ? '#FFF7F7' : '#fff',
                     padding: isMobile ? 12 : 14,
                     boxShadow: '0 1px 3px rgba(15,23,42,0.08)',
                   }}
@@ -2352,22 +2372,24 @@ export function BookingsPanel({
                         <span
                           style={{
                             borderRadius: 999,
-                            background: isBlocked ? '#FEF3C7' : 'transparent',
-                            border: isBlocked ? '1px solid #FDE68A' : 'none',
-                            color: isBlocked ? '#92400E' : isFree ? '#047857' : '#334155',
+                            background: isCancelled ? '#FEE2E2' : isBlocked ? '#FEF3C7' : 'transparent',
+                            border: isCancelled ? '1px solid #FCA5A5' : isBlocked ? '1px solid #FDE68A' : 'none',
+                            color: isCancelled ? '#B91C1C' : isBlocked ? '#92400E' : isFree ? '#047857' : '#334155',
                             padding: '5px 9px',
                             fontSize: 12,
                             fontWeight: 800,
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {isBlocked
+                          {isCancelled
+                            ? (isEn ? 'Cancelled' : 'Анулиран')
+                            : isBlocked
                             ? (isEn ? 'Blocked' : 'Блокиран')
                             : slot.rows.length > 0
                               ? `${slot.beds}/${capacity} ${isEn ? 'beds' : 'легла'}`
                               : `${availableBeds}/${capacity} ${isEn ? 'free' : 'свободни'}`}
                         </span>
-                        {!isBlocked && availableBeds > 0 && (selectedCalendarDate || slot.date) ? (
+                        {!isCancelled && !isBlocked && availableBeds > 0 && (selectedCalendarDate || slot.date) ? (
                           <button
                             type="button"
                             onClick={() => openAddClient(slot, slot.date ?? selectedCalendarDate)}
@@ -2416,19 +2438,21 @@ export function BookingsPanel({
                       </p>
                     ) : null}
 
-                    {isFree || isBlocked ? (
+                    {isFree || isBlocked || isCancelled ? (
                       <div
                         style={{
                           borderRadius: 12,
-                          padding: isBlocked ? (isMobile ? '11px 12px' : '10px 12px') : 0,
-                          background: isBlocked ? '#FFFBEB' : 'transparent',
-                          border: isBlocked ? '1px solid #FDE68A' : 'none',
-                          color: isBlocked ? '#92400E' : '#94A3B8',
+                          padding: isBlocked || isCancelled ? (isMobile ? '11px 12px' : '10px 12px') : 0,
+                          background: isCancelled ? '#FEF2F2' : isBlocked ? '#FFFBEB' : 'transparent',
+                          border: isCancelled ? '1px solid #FCA5A5' : isBlocked ? '1px solid #FDE68A' : 'none',
+                          color: isCancelled ? '#B91C1C' : isBlocked ? '#92400E' : '#94A3B8',
                           fontSize: isMobile ? 14 : 13,
                           fontWeight: 600,
                         }}
                       >
-                        {isBlocked
+                        {isCancelled
+                          ? (isEn ? 'This specific class was cancelled and cannot be booked.' : 'Този конкретен клас е анулиран и не може да бъде резервиран.')
+                          : isBlocked
                           ? (slot.blocks?.[0]?.title || (isEn ? 'Blocked time' : 'Блокиран клас'))
                           : (isEn ? 'No bookings yet' : 'Все още няма резервации')}
                       </div>
