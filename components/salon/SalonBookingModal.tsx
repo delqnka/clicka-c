@@ -1341,6 +1341,12 @@ export function SalonBookingModal({
                       ) : null}
                     </div>
                   ) : null}
+                  {companions.length > 0 ? (
+                    <div className="pt-1">
+                      <p className="text-[14px] font-semibold text-black">{isEnglish ? 'Client 1' : 'Клиент 1'}</p>
+                      <p className="mt-0.5 text-[12px] text-black/45">{isEnglish ? 'Your details' : 'Вашите данни'}</p>
+                    </div>
+                  ) : null}
                   <div className="min-w-0">
                     <label className="block text-[13px] font-semibold text-black">
                       {t('booking.modal.name')}
@@ -1384,8 +1390,27 @@ export function SalonBookingModal({
                     />
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={() => onUsePackageChange?.(!usePackage)}
+                    aria-pressed={usePackage}
+                    className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
+                      usePackage
+                        ? 'border-[#91a588] bg-[#f1f5ef] text-[#243023]'
+                        : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'
+                    }`}
+                  >
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${usePackage ? 'border-[#607657] bg-[#607657] text-white' : 'border-black/20 bg-white'}`} aria-hidden>
+                      {usePackage ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold">{isEnglish ? 'I have a package' : 'Имам пакет'}</span>
+                      <span className="block text-[12px] text-black/45">{isEnglish ? 'Check it using these details' : 'Проверяваме го по тези данни'}</span>
+                    </span>
+                  </button>
+
                   {companions.map((companion, index) => (
-                    <section key={index} className={`space-y-3 rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}>
+                    <section key={index} className="space-y-3 rounded-2xl border border-black/[0.08] bg-[#fbfcfa] px-3.5 py-3.5">
                       <div>
                         <p className="text-[14px] font-semibold text-black">
                           {isEnglish ? `Client ${index + 2}` : `Клиент ${index + 2}`}
@@ -1434,43 +1459,20 @@ export function SalonBookingModal({
                         type="button"
                         onClick={() => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, usePackage: !item.usePackage } : item))}
                         aria-pressed={companion.usePackage}
-                        className={`flex w-full items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${companion.usePackage ? 'border-transparent bg-[color:var(--salon-primary)] text-white' : 'border-black/[0.08] bg-white text-black/75'}`}
-                        style={companion.usePackage ? accentFillStyle : undefined}
+                        className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${companion.usePackage ? 'border-[#91a588] bg-[#f1f5ef] text-[#243023]' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}
                       >
-                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${companion.usePackage ? 'border-white/70 bg-white/15' : 'border-black/25'}`} aria-hidden>
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${companion.usePackage ? 'border-[#607657] bg-[#607657] text-white' : 'border-black/20 bg-white'}`} aria-hidden>
                           {companion.usePackage ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
                         </span>
-                        <span>
-                          <span className="block text-[13px] font-semibold">{isEnglish ? 'Use this client\'s package' : 'Използвай пакета на този клиент'}</span>
-                          <span className={`mt-0.5 block text-[12px] leading-snug ${companion.usePackage ? 'text-white/80' : 'text-black/45'}`}>
-                            {isEnglish ? 'The credit is checked only against this client\'s details.' : 'Кредитът се проверява само по данните на този клиент.'}
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-semibold">{isEnglish ? 'This client has a package' : 'Този клиент има пакет'}</span>
+                          <span className="block text-[12px] text-black/45">
+                            {isEnglish ? 'Checked only against this client\'s details' : 'Проверява се само по неговите данни'}
                           </span>
                         </span>
                       </button>
                     </section>
                   ))}
-
-                  <button
-                    type="button"
-                    onClick={() => onUsePackageChange?.(!usePackage)}
-                    aria-pressed={usePackage}
-                    className={`flex w-full items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${
-                      usePackage
-                        ? 'border-transparent bg-[color:var(--salon-primary)] text-white shadow-[0_4px_14px_rgba(0,0,0,0.14)]'
-                        : 'border-black/[0.08] bg-white text-black/75 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
-                    }`}
-                    style={usePackage ? accentFillStyle : undefined}
-                  >
-                    <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${usePackage ? 'border-white/70 bg-white/15' : 'border-black/25'}`} aria-hidden>
-                      {usePackage ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
-                    </span>
-                    <span>
-                      <span className="block text-[13px] font-semibold">{t('booking.modal.usePackageTitle')}</span>
-                      <span className={`mt-0.5 block text-[12px] leading-snug ${usePackage ? 'text-white/80' : 'text-black/45'}`}>
-                        {t('booking.modal.usePackageHint')}
-                      </span>
-                    </span>
-                  </button>
 
                 </div>
               ) : null}
