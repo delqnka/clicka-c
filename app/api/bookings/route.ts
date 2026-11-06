@@ -441,7 +441,10 @@ export async function POST(request: NextRequest) {
   }
   const bookingId = crypto.randomUUID();
   let selectedPackage: Awaited<ReturnType<typeof findActiveClientPackage>> = null;
-  if (requestedPackage && !isAdminCreate) {
+  // Admin-created reservations can use a package too. Previously this branch
+  // skipped them, which meant adding a package client to a class never created
+  // the immutable usage record shown in the schedule.
+  if (requestedPackage) {
     selectedPackage = await findActiveClientPackage({
       salonId,
       clientPhone,

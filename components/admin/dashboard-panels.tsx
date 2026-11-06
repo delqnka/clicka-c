@@ -111,6 +111,7 @@ export type AdminBookingInput = {
   clientName: string;
   clientPhone: string;
   clientEmail?: string;
+  usePackage?: boolean;
   serviceName: string;
   serviceDuration: number;
   date: string;
@@ -935,6 +936,7 @@ export function BookingsPanel({
     clientName: string;
     clientPhone: string;
     clientEmail: string;
+    usePackage: boolean;
     bookingQuantity: number;
     notes: string;
   } | null>(null);
@@ -1343,6 +1345,7 @@ export function BookingsPanel({
       clientName: '',
       clientPhone: '',
       clientEmail: '',
+      usePackage: false,
       bookingQuantity: 1,
       notes: '',
     });
@@ -1397,6 +1400,7 @@ export function BookingsPanel({
           clientName: client?.name ?? '',
           clientPhone: client?.phone ?? '',
           clientEmail: client?.email ?? '',
+          usePackage: Boolean(client?.activePackage && client.activePackage.remainingSessions > 0),
         }
       : prev);
   }
@@ -1418,6 +1422,7 @@ export function BookingsPanel({
       clientName,
       clientPhone,
       clientEmail: clientEmail || undefined,
+      usePackage: addDraft.usePackage,
       serviceName: addDraft.slot.className || (isEn ? 'Class' : 'Клас'),
       serviceDuration: duration,
       date: addDraft.date,
@@ -1620,6 +1625,34 @@ export function BookingsPanel({
               placeholder={isEn ? 'Note optional' : 'Бележка по желание'}
               style={{ ...inp, minHeight: 86, resize: 'vertical' }}
             />
+            {(() => {
+              const selectedClient = clients.find((client) => client.key === addDraft.clientKey);
+              const activePackage = selectedClient?.activePackage;
+              if (!activePackage || activePackage.remainingSessions <= 0) return null;
+              return (
+                <label
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 9,
+                    border: '1px solid rgba(109,40,217,0.22)', borderRadius: 10,
+                    padding: '9px 10px', background: '#F5F3FF', color: '#4C1D95',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={addDraft.usePackage}
+                    onChange={(event) => setAddDraft((prev) => prev ? { ...prev, usePackage: event.target.checked } : prev)}
+                    style={{ marginTop: 1 }}
+                  />
+                  <span>
+                    {isEn ? 'Use client package' : 'Използвай пакет на клиента'}
+                    <span style={{ display: 'block', marginTop: 2, color: '#6D28D9', fontWeight: 600 }}>
+                      {activePackage.packageName} · {isEn ? `${activePackage.remainingSessions} credits left` : `остават ${activePackage.remainingSessions} кредита`}
+                    </span>
+                  </span>
+                </label>
+              );
+            })()}
             {addError ? (
               <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 700 }}>{addError}</p>
             ) : null}

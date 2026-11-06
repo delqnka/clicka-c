@@ -1637,6 +1637,7 @@ export default function AdminDashboardClient({
         clientName: input.clientName,
         clientPhone: input.clientPhone,
         clientEmail: input.clientEmail ?? '',
+        usePackage: input.usePackage === true,
         serviceName: input.serviceName,
         servicePrice: null,
         serviceDuration: input.serviceDuration,
