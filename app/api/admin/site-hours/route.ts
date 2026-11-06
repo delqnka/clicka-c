@@ -3,7 +3,7 @@ import { sql } from '@/lib/db';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { loadAdminSiteDataBySlug, normalizeWorkingHours } from '@/lib/admin-site';
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
-import { normalizeClassSchedule } from '@/lib/class-schedule';
+import { normalizeClassSchedule, validateClassSchedule } from '@/lib/class-schedule';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
 
 export async function GET(request: NextRequest) {
@@ -35,6 +35,18 @@ export async function PATCH(request: NextRequest) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Невалидни данни.' }, { status: 400 });
+  }
+
+  const classScheduleError = validateClassSchedule(body.classSchedule);
+  if (classScheduleError) {
+    return NextResponse.json(
+      {
+        error: classScheduleError === 'invalid-time-range'
+          ? 'Краят на всеки клас трябва да е след началото.'
+          : 'Всеки клас трябва да има начало, край и треньорка.',
+      },
+      { status: 400 },
+    );
   }
 
   const workingHours = normalizeWorkingHours(body.workingHours);

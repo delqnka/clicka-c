@@ -1478,6 +1478,22 @@ export default function AdminDashboardClient({
 
   async function saveHours() {
     setError(''); setNotice(''); setBusyKey('hours');
+    const classSlots = Object.values(site.classSchedule ?? {}).flat();
+    const invalidClass = classSlots.find((slot) => {
+      const start = String(slot.start ?? '').trim();
+      const end = String(slot.end ?? '').trim();
+      const trainer = String(slot.trainer ?? '').trim();
+      return !start || !end || !trainer || end <= start;
+    });
+    if (invalidClass) {
+      setBusyKey('');
+      setError(
+        locale === 'en'
+          ? 'Every class needs a start time, end time, and trainer. Its end time must be after its start time.'
+          : 'Всеки клас трябва да има начало, край и треньорка; краят трябва да е след началото.',
+      );
+      return;
+    }
     try {
       const res = await fetch(`/api/admin/site-hours?slug=${encodeURIComponent(slug)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },

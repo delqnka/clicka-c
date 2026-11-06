@@ -11,6 +11,10 @@ export type BookingClassSlot = {
 
 export type BookingClassSchedule = Record<string, BookingClassSlot[]>;
 
+export type ClassScheduleValidationError =
+  | 'missing-required-fields'
+  | 'invalid-time-range';
+
 export type ClassScheduleOverride = {
   id?: string;
   salonId?: string;
@@ -114,6 +118,33 @@ export function normalizeClassSchedule(raw: unknown): BookingClassSchedule {
   }
 
   return schedule;
+}
+
+/**
+ * The normalizer intentionally omits malformed rows so public booking never
+ * receives unusable data. Admin saves need a stricter check though: otherwise
+ * an incomplete new row looks as if it was saved successfully and simply
+ * disappears after the next reload.
+ */
+export function validateClassSchedule(raw: unknown): ClassScheduleValidationError | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  for (const [rawDay, rawSlots] of Object.entries(raw as Record<string, unknown>)) {
+    if (!normalizeDayKey(rawDay) || !Array.isArray(rawSlots)) continue;
+
+    for (const item of rawSlots) {
+      if (!item || typeof item !== 'object') return 'missing-required-fields';
+      const row = item as Record<string, unknown>;
+      const start = normalizeTime(row.start);
+      const end = normalizeTime(row.end);
+      const trainer = String(row.trainer ?? '').trim();
+
+      if (!start || !end || !trainer) return 'missing-required-fields';
+      if (timeToMinutes(end) <= timeToMinutes(start)) return 'invalid-time-range';
+    }
+  }
+
+  return null;
 }
 
 export function getClassSlotsForDate(schedule: BookingClassSchedule, date: string): BookingClassSlot[] {
