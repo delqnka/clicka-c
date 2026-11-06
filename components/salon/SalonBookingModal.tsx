@@ -1523,35 +1523,35 @@ export function SalonBookingModal({
                     {payOnline ? t('booking.modal.onlinePaymentHint') : t('booking.modal.studioPaymentHint')}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onPayOnlineChange?.(true)}
-                    aria-pressed={payOnline}
-                    className={`flex min-h-11 items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-[12px] font-semibold transition active:scale-[0.98] ${
-                      payOnline
-                        ? 'border-transparent text-white'
-                        : 'border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
-                    }`}
-                    style={payOnline ? accentFillStyle : undefined}
-                  >
-                    <CreditCard className="h-3.5 w-3.5" aria-hidden />
-                    {t('booking.modal.payOnlineChoice')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onPayOnlineChange?.(false)}
-                    aria-pressed={!payOnline}
-                    className={`flex min-h-11 items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-[12px] font-semibold transition active:scale-[0.98] ${
-                      !payOnline
-                        ? 'border-transparent text-white'
-                        : 'border-black/[0.08] bg-white text-black/65 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
-                    }`}
-                    style={!payOnline ? accentFillStyle : undefined}
-                  >
-                    <MapPin className="h-3.5 w-3.5" aria-hidden />
-                    {t('booking.modal.payAtStudioChoice')}
-                  </button>
+                <div role="radiogroup" aria-label={t('booking.modal.optionalPaymentTitle')} className="space-y-1.5">
+                  <label className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] transition ${payOnline ? 'bg-[#f1f5ef] text-black' : 'text-black/60 hover:bg-black/[0.025]'}`}>
+                    <input
+                      type="radio"
+                      name="optional-payment"
+                      checked={payOnline}
+                      onChange={() => onPayOnlineChange?.(true)}
+                      className="sr-only"
+                    />
+                    <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${payOnline ? 'border-[#607657] bg-[#607657]' : 'border-black/25 bg-white'}`} aria-hidden>
+                      {payOnline ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+                    </span>
+                    <CreditCard className="h-3.5 w-3.5 text-black/45" aria-hidden />
+                    <span className="font-medium">{t('booking.modal.payOnlineChoice')}</span>
+                  </label>
+                  <label className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] transition ${!payOnline ? 'bg-[#f1f5ef] text-black' : 'text-black/60 hover:bg-black/[0.025]'}`}>
+                    <input
+                      type="radio"
+                      name="optional-payment"
+                      checked={!payOnline}
+                      onChange={() => onPayOnlineChange?.(false)}
+                      className="sr-only"
+                    />
+                    <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${!payOnline ? 'border-[#607657] bg-[#607657]' : 'border-black/25 bg-white'}`} aria-hidden>
+                      {!payOnline ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+                    </span>
+                    <MapPin className="h-3.5 w-3.5 text-black/45" aria-hidden />
+                    <span className="font-medium">{t('booking.modal.payAtStudioChoice')}</span>
+                  </label>
                 </div>
               </div>
             ) : null}
