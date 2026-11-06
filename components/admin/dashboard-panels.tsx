@@ -100,6 +100,7 @@ type BookingsPanelProps = {
   updateBooking: (bookingId: string, data: AdminBookingUpdate) => Promise<void>;
   deleteBooking: (bookingId: string) => Promise<void>;
   createAdminBooking: (input: AdminBookingInput) => Promise<void>;
+  linkExistingPackageCredit: (bookingId: string) => Promise<void>;
   onBookingsChanged?: () => void | Promise<void>;
   inp: CSSProperties;
   btn: ButtonFactory;
@@ -921,6 +922,7 @@ export function BookingsPanel({
   updateBooking,
   deleteBooking,
   createAdminBooking,
+  linkExistingPackageCredit,
   onBookingsChanged,
   inp,
   btn,
@@ -948,6 +950,19 @@ export function BookingsPanel({
   const [editDraft, setEditDraft] = React.useState<AdminBookingUpdate | null>(null);
   const [editError, setEditError] = React.useState('');
   const [editSaving, setEditSaving] = React.useState(false);
+  const editingBooking = React.useMemo(
+    () => bookings.find((booking) => booking.id === editBookingId) ?? null,
+    [bookings, editBookingId],
+  );
+  const editClientWithPackage = React.useMemo(() => {
+    if (!editDraft) return null;
+    const email = editDraft.clientEmail.trim().toLowerCase();
+    const phone = editDraft.clientPhone.replace(/\D/g, '');
+    return clients.find((client) => (
+      (email && client.email?.trim().toLowerCase() === email)
+      || (phone && client.phone?.replace(/\D/g, '') === phone)
+    )) ?? null;
+  }, [clients, editDraft]);
   const [classOverrides, setClassOverrides] = React.useState<ClassScheduleOverride[]>([]);
   const [classDraft, setClassDraft] = React.useState<{
     originalDate: string;
@@ -1780,6 +1795,33 @@ export function BookingsPanel({
               {isEn ? 'Notes' : 'Бележки'}
               <textarea value={editDraft.notes} onChange={(event) => setEditDraft((draft) => draft ? { ...draft, notes: event.target.value } : draft)} placeholder={isEn ? 'Notes' : 'Бележки'} style={{ ...inp, minHeight: 92, resize: 'vertical' }} />
             </label>
+            {editingBooking && !editingBooking.package_usage && editClientWithPackage?.activePackage && editClientWithPackage.activePackage.remainingSessions >= 0 ? (
+              <div style={{ border: '1px solid rgba(109,40,217,0.22)', borderRadius: 10, padding: '10px 11px', background: '#F5F3FF' }}>
+                <p style={{ margin: 0, color: '#4C1D95', fontSize: 12, fontWeight: 750, lineHeight: 1.4 }}>
+                  {isEn ? 'A package is active for this client, but this booking is not linked to it.' : 'Клиентът има активен пакет, но тази резервация още не е свързана с него.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void (async () => {
+                    setEditSaving(true);
+                    setEditError('');
+                    try {
+                      await linkExistingPackageCredit(editingBooking.id);
+                      setEditBookingId(null);
+                      setEditDraft(null);
+                    } catch (err) {
+                      setEditError(err instanceof Error ? err.message : (isEn ? 'Could not link the package credit.' : 'Кредитът не можа да бъде свързан с пакета.'));
+                    } finally {
+                      setEditSaving(false);
+                    }
+                  })()}
+                  disabled={editSaving}
+                  style={{ marginTop: 8, border: '1px solid rgba(109,40,217,0.34)', borderRadius: 999, background: '#fff', color: '#5B21B6', padding: '6px 10px', fontSize: 12, fontWeight: 800, cursor: editSaving ? 'wait' : 'pointer', opacity: editSaving ? 0.6 : 1 }}
+                >
+                  {isEn ? 'Link already deducted credit' : 'Свържи с вече приспаднат кредит'}
+                </button>
+              </div>
+            ) : null}
             {editError ? <p style={{ margin: 0, color: '#B91C1C', fontSize: 13, fontWeight: 700 }}>{editError}</p> : null}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => { if (!editSaving) { setEditDraft(null); setEditBookingId(null); } }} style={btn('ghost')} disabled={editSaving}>

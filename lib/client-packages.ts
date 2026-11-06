@@ -268,6 +268,72 @@ export async function consumePackageForCompletedBooking(input: {
   };
 }
 
+/** Links a booking to a credit that an administrator has already deducted.
+ * This deliberately does not change `used_sessions`: it only makes the
+ * manual deduction traceable from the booking list. */
+export async function linkExistingPackageCreditToBooking(input: {
+  salonId: string;
+  bookingId: string;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+}): Promise<ClientPackageUsageSummary | null> {
+  await ensureClientPackagesSchema();
+  const email = input.clientEmail?.trim().toLowerCase() || '';
+  const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
+  if (!email && !phoneDigits) return null;
+
+  const rows = await sql`
+    WITH pkg AS (
+      SELECT cp.id
+      FROM client_packages cp
+      WHERE cp.salon_id = ${input.salonId}
+        AND cp.used_sessions > (
+          SELECT COUNT(*) FROM client_package_usages u WHERE u.package_id = cp.id
+        )
+        AND (
+          (${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
+          OR (${phoneDigits} <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM client_package_usages u
+          WHERE u.salon_id = ${input.salonId}
+            AND u.booking_id = ${input.bookingId}::uuid
+        )
+      ORDER BY cp.expires_at ASC, cp.created_at ASC
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    ),
+    usage AS (
+      INSERT INTO client_package_usages (salon_id, package_id, booking_id)
+      SELECT ${input.salonId}, pkg.id, ${input.bookingId}::uuid
+      FROM pkg
+      ON CONFLICT (salon_id, booking_id) DO NOTHING
+      RETURNING package_id
+    )
+    SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at
+    FROM usage
+    INNER JOIN client_packages cp ON cp.id = usage.package_id
+  ` as {
+    id: string;
+    package_name: string;
+    total_sessions: number;
+    used_sessions: number;
+    expires_at: string;
+  }[];
+  const row = rows[0];
+  if (!row) return null;
+  const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
+  const usedSessions = Math.min(totalSessions, Math.max(0, Number(row.used_sessions) || 0));
+  return {
+    id: String(row.id),
+    packageName: String(row.package_name ?? ''),
+    totalSessions,
+    usedSessions,
+    remainingSessions: Math.max(0, totalSessions - usedSessions),
+    expiresAt: String(row.expires_at ?? ''),
+  };
+}
+
 export async function updateClientPackage(input: {
   salonId: string;
   packageId: string;

@@ -1653,6 +1653,17 @@ export default function AdminDashboardClient({
     setNotice(locale === 'en' ? 'Client added to the class.' : 'Клиентът е добавен в класа.');
   }
 
+  async function linkExistingPackageCredit(bookingId: string) {
+    const res = await fetch(`/api/bookings/package-credit?slug=${encodeURIComponent(slug)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId }),
+    });
+    await guardResponse(res);
+    await loadBookings();
+    setNotice(locale === 'en' ? 'The booking is now linked to the package.' : 'Резервацията вече е свързана с пакета.');
+  }
+
   async function uploadSingleFile(
     file: File,
     opts?: { compress?: boolean; profile?: boolean },
@@ -2785,6 +2796,7 @@ export default function AdminDashboardClient({
                   updateBooking={updateBooking}
                   deleteBooking={deleteBooking}
                   createAdminBooking={createAdminBooking}
+                  linkExistingPackageCredit={linkExistingPackageCredit}
                   onBookingsChanged={() => void loadBookings()}
                   inp={inp}
                   btn={btn}
