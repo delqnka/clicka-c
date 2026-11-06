@@ -887,6 +887,43 @@ export async function PATCH(request: NextRequest) {
   const hasTime = typeof body.time === 'string';
   const hasNotes = body.notes !== undefined;
 
+  // A package is tied to a real person by contact details. Do not let an
+  // edit save a different name against that person's phone/email: that makes
+  // the schedule appear to belong to one client while package credits belong
+  // to another.
+  if (hasClientName || hasClientPhone || hasClientEmail) {
+    const currentRows = await sql`
+      SELECT client_name, client_phone, client_email
+      FROM bookings
+      WHERE CAST(id AS text) = ${bookingId} AND salon_id = ${salonId}
+      LIMIT 1
+    ` as { client_name: string; client_phone: string | null; client_email: string | null }[];
+    const current = currentRows[0];
+    if (!current) return NextResponse.json({ error: 'Резервацията не е намерена' }, { status: 404 });
+    const nextName = hasClientName ? String(body.clientName ?? '').trim() : String(current.client_name ?? '').trim();
+    const nextPhone = hasClientPhone ? String(body.clientPhone ?? '').trim() : String(current.client_phone ?? '').trim();
+    const nextEmail = hasClientEmail ? String(body.clientEmail ?? '').trim().toLowerCase() : String(current.client_email ?? '').trim().toLowerCase();
+    const phoneDigits = nextPhone.replace(/\D/g, '');
+    const packageRows = await sql`
+      SELECT client_name
+      FROM client_packages
+      WHERE salon_id = ${salonId}
+        AND (
+          (${nextEmail} <> '' AND lower(trim(coalesce(client_email, ''))) = ${nextEmail})
+          OR (${phoneDigits} <> '' AND regexp_replace(coalesce(client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
+        )
+      ORDER BY expires_at DESC, created_at DESC
+      LIMIT 1
+    ` as { client_name: string }[];
+    const packageClient = String(packageRows[0]?.client_name ?? '').trim();
+    if (packageClient && packageClient.localeCompare(nextName, 'bg', { sensitivity: 'accent' }) !== 0) {
+      return NextResponse.json(
+        { error: `Този телефон/имейл е свързан с пакет на „${packageClient}“. Избери правилния клиент или въведи неговите контакти.` },
+        { status: 409 },
+      );
+    }
+  }
+
   const updated = await sql`
     UPDATE bookings
     SET
