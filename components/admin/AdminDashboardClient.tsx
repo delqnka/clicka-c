@@ -2854,6 +2854,8 @@ export default function AdminDashboardClient({
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id, ...data }),
                       });
+                      setExtraClientsLoaded(false);
+                      await loadBookings();
                       setExtraClients((prev) => prev.map((c) =>
                         c.key === key ? { ...c, name: data.name, phone: data.phone, email: data.email } : c
                       ));

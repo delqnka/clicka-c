@@ -14,10 +14,27 @@ export async function upsertSalonClient(
 
   const normalizedName = toTitleCase(name);
 
-  // Find existing client case-insensitively, use their stored name for the upsert key
+  // Phone/email are the durable identity. Looking up by name first created
+  // separate client rows whenever a typo or nickname was used in a booking.
   const existing = await sql`
     SELECT id, name FROM salon_clients
-    WHERE salon_id = ${salonId} AND lower(trim(name)) = lower(trim(${normalizedName}))
+    WHERE salon_id = ${salonId}
+      AND (
+        (${fields.email?.trim().toLowerCase() || ''} <> ''
+          AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''})
+        OR (${(fields.phone ?? '').replace(/\D/g, '')} <> ''
+          AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${(fields.phone ?? '').replace(/\D/g, '')})
+        OR lower(trim(name)) = lower(trim(${normalizedName}))
+      )
+    ORDER BY
+      CASE
+        WHEN ${fields.email?.trim().toLowerCase() || ''} <> ''
+          AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''} THEN 0
+        WHEN ${(fields.phone ?? '').replace(/\D/g, '')} <> ''
+          AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${(fields.phone ?? '').replace(/\D/g, '')} THEN 1
+        ELSE 2
+      END,
+      updated_at DESC
     LIMIT 1
   ` as { id: string; name: string }[];
 

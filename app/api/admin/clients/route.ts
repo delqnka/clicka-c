@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
         sc.email,
         sc.created_at,
         COUNT(b.id)::int AS visits,
-        COALESCE(SUM(b.service_price), 0)::numeric AS total_spent,
+        (
+          COALESCE(SUM(b.service_price), 0)
+          + COALESCE(package_spend.total_package_spent, 0)
+        )::numeric AS total_spent,
         MAX(
           CASE
             WHEN b.id IS NULL THEN NULL
@@ -62,6 +65,15 @@ export async function GET(request: NextRequest) {
          OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
          OR lower(trim(b.client_name)) = lower(trim(sc.name))
        )
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(cp.price), 0)::numeric AS total_package_spent
+        FROM client_packages cp
+        WHERE cp.salon_id = sc.salon_id
+          AND (
+            (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(cp.client_email)) = lower(trim(sc.email)))
+            OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+          )
+      ) package_spend ON true
       LEFT JOIN LATERAL (
         SELECT jsonb_build_object(
           'id', cp.id,
@@ -126,7 +138,7 @@ export async function GET(request: NextRequest) {
         ) history
       ) package_history ON true
       WHERE sc.salon_id = ${salonId}
-      GROUP BY sc.id, sc.name, sc.phone, sc.email, sc.created_at, pkg.active_package, package_history.package_history
+      GROUP BY sc.id, sc.name, sc.phone, sc.email, sc.created_at, pkg.active_package, package_history.package_history, package_spend.total_package_spent
       ORDER BY sc.name ASC
     ` as { id: string; name: string; phone: string | null; email: string | null; created_at: string; visits: number; total_spent: string; last_visit: string | null; last_booking_quantity: number | null; active_package: unknown }[];
     return NextResponse.json({ clients: rows });
