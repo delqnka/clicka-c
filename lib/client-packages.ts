@@ -23,6 +23,21 @@ export type ClientPackageUsageSummary = {
   expiresAt: string;
 };
 
+type ClientPackageAdjustmentReason = 'initial_balance' | 'manual_correction' | 'legacy_reconciliation';
+
+async function recordClientPackageAdjustment(input: {
+  salonId: string;
+  packageId: string;
+  usedSessionsDelta: number;
+  reason: ClientPackageAdjustmentReason;
+}) {
+  if (!input.usedSessionsDelta) return;
+  await sql`
+    INSERT INTO client_package_adjustments (salon_id, package_id, used_sessions_delta, reason)
+    VALUES (${input.salonId}, ${input.packageId}::uuid, ${input.usedSessionsDelta}, ${input.reason})
+  `;
+}
+
 /** Finds a usable package without mutating its balance. Contact matching is
  * intentionally limited to phone/email — a name alone is not sufficient. */
 export async function findActiveClientPackage(input: {
@@ -111,6 +126,20 @@ export async function ensureClientPackagesSchema() {
       UNIQUE (salon_id, booking_id)
     )
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_package_adjustments (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      salon_id text NOT NULL,
+      package_id uuid NOT NULL REFERENCES client_packages(id) ON DELETE CASCADE,
+      used_sessions_delta integer NOT NULL CHECK (used_sessions_delta <> 0),
+      reason text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS client_package_adjustments_package_idx
+      ON client_package_adjustments(package_id, created_at)
+  `;
 }
 
 export async function createClientPackage(input: {
@@ -162,7 +191,7 @@ export async function createClientPackage(input: {
     ON CONFLICT (stripe_checkout_session_id)
     WHERE stripe_checkout_session_id IS NOT NULL
     DO UPDATE SET updated_at = client_packages.updated_at
-    RETURNING id, package_name, total_sessions, used_sessions, expires_at, purchased_at
+    RETURNING id, package_name, total_sessions, used_sessions, expires_at, purchased_at, (xmax = 0) AS inserted
   ` as {
     id: string;
     package_name: string;
@@ -170,10 +199,19 @@ export async function createClientPackage(input: {
     used_sessions: number;
     expires_at: string;
     purchased_at: string;
+    inserted: boolean;
   }[];
   const row = rows[0]!;
   const returnedTotalSessions = Math.max(1, Number(row.total_sessions) || totalSessions);
   const returnedUsedSessions = Math.min(returnedTotalSessions, Math.max(0, Number(row.used_sessions) || 0));
+  if (row.inserted && returnedUsedSessions > 0) {
+    await recordClientPackageAdjustment({
+      salonId: input.salonId,
+      packageId: String(row.id),
+      usedSessionsDelta: returnedUsedSessions,
+      reason: 'initial_balance',
+    });
+  }
   return {
     id: String(row.id),
     packageName: String(row.package_name ?? packageName),
@@ -344,6 +382,15 @@ export async function updateClientPackage(input: {
   validTo?: string | null;
 }) {
   await ensureClientPackagesSchema();
+  const previousRows = await sql`
+    SELECT used_sessions
+    FROM client_packages
+    WHERE id = ${input.packageId}::uuid AND salon_id = ${input.salonId}
+    LIMIT 1
+  ` as { used_sessions: number }[];
+  const previous = previousRows[0];
+  if (!previous) throw new Error('Пакетът не е намерен.');
+  const previousUsedSessions = Math.max(0, Number(previous.used_sessions) || 0);
   const totalSessions = Math.max(1, Math.round(Number(input.totalSessions) || 1));
   const usedSessions = Math.min(totalSessions, Math.max(0, Math.round(Number(input.usedSessions) || 0)));
   const rows = await sql`
@@ -372,6 +419,13 @@ export async function updateClientPackage(input: {
   }[];
   const row = rows[0];
   if (!row) throw new Error('Пакетът не е намерен.');
+  const persistedUsedSessions = Math.max(0, Number(row.used_sessions) || 0);
+  await recordClientPackageAdjustment({
+    salonId: input.salonId,
+    packageId: input.packageId,
+    usedSessionsDelta: persistedUsedSessions - previousUsedSessions,
+    reason: 'manual_correction',
+  });
   return {
     id: String(row.id),
     clientName: String(row.client_name ?? ''),
