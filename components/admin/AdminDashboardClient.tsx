@@ -830,6 +830,13 @@ export default function AdminDashboardClient({
       .catch(() => undefined);
   }, [activeTab, slug]);
 
+  // Package balances can change from another device or from the schedule.
+  // Always fetch a fresh client summary when this tab is opened instead of
+  // showing the one-time snapshot from an earlier visit.
+  useEffect(() => {
+    if (activeTab === 'clients') setExtraClientsLoaded(false);
+  }, [activeTab]);
+
   // Load manually added salon_clients when the clients list is needed.
   useEffect(() => {
     if (!clientsDataNeeded) return;
