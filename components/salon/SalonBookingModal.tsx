@@ -1,7 +1,7 @@
 'use client';
 
 import { CalendarDays, Check, ChevronDown, Clock, CreditCard, Loader2, MapPin, Plus, User, Users, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useT } from '@/lib/i18n-react';
 import { getClassSlotsForDateWithOverrides, normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot, type ClassScheduleOverride } from '@/lib/class-schedule';
 import {
@@ -14,6 +14,7 @@ import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-ser
 import { formatPolicySummary, type CancelPolicyAction } from '@/lib/cancellation-policy';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { BookingSuccessView } from '@/components/salon/BookingSuccessView';
+import type { BookingCompanion } from '@/components/booking/types';
 
 export type PublicStaffMember = {
   id: string;
@@ -85,6 +86,9 @@ type SalonBookingModalProps = {
   /** Retained for backwards compatibility; the standard modal does not render notes. */
   notes?: string;
   usePackage?: boolean;
+  /** Additional clients in the same capacity selection; each receives an individual booking. */
+  companions?: BookingCompanion[];
+  onCompanionsChange?: Dispatch<SetStateAction<BookingCompanion[]>>;
   salonName: string;
   termsHref: string;
   privacyHref: string;
@@ -279,6 +283,7 @@ export function SalonBookingModal({
   clientEmail,
   notes: _notes,
   usePackage = false,
+  companions = [],
   salonName,
   termsHref,
   privacyHref,
@@ -305,6 +310,7 @@ export function SalonBookingModal({
   onClientEmailChange,
   onNotesChange: _onNotesChange,
   onUsePackageChange,
+  onCompanionsChange,
   onSubmit,
   staffMembers = [],
   selectedStaffMemberId,
@@ -314,6 +320,7 @@ export function SalonBookingModal({
   directStaffName,
 }: SalonBookingModalProps) {
   const t = useT();
+  const isEnglish = locale.toLowerCase().startsWith('en');
 
   // Derive accent fill + gradient-border styles from props. White-label: the
   // consumer controls colors via `primaryColor` (single solid) or
@@ -1376,6 +1383,72 @@ export function SalonBookingModal({
                       required
                     />
                   </div>
+
+                  {companions.map((companion, index) => (
+                    <section key={index} className={`space-y-3 rounded-2xl bg-white px-3.5 py-3.5 ${cardShadow}`}>
+                      <div>
+                        <p className="text-[14px] font-semibold text-black">
+                          {isEnglish ? `Client ${index + 2}` : `Клиент ${index + 2}`}
+                        </p>
+                        <p className="mt-0.5 text-[12px] leading-snug text-black/45">
+                          {isEnglish
+                            ? 'A separate reservation will be created for this client.'
+                            : 'За този клиент ще се създаде отделна резервация.'}
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <label className="block text-[13px] font-semibold text-black">{t('booking.modal.name')}</label>
+                        <input
+                          className={fieldClass}
+                          value={companion.name}
+                          onChange={(e) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item))}
+                          autoComplete="name"
+                          required
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <label className="block text-[13px] font-semibold text-black">{t('booking.modal.phone')}</label>
+                        <input
+                          type="tel"
+                          className={fieldClass}
+                          value={companion.phone}
+                          onChange={(e) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, phone: e.target.value } : item))}
+                          autoComplete="tel"
+                          inputMode="tel"
+                          required
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <label className="block text-[13px] font-semibold text-black">{t('booking.modal.email')}</label>
+                        <input
+                          type="email"
+                          inputMode="email"
+                          autoComplete="email"
+                          className={fieldClass}
+                          value={companion.email}
+                          onChange={(e) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, email: e.target.value } : item))}
+                          required
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, usePackage: !item.usePackage } : item))}
+                        aria-pressed={companion.usePackage}
+                        className={`flex w-full items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${companion.usePackage ? 'border-transparent bg-[color:var(--salon-primary)] text-white' : 'border-black/[0.08] bg-white text-black/75'}`}
+                        style={companion.usePackage ? accentFillStyle : undefined}
+                      >
+                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${companion.usePackage ? 'border-white/70 bg-white/15' : 'border-black/25'}`} aria-hidden>
+                          {companion.usePackage ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+                        </span>
+                        <span>
+                          <span className="block text-[13px] font-semibold">{isEnglish ? 'Use this client\'s package' : 'Използвай пакета на този клиент'}</span>
+                          <span className={`mt-0.5 block text-[12px] leading-snug ${companion.usePackage ? 'text-white/80' : 'text-black/45'}`}>
+                            {isEnglish ? 'The credit is checked only against this client\'s details.' : 'Кредитът се проверява само по данните на този клиент.'}
+                          </span>
+                        </span>
+                      </button>
+                    </section>
+                  ))}
 
                   <button
                     type="button"

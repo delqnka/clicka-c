@@ -13,6 +13,7 @@ import type {
   BookingSuccessDetails,
   OccupiedSlot,
   PublicStaffMember,
+  BookingCompanion,
 } from './types';
 
 const DAY_KEYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
@@ -112,6 +113,7 @@ export function useBookingFlow({
   // no longer renders a notes field.
   const [notes, setNotes] = useState('');
   const [usePackage, setUsePackage] = useState(false);
+  const [companions, setCompanions] = useState<BookingCompanion[]>([]);
   const [payOnline, setPayOnline] = useState(false);
 
   // ── Staff (TEAM plan) ────────────────────────────────────────────────
@@ -307,6 +309,14 @@ export function useBookingFlow({
   }, [selectedCapacity, selectedTimeRemaining]);
 
   useEffect(() => {
+    setCompanions((current) => {
+      const needed = Math.max(0, bookingQuantity - 1);
+      if (current.length === needed) return current;
+      return Array.from({ length: needed }, (_, index) => current[index] ?? { name: '', phone: '', email: '', usePackage: false });
+    });
+  }, [bookingQuantity]);
+
+  useEffect(() => {
     const max = selectedTimeRemaining ?? selectedCapacity;
     setBookingQuantityState((current) => Math.max(1, Math.min(Math.max(1, max), current)));
   }, [selectedCapacity, selectedTimeRemaining]);
@@ -494,6 +504,10 @@ export function useBookingFlow({
     if (!clientEmail.trim()) { setBookingError(t('booking.errors.noEmail')); return; }
     if (!selectedDate)       { setBookingError(t('booking.errors.noDate')); return; }
     if (!selectedTime)       { setBookingError(t('booking.errors.noTime')); return; }
+    if (companions.some((person) => !person.name.trim() || !person.phone.trim() || !person.email.trim())) {
+      setBookingError(locale.startsWith('bg') ? 'Попълнете име, телефон и имейл за всеки участник.' : 'Enter a name, phone and email for every participant.');
+      return;
+    }
 
     const serviceName = selectedServices.map((s) => s.name).join(' + ');
     const duration    = totalDuration || 30;
@@ -509,45 +523,37 @@ export function useBookingFlow({
     const amountEuros =
       paymentType === 'deposit' ? depositAmt :
       paymentType === 'full'    ? (totalPrice ?? 0) : 0;
-    const requiresPayment = paymentType !== 'none' && amountEuros > 0;
+    // A single checkout cannot be attributed safely to two different people.
+    // Group reservations are therefore created as individual pay-at-studio
+    // bookings unless each participant uses their own package.
+    const requiresPayment = companions.length === 0 && paymentType !== 'none' && amountEuros > 0;
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${api}${slugPath}/bookings`, {
-        method: 'POST',
-        headers: requestHeaders,
-        body: JSON.stringify({
-          clientName:         clientName.trim(),
-          clientPhone:        clientPhone.trim(),
-          clientEmail:        clientEmail.trim().toLowerCase(),
-          serviceName,
-          serviceId:           selectedServices.length === 1 ? selectedServices[0]?.id : undefined,
-          servicePrice:       totalPrice,
-          serviceDuration:    duration,
-          bookingQuantity,
-          date:               selectedDate,
-          time:               selectedTime,
-          usePackage,
-          requiresPayment,
-          staffMemberId:      selectedStaffMemberId && !isVirtualStaffId(selectedStaffMemberId) ? selectedStaffMemberId : undefined,
-          staffMemberName:    selectedStaffMember?.name ?? undefined,
-        }),
-      });
-
-      const json = (await res.json().catch(() => ({}))) as {
-        error?: string; bookingId?: string; id?: string;
-      };
-      if (!res.ok) {
-        throw new Error(
-          json.error ??
-          (res.status === 500
-            ? t('booking.errors.saveFailed')
-            : t('booking.errors.httpError', { status: res.status })),
-        );
+      const participants = [
+        { name: clientName.trim(), phone: clientPhone.trim(), email: clientEmail.trim().toLowerCase(), usePackage },
+        ...companions.map((person) => ({ name: person.name.trim(), phone: person.phone.trim(), email: person.email.trim().toLowerCase(), usePackage: person.usePackage })),
+      ];
+      let bookingId: string | undefined;
+      for (const participant of participants) {
+        const res = await fetch(`${api}${slugPath}/bookings`, {
+          method: 'POST', headers: requestHeaders,
+          body: JSON.stringify({
+            clientName: participant.name, clientPhone: participant.phone, clientEmail: participant.email,
+            serviceName, serviceId: selectedServices.length === 1 ? selectedServices[0]?.id : undefined,
+            servicePrice: baseTotalPrice, serviceDuration: duration, bookingQuantity: 1,
+            date: selectedDate, time: selectedTime, usePackage: participant.usePackage,
+            requiresPayment: requiresPayment && participant === participants[0],
+            staffMemberId: selectedStaffMemberId && !isVirtualStaffId(selectedStaffMemberId) ? selectedStaffMemberId : undefined,
+            staffMemberName: selectedStaffMember?.name ?? undefined,
+          }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { error?: string; bookingId?: string; id?: string };
+        if (!res.ok) throw new Error(json.error ?? t('booking.errors.saveFailed'));
+        bookingId ??= json.bookingId ?? json.id;
       }
 
       // Stripe Checkout redirect for paid bookings
-      const bookingId = json.bookingId ?? json.id;
       if (requiresPayment && bookingId) {
         const payRes = await fetch(`${api}${slugPath}/booking-checkout`, {
           method: 'POST',
@@ -597,9 +603,9 @@ export function useBookingFlow({
       setIsSubmitting(false);
     }
   }, [
-    api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, locale, markSlotOccupied, usePackage,
+    api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, companions, locale, markSlotOccupied, usePackage,
     onEvent, payOnline, requestHeaders, selectedDate, selectedServices, selectedStaffMember, selectedStaffMemberId, selectedTime,
-    slug, slugPath, successUrl, t, totalDuration, totalPrice, onlinePaymentsEnabled,
+    slug, slugPath, successUrl, t, totalDuration, totalPrice, baseTotalPrice, onlinePaymentsEnabled,
   ]);
 
   return {
@@ -612,7 +618,7 @@ export function useBookingFlow({
     clientPhone, setClientPhone,
     clientEmail, setClientEmail,
     notes, setNotes,
-    usePackage, setUsePackage,
+    usePackage, setUsePackage, companions, setCompanions,
     staffMembers: effectiveStaffMembers, selectedStaffMemberId, setStaffMemberId,
     classTrainerFilterName, setClassTrainerFilterName,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,

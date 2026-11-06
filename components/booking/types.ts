@@ -2,6 +2,7 @@ import type { OpeningDayRecord } from '@/lib/salon-opening-hours';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import type { BookingClassSchedule, ClassScheduleOverride } from '@/lib/class-schedule';
 import type { CancelPolicyAction } from '@/lib/cancellation-policy';
+import type { Dispatch, SetStateAction } from 'react';
 
 export type { OpeningDayRecord, BookingBlock, BookingClassSchedule, ClassScheduleOverride };
 
@@ -13,6 +14,13 @@ export type BookingSuccessDetails = {
   time: string;
   quantity?: number;
   totalPrice?: number;
+};
+
+export type BookingCompanion = {
+  name: string;
+  phone: string;
+  email: string;
+  usePackage: boolean;
 };
 
 export type BookingOpenOptions = {
@@ -134,6 +142,8 @@ export type UseBookingFlowReturn = {
   setNotes: (v: string) => void;
   usePackage: boolean;
   setUsePackage: (v: boolean) => void;
+  companions: BookingCompanion[];
+  setCompanions: Dispatch<SetStateAction<BookingCompanion[]>>;
 
   // Staff (TEAM plan)
   staffMembers: PublicStaffMember[];
