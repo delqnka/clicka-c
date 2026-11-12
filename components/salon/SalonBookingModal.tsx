@@ -612,6 +612,9 @@ export function SalonBookingModal({
       ? t('booking.modal.noBedsAvailable')
       : t('booking.modal.freeBeds', { count: maxBookableQuantity });
   const quantityPickerRef = useRef<HTMLDivElement | null>(null);
+  const modalContentRef = useRef<HTMLDivElement | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<number | null>(null);
 
   useEffect(() => {
     if (!showQuantityPicker) return;
@@ -736,6 +739,36 @@ export function SalonBookingModal({
     };
   }, [open]);
 
+  // Mobile Safari keeps the layout viewport tall while the on-screen keyboard
+  // is open. Use VisualViewport when available so the focused field stays in
+  // the visible area instead of behind the sticky reservation footer.
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateKeyboardLayout = () => {
+      const keyboardHeight = window.innerHeight - viewport.height;
+      const openKeyboard = keyboardHeight > 120;
+      setKeyboardOpen(openKeyboard);
+      setKeyboardViewportHeight(openKeyboard ? Math.round(viewport.height) : null);
+    };
+    updateKeyboardLayout();
+    viewport.addEventListener('resize', updateKeyboardLayout);
+    viewport.addEventListener('scroll', updateKeyboardLayout);
+    return () => {
+      viewport.removeEventListener('resize', updateKeyboardLayout);
+      viewport.removeEventListener('scroll', updateKeyboardLayout);
+    };
+  }, [open]);
+
+  function keepFocusedFieldVisible(event: React.FocusEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    });
+  }
+
   if (!open) return null;
 
   return (
@@ -747,6 +780,7 @@ export function SalonBookingModal({
         aria-modal
         aria-label={t('booking.modal.ariaLabel')}
         className="absolute inset-x-0 bottom-0 z-10 mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-white sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[88vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem] sm:bg-white sm:shadow-[0_25px_60px_rgba(0,0,0,0.12)]"
+        style={keyboardViewportHeight ? { height: `${keyboardViewportHeight}px` } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-black/10 sm:hidden" aria-hidden />
@@ -796,7 +830,11 @@ export function SalonBookingModal({
           </button>
         </div>
 
-        <div className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5">
+        <div
+          ref={modalContentRef}
+          onFocusCapture={keepFocusedFieldVisible}
+          className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5"
+        >
           {bookingSuccess ? (
             bookingSuccessDetails ? (
               <BookingSuccessView
@@ -1554,7 +1592,7 @@ export function SalonBookingModal({
         </div>
 
         {!bookingSuccess && !bookingSuccessDetails && (!classMode || step > 1) ? (
-          <div className="relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
+          <div className={`relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5 ${keyboardOpen ? 'max-sm:hidden' : ''}`}>
             {hasServices ? (
               <div className="mb-3 px-1">
                 <p className="text-[13px] tabular-nums text-black/50">
