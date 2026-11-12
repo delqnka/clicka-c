@@ -38,8 +38,11 @@ async function recordClientPackageAdjustment(input: {
   `;
 }
 
-/** Finds a usable package without mutating its balance. Matching requires the
- * client's name plus phone or email; a name alone is not sufficient. */
+/** Finds a usable package without mutating its balance.
+ *
+ * The contact profile is the identity source of truth. Packages are then
+ * resolved with the exact relationship used by the Clients admin panel.
+ */
 export async function findActiveClientPackage(input: {
   salonId: string;
   clientName?: string | null;
@@ -47,93 +50,49 @@ export async function findActiveClientPackage(input: {
   clientEmail?: string | null;
 }): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
-  const name = input.clientName?.trim().toLocaleLowerCase('bg-BG') || '';
   const email = input.clientEmail?.trim().toLowerCase() || '';
   const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
-  // A package is revealed only when the supplied name agrees with either a
-  // phone number or email address. Names are not unique enough on their own.
-  if (!name || (!email && !phoneDigits)) return null;
+  if (!email && !phoneDigits) return null;
+
+  // First identify the existing client by a durable contact field. Requiring
+  // a separately typed display name here made the booking flow disagree with
+  // the Clients screen when names had legacy spacing/casing differences.
+  const clients = await sql`
+    SELECT id, name, phone, email
+    FROM salon_clients
+    WHERE salon_id = ${input.salonId}
+      AND (
+        (${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email})
+        OR (${phoneDigits} <> '' AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${phoneDigits})
+      )
+    ORDER BY
+      CASE
+        WHEN ${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email} THEN 0
+        WHEN ${phoneDigits} <> '' AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${phoneDigits} THEN 1
+        ELSE 2
+      END,
+      updated_at DESC
+    LIMIT 1
+  ` as { id: string; name: string; phone: string | null; email: string | null }[];
+  const client = clients[0];
+  if (!client) return null;
+
   const rows = await sql`
     SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at::text AS expires_at
     FROM client_packages cp
-    LEFT JOIN salon_clients sc
-      ON sc.id = cp.client_id
-      AND sc.salon_id = cp.salon_id
     WHERE cp.salon_id = ${input.salonId}
       AND cp.expires_at >= CURRENT_DATE
       AND cp.used_sessions < cp.total_sessions
-      -- Older packages can have stale/empty copied contact fields while the
-      -- Clients screen correctly shows the current salon_clients profile.
-      -- Search both sources so the booking form sees the same package.
       AND (
-        lower(trim(coalesce(cp.client_name, ''))) = ${name}
-        OR lower(trim(coalesce(sc.name, ''))) = ${name}
-      )
-      AND (
-        (${email} <> '' AND (
-          lower(trim(coalesce(cp.client_email, ''))) = ${email}
-          OR lower(trim(coalesce(sc.email, ''))) = ${email}
-        ))
-        OR (${phoneDigits} <> '' AND (
-          regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = ${phoneDigits}
-          OR regexp_replace(coalesce(sc.phone, ''), '\\D', '', 'g') = ${phoneDigits}
-        ))
+        cp.client_id = ${client.id}
+        OR (${client.email ?? ''} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = lower(trim(${client.email ?? ''})))
+        OR (${client.phone ?? ''} <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(${client.phone ?? ''}, '\\D', '', 'g'))
+        OR lower(trim(coalesce(cp.client_name, ''))) = lower(trim(${client.name}))
       )
     ORDER BY cp.expires_at ASC, cp.created_at ASC
     LIMIT 1
   ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
-  let row = rows[0];
-  // Use the same relationship the Clients admin view uses. A number of older
-  // packages do not have client_id populated, but their package is correctly
-  // associated to salon_clients by the stored name/phone/email.
-  if (!row) {
-    const profileRows = await sql`
-      SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at::text AS expires_at
-      FROM salon_clients sc
-      JOIN client_packages cp
-        ON cp.salon_id = sc.salon_id
-        AND (
-          (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(cp.client_email)) = lower(trim(sc.email)))
-          OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
-          OR lower(trim(cp.client_name)) = lower(trim(sc.name))
-        )
-      WHERE sc.salon_id = ${input.salonId}
-        AND cp.expires_at >= CURRENT_DATE
-        AND cp.used_sessions < cp.total_sessions
-        AND lower(trim(sc.name)) = ${name}
-        AND (
-          (${email} <> '' AND lower(trim(coalesce(sc.email, ''))) = ${email})
-          OR (${phoneDigits} <> '' AND regexp_replace(coalesce(sc.phone, ''), '\\D', '', 'g') = ${phoneDigits})
-        )
-      ORDER BY cp.expires_at ASC, cp.created_at ASC
-      LIMIT 2
-    ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
-    // Match the Clients panel: if several valid rows are associated to the
-    // same profile, use the earliest-expiring active package.
-    if (profileRows.length > 0) row = profileRows[0];
-  }
-  // Some legacy packages predate copying phone/email onto the package record
-  // (and may not have a linked salon_clients row). As a safe fallback, accept
-  // an exact name only when it identifies exactly one usable package.
-  if (!row) {
-    const nameRows = await sql`
-      SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at::text AS expires_at
-      FROM client_packages cp
-      LEFT JOIN salon_clients sc
-        ON sc.id = cp.client_id
-        AND sc.salon_id = cp.salon_id
-      WHERE cp.salon_id = ${input.salonId}
-        AND cp.expires_at >= CURRENT_DATE
-        AND cp.used_sessions < cp.total_sessions
-        AND (
-          lower(trim(coalesce(cp.client_name, ''))) = ${name}
-          OR lower(trim(coalesce(sc.name, ''))) = ${name}
-        )
-      ORDER BY cp.expires_at ASC, cp.created_at ASC
-      LIMIT 2
-    ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
-    if (nameRows.length > 0) row = nameRows[0];
-  }
+  const row = rows[0];
   if (!row) return null;
   const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
   const usedSessions = Math.min(totalSessions, Math.max(0, Number(row.used_sessions) || 0));
