@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveSalonBySlugOrHost } from '@/lib/admin-auth';
 import { findActiveClientPackage } from '@/lib/client-packages';
 import { verifyApiKey } from '@/lib/public-api-auth';
 
@@ -39,6 +40,16 @@ export async function POST(
 
   const auth = await verifyApiKey(request, { slug, requiredScope: 'book', corsHeaders: PUBLIC_CORS });
   if (!auth.ok) return auth.response;
+
+  // Never follow a same-slug record to a different tenant. This makes an old
+  // API key misconfiguration visible without exposing another salon's data.
+  const currentSalon = await resolveSalonBySlugOrHost({ slug, includeInactive: false });
+  if (!currentSalon || currentSalon.salonId !== auth.salonId) {
+    return NextResponse.json(
+      { error: 'Booking API key is not linked to this salon.' },
+      { status: 409, headers: PUBLIC_CORS },
+    );
+  }
 
   const activePackage = await findActiveClientPackage({
     salonId: auth.salonId,
