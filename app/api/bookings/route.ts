@@ -447,12 +447,13 @@ export async function POST(request: NextRequest) {
   if (requestedPackage) {
     selectedPackage = await findActiveClientPackage({
       salonId,
+      clientName,
       clientPhone,
       clientEmail: normalizedClientEmail,
     });
     if (!selectedPackage) {
       return NextResponse.json(
-        { error: 'Не открихме активен пакет с този телефон или имейл. Проверете данните или изберете друг начин на плащане.' },
+        { error: 'Не открихме активен пакет с това име, телефон или имейл. Проверете данните или изберете друг начин на плащане.' },
         { status: 400 },
       );
     }

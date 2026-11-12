@@ -14,7 +14,7 @@ import { serviceMatchesCategory, type ServiceCategoryTab } from '@/lib/salon-ser
 import { formatPolicySummary, type CancelPolicyAction } from '@/lib/cancellation-policy';
 import { SalonServiceCategoryTabs } from '@/components/salon/service-category-tabs';
 import { BookingSuccessView } from '@/components/salon/BookingSuccessView';
-import type { BookingCompanion } from '@/components/booking/types';
+import type { ActivePackageLookup, BookingCompanion } from '@/components/booking/types';
 
 export type PublicStaffMember = {
   id: string;
@@ -85,7 +85,8 @@ type SalonBookingModalProps = {
   clientEmail: string;
   /** Retained for backwards compatibility; the standard modal does not render notes. */
   notes?: string;
-  usePackage?: boolean;
+  usePackage?: boolean | null;
+  packageLookup?: ActivePackageLookup;
   /** Additional clients in the same capacity selection; each receives an individual booking. */
   companions?: BookingCompanion[];
   onCompanionsChange?: Dispatch<SetStateAction<BookingCompanion[]>>;
@@ -114,7 +115,7 @@ type SalonBookingModalProps = {
   onClientPhoneChange: (v: string) => void;
   onClientEmailChange: (v: string) => void;
   onNotesChange?: (v: string) => void;
-  onUsePackageChange?: (value: boolean) => void;
+  onUsePackageChange?: (value: boolean | null) => void;
   onSubmit: (e: React.FormEvent) => void;
   /** TEAM plan: pass all non-owner staff members. Empty = SOLO flow (no staff step). */
   staffMembers?: PublicStaffMember[];
@@ -255,6 +256,85 @@ function ServiceDescription({ text, locale }: { text?: string; locale: string })
   );
 }
 
+function PackageChoice({
+  value,
+  onChange,
+  inputName,
+  isEnglish,
+  packageLookup,
+  locale,
+}: {
+  value: boolean | null;
+  onChange: (value: boolean) => void;
+  inputName: string;
+  isEnglish: boolean;
+  packageLookup?: ActivePackageLookup;
+  locale: string;
+}) {
+  const packageInfo = packageLookup?.package;
+  const expiry = packageInfo?.expiresAt
+    ? new Date(`${packageInfo.expiresAt.slice(0, 10)}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-[13px] font-semibold text-black">
+        {isEnglish ? 'Does this client have an active package?' : 'Има ли този клиент активен пакет?'}
+      </legend>
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={isEnglish ? 'Package choice' : 'Избор за пакет'}>
+        <label className={`flex min-h-16 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-2 focus-within:ring-black/30 ${value === true ? 'border-[#607657] bg-[#f1f5ef] text-[#243023]' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}>
+          <input type="radio" name={inputName} checked={value === true} onChange={() => onChange(true)} className="sr-only" />
+          <span className="text-[13px] font-semibold">{isEnglish ? 'I have a package' : 'Имам пакет'}</span>
+          <span className="mt-0.5 text-[11px] leading-snug text-black/45">
+            {isEnglish ? 'Use 1 session by phone or email' : 'Използвай 1 посещение по телефон или имейл'}
+          </span>
+        </label>
+        <label className={`flex min-h-16 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-2 focus-within:ring-black/30 ${value === false ? 'border-black bg-black text-white' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}>
+          <input type="radio" name={inputName} checked={value === false} onChange={() => onChange(false)} className="sr-only" />
+          <span className="text-[13px] font-semibold">{isEnglish ? 'I do not have a package' : 'Нямам пакет'}</span>
+          <span className={`mt-0.5 text-[11px] leading-snug ${value === false ? 'text-white/70' : 'text-black/45'}`}>
+            {isEnglish ? 'Continue without using a session' : 'Продължи без използване на кредит'}
+          </span>
+        </label>
+      </div>
+      {packageLookup?.status === 'checking' ? (
+        <p className="rounded-xl bg-black/[0.035] px-3 py-2.5 text-[12px] font-medium text-black/60" role="status">
+          {isEnglish ? 'Checking your package…' : 'Проверяваме активния ви пакет…'}
+        </p>
+      ) : null}
+      {packageLookup?.status === 'found' && packageInfo ? (
+        <div className="rounded-xl border border-[#b9cbb1] bg-[#f1f6ef] px-3 py-2.5 text-[#243023]" role="status">
+          <p className="text-[13px] font-semibold">
+            {isEnglish ? `Active package: ${packageInfo.packageName}` : `Имате активен пакет „${packageInfo.packageName}“`}
+          </p>
+          <p className="mt-1 text-[12px] leading-snug text-[#3b5137]">
+            {isEnglish
+              ? `${packageInfo.remainingSessions} of ${packageInfo.totalSessions} credits remain${expiry ? ` · valid until ${expiry}` : ''}.`
+              : `Остават ${packageInfo.remainingSessions} от ${packageInfo.totalSessions} кредита${expiry ? ` · валиден до ${expiry}` : ''}.`}
+          </p>
+          <p className="mt-1 text-[12px] font-semibold leading-snug">
+            {isEnglish ? 'One credit will be used for this class.' : 'За този клас ще бъде отнет 1 кредит.'}
+          </p>
+        </div>
+      ) : null}
+      {packageLookup?.status === 'not_found' ? (
+        <p className="rounded-xl bg-black/[0.035] px-3 py-2.5 text-[12px] leading-snug text-black/60" role="status">
+          {isEnglish ? 'No active package was found for these details. This booking will continue without a credit.' : 'Не открихме активен пакет по тези данни. Резервацията ще продължи без кредит.'}
+        </p>
+      ) : null}
+      {packageLookup?.status === 'error' ? (
+        <p className="rounded-xl bg-red-50 px-3 py-2.5 text-[12px] leading-snug text-red-700" role="alert">
+          {isEnglish ? 'We could not check the package yet. Check the details or try again.' : 'Не успяхме да проверим пакета. Проверете данните или опитайте отново.'}
+        </p>
+      ) : null}
+      {value == null ? (
+        <p className="text-[12px] font-medium text-[#9c4221]" role="status">
+          {isEnglish ? 'Choose one option to continue.' : 'Избери една от опциите, за да продължиш.'}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
 export function SalonBookingModal({
   open,
   primaryColor,
@@ -282,7 +362,8 @@ export function SalonBookingModal({
   clientPhone,
   clientEmail,
   notes: _notes,
-  usePackage = false,
+  usePackage = null,
+  packageLookup,
   companions = [],
   salonName,
   termsHref,
@@ -1390,24 +1471,14 @@ export function SalonBookingModal({
                     />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onUsePackageChange?.(!usePackage)}
-                    aria-pressed={usePackage}
-                    className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
-                      usePackage
-                        ? 'border-[#91a588] bg-[#f1f5ef] text-[#243023]'
-                        : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'
-                    }`}
-                  >
-                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${usePackage ? 'border-[#607657] bg-[#607657] text-white' : 'border-black/20 bg-white'}`} aria-hidden>
-                      {usePackage ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[13px] font-semibold">{isEnglish ? 'I have a package' : 'Имам пакет'}</span>
-                      <span className="block text-[12px] text-black/45">{isEnglish ? 'Check it using these details' : 'Проверяваме го по тези данни'}</span>
-                    </span>
-                  </button>
+                  <PackageChoice
+                    value={usePackage}
+                    onChange={(value) => onUsePackageChange?.(value)}
+                    inputName="primary-client-package"
+                    isEnglish={isEnglish}
+                    packageLookup={packageLookup}
+                    locale={locale}
+                  />
 
                   {companions.map((companion, index) => (
                     <section key={index} className="space-y-3 rounded-2xl border border-black/[0.08] bg-[#fbfcfa] px-3.5 py-3.5">
@@ -1455,22 +1526,13 @@ export function SalonBookingModal({
                           required
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, usePackage: !item.usePackage } : item))}
-                        aria-pressed={companion.usePackage}
-                        className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${companion.usePackage ? 'border-[#91a588] bg-[#f1f5ef] text-[#243023]' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}
-                      >
-                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${companion.usePackage ? 'border-[#607657] bg-[#607657] text-white' : 'border-black/20 bg-white'}`} aria-hidden>
-                          {companion.usePackage ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-[13px] font-semibold">{isEnglish ? 'This client has a package' : 'Този клиент има пакет'}</span>
-                          <span className="block text-[12px] text-black/45">
-                            {isEnglish ? 'Checked only against this client\'s details' : 'Проверява се само по неговите данни'}
-                          </span>
-                        </span>
-                      </button>
+                      <PackageChoice
+                        value={companion.usePackage}
+                        onChange={(value) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, usePackage: value } : item))}
+                        inputName={`companion-${index}-package`}
+                        isEnglish={isEnglish}
+                        locale={locale}
+                      />
                     </section>
                   ))}
 
@@ -1513,7 +1575,7 @@ export function SalonBookingModal({
               </div>
             ) : null}
 
-            {((classMode && step === 2) || (!classMode && step === 3)) && paymentType === 'optional_full' && !usePackage ? (
+            {((classMode && step === 2) || (!classMode && step === 3)) && paymentType === 'optional_full' && usePackage === false ? (
               <div className="mb-2.5 space-y-2 px-1">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[12px] font-semibold text-black/55">
@@ -1585,7 +1647,8 @@ export function SalonBookingModal({
             {(() => {
               const maxStep = classMode ? 2 : (isTeam ? 4 : 3);
               const isLastStep = step === maxStep;
-              const requiresOnlinePayment = !usePackage && paymentType !== 'none' && (paymentType !== 'optional_full' || payOnline);
+              const packageChoiceMissing = usePackage == null || companions.some((companion) => companion.usePackage == null);
+              const requiresOnlinePayment = usePackage === false && paymentType !== 'none' && (paymentType !== 'optional_full' || payOnline);
               const submitLabel = requiresOnlinePayment
                 ? (paymentType === 'optional_full' ? t('booking.modal.payOnlineCta', { price: fmtPrice(totalPrice) }) : t('booking.modal.payAndBook'))
                 : (usePackage ? t('booking.modal.reserveWithPackageCta') : (paymentType === 'optional_full' ? t('booking.modal.reserveAtStudioCta') : t('booking.modal.sendRequest')));
@@ -1622,7 +1685,7 @@ export function SalonBookingModal({
                     <button
                       type="submit"
                       form="salon-booking-form"
-                      disabled={isSubmitting || !selectedTime || !hasServices || hasSelectedFullCapacitySlot}
+                      disabled={isSubmitting || !selectedTime || !hasServices || hasSelectedFullCapacitySlot || packageChoiceMissing}
                       className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
                       style={accentFillStyle}
                     >

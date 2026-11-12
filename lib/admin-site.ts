@@ -32,6 +32,7 @@ import { normalizeServices, type ServiceItem } from '@/lib/salon-services';
 import type { Locale } from '@/lib/i18n';
 import { resolveSalonLocale } from '@/lib/salon-locale';
 import { normalizeNotificationEmails } from '@/lib/notification-emails';
+import { ensureClientPackagesSchema } from '@/lib/client-packages';
 
 export type { ServiceItem };
 export { normalizeServices };
@@ -308,6 +309,7 @@ export async function loadAdminSiteDataBySlug(slug: string): Promise<AdminSitePa
 
 export async function loadBookingsBySalonId(salonId: string, limit = 200): Promise<BookingRecord[]> {
   await ensureStaffSchema();
+  await ensureClientPackagesSchema();
   const rows = await sql`
     SELECT
       b.id, b.client_name, b.client_phone, b.client_email,
@@ -323,5 +325,34 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
     LIMIT ${Math.min(Math.max(limit, 1), 500)}
   `;
 
-  return rows as BookingRecord[];
+  // The first render of the daily schedule uses this server-loaded data.
+  // Hydrate immutable package usage here as well, so the package badge does
+  // not disappear until the client-side refresh completes.
+  const packageUsages = await sql`
+    SELECT
+      u.booking_id::text AS booking_id,
+      cp.package_name,
+      cp.total_sessions,
+      cp.used_sessions,
+      GREATEST(0, cp.total_sessions - cp.used_sessions)::int AS remaining_sessions
+    FROM client_package_usages u
+    INNER JOIN client_packages cp ON cp.id = u.package_id
+    WHERE u.salon_id = ${salonId}
+  `;
+  const packageUsageByBookingId = new Map(
+    packageUsages.map((usage) => [
+      String(usage.booking_id ?? ''),
+      {
+        packageName: String(usage.package_name ?? ''),
+        totalSessions: Math.max(1, Number(usage.total_sessions) || 1),
+        usedSessions: Math.max(0, Number(usage.used_sessions) || 0),
+        remainingSessions: Math.max(0, Number(usage.remaining_sessions) || 0),
+      },
+    ]),
+  );
+
+  return rows.map((booking) => ({
+    ...booking,
+    package_usage: packageUsageByBookingId.get(String((booking as Record<string, unknown>).id ?? '')) ?? null,
+  })) as BookingRecord[];
 }

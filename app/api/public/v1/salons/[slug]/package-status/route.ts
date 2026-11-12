@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { findActiveClientPackage } from '@/lib/client-packages';
+import { verifyApiKey } from '@/lib/public-api-auth';
+
+const PUBLIC_CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+} as const;
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS });
+}
+
+/**
+ * Returns only the active-package balance needed by the public booking form.
+ * Matching deliberately requires the client's name plus phone or email; a
+ * name on its own must never reveal package information.
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { slug: string } },
+) {
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body) {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400, headers: PUBLIC_CORS });
+  }
+
+  const slug = String(params.slug ?? '').trim();
+  const clientName = String(body.clientName ?? '').trim();
+  const clientPhone = String(body.clientPhone ?? '').trim();
+  const clientEmail = String(body.clientEmail ?? '').trim().toLowerCase();
+  const phoneDigits = clientPhone.replace(/\D/g, '');
+  const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail);
+
+  if (!slug || clientName.length < 2 || (phoneDigits.length < 7 && !hasValidEmail)) {
+    return NextResponse.json({ error: 'Missing client details' }, { status: 400, headers: PUBLIC_CORS });
+  }
+
+  const auth = await verifyApiKey(request, { slug, requiredScope: 'book', corsHeaders: PUBLIC_CORS });
+  if (!auth.ok) return auth.response;
+
+  const activePackage = await findActiveClientPackage({
+    salonId: auth.salonId,
+    clientName,
+    clientPhone,
+    clientEmail,
+  });
+
+  return NextResponse.json({ package: activePackage }, { headers: PUBLIC_CORS });
+}

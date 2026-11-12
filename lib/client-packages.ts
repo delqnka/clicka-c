@@ -38,23 +38,28 @@ async function recordClientPackageAdjustment(input: {
   `;
 }
 
-/** Finds a usable package without mutating its balance. Contact matching is
- * intentionally limited to phone/email — a name alone is not sufficient. */
+/** Finds a usable package without mutating its balance. Matching requires the
+ * client's name plus phone or email; a name alone is not sufficient. */
 export async function findActiveClientPackage(input: {
   salonId: string;
+  clientName?: string | null;
   clientPhone?: string | null;
   clientEmail?: string | null;
 }): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
+  const name = input.clientName?.trim().toLocaleLowerCase('bg-BG') || '';
   const email = input.clientEmail?.trim().toLowerCase() || '';
   const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
-  if (!email && !phoneDigits) return null;
+  // A package is revealed only when the supplied name agrees with either a
+  // phone number or email address. Names are not unique enough on their own.
+  if (!name || (!email && !phoneDigits)) return null;
   const rows = await sql`
     SELECT id, package_name, total_sessions, used_sessions, expires_at::text AS expires_at
     FROM client_packages
     WHERE salon_id = ${input.salonId}
       AND expires_at >= CURRENT_DATE
       AND used_sessions < total_sessions
+      AND lower(trim(client_name)) = ${name}
       AND (
         (${email} <> '' AND lower(trim(coalesce(client_email, ''))) = ${email})
         OR (${phoneDigits} <> '' AND regexp_replace(coalesce(client_phone, ''), '\\D', '', 'g') = ${phoneDigits})

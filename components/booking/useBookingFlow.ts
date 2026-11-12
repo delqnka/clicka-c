@@ -14,6 +14,7 @@ import type {
   OccupiedSlot,
   PublicStaffMember,
   BookingCompanion,
+  ActivePackageLookup,
 } from './types';
 
 const DAY_KEYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
@@ -112,7 +113,10 @@ export function useBookingFlow({
   // Kept internally for backward-compatible embedding APIs; the default modal
   // no longer renders a notes field.
   const [notes, setNotes] = useState('');
-  const [usePackage, setUsePackage] = useState(false);
+  // Do not silently assume a payment path. The client must explicitly choose
+  // whether this reservation uses an active package.
+  const [usePackage, setUsePackage] = useState<boolean | null>(null);
+  const [packageLookup, setPackageLookup] = useState<ActivePackageLookup>({ status: 'idle', package: null });
   const [companions, setCompanions] = useState<BookingCompanion[]>([]);
   const [payOnline, setPayOnline] = useState(false);
 
@@ -308,11 +312,62 @@ export function useBookingFlow({
     setBookingQuantityState(Math.max(1, Math.min(Math.max(1, max), Math.round(Number(value) || 1))));
   }, [selectedCapacity, selectedTimeRemaining]);
 
+  // Never consume a credit while merely filling in the form. This only looks
+  // up a matching package, then the normal booking endpoint consumes it after
+  // a successful reservation is created.
+  useEffect(() => {
+    const normalizedName = clientName.trim();
+    const normalizedEmail = clientEmail.trim().toLowerCase();
+    const phoneDigits = clientPhone.replace(/\D/g, '');
+    const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+    const canLookUp = bookingOpen && normalizedName.length >= 2 && (phoneDigits.length >= 7 || hasValidEmail);
+
+    if (!canLookUp) {
+      setPackageLookup({ status: 'idle', package: null });
+      setUsePackage(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setPackageLookup({ status: 'checking', package: null });
+    setUsePackage(null);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`${api}${slugPath}/package-status`, {
+          method: 'POST',
+          headers: requestHeaders,
+          signal: controller.signal,
+          body: JSON.stringify({ clientName: normalizedName, clientPhone: clientPhone.trim(), clientEmail: normalizedEmail }),
+        });
+        if (!response.ok) throw new Error('Package lookup failed');
+        const result = (await response.json()) as { package?: ActivePackageLookup['package'] };
+        if (controller.signal.aborted) return;
+        if (result.package) {
+          setPackageLookup({ status: 'found', package: result.package });
+          setUsePackage(true);
+        } else {
+          setPackageLookup({ status: 'not_found', package: null });
+          setUsePackage(false);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setPackageLookup({ status: 'error', package: null });
+          setUsePackage(null);
+        }
+      }
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [api, bookingOpen, clientEmail, clientName, clientPhone, requestHeaders, slugPath]);
+
   useEffect(() => {
     setCompanions((current) => {
       const needed = Math.max(0, bookingQuantity - 1);
       if (current.length === needed) return current;
-      return Array.from({ length: needed }, (_, index) => current[index] ?? { name: '', phone: '', email: '', usePackage: false });
+      return Array.from({ length: needed }, (_, index) => current[index] ?? { name: '', phone: '', email: '', usePackage: null });
     });
   }, [bookingQuantity]);
 
@@ -435,7 +490,8 @@ export function useBookingFlow({
     setClientPhone('');
     setClientEmail('');
     setNotes('');
-    setUsePackage(false);
+    setUsePackage(null);
+    setPackageLookup({ status: 'idle', package: null });
     setPayOnline(false);
     setBookingOpen(true);
     if (onEvent) onEvent('booking_started');
@@ -444,7 +500,8 @@ export function useBookingFlow({
 
   const close = useCallback(() => {
     setBookingOpen(false);
-    setUsePackage(false);
+    setUsePackage(null);
+    setPackageLookup({ status: 'idle', package: null });
     setBookingSuccessDetails(null);
     setLockedService(false);
     setSelectedStaffMemberIdState(null);
@@ -504,6 +561,10 @@ export function useBookingFlow({
     if (!clientEmail.trim()) { setBookingError(t('booking.errors.noEmail')); return; }
     if (!selectedDate)       { setBookingError(t('booking.errors.noDate')); return; }
     if (!selectedTime)       { setBookingError(t('booking.errors.noTime')); return; }
+    if (usePackage == null || packageLookup.status === 'checking' || packageLookup.status === 'error' || companions.some((person) => person.usePackage == null)) {
+      setBookingError(locale.startsWith('bg') ? 'Избери дали всеки клиент има пакет.' : 'Choose whether each client has a package.');
+      return;
+    }
     if (companions.some((person) => !person.name.trim() || !person.phone.trim() || !person.email.trim())) {
       setBookingError(locale.startsWith('bg') ? 'Попълнете име, телефон и имейл за всеки участник.' : 'Enter a name, phone and email for every participant.');
       return;
@@ -603,7 +664,7 @@ export function useBookingFlow({
       setIsSubmitting(false);
     }
   }, [
-    api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, companions, locale, markSlotOccupied, usePackage,
+    api, bookingQuantity, cancelUrl, clientEmail, clientName, clientPhone, companions, locale, markSlotOccupied, packageLookup.status, usePackage,
     onEvent, payOnline, requestHeaders, selectedDate, selectedServices, selectedStaffMember, selectedStaffMemberId, selectedTime,
     slug, slugPath, successUrl, t, totalDuration, totalPrice, baseTotalPrice, onlinePaymentsEnabled,
   ]);
@@ -618,7 +679,7 @@ export function useBookingFlow({
     clientPhone, setClientPhone,
     clientEmail, setClientEmail,
     notes, setNotes,
-    usePackage, setUsePackage, companions, setCompanions,
+    usePackage, setUsePackage, packageLookup, companions, setCompanions,
     staffMembers: effectiveStaffMembers, selectedStaffMemberId, setStaffMemberId,
     classTrainerFilterName, setClassTrainerFilterName,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,

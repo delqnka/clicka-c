@@ -148,6 +148,7 @@ function BookingWidgetInner({
       clientPhone={flow.clientPhone}
       clientEmail={flow.clientEmail}
       usePackage={flow.usePackage}
+      packageLookup={flow.packageLookup}
       companions={flow.companions}
       salonName={salonName}
       termsHref={`${basePath}/terms`}

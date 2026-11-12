@@ -157,6 +157,7 @@ The SDK calls **only** these versioned public endpoints — `engineUrl + path`:
 - `GET  /api/public/v1/salons/:slug/staff`
 - `GET  /api/public/v1/salons/:slug/slots?date=YYYY-MM-DD&staffMemberId=…`
 - `POST /api/public/v1/salons/:slug/bookings`
+- `POST /api/public/v1/salons/:slug/package-status`
 - `POST /api/public/v1/salons/:slug/booking-checkout`
 
 All endpoints respond with permissive CORS (`Access-Control-Allow-Origin: *`).

@@ -20,7 +20,19 @@ export type BookingCompanion = {
   name: string;
   phone: string;
   email: string;
-  usePackage: boolean;
+  usePackage: boolean | null;
+};
+
+/** A read-only preview shown before a reservation consumes a package session. */
+export type ActivePackageLookup = {
+  status: 'idle' | 'checking' | 'found' | 'not_found' | 'error';
+  package: {
+    packageName: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+    expiresAt: string;
+  } | null;
 };
 
 export type BookingOpenOptions = {
@@ -140,8 +152,9 @@ export type UseBookingFlowReturn = {
   /** Backward-compatible state for custom embeds; not rendered by the default modal. */
   notes: string;
   setNotes: (v: string) => void;
-  usePackage: boolean;
-  setUsePackage: (v: boolean) => void;
+  usePackage: boolean | null;
+  setUsePackage: (v: boolean | null) => void;
+  packageLookup: ActivePackageLookup;
   companions: BookingCompanion[];
   setCompanions: Dispatch<SetStateAction<BookingCompanion[]>>;
 
