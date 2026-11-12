@@ -272,15 +272,18 @@ function PackageChoice({
   locale: string;
 }) {
   const packageInfo = packageLookup?.package;
+  const packageLocked = packageLookup?.status === 'found' && Boolean(packageInfo);
   const expiry = packageInfo?.expiresAt
     ? new Date(`${packageInfo.expiresAt.slice(0, 10)}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
   return (
     <fieldset className="space-y-2">
       <legend className="text-[13px] font-semibold text-black">
-        {isEnglish ? 'Does this client have an active package?' : 'Има ли този клиент активен пакет?'}
+        {packageLocked
+          ? (isEnglish ? 'Confirmed package' : 'Потвърден пакет')
+          : (isEnglish ? 'Does this client have an active package?' : 'Има ли този клиент активен пакет?')}
       </legend>
-      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={isEnglish ? 'Package choice' : 'Избор за пакет'}>
+      <div className={`grid gap-2 ${packageLocked ? 'grid-cols-1' : 'grid-cols-2'}`} role="radiogroup" aria-label={isEnglish ? 'Package choice' : 'Избор за пакет'}>
         <label className={`flex min-h-16 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-2 focus-within:ring-black/30 ${value === true ? 'border-[#607657] bg-[#f1f5ef] text-[#243023]' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}>
           <input type="radio" name={inputName} checked={value === true} onChange={() => onChange(true)} className="sr-only" />
           <span className="text-[13px] font-semibold">{isEnglish ? 'I have a package' : 'Имам пакет'}</span>
@@ -288,13 +291,15 @@ function PackageChoice({
             {isEnglish ? 'Use 1 session by phone or email' : 'Използвай 1 посещение по телефон или имейл'}
           </span>
         </label>
-        <label className={`flex min-h-16 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-2 focus-within:ring-black/30 ${value === false ? 'border-black bg-black text-white' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}>
-          <input type="radio" name={inputName} checked={value === false} onChange={() => onChange(false)} className="sr-only" />
-          <span className="text-[13px] font-semibold">{isEnglish ? 'I do not have a package' : 'Нямам пакет'}</span>
-          <span className={`mt-0.5 text-[11px] leading-snug ${value === false ? 'text-white/70' : 'text-black/45'}`}>
-            {isEnglish ? 'Continue without using a session' : 'Продължи без използване на кредит'}
-          </span>
-        </label>
+        {!packageLocked ? (
+          <label className={`flex min-h-16 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-2 focus-within:ring-black/30 ${value === false ? 'border-black bg-black text-white' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}>
+            <input type="radio" name={inputName} checked={value === false} onChange={() => onChange(false)} className="sr-only" />
+            <span className="text-[13px] font-semibold">{isEnglish ? 'I do not have a package' : 'Нямам пакет'}</span>
+            <span className={`mt-0.5 text-[11px] leading-snug ${value === false ? 'text-white/70' : 'text-black/45'}`}>
+              {isEnglish ? 'Continue without using a session' : 'Продължи без използване на кредит'}
+            </span>
+          </label>
+        ) : null}
       </div>
       {packageLookup?.status === 'checking' ? (
         <p className="rounded-xl bg-black/[0.035] px-3 py-2.5 text-[12px] font-medium text-black/60" role="status">

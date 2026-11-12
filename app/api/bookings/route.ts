@@ -441,23 +441,24 @@ export async function POST(request: NextRequest) {
   }
   const bookingId = crypto.randomUUID();
   let selectedPackage: Awaited<ReturnType<typeof findActiveClientPackage>> = null;
-  // Admin-created reservations can use a package too. Previously this branch
-  // skipped them, which meant adding a package client to a class never created
-  // the immutable usage record shown in the schedule.
-  if (requestedPackage) {
+  // Public bookings cannot bypass an active package: the server, not the
+  // browser toggle, is authoritative for whether a credit must be used.
+  // Admin-created reservations retain the explicit override for corrections.
+  if (!isAdminCreate || requestedPackage) {
     selectedPackage = await findActiveClientPackage({
       salonId,
       clientName,
       clientPhone,
       clientEmail: normalizedClientEmail,
     });
-    if (!selectedPackage) {
+    if (requestedPackage && !selectedPackage) {
       return NextResponse.json(
         { error: 'Не открихме активен пакет с това име, телефон или имейл. Проверете данните или изберете друг начин на плащане.' },
         { status: 400 },
       );
     }
   }
+  const shouldUsePackage = requestedPackage || (!isAdminCreate && Boolean(selectedPackage));
   let resolvedServiceName = String(serviceName).trim();
   let priceValue =
     servicePrice != null && Number.isFinite(Number(servicePrice)) ? Number(servicePrice) : null;
@@ -693,7 +694,7 @@ export async function POST(request: NextRequest) {
   // A package booking reserves a credit immediately — the reservation may be
   // pending the studio's confirmation, but the client must not be able to use
   // the same final credit for a second booking in the meantime.
-  const packageUsage = requestedPackage
+  const packageUsage = shouldUsePackage
     ? await consumePackageForCompletedBooking({
         salonId,
         bookingId: insertedBooking.id,
@@ -707,7 +708,7 @@ export async function POST(request: NextRequest) {
       })
     : null;
 
-  if (requestedPackage && !packageUsage) {
+  if (shouldUsePackage && !packageUsage) {
     await deleteBookingById(insertedBooking.id, salonId).catch((err) => {
       console.error('[bookings POST] rollback unavailable package booking failed', err);
     });
