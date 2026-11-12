@@ -82,7 +82,29 @@ export async function findActiveClientPackage(input: {
     ORDER BY cp.expires_at ASC, cp.created_at ASC
     LIMIT 1
   ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
-  const row = rows[0];
+  let row = rows[0];
+  // Some legacy packages predate copying phone/email onto the package record
+  // (and may not have a linked salon_clients row). As a safe fallback, accept
+  // an exact name only when it identifies exactly one usable package.
+  if (!row) {
+    const nameRows = await sql`
+      SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at::text AS expires_at
+      FROM client_packages cp
+      LEFT JOIN salon_clients sc
+        ON sc.id = cp.client_id
+        AND sc.salon_id = cp.salon_id
+      WHERE cp.salon_id = ${input.salonId}
+        AND cp.expires_at >= CURRENT_DATE
+        AND cp.used_sessions < cp.total_sessions
+        AND (
+          lower(trim(coalesce(cp.client_name, ''))) = ${name}
+          OR lower(trim(coalesce(sc.name, ''))) = ${name}
+        )
+      ORDER BY cp.expires_at ASC, cp.created_at ASC
+      LIMIT 2
+    ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
+    if (nameRows.length === 1) row = nameRows[0];
+  }
   if (!row) return null;
   const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
   const usedSessions = Math.min(totalSessions, Math.max(0, Number(row.used_sessions) || 0));
