@@ -1,6 +1,6 @@
 import { sql } from '@/lib/db';
 import { ensureSalonClientsSchema } from '@/lib/ensure-salon-clients-schema';
-import { upsertSalonClient } from '@/lib/salon-clients';
+import { normalizePhoneForMatch, upsertSalonClient } from '@/lib/salon-clients';
 
 export type ClientPackageSummary = {
   id: string;
@@ -51,7 +51,7 @@ export async function findActiveClientPackage(input: {
 }): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
   const email = input.clientEmail?.trim().toLowerCase() || '';
-  const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
+  const phoneDigits = normalizePhoneForMatch(input.clientPhone);
   if (!email && !phoneDigits) return null;
 
   // First identify the existing client by a durable contact field. Requiring
@@ -63,12 +63,12 @@ export async function findActiveClientPackage(input: {
     WHERE salon_id = ${input.salonId}
       AND (
         (${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email})
-        OR (${phoneDigits} <> '' AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${phoneDigits})
+        OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
       )
     ORDER BY
       CASE
         WHEN ${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email} THEN 0
-        WHEN ${phoneDigits} <> '' AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${phoneDigits} THEN 1
+        WHEN ${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits} THEN 1
         ELSE 2
       END,
       updated_at DESC
@@ -86,7 +86,7 @@ export async function findActiveClientPackage(input: {
       AND (
         cp.client_id = ${client.id}
         OR (${client.email ?? ''} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = lower(trim(${client.email ?? ''})))
-        OR (${client.phone ?? ''} <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(${client.phone ?? ''}, '\\D', '', 'g'))
+        OR (${client.phone ?? ''} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = regexp_replace(regexp_replace(${client.phone ?? ''}, '\\D', '', 'g'), '^(?:00359|359|0)', ''))
         OR lower(trim(coalesce(cp.client_name, ''))) = lower(trim(${client.name}))
       )
     ORDER BY cp.expires_at ASC, cp.created_at ASC
@@ -265,7 +265,7 @@ export async function consumePackageForCompletedBooking(input: {
 }): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
   const email = input.clientEmail?.trim().toLowerCase() || '';
-  const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
+  const phoneDigits = normalizePhoneForMatch(input.clientPhone);
   const name = input.clientName.trim();
   const packageId = input.packageId?.trim() || null;
 
@@ -287,7 +287,7 @@ export async function consumePackageForCompletedBooking(input: {
             ${packageId}::uuid IS NULL
             AND (
               (${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
-              OR (${phoneDigits} <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
+              OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
               OR lower(trim(cp.client_name)) = lower(trim(${name}))
             )
           )
@@ -347,7 +347,7 @@ export async function linkExistingPackageCreditToBooking(input: {
 }): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
   const email = input.clientEmail?.trim().toLowerCase() || '';
-  const phoneDigits = (input.clientPhone ?? '').replace(/\D/g, '');
+  const phoneDigits = normalizePhoneForMatch(input.clientPhone);
   if (!email && !phoneDigits) return null;
 
   const rows = await sql`
@@ -360,7 +360,7 @@ export async function linkExistingPackageCreditToBooking(input: {
         )
         AND (
           (${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
-          OR (${phoneDigits} <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
+          OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
         )
         AND NOT EXISTS (
           SELECT 1 FROM client_package_usages u

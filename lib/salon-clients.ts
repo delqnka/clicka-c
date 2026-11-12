@@ -5,6 +5,15 @@ function toTitleCase(str: string): string {
   return str.trim().replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }
 
+/** Compares Bulgarian local and international phone formats as one number. */
+export function normalizePhoneForMatch(value?: string | null): string {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.startsWith('00359')) return digits.slice(5);
+  if (digits.startsWith('359')) return digits.slice(3);
+  if (digits.startsWith('0')) return digits.slice(1);
+  return digits;
+}
+
 export async function upsertSalonClient(
   salonId: string,
   name: string,
@@ -13,6 +22,7 @@ export async function upsertSalonClient(
   await ensureSalonClientsSchema();
 
   const normalizedName = toTitleCase(name);
+  const normalizedPhone = normalizePhoneForMatch(fields.phone);
 
   // Phone/email are the durable identity. Looking up by name first created
   // separate client rows whenever a typo or nickname was used in a booking.
@@ -22,16 +32,16 @@ export async function upsertSalonClient(
       AND (
         (${fields.email?.trim().toLowerCase() || ''} <> ''
           AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''})
-        OR (${(fields.phone ?? '').replace(/\D/g, '')} <> ''
-          AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${(fields.phone ?? '').replace(/\D/g, '')})
+        OR (${normalizedPhone} <> ''
+          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${normalizedPhone})
         OR lower(trim(name)) = lower(trim(${normalizedName}))
       )
     ORDER BY
       CASE
         WHEN ${fields.email?.trim().toLowerCase() || ''} <> ''
           AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''} THEN 0
-        WHEN ${(fields.phone ?? '').replace(/\D/g, '')} <> ''
-          AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = ${(fields.phone ?? '').replace(/\D/g, '')} THEN 1
+        WHEN ${normalizedPhone} <> ''
+          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${normalizedPhone} THEN 1
         ELSE 2
       END,
       updated_at DESC
