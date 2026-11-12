@@ -40,6 +40,7 @@ type StaffRevenueBooking = {
   peopleCount: number;
   revenue: number;
   trainerPayout?: number;
+  trainerPayoutRate?: number;
   packageName?: string | null;
   packageId?: string | null;
   packagePrice?: number | null;
@@ -925,7 +926,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                       ) : (
                         <>
                           <span style={{ color: '#047857', fontWeight: 750 }}>{isEn ? 'Visit:' : 'Посещение:'} {formatEuroAmount(booking.revenue)}</span>
-                          <span style={{ color: '#1d4ed8', fontWeight: 750 }}>{isEn ? 'Trainer 50%:' : 'Треньор 50%:'} {formatEuroAmount(booking.trainerPayout ?? booking.revenue * 0.5)}</span>
+                          <span style={{ color: '#1d4ed8', fontWeight: 750 }}>{isEn ? `Trainer ${Math.round((booking.trainerPayoutRate ?? 0.5) * 100)}%:` : `Треньор ${Math.round((booking.trainerPayoutRate ?? 0.5) * 100)}%:`} {formatEuroAmount(booking.trainerPayout ?? booking.revenue * (booking.trainerPayoutRate ?? 0.5))}</span>
                         </>
                       )}
                     </div>
@@ -1124,7 +1125,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
               onClick={() => openRevenueDetail(isEn ? 'Trainer payouts' : 'За изплащане на треньори', allRevenueBookings)}
               style={{ textAlign: 'left', border: 'none', borderRadius: 10, background: '#eff6ff', padding: 12, cursor: 'pointer' }}
             >
-              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Trainer payouts · 50%' : 'Към треньори · 50%'}</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Trainer payouts' : 'Към треньори'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{formatEuroAmount(revenueTotals.bookedTrainerPayout)}</p>
             </button>
           </div>
