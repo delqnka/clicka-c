@@ -613,6 +613,7 @@ export function SalonBookingModal({
       : t('booking.modal.freeBeds', { count: maxBookableQuantity });
   const quantityPickerRef = useRef<HTMLDivElement | null>(null);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
+  const initialViewportHeightRef = useRef<number | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<number | null>(null);
 
@@ -747,8 +748,15 @@ export function SalonBookingModal({
     const viewport = window.visualViewport;
     if (!viewport) return;
     const updateKeyboardLayout = () => {
-      const keyboardHeight = window.innerHeight - viewport.height;
-      const openKeyboard = keyboardHeight > 120;
+      // On iOS, innerHeight sometimes shrinks together with VisualViewport.
+      // Compare against the last full viewport height instead, which remains
+      // reliable when the keyboard pushes Safari's toolbar/layout around.
+      const baseline = initialViewportHeightRef.current ?? viewport.height;
+      if (viewport.height > baseline - 20) {
+        initialViewportHeightRef.current = viewport.height;
+      }
+      const keyboardHeight = (initialViewportHeightRef.current ?? viewport.height) - viewport.height;
+      const openKeyboard = keyboardHeight > 100;
       setKeyboardOpen(openKeyboard);
       setKeyboardViewportHeight(openKeyboard ? Math.round(viewport.height) : null);
     };
@@ -758,6 +766,7 @@ export function SalonBookingModal({
     return () => {
       viewport.removeEventListener('resize', updateKeyboardLayout);
       viewport.removeEventListener('scroll', updateKeyboardLayout);
+      initialViewportHeightRef.current = null;
     };
   }, [open]);
 
@@ -1592,26 +1601,26 @@ export function SalonBookingModal({
         </div>
 
         {!bookingSuccess && !bookingSuccessDetails && (!classMode || step > 1) ? (
-          <div className={`relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5 ${keyboardOpen ? 'max-sm:hidden' : ''}`}>
+          <div className={`relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-5 sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:pt-3 ${keyboardOpen ? 'max-sm:hidden' : ''}`}>
             {hasServices ? (
-              <div className="mb-3 px-1">
-                <p className="text-[13px] tabular-nums text-black/50">
+              <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-1 sm:mb-3 sm:block">
+                <p className="text-[12px] tabular-nums text-black/50 sm:text-[13px]">
                   {t('booking.modal.totalDuration', { min: Math.max(0, totalDuration) })}
                 </p>
-                <p className="text-[17px] font-semibold tabular-nums text-black/70 leading-tight">
+                <p className="text-[15px] font-semibold leading-tight tabular-nums text-black/70 sm:text-[17px]">
                   {t('booking.modal.totalPrice', { price: fmtPrice(totalPrice) })}
                 </p>
                 {selectedCapacity > 1 && bookingQuantity > 1 ? (
-                  <p className="mt-0.5 text-[12px] tabular-nums text-black/45">
+                  <p className="hidden text-[12px] tabular-nums text-black/45 sm:mt-0.5 sm:block">
                     {t('booking.modal.pricePerBed', { count: bookingQuantity, price: fmtPrice(baseTotalPrice ?? totalPrice) })}
                   </p>
                 ) : null}
                 {selectedTime ? (
-                  <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-black">
+                  <p className="text-[12px] font-semibold tabular-nums text-black sm:mt-0.5 sm:text-[13px]">
                     {t('booking.modal.startTime', { start: selectedTime, end: endTime })}
                   </p>
                 ) : step > 1 ? (
-                  <p className="mt-0.5 truncate text-[13px] font-semibold text-black">
+                  <p className="truncate text-[12px] font-semibold text-black sm:mt-0.5 sm:text-[13px]">
                     {selectedServices.map((s) => s.name).join(' + ')}
                   </p>
                 ) : null}
@@ -1703,7 +1712,7 @@ export function SalonBookingModal({
                     (isTeam ? step === 3 : step === 2) && (!selectedDate || !selectedTime || hasSelectedFullCapacitySlot);
               return (
                 <>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4) : s))}
@@ -1719,7 +1728,7 @@ export function SalonBookingModal({
                         if (!nextDisabled) setStep((s) => (s < maxStep ? ((s + 1) as 1 | 2 | 3 | 4) : s));
                       }}
                       disabled={nextDisabled}
-                      className={`rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                      className={`rounded-full py-3 text-[15px] font-semibold text-white transition disabled:opacity-40 sm:py-3.5 ${gradientCtaShadow}`}
                       style={accentFillStyle}
                     >
                       {t('booking.modal.continue')}
@@ -1729,7 +1738,7 @@ export function SalonBookingModal({
                       type="submit"
                       form="salon-booking-form"
                       disabled={isSubmitting || !selectedTime || !hasServices || hasSelectedFullCapacitySlot || packageChoiceMissing}
-                      className={`flex items-center justify-center gap-2 rounded-full py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 ${gradientCtaShadow}`}
+                      className={`flex items-center justify-center gap-2 rounded-full py-3 text-[15px] font-semibold text-white transition disabled:opacity-40 sm:py-3.5 ${gradientCtaShadow}`}
                       style={accentFillStyle}
                     >
                       {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
@@ -1738,7 +1747,7 @@ export function SalonBookingModal({
                   )}
                 </div>
                 {isLastStep ? (
-                  <p className="mt-2.5 text-center text-[10.5px] leading-snug text-black/35">
+                  <p className="mt-2 max-h-[2.5rem] overflow-hidden text-center text-[10px] leading-snug text-black/35 sm:mt-2.5 sm:max-h-none sm:text-[10.5px]">
                     {t('booking.modal.disclaimerPre')}
                     {' '}{t('booking.modal.disclaimerAccept')}{' '}
                     <a href={termsHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
