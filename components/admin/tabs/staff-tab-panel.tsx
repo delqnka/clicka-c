@@ -22,9 +22,12 @@ type StaffRevenueRow = {
   bookedClassesCount: number;
   bookedPeopleCount: number;
   bookedRevenue: number;
+  bookedTrainerPayout: number;
+  unpricedPackageBookings: number;
   completedClassesCount: number;
   completedPeopleCount: number;
   completedRevenue: number;
+  completedTrainerPayout: number;
   bookings: StaffRevenueBooking[];
 };
 
@@ -36,6 +39,11 @@ type StaffRevenueBooking = {
   time: string;
   peopleCount: number;
   revenue: number;
+  trainerPayout?: number;
+  packageName?: string | null;
+  packagePrice?: number | null;
+  packageSessions?: number | null;
+  packagePriceMissing?: boolean;
   status?: string | null;
 };
 
@@ -622,6 +630,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
   const [revenueRows, setRevenueRows] = useState<StaffRevenueRow[]>([]);
   const [revenueBusy, setRevenueBusy] = useState(false);
   const [revenueError, setRevenueError] = useState<string | null>(null);
+  const [reconcileBusy, setReconcileBusy] = useState(false);
   const [revenueDetail, setRevenueDetail] = useState<{ title: string; bookings: StaffRevenueBooking[] } | null>(null);
 
   const showNotice = useCallback((type: 'ok' | 'err', text: string) => {
@@ -724,6 +733,23 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
     }
   }, [salonSlug, revenueFrom, revenueTo, isEn]);
 
+  const reconcilePackageFinances = useCallback(async () => {
+    setReconcileBusy(true);
+    setRevenueError(null);
+    try {
+      const response = await fetch(`/api/admin/staff/revenue?slug=${encodeURIComponent(salonSlug)}`, { method: 'POST' });
+      const data = await response.json() as { error?: string; updated?: number; needsPackagePrice?: number; missingBooking?: number };
+      if (!response.ok) throw new Error(data.error || 'Неуспешна корекция на пакетите.');
+      const unresolved = Number(data.needsPackagePrice ?? 0) + Number(data.missingBooking ?? 0);
+      showNotice('ok', `Коригирани са ${Number(data.updated ?? 0)} пакетни посещения.${unresolved ? ` ${unresolved} остават за проверка, защото липсва цена или връзка.` : ''}`);
+      await loadRevenue();
+    } catch (error) {
+      setRevenueError(error instanceof Error ? error.message : 'Неуспешна корекция на пакетите.');
+    } finally {
+      setReconcileBusy(false);
+    }
+  }, [salonSlug, showNotice, loadRevenue]);
+
   useEffect(() => {
     void loadRevenue();
   }, [loadRevenue]);
@@ -735,11 +761,14 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
       bookedClassesCount: acc.bookedClassesCount + row.bookedClassesCount,
       bookedPeopleCount: acc.bookedPeopleCount + row.bookedPeopleCount,
       bookedRevenue: acc.bookedRevenue + row.bookedRevenue,
+      bookedTrainerPayout: acc.bookedTrainerPayout + row.bookedTrainerPayout,
+      unpricedPackageBookings: acc.unpricedPackageBookings + row.unpricedPackageBookings,
       completedClassesCount: acc.completedClassesCount + row.completedClassesCount,
       completedPeopleCount: acc.completedPeopleCount + row.completedPeopleCount,
       completedRevenue: acc.completedRevenue + row.completedRevenue,
+      completedTrainerPayout: acc.completedTrainerPayout + row.completedTrainerPayout,
     }),
-    { bookedClassesCount: 0, bookedPeopleCount: 0, bookedRevenue: 0, completedClassesCount: 0, completedPeopleCount: 0, completedRevenue: 0 },
+    { bookedClassesCount: 0, bookedPeopleCount: 0, bookedRevenue: 0, bookedTrainerPayout: 0, unpricedPackageBookings: 0, completedClassesCount: 0, completedPeopleCount: 0, completedRevenue: 0, completedTrainerPayout: 0 },
   );
   const allRevenueBookings = revenueRows.flatMap((row) => row.bookings.map((booking) => ({
     ...booking,
@@ -809,7 +838,15 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 12, color: ADMIN_T.muted }}>
                       <span>{booking.serviceName}</span>
                       <span>{booking.peopleCount} {isEn ? 'people' : 'човека'}</span>
-                      <span style={{ color: '#047857', fontWeight: 750 }}>{formatEuroAmount(booking.revenue)}</span>
+                      {booking.packageName ? <span>{isEn ? 'Package:' : 'Пакет:'} {booking.packageName}</span> : null}
+                      {booking.packagePriceMissing ? (
+                        <span style={{ color: '#b45309', fontWeight: 750 }}>{isEn ? 'Package price missing' : 'Липсва цена на пакет'}</span>
+                      ) : (
+                        <>
+                          <span style={{ color: '#047857', fontWeight: 750 }}>{isEn ? 'Visit:' : 'Посещение:'} {formatEuroAmount(booking.revenue)}</span>
+                          <span style={{ color: '#1d4ed8', fontWeight: 750 }}>{isEn ? 'Trainer 50%:' : 'Треньор 50%:'} {formatEuroAmount(booking.trainerPayout ?? booking.revenue * 0.5)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -967,7 +1004,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
             <p style={{ margin: 0, color: '#b91c1c', fontSize: 12, fontWeight: 600 }}>{revenueError}</p>
           ) : null}
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
             <button
               type="button"
               onClick={() => openRevenueDetail(isEn ? 'Classes' : 'Класове', allRevenueBookings)}
@@ -992,7 +1029,24 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
               <p style={{ margin: 0, fontSize: 11, color: '#047857', fontWeight: 700 }}>{isEn ? 'Expected turnover' : 'Очакван оборот'}</p>
               <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#047857' }}>{formatEuroAmount(revenueTotals.bookedRevenue)}</p>
             </button>
+            <button
+              type="button"
+              onClick={() => openRevenueDetail(isEn ? 'Trainer payouts' : 'За изплащане на треньори', allRevenueBookings)}
+              style={{ textAlign: 'left', border: 'none', borderRadius: 10, background: '#eff6ff', padding: 12, cursor: 'pointer' }}
+            >
+              <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>{isEn ? 'Trainer payouts · 50%' : 'Към треньори · 50%'}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 850, color: '#1d4ed8' }}>{formatEuroAmount(revenueTotals.bookedTrainerPayout)}</p>
+            </button>
           </div>
+
+          {revenueTotals.unpricedPackageBookings > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', padding: 10, borderRadius: 10, background: '#fffbeb', color: '#92400e', fontSize: 12 }}>
+              <span>{revenueTotals.unpricedPackageBookings} {isEn ? 'package visits are excluded because the historic package price is missing.' : 'пакетни посещения са изключени, защото липсва историческа цена на пакета.'}</span>
+              <button type="button" onClick={() => void reconcilePackageFinances()} disabled={reconcileBusy} style={{ border: '1px solid #f59e0b', borderRadius: 7, background: '#fff', color: '#92400e', fontWeight: 750, fontSize: 12, padding: '6px 9px', cursor: reconcileBusy ? 'wait' : 'pointer', opacity: reconcileBusy ? 0.65 : 1 }}>
+                {reconcileBusy ? (isEn ? 'Updating…' : 'Коригиране…') : (isEn ? 'Recheck packages' : 'Провери пакетите')}
+              </button>
+            </div>
+          ) : null}
 
           <div style={{ display: 'grid', gap: 6 }}>
             {revenueRows.length === 0 ? (
@@ -1028,8 +1082,8 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                     style={{ border: 'none', background: 'transparent', padding: 0, color: ADMIN_T.muted, cursor: 'pointer', fontSize: 12, textAlign: 'left' }}
                   >
                     {isEn
-                      ? `Booked: ${row.bookedClassesCount} classes · ${row.bookedPeopleCount} people · ${formatEuroAmount(row.bookedRevenue)} expected`
-                      : `Записани: ${row.bookedClassesCount} класа · ${row.bookedPeopleCount} човека · ${formatEuroAmount(row.bookedRevenue)} очаквано`}
+                      ? `Booked: ${row.bookedClassesCount} classes · ${row.bookedPeopleCount} people · ${formatEuroAmount(row.bookedRevenue)} basis · ${formatEuroAmount(row.bookedTrainerPayout)} payout`
+                      : `Записани: ${row.bookedClassesCount} класа · ${row.bookedPeopleCount} човека · ${formatEuroAmount(row.bookedRevenue)} основа · ${formatEuroAmount(row.bookedTrainerPayout)} за треньор`}
                   </button>
                   {row.completedClassesCount > 0 || row.completedPeopleCount > 0 || row.completedRevenue > 0 ? (
                     <button
@@ -1038,8 +1092,8 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                       style={{ border: 'none', background: 'transparent', padding: 0, color: '#1d4ed8', fontWeight: 700, cursor: 'pointer', fontSize: 12, textAlign: 'left' }}
                     >
                       {isEn
-                        ? `Held: ${row.completedClassesCount} classes · ${row.completedPeopleCount} people · ${formatEuroAmount(row.completedRevenue)} actual`
-                        : `Проведени: ${row.completedClassesCount} класа · ${row.completedPeopleCount} човека · ${formatEuroAmount(row.completedRevenue)} реално`}
+                      ? `Held: ${row.completedClassesCount} classes · ${row.completedPeopleCount} people · ${formatEuroAmount(row.completedRevenue)} basis · ${formatEuroAmount(row.completedTrainerPayout)} payout`
+                      : `Проведени: ${row.completedClassesCount} класа · ${row.completedPeopleCount} човека · ${formatEuroAmount(row.completedRevenue)} основа · ${formatEuroAmount(row.completedTrainerPayout)} за треньор`}
                     </button>
                   ) : null}
                 </div>

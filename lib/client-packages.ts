@@ -21,6 +21,8 @@ export type ClientPackageUsageSummary = {
   usedSessions: number;
   remainingSessions: number;
   expiresAt: string;
+  /** Immutable financial value captured when this credit was used. */
+  creditValue?: number | null;
 };
 
 type ClientPackageAdjustmentReason = 'initial_balance' | 'manual_correction' | 'legacy_reconciliation';
@@ -152,9 +154,24 @@ export async function ensureClientPackagesSchema() {
       salon_id text NOT NULL,
       package_id uuid NOT NULL REFERENCES client_packages(id) ON DELETE CASCADE,
       booking_id uuid NOT NULL,
+      package_name_snapshot text,
+      package_price_snapshot numeric,
+      package_total_sessions_snapshot integer,
+      credit_value_snapshot numeric,
+      trainer_payout_rate_snapshot numeric,
+      trainer_payout_snapshot numeric,
       used_at timestamptz NOT NULL DEFAULT now(),
       UNIQUE (salon_id, booking_id)
     )
+  `;
+  await sql`
+    ALTER TABLE client_package_usages
+      ADD COLUMN IF NOT EXISTS package_name_snapshot text,
+      ADD COLUMN IF NOT EXISTS package_price_snapshot numeric,
+      ADD COLUMN IF NOT EXISTS package_total_sessions_snapshot integer,
+      ADD COLUMN IF NOT EXISTS credit_value_snapshot numeric,
+      ADD COLUMN IF NOT EXISTS trainer_payout_rate_snapshot numeric,
+      ADD COLUMN IF NOT EXISTS trainer_payout_snapshot numeric
   `;
   await sql`
     CREATE TABLE IF NOT EXISTS client_package_adjustments (
@@ -303,16 +320,25 @@ export async function consumePackageForCompletedBooking(input: {
       FROM pkg
       WHERE cp.id = pkg.id
         AND cp.used_sessions < cp.total_sessions
-      RETURNING cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at
+      RETURNING cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at, cp.price
     ),
     usage AS (
-      INSERT INTO client_package_usages (salon_id, package_id, booking_id)
-      SELECT ${input.salonId}, upd.id, ${input.bookingId}::uuid
+      INSERT INTO client_package_usages (
+        salon_id, package_id, booking_id,
+        package_name_snapshot, package_price_snapshot, package_total_sessions_snapshot,
+        credit_value_snapshot, trainer_payout_rate_snapshot, trainer_payout_snapshot
+      )
+      SELECT
+        ${input.salonId}, upd.id, ${input.bookingId}::uuid,
+        upd.package_name, upd.price, upd.total_sessions,
+        CASE WHEN upd.price IS NOT NULL AND upd.price >= 0 THEN upd.price / NULLIF(upd.total_sessions, 0) ELSE NULL END,
+        0.5,
+        CASE WHEN upd.price IS NOT NULL AND upd.price >= 0 THEN (upd.price / NULLIF(upd.total_sessions, 0)) * 0.5 ELSE NULL END
       FROM upd
       ON CONFLICT (salon_id, booking_id) DO NOTHING
-      RETURNING package_id
+      RETURNING package_id, credit_value_snapshot
     )
-    SELECT upd.id, upd.package_name, upd.total_sessions, upd.used_sessions, upd.expires_at
+    SELECT upd.id, upd.package_name, upd.total_sessions, upd.used_sessions, upd.expires_at, usage.credit_value_snapshot
     FROM upd
     INNER JOIN usage ON usage.package_id = upd.id
   ` as {
@@ -321,6 +347,7 @@ export async function consumePackageForCompletedBooking(input: {
     total_sessions: number;
     used_sessions: number;
     expires_at: string;
+    credit_value_snapshot: string | number | null;
   }[];
   const row = rows[0];
   if (!row) return null;
@@ -333,6 +360,7 @@ export async function consumePackageForCompletedBooking(input: {
     usedSessions,
     remainingSessions: Math.max(0, totalSessions - usedSessions),
     expiresAt: String(row.expires_at ?? ''),
+    creditValue: row.credit_value_snapshot == null ? null : Number(row.credit_value_snapshot),
   };
 }
 
@@ -372,9 +400,19 @@ export async function linkExistingPackageCreditToBooking(input: {
       FOR UPDATE SKIP LOCKED
     ),
     usage AS (
-      INSERT INTO client_package_usages (salon_id, package_id, booking_id)
-      SELECT ${input.salonId}, pkg.id, ${input.bookingId}::uuid
+      INSERT INTO client_package_usages (
+        salon_id, package_id, booking_id,
+        package_name_snapshot, package_price_snapshot, package_total_sessions_snapshot,
+        credit_value_snapshot, trainer_payout_rate_snapshot, trainer_payout_snapshot
+      )
+      SELECT
+        ${input.salonId}, cp.id, ${input.bookingId}::uuid,
+        cp.package_name, cp.price, cp.total_sessions,
+        CASE WHEN cp.price IS NOT NULL AND cp.price >= 0 THEN cp.price / NULLIF(cp.total_sessions, 0) ELSE NULL END,
+        0.5,
+        CASE WHEN cp.price IS NOT NULL AND cp.price >= 0 THEN (cp.price / NULLIF(cp.total_sessions, 0)) * 0.5 ELSE NULL END
       FROM pkg
+      INNER JOIN client_packages cp ON cp.id = pkg.id
       ON CONFLICT (salon_id, booking_id) DO NOTHING
       RETURNING package_id
     )
@@ -399,6 +437,69 @@ export async function linkExistingPackageCreditToBooking(input: {
     usedSessions,
     remainingSessions: Math.max(0, totalSessions - usedSessions),
     expiresAt: String(row.expires_at ?? ''),
+  };
+}
+
+export type PackageFinancialReconciliation = {
+  updated: number;
+  alreadyCaptured: number;
+  needsPackagePrice: number;
+  missingBooking: number;
+};
+
+/**
+ * Captures historical financial data only when the exact package price is
+ * already present. It intentionally never infers a price from the standard
+ * service price, because that would reintroduce the reporting error.
+ */
+export async function reconcilePackageUsageFinancials(input: {
+  salonId: string;
+  apply: boolean;
+}): Promise<PackageFinancialReconciliation> {
+  await ensureClientPackagesSchema();
+  const rows = await sql`
+    WITH scoped AS (
+      SELECT u.id, u.credit_value_snapshot, cp.price, cp.total_sessions, b.id AS booking_id
+      FROM client_package_usages u
+      LEFT JOIN client_packages cp ON cp.id = u.package_id
+      LEFT JOIN bookings b ON b.id::text = u.booking_id::text AND b.salon_id = u.salon_id
+      WHERE u.salon_id = ${input.salonId}
+    ), updated AS (
+      UPDATE client_package_usages u
+      SET
+        package_name_snapshot = cp.package_name,
+        package_price_snapshot = cp.price,
+        package_total_sessions_snapshot = cp.total_sessions,
+        credit_value_snapshot = cp.price / NULLIF(cp.total_sessions, 0),
+        trainer_payout_rate_snapshot = 0.5,
+        trainer_payout_snapshot = (cp.price / NULLIF(cp.total_sessions, 0)) * 0.5
+      FROM client_packages cp
+      WHERE ${input.apply}
+        AND u.salon_id = ${input.salonId}
+        AND u.package_id = cp.id
+        AND u.credit_value_snapshot IS NULL
+        AND cp.price IS NOT NULL
+        AND cp.price >= 0
+        AND cp.total_sessions > 0
+      RETURNING u.id
+    )
+    SELECT
+      (SELECT COUNT(*)::int FROM updated) AS updated,
+      (SELECT COUNT(*)::int FROM scoped WHERE credit_value_snapshot IS NOT NULL) AS already_captured,
+      (SELECT COUNT(*)::int FROM scoped WHERE credit_value_snapshot IS NULL AND booking_id IS NOT NULL AND (price IS NULL OR price < 0 OR total_sessions <= 0)) AS needs_package_price,
+      (SELECT COUNT(*)::int FROM scoped WHERE booking_id IS NULL) AS missing_booking
+  ` as {
+    updated: number | string;
+    already_captured: number | string;
+    needs_package_price: number | string;
+    missing_booking: number | string;
+  }[];
+  const row = rows[0];
+  return {
+    updated: Number(row?.updated ?? 0),
+    alreadyCaptured: Number(row?.already_captured ?? 0),
+    needsPackagePrice: Number(row?.needs_package_price ?? 0),
+    missingBooking: Number(row?.missing_booking ?? 0),
   };
 }
 
