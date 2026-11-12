@@ -16,6 +16,7 @@ export type StaffMember = {
   serviceIds: string[];
   onboardingCode: string | null;
   portalToken: string | null;
+  trainerPayoutRate: number;
   completedClassesCount: number;
   completedRevenue: number;
   bookedClassesCount: number;
@@ -36,6 +37,7 @@ type StaffRow = {
   service_ids: string[] | null;
   onboarding_code: string | null;
   portal_token: string | null;
+  trainer_payout_rate?: number | string | null;
   completed_classes_count?: number | string | null;
   completed_revenue?: number | string | null;
   booked_classes_count?: number | string | null;
@@ -57,6 +59,7 @@ function rowToStaffMember(row: StaffRow): StaffMember {
     serviceIds: row.service_ids ?? [],
     onboardingCode: row.onboarding_code ?? null,
     portalToken: row.portal_token ?? null,
+    trainerPayoutRate: Math.min(1, Math.max(0, Number(row.trainer_payout_rate ?? 0.5) || 0.5)),
     completedClassesCount: Math.max(0, Math.round(Number(row.completed_classes_count ?? 0) || 0)),
     completedRevenue: Math.max(0, Number(row.completed_revenue ?? 0) || 0),
     bookedClassesCount: Math.max(0, Math.round(Number(row.booked_classes_count ?? 0) || 0)),
@@ -69,7 +72,7 @@ export async function getStaffMembers(salonId: string): Promise<StaffMember[]> {
   const rows = await sql`
     SELECT
       sm.id, sm.salon_id, sm.name, sm.slug, sm.email, sm.bio, sm.avatar_url,
-      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token,
+      sm.is_owner, sm.is_active, sm.telegram_chat_id, sm.onboarding_code, sm.portal_token, sm.trainer_payout_rate,
       ARRAY_AGG(ss.service_id) FILTER (WHERE ss.service_id IS NOT NULL) AS service_ids,
       COALESCE(stats.completed_classes_count, 0) AS completed_classes_count,
       COALESCE(stats.completed_revenue, 0) AS completed_revenue,
@@ -258,6 +261,7 @@ export async function updateStaffMember(
     bio?: string | null;
     avatarUrl?: string | null;
     isActive?: boolean;
+    trainerPayoutRate?: number;
     serviceIds?: string[];
   },
 ): Promise<void> {
@@ -284,6 +288,10 @@ export async function updateStaffMember(
   }
   if (input.isActive !== undefined) {
     await sql`UPDATE staff_members SET is_active = ${input.isActive} WHERE id = ${id}::uuid AND salon_id = ${salonId}`;
+  }
+  if (input.trainerPayoutRate !== undefined) {
+    const payoutRate = Math.min(1, Math.max(0, Number(input.trainerPayoutRate) || 0));
+    await sql`UPDATE staff_members SET trainer_payout_rate = ${payoutRate} WHERE id = ${id}::uuid AND salon_id = ${salonId}`;
   }
   if (input.serviceIds !== undefined) {
     await setStaffServices(id, input.serviceIds);

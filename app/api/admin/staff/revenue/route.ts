@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         COUNT(*)::int AS booked_classes_count,
         COALESCE(SUM(GREATEST(1, COALESCE(b.booking_quantity, 1))), 0)::int AS booked_people_count,
         COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END), 0)::float AS booked_revenue,
-        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(u.trainer_payout_snapshot, COALESCE(u.credit_value_snapshot, 0) * 0.5) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) * 0.5 END), 0)::float AS booked_trainer_payout,
+        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)), 0)::float AS booked_trainer_payout,
         COUNT(*) FILTER (WHERE u.id IS NOT NULL AND u.credit_value_snapshot IS NULL)::int AS unpriced_package_bookings,
         COUNT(*) FILTER (
           WHERE
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
               ELSE false
             END
         ), 0)::float AS completed_revenue,
-        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(u.trainer_payout_snapshot, COALESCE(u.credit_value_snapshot, 0) * 0.5) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) * 0.5 END) FILTER (
+        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)) FILTER (
           WHERE
             lower(trim(coalesce(b.status, ''))) = 'completed'
             OR CASE
@@ -119,8 +119,10 @@ export async function GET(request: NextRequest) {
             'time', b.time,
             'peopleCount', GREATEST(1, COALESCE(b.booking_quantity, 1)),
             'revenue', CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END,
-            'trainerPayout', CASE WHEN u.id IS NOT NULL THEN COALESCE(u.trainer_payout_snapshot, COALESCE(u.credit_value_snapshot, 0) * 0.5) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) * 0.5 END,
+            'trainerPayout', (CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5),
+            'trainerPayoutRate', COALESCE(sm.trainer_payout_rate, 0.5),
             'packageName', u.package_name_snapshot,
+            'packageId', u.package_id,
             'packagePrice', u.package_price_snapshot,
             'packageSessions', u.package_total_sessions_snapshot,
             'packagePriceMissing', (u.id IS NOT NULL AND u.credit_value_snapshot IS NULL),
@@ -170,4 +172,49 @@ export async function POST(request: NextRequest) {
   const { reconcilePackageUsageFinancials } = await import('@/lib/client-packages');
   const result = await reconcilePackageUsageFinancials({ salonId: auth.salon.salonId, apply: true });
   return NextResponse.json({ ok: true, ...result });
+}
+
+/** Corrects the financial value of an already-linked package credit. */
+export async function PATCH(request: NextRequest) {
+  const slug = request.nextUrl.searchParams.get('slug');
+  const auth = await requireAdminRequestAccess(request, slug);
+  if (!auth.ok) return auth.response;
+
+  let body: { bookingId?: string; creditValue?: number; applyToPackage?: boolean };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Невалидни данни.' }, { status: 400 });
+  }
+  const bookingId = body.bookingId?.trim();
+  const creditValue = Number(body.creditValue);
+  if (!bookingId || !Number.isFinite(creditValue) || creditValue < 0) {
+    return NextResponse.json({ error: 'Въведете валидна стойност за едно посещение.' }, { status: 400 });
+  }
+
+  const rows = await sql`
+    WITH selected AS (
+      SELECT package_id
+      FROM client_package_usages
+      WHERE salon_id = ${auth.salon.salonId} AND booking_id::text = ${bookingId}
+      LIMIT 1
+    ), updated AS (
+      UPDATE client_package_usages u
+      SET
+        package_price_snapshot = ${creditValue} * COALESCE(NULLIF(u.package_total_sessions_snapshot, 0), 1),
+        credit_value_snapshot = ${creditValue},
+        trainer_payout_rate_snapshot = 0.5,
+        trainer_payout_snapshot = ${creditValue} * 0.5
+      WHERE u.salon_id = ${auth.salon.salonId}
+        AND (
+          (${body.applyToPackage === true} AND u.package_id = (SELECT package_id FROM selected))
+          OR (NOT ${body.applyToPackage === true} AND u.booking_id::text = ${bookingId})
+        )
+      RETURNING u.id
+    )
+    SELECT COUNT(*)::int AS updated FROM updated
+  ` as { updated: number | string }[];
+  const updated = Number(rows[0]?.updated ?? 0);
+  if (!updated) return NextResponse.json({ error: 'Не открихме пакетно посещение за тази резервация.' }, { status: 404 });
+  return NextResponse.json({ ok: true, updated });
 }

@@ -24,6 +24,7 @@ export async function ensureStaffSchema() {
           onboarding_code                 text UNIQUE,
           portal_token                    text,
           is_active                       boolean     NOT NULL DEFAULT true,
+          trainer_payout_rate             numeric     NOT NULL DEFAULT 0.5,
           created_at                      timestamptz NOT NULL DEFAULT now()
         )
       `;
@@ -56,6 +57,7 @@ export async function ensureStaffSchema() {
 
       // is_active on staff_members (backfill existing rows)
       await sql`ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true`;
+      await sql`ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS trainer_payout_rate numeric NOT NULL DEFAULT 0.5`;
 
       // staff_member_id on bookings
       await sql`

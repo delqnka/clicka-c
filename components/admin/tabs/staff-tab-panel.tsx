@@ -41,6 +41,7 @@ type StaffRevenueBooking = {
   revenue: number;
   trainerPayout?: number;
   packageName?: string | null;
+  packageId?: string | null;
   packagePrice?: number | null;
   packageSessions?: number | null;
   packagePriceMissing?: boolean;
@@ -85,6 +86,67 @@ function formatDateShort(date: string, locale: Locale): string {
   const parsed = new Date(`${date}T12:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
   return parsed.toLocaleDateString(locale === 'en' ? 'en-US' : 'bg-BG', { day: '2-digit', month: '2-digit' });
+}
+
+function PackageCreditValueEditor({
+  booking,
+  salonSlug,
+  locale,
+  onSaved,
+}: {
+  booking: StaffRevenueBooking;
+  salonSlug: string;
+  locale: Locale;
+  onSaved: () => Promise<void> | void;
+}) {
+  const isEn = locale === 'en';
+  const [value, setValue] = useState(booking.revenue > 0 ? String(booking.revenue) : '');
+  const [applyToPackage, setApplyToPackage] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!booking.packageId) return null;
+
+  const save = async () => {
+    const creditValue = Number(value.replace(',', '.'));
+    if (!Number.isFinite(creditValue) || creditValue < 0) {
+      setError(isEn ? 'Enter a valid amount.' : 'Въведете валидна сума.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin/staff/revenue?slug=${encodeURIComponent(salonSlug)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, creditValue, applyToPackage }),
+      });
+      const data = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(data.error || 'Грешка при запазването.');
+      await onSaved();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Грешка при запазването.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 7, marginTop: 4, padding: 9, borderRadius: 8, background: '#f8fafc', border: '1px solid #dbeafe' }}>
+      <label style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 700, color: '#1e3a5f' }}>
+        {isEn ? 'Value of 1 package visit (€)' : 'Стойност на 1 посещение от пакет (€)'}
+        <input value={value} inputMode="decimal" onChange={(event) => setValue(event.target.value)} style={{ width: 118, padding: '6px 8px', borderRadius: 6, border: '1px solid #93c5fd', background: '#fff', color: ADMIN_T.text, fontSize: 13 }} />
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: ADMIN_T.muted, cursor: 'pointer' }}>
+        <input type="checkbox" checked={applyToPackage} onChange={(event) => setApplyToPackage(event.target.checked)} />
+        {isEn ? 'Apply to all visits from this package' : 'Приложи към всички посещения от този пакет'}
+      </label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => void save()} disabled={busy} style={{ border: 'none', borderRadius: 6, background: '#1d4ed8', color: '#fff', fontSize: 12, fontWeight: 750, padding: '6px 9px', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1 }}>
+          {busy ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save value' : 'Запази стойността')}
+        </button>
+        {error ? <span style={{ fontSize: 12, color: '#b91c1c' }}>{error}</span> : null}
+      </div>
+    </div>
+  );
 }
 
 function currentWeekStart(): string {
@@ -710,7 +772,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
     setStaff((prev) => prev.map((m) => m.id === memberId ? { ...m, serviceIds } : m));
   }, []);
 
-  const updateMemberProfile = useCallback((memberId: string, patch: Pick<StaffMember, 'bio' | 'avatarUrl'>) => {
+  const updateMemberProfile = useCallback((memberId: string, patch: Partial<Pick<StaffMember, 'bio' | 'avatarUrl' | 'trainerPayoutRate'>>) => {
     setStaff((prev) => prev.map((m) => m.id === memberId ? { ...m, ...patch } : m));
   }, []);
 
@@ -732,6 +794,25 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
       setRevenueBusy(false);
     }
   }, [salonSlug, revenueFrom, revenueTo, isEn]);
+
+  const updateTrainerPayoutRate = useCallback(async (member: StaffMember, trainerPayoutRate: number) => {
+    const key = `rate-${member.id}`;
+    setBusy(key);
+    try {
+      const response = await fetch(`/api/admin/staff?slug=${encodeURIComponent(salonSlug)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: member.id, trainerPayoutRate }),
+      });
+      if (!response.ok) throw new Error('Грешка');
+      updateMemberProfile(member.id, { trainerPayoutRate });
+      showNotice('ok', `${member.name}: ${Math.round(trainerPayoutRate * 100)}% за треньор.`);
+      await loadRevenue();
+    } catch {
+      showNotice('err', 'Неуспешна промяна на процента.');
+    } finally {
+      setBusy(null);
+    }
+  }, [salonSlug, showNotice, updateMemberProfile, loadRevenue]);
 
   const reconcilePackageFinances = useCallback(async () => {
     setReconcileBusy(true);
@@ -848,6 +929,15 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                         </>
                       )}
                     </div>
+                    <PackageCreditValueEditor
+                      booking={booking}
+                      salonSlug={salonSlug}
+                      locale={locale}
+                      onSaved={async () => {
+                        await loadRevenue();
+                        setRevenueDetail(null);
+                      }}
+                    />
                   </div>
                 ))}
               </div>
@@ -1224,6 +1314,22 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                         onUpdate={(ids) => updateMemberServices(member.id, ids)}
                         locale={locale}
                       />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '12px 0', borderTop: `1px solid ${ADMIN_T.border}` }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 750, color: ADMIN_T.text }}>{isEn ? 'Trainer payout' : 'Дял за треньора'}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 12, color: ADMIN_T.muted }}>{isEn ? 'Applied to this trainer\'s package and single visits.' : 'Прилага се към пакетните и единичните посещения на този треньор.'}</p>
+                        </div>
+                        <select
+                          value={member.trainerPayoutRate}
+                          disabled={busy === `rate-${member.id}`}
+                          onChange={(event) => void updateTrainerPayoutRate(member, Number(event.target.value))}
+                          aria-label={isEn ? `Trainer payout for ${member.name}` : `Дял за ${member.name}`}
+                          style={{ minWidth: 92, padding: '7px 9px', borderRadius: 8, border: `1px solid ${ADMIN_T.border}`, background: '#fff', color: ADMIN_T.text, fontSize: 13, fontWeight: 750, cursor: busy === `rate-${member.id}` ? 'wait' : 'pointer' }}
+                        >
+                          <option value={0.4}>40%</option>
+                          <option value={0.5}>50%</option>
+                        </select>
+                      </div>
                       <StaffProfileEditor
                         member={member}
                         salonSlug={salonSlug}
