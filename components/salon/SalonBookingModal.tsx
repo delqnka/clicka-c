@@ -616,6 +616,8 @@ export function SalonBookingModal({
   const initialViewportHeightRef = useRef<number | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<number | null>(null);
+  const [formFieldFocused, setFormFieldFocused] = useState(false);
+  const fieldBlurTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!showQuantityPicker) return;
@@ -773,9 +775,24 @@ export function SalonBookingModal({
   function keepFocusedFieldVisible(event: React.FocusEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+    if (fieldBlurTimeoutRef.current != null) window.clearTimeout(fieldBlurTimeoutRef.current);
+    setFormFieldFocused(true);
     window.requestAnimationFrame(() => {
       target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
     });
+  }
+
+  function restoreFooterAfterFieldBlur() {
+    if (fieldBlurTimeoutRef.current != null) window.clearTimeout(fieldBlurTimeoutRef.current);
+    fieldBlurTimeoutRef.current = window.setTimeout(() => {
+      const activeElement = document.activeElement;
+      const stillEditing = Boolean(
+        activeElement &&
+        modalContentRef.current?.contains(activeElement) &&
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName),
+      );
+      setFormFieldFocused(stillEditing);
+    }, 100);
   }
 
   if (!open) return null;
@@ -842,6 +859,7 @@ export function SalonBookingModal({
         <div
           ref={modalContentRef}
           onFocusCapture={keepFocusedFieldVisible}
+          onBlurCapture={restoreFooterAfterFieldBlur}
           className="relative z-[1] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5"
         >
           {bookingSuccess ? (
@@ -1601,9 +1619,16 @@ export function SalonBookingModal({
         </div>
 
         {!bookingSuccess && !bookingSuccessDetails && (!classMode || step > 1) ? (
-          <div className={`relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-5 sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:pt-3 ${keyboardOpen ? 'max-sm:hidden' : ''}`}>
+          <div className={`relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-5 sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:pt-3 ${keyboardOpen || formFieldFocused ? 'max-sm:hidden' : ''}`}>
             {hasServices ? (
-              <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-1 sm:mb-3 sm:block">
+              <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[12px] font-medium tabular-nums text-black/60 sm:hidden">
+                <span className="min-w-0 truncate">{Math.max(0, totalDuration)} {isEnglish ? 'min' : 'мин'}</span>
+                <span className="shrink-0 font-semibold text-black/75">{fmtPrice(totalPrice)}</span>
+                {selectedTime ? <span className="shrink-0 text-black">{selectedTime}–{endTime}</span> : null}
+              </div>
+            ) : null}
+            {hasServices ? (
+              <div className="hidden sm:mb-3 sm:block sm:px-1">
                 <p className="text-[12px] tabular-nums text-black/50 sm:text-[13px]">
                   {t('booking.modal.totalDuration', { min: Math.max(0, totalDuration) })}
                 </p>
