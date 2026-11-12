@@ -108,7 +108,9 @@ export async function findActiveClientPackage(input: {
       ORDER BY cp.expires_at ASC, cp.created_at ASC
       LIMIT 2
     ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
-    if (profileRows.length === 1) row = profileRows[0];
+    // Match the Clients panel: if several valid rows are associated to the
+    // same profile, use the earliest-expiring active package.
+    if (profileRows.length > 0) row = profileRows[0];
   }
   // Some legacy packages predate copying phone/email onto the package record
   // (and may not have a linked salon_clients row). As a safe fallback, accept
@@ -130,7 +132,7 @@ export async function findActiveClientPackage(input: {
       ORDER BY cp.expires_at ASC, cp.created_at ASC
       LIMIT 2
     ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
-    if (nameRows.length === 1) row = nameRows[0];
+    if (nameRows.length > 0) row = nameRows[0];
   }
   if (!row) return null;
   const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
