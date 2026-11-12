@@ -2912,6 +2912,7 @@ export default function AdminDashboardClient({
                         clientName: client.name,
                         clientPhone: client.phone || null,
                         clientEmail: client.email || null,
+                        packageDefinitionId: packageInput.packageDefinitionId ?? null,
                         packageName: packageInput.packageName,
                         totalSessions: packageInput.totalSessions,
                         usedSessions: packageInput.usedSessions,

@@ -3269,6 +3269,7 @@ export function ClientsPanel({
   onDelete?: (key: string) => void;
   onEdit?: (key: string, data: { name: string; phone: string; email: string }) => void;
   onAddPackage?: (client: ClientSummary, data: {
+    packageDefinitionId?: string | null;
     packageName: string;
     totalSessions: number;
     usedSessions: number;
@@ -3464,6 +3465,7 @@ export function ClientsPanel({
         });
       } else {
         await onAddPackage(client, {
+          packageDefinitionId: activationDraft.packageDefinitionId || null,
           packageName: activationDraft.packageName.trim(),
           totalSessions,
           usedSessions,

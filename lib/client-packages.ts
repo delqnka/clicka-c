@@ -126,6 +126,7 @@ export async function ensureClientPackagesSchema() {
       purchased_at timestamptz NOT NULL DEFAULT now(),
       expires_at date NOT NULL,
       source text NOT NULL DEFAULT 'admin',
+      package_definition_id uuid,
       stripe_checkout_session_id text,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
@@ -134,6 +135,10 @@ export async function ensureClientPackagesSchema() {
   await sql`
     ALTER TABLE client_packages
     ADD COLUMN IF NOT EXISTS stripe_checkout_session_id text
+  `;
+  await sql`
+    ALTER TABLE client_packages
+    ADD COLUMN IF NOT EXISTS package_definition_id uuid
   `;
   await sql`
     CREATE UNIQUE INDEX IF NOT EXISTS client_packages_stripe_session_uniq
@@ -202,6 +207,7 @@ export async function createClientPackage(input: {
   validTo?: string | null;
   validityDays?: number | null;
   source?: 'admin' | 'online';
+  packageDefinitionId?: string | null;
   stripeCheckoutSessionId?: string | null;
 }) {
   await ensureClientPackagesSchema();
@@ -218,7 +224,7 @@ export async function createClientPackage(input: {
     INSERT INTO client_packages (
       salon_id, client_id, client_name, client_phone, client_email,
       package_name, total_sessions, used_sessions, price, purchased_at, expires_at,
-      source, stripe_checkout_session_id
+      source, package_definition_id, stripe_checkout_session_id
     )
     VALUES (
       ${input.salonId},
@@ -233,6 +239,7 @@ export async function createClientPackage(input: {
       COALESCE(${input.validFrom?.trim() || null}::date, now()),
       COALESCE(${validTo}::date, (CURRENT_DATE + (${validityDays}::int * interval '1 day'))::date),
       ${input.source ?? 'admin'},
+      ${input.packageDefinitionId?.trim() || null}::uuid,
       ${input.stripeCheckoutSessionId?.trim() || null}
     )
     ON CONFLICT (stripe_checkout_session_id)

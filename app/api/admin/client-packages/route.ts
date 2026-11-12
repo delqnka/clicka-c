@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminRequestAccess } from '@/lib/admin-auth';
 import { createClientPackage, deactivateClientPackage, updateClientPackage } from '@/lib/client-packages';
+import { getClientPackageDefinition } from '@/lib/client-package-definitions';
 import { runAfterResponse } from '@/lib/run-after-response';
 import { sendClientPackageActivatedEmail, sendClientPackageCreditAdjustmentEmail } from '@/lib/resend';
 
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
     validFrom?: string | null;
     validTo?: string | null;
     validityDays?: number | null;
+    packageDefinitionId?: string | null;
   };
   try {
     body = await request.json();
@@ -28,10 +30,21 @@ export async function POST(request: NextRequest) {
   }
 
   const clientName = body.clientName?.trim();
-  const totalSessions = Math.round(Number(body.totalSessions) || 0);
+  const packageDefinitionId = body.packageDefinitionId?.trim() || null;
+  const definition = packageDefinitionId
+    ? await getClientPackageDefinition({ salonId: auth.salon.salonId, id: packageDefinitionId })
+    : null;
+  if (packageDefinitionId && !definition) {
+    return NextResponse.json({ error: 'Избраният пакет не съществува.' }, { status: 400 });
+  }
+  const totalSessions = definition ? definition.totalSessions : Math.round(Number(body.totalSessions) || 0);
   const usedSessions = Math.max(0, Math.round(Number(body.usedSessions ?? 0) || 0));
+  const price = definition ? definition.price : body.price ?? null;
   if (!clientName || totalSessions < 1) {
     return NextResponse.json({ error: 'Изберете клиент и въведете поне 1 кредит.' }, { status: 400 });
+  }
+  if (price == null) {
+    return NextResponse.json({ error: 'За нов пакет въведете реална цена или изберете създаден пакет.' }, { status: 400 });
   }
   if (usedSessions > totalSessions) {
     return NextResponse.json({ error: 'Използваните кредити не могат да са повече от общите.' }, { status: 400 });
@@ -42,14 +55,15 @@ export async function POST(request: NextRequest) {
     clientName,
     clientPhone: body.clientPhone,
     clientEmail: body.clientEmail,
-    packageName: body.packageName,
+    packageName: definition?.name ?? body.packageName,
     totalSessions,
     usedSessions,
-    price: body.price ?? null,
+    price,
     validFrom: body.validFrom,
     validTo: body.validTo,
-    validityDays: body.validityDays,
+    validityDays: definition?.validityDays ?? body.validityDays,
     source: 'admin',
+    packageDefinitionId: definition?.id ?? null,
   });
 
   const clientEmail = body.clientEmail?.trim().toLowerCase() || '';

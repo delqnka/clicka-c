@@ -133,12 +133,12 @@ function PackageCreditValueEditor({
   return (
     <div style={{ display: 'grid', gap: 7, marginTop: 4, padding: 9, borderRadius: 8, background: '#f8fafc', border: '1px solid #dbeafe' }}>
       <label style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 700, color: '#1e3a5f' }}>
-        {isEn ? 'Value of 1 package visit (€)' : 'Стойност на 1 посещение от пакет (€)'}
+        {isEn ? 'Real value of 1 package visit (€)' : 'Реална стойност на 1 посещение от пакет (€)'}
         <input value={value} inputMode="decimal" onChange={(event) => setValue(event.target.value)} style={{ width: 118, padding: '6px 8px', borderRadius: 6, border: '1px solid #93c5fd', background: '#fff', color: ADMIN_T.text, fontSize: 13 }} />
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: ADMIN_T.muted, cursor: 'pointer' }}>
         <input type="checkbox" checked={applyToPackage} onChange={(event) => setApplyToPackage(event.target.checked)} />
-        {isEn ? 'Apply to all visits from this package' : 'Приложи към всички посещения от този пакет'}
+        {isEn ? `Update the real price of this client package (${booking.packageSessions ?? 0} visits)` : `Обнови реалната цена на този клиентски пакет (${booking.packageSessions ?? 0} посещения)`}
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={() => void save()} disabled={busy} style={{ border: 'none', borderRadius: 6, background: '#1d4ed8', color: '#fff', fontSize: 12, fontWeight: 750, padding: '6px 9px', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1 }}>
@@ -921,6 +921,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                       <span>{booking.serviceName}</span>
                       <span>{booking.peopleCount} {isEn ? 'people' : 'човека'}</span>
                       {booking.packageName ? <span>{isEn ? 'Package:' : 'Пакет:'} {booking.packageName}</span> : null}
+                      {booking.packagePrice != null && booking.packageSessions ? <span>{isEn ? 'Real package:' : 'Реален пакет:'} {formatEuroAmount(booking.packagePrice)} / {booking.packageSessions} {isEn ? 'visits' : 'посещения'}</span> : null}
                       {booking.packagePriceMissing ? (
                         <span style={{ color: '#b45309', fontWeight: 750 }}>{isEn ? 'Package price missing' : 'Липсва цена на пакет'}</span>
                       ) : (

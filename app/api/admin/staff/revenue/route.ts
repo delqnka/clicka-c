@@ -53,9 +53,9 @@ export async function GET(request: NextRequest) {
       SELECT
         COUNT(*)::int AS booked_classes_count,
         COALESCE(SUM(GREATEST(1, COALESCE(b.booking_quantity, 1))), 0)::int AS booked_people_count,
-        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END), 0)::float AS booked_revenue,
-        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)), 0)::float AS booked_trainer_payout,
-        COUNT(*) FILTER (WHERE u.id IS NOT NULL AND u.credit_value_snapshot IS NULL)::int AS unpriced_package_bookings,
+        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END), 0)::float AS booked_revenue,
+        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)), 0)::float AS booked_trainer_payout,
+        COUNT(*) FILTER (WHERE u.id IS NOT NULL AND (cp.price IS NULL OR cp.total_sessions <= 0))::int AS unpriced_package_bookings,
         COUNT(*) FILTER (
           WHERE
             lower(trim(coalesce(b.status, ''))) = 'completed'
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
               ELSE false
             END
         ), 0)::int AS completed_people_count,
-        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) FILTER (
+        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) FILTER (
           WHERE
             lower(trim(coalesce(b.status, ''))) = 'completed'
             OR CASE
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
               ELSE false
             END
         ), 0)::float AS completed_revenue,
-        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)) FILTER (
+        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)) FILTER (
           WHERE
             lower(trim(coalesce(b.status, ''))) = 'completed'
             OR CASE
@@ -118,20 +118,21 @@ export async function GET(request: NextRequest) {
             'date', b.date,
             'time', b.time,
             'peopleCount', GREATEST(1, COALESCE(b.booking_quantity, 1)),
-            'revenue', CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END,
-            'trainerPayout', (CASE WHEN u.id IS NOT NULL THEN COALESCE(u.credit_value_snapshot, 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5),
+            'revenue', CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END,
+            'trainerPayout', (CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5),
             'trainerPayoutRate', COALESCE(sm.trainer_payout_rate, 0.5),
-            'packageName', u.package_name_snapshot,
+            'packageName', cp.package_name,
             'packageId', u.package_id,
-            'packagePrice', u.package_price_snapshot,
-            'packageSessions', u.package_total_sessions_snapshot,
-            'packagePriceMissing', (u.id IS NOT NULL AND u.credit_value_snapshot IS NULL),
+            'packagePrice', cp.price,
+            'packageSessions', cp.total_sessions,
+            'packagePriceMissing', (u.id IS NOT NULL AND (cp.price IS NULL OR cp.total_sessions <= 0)),
             'status', b.status
           )
           ORDER BY b.date ASC, b.time ASC, b.created_at ASC
         ) FILTER (WHERE b.id IS NOT NULL), '[]'::jsonb) AS bookings
       FROM bookings b
       LEFT JOIN client_package_usages u ON u.salon_id = b.salon_id AND u.booking_id::text = b.id::text
+      LEFT JOIN client_packages cp ON cp.id = u.package_id
       WHERE b.salon_id = sm.salon_id
         AND b.staff_member_id = sm.id
         AND b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'
@@ -174,7 +175,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true, ...result });
 }
 
-/** Corrects the financial value of an already-linked package credit. */
+/** Corrects the real price stored on the client's package, not a report-only value. */
 export async function PATCH(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
   const auth = await requireAdminRequestAccess(request, slug);
@@ -191,26 +192,25 @@ export async function PATCH(request: NextRequest) {
   if (!bookingId || !Number.isFinite(creditValue) || creditValue < 0) {
     return NextResponse.json({ error: 'Въведете валидна стойност за едно посещение.' }, { status: 400 });
   }
+  if (body.applyToPackage !== true) {
+    return NextResponse.json({ error: 'За да се промени реалната цена на пакета, потвърдете промяната за целия пакет.' }, { status: 400 });
+  }
 
   const rows = await sql`
     WITH selected AS (
-      SELECT package_id
+      SELECT u.package_id, cp.total_sessions
       FROM client_package_usages
-      WHERE salon_id = ${auth.salon.salonId} AND booking_id::text = ${bookingId}
+      INNER JOIN client_packages cp ON cp.id = client_package_usages.package_id
+      WHERE client_package_usages.salon_id = ${auth.salon.salonId} AND booking_id::text = ${bookingId}
       LIMIT 1
     ), updated AS (
-      UPDATE client_package_usages u
-      SET
-        package_price_snapshot = ${creditValue} * COALESCE(NULLIF(u.package_total_sessions_snapshot, 0), 1),
-        credit_value_snapshot = ${creditValue},
-        trainer_payout_rate_snapshot = 0.5,
-        trainer_payout_snapshot = ${creditValue} * 0.5
-      WHERE u.salon_id = ${auth.salon.salonId}
-        AND (
-          (${body.applyToPackage === true} AND u.package_id = (SELECT package_id FROM selected))
-          OR (NOT ${body.applyToPackage === true} AND u.booking_id::text = ${bookingId})
-        )
-      RETURNING u.id
+      UPDATE client_packages cp
+      SET price = ${creditValue} * selected.total_sessions,
+          updated_at = now()
+      FROM selected
+      WHERE cp.id = selected.package_id
+        AND cp.salon_id = ${auth.salon.salonId}
+      RETURNING cp.id
     )
     SELECT COUNT(*)::int AS updated FROM updated
   ` as { updated: number | string }[];
