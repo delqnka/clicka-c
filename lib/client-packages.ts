@@ -83,6 +83,33 @@ export async function findActiveClientPackage(input: {
     LIMIT 1
   ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
   let row = rows[0];
+  // Use the same relationship the Clients admin view uses. A number of older
+  // packages do not have client_id populated, but their package is correctly
+  // associated to salon_clients by the stored name/phone/email.
+  if (!row) {
+    const profileRows = await sql`
+      SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at::text AS expires_at
+      FROM salon_clients sc
+      JOIN client_packages cp
+        ON cp.salon_id = sc.salon_id
+        AND (
+          (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(cp.client_email)) = lower(trim(sc.email)))
+          OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+          OR lower(trim(cp.client_name)) = lower(trim(sc.name))
+        )
+      WHERE sc.salon_id = ${input.salonId}
+        AND cp.expires_at >= CURRENT_DATE
+        AND cp.used_sessions < cp.total_sessions
+        AND lower(trim(sc.name)) = ${name}
+        AND (
+          (${email} <> '' AND lower(trim(coalesce(sc.email, ''))) = ${email})
+          OR (${phoneDigits} <> '' AND regexp_replace(coalesce(sc.phone, ''), '\\D', '', 'g') = ${phoneDigits})
+        )
+      ORDER BY cp.expires_at ASC, cp.created_at ASC
+      LIMIT 2
+    ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
+    if (profileRows.length === 1) row = profileRows[0];
+  }
   // Some legacy packages predate copying phone/email onto the package record
   // (and may not have a linked salon_clients row). As a safe fallback, accept
   // an exact name only when it identifies exactly one usable package.
