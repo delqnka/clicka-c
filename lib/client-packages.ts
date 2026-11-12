@@ -54,17 +54,32 @@ export async function findActiveClientPackage(input: {
   // phone number or email address. Names are not unique enough on their own.
   if (!name || (!email && !phoneDigits)) return null;
   const rows = await sql`
-    SELECT id, package_name, total_sessions, used_sessions, expires_at::text AS expires_at
-    FROM client_packages
-    WHERE salon_id = ${input.salonId}
-      AND expires_at >= CURRENT_DATE
-      AND used_sessions < total_sessions
-      AND lower(trim(client_name)) = ${name}
+    SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at::text AS expires_at
+    FROM client_packages cp
+    LEFT JOIN salon_clients sc
+      ON sc.id = cp.client_id
+      AND sc.salon_id = cp.salon_id
+    WHERE cp.salon_id = ${input.salonId}
+      AND cp.expires_at >= CURRENT_DATE
+      AND cp.used_sessions < cp.total_sessions
+      -- Older packages can have stale/empty copied contact fields while the
+      -- Clients screen correctly shows the current salon_clients profile.
+      -- Search both sources so the booking form sees the same package.
       AND (
-        (${email} <> '' AND lower(trim(coalesce(client_email, ''))) = ${email})
-        OR (${phoneDigits} <> '' AND regexp_replace(coalesce(client_phone, ''), '\\D', '', 'g') = ${phoneDigits})
+        lower(trim(coalesce(cp.client_name, ''))) = ${name}
+        OR lower(trim(coalesce(sc.name, ''))) = ${name}
       )
-    ORDER BY expires_at ASC, created_at ASC
+      AND (
+        (${email} <> '' AND (
+          lower(trim(coalesce(cp.client_email, ''))) = ${email}
+          OR lower(trim(coalesce(sc.email, ''))) = ${email}
+        ))
+        OR (${phoneDigits} <> '' AND (
+          regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = ${phoneDigits}
+          OR regexp_replace(coalesce(sc.phone, ''), '\\D', '', 'g') = ${phoneDigits}
+        ))
+      )
+    ORDER BY cp.expires_at ASC, cp.created_at ASC
     LIMIT 1
   ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
   const row = rows[0];
