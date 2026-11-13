@@ -693,7 +693,6 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
   const [revenueRows, setRevenueRows] = useState<StaffRevenueRow[]>([]);
   const [revenueBusy, setRevenueBusy] = useState(false);
   const [revenueError, setRevenueError] = useState<string | null>(null);
-  const [reconcileBusy, setReconcileBusy] = useState(false);
   const [revenueDetail, setRevenueDetail] = useState<{ title: string; bookings: StaffRevenueBooking[] } | null>(null);
 
   const showNotice = useCallback((type: 'ok' | 'err', text: string) => {
@@ -814,23 +813,6 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
       setBusy(null);
     }
   }, [salonSlug, showNotice, updateMemberProfile, loadRevenue]);
-
-  const reconcilePackageFinances = useCallback(async () => {
-    setReconcileBusy(true);
-    setRevenueError(null);
-    try {
-      const response = await fetch(`/api/admin/staff/revenue?slug=${encodeURIComponent(salonSlug)}`, { method: 'POST' });
-      const data = await response.json() as { error?: string; updated?: number; needsPackagePrice?: number; missingBooking?: number };
-      if (!response.ok) throw new Error(data.error || 'Неуспешна корекция на пакетите.');
-      const unresolved = Number(data.needsPackagePrice ?? 0) + Number(data.missingBooking ?? 0);
-      showNotice('ok', `Коригирани са ${Number(data.updated ?? 0)} пакетни посещения.${unresolved ? ` ${unresolved} остават за проверка, защото липсва цена или връзка.` : ''}`);
-      await loadRevenue();
-    } catch (error) {
-      setRevenueError(error instanceof Error ? error.message : 'Неуспешна корекция на пакетите.');
-    } finally {
-      setReconcileBusy(false);
-    }
-  }, [salonSlug, showNotice, loadRevenue]);
 
   useEffect(() => {
     void loadRevenue();
@@ -1132,11 +1114,10 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
           </div>
 
           {revenueTotals.unpricedPackageBookings > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', padding: 10, borderRadius: 10, background: '#fffbeb', color: '#92400e', fontSize: 12 }}>
-              <span>{revenueTotals.unpricedPackageBookings} {isEn ? 'package visits are excluded because the historic package price is missing.' : 'пакетни посещения са изключени, защото липсва историческа цена на пакета.'}</span>
-              <button type="button" onClick={() => void reconcilePackageFinances()} disabled={reconcileBusy} style={{ border: '1px solid #f59e0b', borderRadius: 7, background: '#fff', color: '#92400e', fontWeight: 750, fontSize: 12, padding: '6px 9px', cursor: reconcileBusy ? 'wait' : 'pointer', opacity: reconcileBusy ? 0.65 : 1 }}>
-                {reconcileBusy ? (isEn ? 'Updating…' : 'Коригиране…') : (isEn ? 'Recheck packages' : 'Провери пакетите')}
-              </button>
+            <div style={{ padding: 10, borderRadius: 10, background: '#fffbeb', color: '#92400e', fontSize: 12 }}>
+              {revenueTotals.unpricedPackageBookings} {isEn
+                ? 'package visits are excluded because the real price is not entered on the client package. Edit that client package to include them.'
+                : 'пакетни посещения са изключени, защото в конкретния клиентски пакет няма въведена реална цена. Редактирайте този пакет, за да бъдат включени.'}
             </div>
           ) : null}
 
