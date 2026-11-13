@@ -24,24 +24,25 @@ export async function upsertSalonClient(
   const normalizedName = toTitleCase(name);
   const normalizedPhone = normalizePhoneForMatch(fields.phone);
 
-  // Phone/email are the durable identity. Looking up by name first created
-  // separate client rows whenever a typo or nickname was used in a booking.
+  // A phone is the durable identity. Shared household emails must never merge
+  // two people into one client profile.
   const existing = await sql`
     SELECT id, name FROM salon_clients
     WHERE salon_id = ${salonId}
       AND (
-        (${fields.email?.trim().toLowerCase() || ''} <> ''
-          AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''})
-        OR (${normalizedPhone} <> ''
+        (${normalizedPhone} <> ''
           AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${normalizedPhone})
-        OR lower(trim(name)) = lower(trim(${normalizedName}))
+        OR (${normalizedPhone} = '' AND ${fields.email?.trim().toLowerCase() || ''} <> ''
+          AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''})
+        OR (${normalizedPhone} = '' AND ${fields.email?.trim().toLowerCase() || ''} = ''
+          AND lower(trim(name)) = lower(trim(${normalizedName})))
       )
     ORDER BY
       CASE
-        WHEN ${fields.email?.trim().toLowerCase() || ''} <> ''
-          AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''} THEN 0
         WHEN ${normalizedPhone} <> ''
-          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${normalizedPhone} THEN 1
+          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${normalizedPhone} THEN 0
+        WHEN ${normalizedPhone} = '' AND ${fields.email?.trim().toLowerCase() || ''} <> ''
+          AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''} THEN 1
         ELSE 2
       END,
       updated_at DESC

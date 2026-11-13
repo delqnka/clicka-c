@@ -363,10 +363,18 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
   `;
   const activePackageByEmail = new Map<string, Record<string, unknown>>();
   const activePackageByPhone = new Map<string, Record<string, unknown>>();
+  const ambiguousPackageEmails = new Set<string>();
   for (const pkg of activePackages as Record<string, unknown>[]) {
     const email = String(pkg.client_email ?? '').trim().toLowerCase();
     const phone = normalizePhoneForMatch(String(pkg.client_phone ?? ''));
-    if (email && !activePackageByEmail.has(email)) activePackageByEmail.set(email, pkg);
+    if (email) {
+      if (activePackageByEmail.has(email)) {
+        activePackageByEmail.delete(email);
+        ambiguousPackageEmails.add(email);
+      } else if (!ambiguousPackageEmails.has(email)) {
+        activePackageByEmail.set(email, pkg);
+      }
+    }
     if (phone && !activePackageByPhone.has(phone)) activePackageByPhone.set(phone, pkg);
   }
 
@@ -378,7 +386,7 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
       const row = booking as Record<string, unknown>;
       const email = String(row.client_email ?? '').trim().toLowerCase();
       const phone = normalizePhoneForMatch(String(row.client_phone ?? ''));
-      const pkg = (email ? activePackageByEmail.get(email) : undefined) ?? (phone ? activePackageByPhone.get(phone) : undefined);
+      const pkg = (phone ? activePackageByPhone.get(phone) : undefined) ?? (email ? activePackageByEmail.get(email) : undefined);
       if (!pkg) return null;
       const totalSessions = Math.max(1, Number(pkg.total_sessions) || 1);
       const usedSessions = Math.min(totalSessions, Math.max(0, Number(pkg.used_sessions) || 0));

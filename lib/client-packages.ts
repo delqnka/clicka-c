@@ -56,21 +56,20 @@ export async function findActiveClientPackage(input: {
   const phoneDigits = normalizePhoneForMatch(input.clientPhone);
   if (!email && !phoneDigits) return null;
 
-  // First identify the existing client by a durable contact field. Requiring
-  // a separately typed display name here made the booking flow disagree with
-  // the Clients screen when names had legacy spacing/casing differences.
+  // A phone number is a stronger identifier than email: family members can
+  // share an inbox. Only fall back to email when no usable phone was entered.
   const clients = await sql`
     SELECT id, name, phone, email
     FROM salon_clients
     WHERE salon_id = ${input.salonId}
       AND (
-        (${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email})
-        OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
+        (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
+        OR (${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email})
       )
     ORDER BY
       CASE
-        WHEN ${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email} THEN 0
-        WHEN ${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits} THEN 1
+        WHEN ${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits} THEN 0
+        WHEN ${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email} THEN 1
         ELSE 2
       END,
       updated_at DESC
@@ -86,14 +85,16 @@ export async function findActiveClientPackage(input: {
       AND cp.expires_at >= CURRENT_DATE
       AND cp.used_sessions < cp.total_sessions
       AND (
-        cp.client_id = ${client.id}
-        OR (${client.email ?? ''} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = lower(trim(${client.email ?? ''})))
-        OR (${client.phone ?? ''} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = regexp_replace(regexp_replace(${client.phone ?? ''}, '\\D', '', 'g'), '^(?:00359|359|0)', ''))
-        OR lower(trim(coalesce(cp.client_name, ''))) = lower(trim(${client.name}))
+        (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
+        OR (${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
       )
     ORDER BY cp.expires_at ASC, cp.created_at ASC
-    LIMIT 1
+    LIMIT 2
   ` as { id: string; package_name: string; total_sessions: number; used_sessions: number; expires_at: string }[];
+  // Email-only matching is safe only when it identifies exactly one active
+  // package. The booking form then asks for the phone instead of charging a
+  // different client who happens to share an inbox.
+  if (phoneDigits === '' && rows.length !== 1) return null;
   const row = rows[0];
   if (!row) return null;
   const totalSessions = Math.max(1, Number(row.total_sessions) || 1);
