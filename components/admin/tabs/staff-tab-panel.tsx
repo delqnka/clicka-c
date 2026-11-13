@@ -120,8 +120,15 @@ function PackageCreditValueEditor({
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId: booking.id, creditValue, applyToPackage }),
       });
-      const data = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(data.error || 'Грешка при запазването.');
+      const responseText = await response.text();
+      let data: { error?: string } = {};
+      try {
+        data = responseText ? JSON.parse(responseText) as { error?: string } : {};
+      } catch {
+        // The HTTP status below still provides a useful message if a proxy
+        // ever returns a non-JSON error page.
+      }
+      if (!response.ok) throw new Error(data.error || `Грешка при запазването (${response.status}).`);
       await onSaved();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Грешка при запазването.');

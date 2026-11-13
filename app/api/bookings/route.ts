@@ -28,6 +28,7 @@ import { loadExternalCalendarEventsForRange } from '@/lib/calendar-external-even
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getStaffMemberById, getStaffMembers } from '@/lib/staff-members';
 import { consumePackageForCompletedBooking, findActiveClientPackage, restorePackageCreditForBooking } from '@/lib/client-packages';
+import { normalizePhoneForMatch } from '@/lib/salon-clients';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 type OccupiedSlot = { time: string; duration: number; quantity: number; blocksAll?: boolean };
@@ -77,6 +78,32 @@ function resolveBookingCapacity(
   });
 
   return Math.max(1, Math.min(...capacities));
+}
+
+/**
+ * A package is a payment method, never a bookable service. Older admin flows
+ * could send the package title in `serviceName`, which made a single class
+ * look like an €80 package sale in the schedule and revenue reports.
+ */
+async function isPackageNameUsedAsService(
+  salonId: string,
+  serviceName: string,
+  services: ReturnType<typeof normalizeServices>,
+): Promise<boolean> {
+  const normalizedName = serviceName.trim().toLowerCase();
+  if (!normalizedName) return false;
+  if (services.some((service) => service.name.trim().toLowerCase() === normalizedName)) {
+    return false;
+  }
+
+  const rows = await sql`
+    SELECT 1
+    FROM client_packages
+    WHERE salon_id = ${salonId}
+      AND lower(trim(package_name)) = ${normalizedName}
+    LIMIT 1
+  `.catch(() => [] as Record<string, unknown>[]);
+  return rows.length > 0;
 }
 
 async function resolveSalonFromRequest(request: NextRequest) {
@@ -341,12 +368,48 @@ export async function GET(request: NextRequest) {
         totalSessions: Math.max(1, Number(usage.total_sessions) || 1),
         usedSessions: Math.max(0, Number(usage.used_sessions) || 0),
         remainingSessions: Math.max(0, Number(usage.remaining_sessions) || 0),
+        isApplied: true,
       },
     ]),
   );
+  // A reservation created before package enforcement (or manually by the
+  // studio) may legitimately have no consumed credit. Still show the active
+  // package in the schedule, without claiming that a credit was deducted.
+  const activePackages = await sql`
+    SELECT package_name, total_sessions, used_sessions, client_phone, client_email
+    FROM client_packages
+    WHERE salon_id = ${salonId}
+      AND expires_at >= CURRENT_DATE
+      AND used_sessions < total_sessions
+  `.catch(() => [] as Record<string, unknown>[]);
+  const activePackageByEmail = new Map<string, Record<string, unknown>>();
+  const activePackageByPhone = new Map<string, Record<string, unknown>>();
+  for (const pkg of activePackages) {
+    const email = String(pkg.client_email ?? '').trim().toLowerCase();
+    const phone = normalizePhoneForMatch(String(pkg.client_phone ?? ''));
+    if (email && !activePackageByEmail.has(email)) activePackageByEmail.set(email, pkg);
+    if (phone && !activePackageByPhone.has(phone)) activePackageByPhone.set(phone, pkg);
+  }
   const bookingsWithPackageUsage = rows.map((booking) => ({
     ...booking,
-    package_usage: packageUsageByBookingId.get(String((booking as Record<string, unknown>).id ?? '')) ?? null,
+    package_usage: (() => {
+      const applied = packageUsageByBookingId.get(String((booking as Record<string, unknown>).id ?? ''));
+      if (applied) return applied;
+      const row = booking as Record<string, unknown>;
+      const email = String(row.client_email ?? '').trim().toLowerCase();
+      const phone = normalizePhoneForMatch(String(row.client_phone ?? ''));
+      const pkg = (email ? activePackageByEmail.get(email) : undefined) ?? (phone ? activePackageByPhone.get(phone) : undefined);
+      if (!pkg) return null;
+      const totalSessions = Math.max(1, Number(pkg.total_sessions) || 1);
+      const usedSessions = Math.min(totalSessions, Math.max(0, Number(pkg.used_sessions) || 0));
+      return {
+        packageName: String(pkg.package_name ?? ''),
+        totalSessions,
+        usedSessions,
+        remainingSessions: Math.max(0, totalSessions - usedSessions),
+        isApplied: false,
+      };
+    })(),
   }));
 
   return NextResponse.json({ bookings: bookingsWithPackageUsage, nextCursor });
@@ -620,6 +683,12 @@ export async function POST(request: NextRequest) {
   if (priceValue == null && matchedService?.price != null && Number.isFinite(Number(matchedService.price))) {
     priceValue = Number(matchedService.price);
   }
+  if (await isPackageNameUsedAsService(salonId, resolvedServiceName, salonServices)) {
+    return NextResponse.json(
+      { error: 'Избран е пакет като услуга. Избери клас/услуга; пакетът се прилага отделно като начин на плащане.' },
+      { status: 400 },
+    );
+  }
   const bookingCapacity = classSlotCapacity ?? resolveBookingCapacity(salonServices, resolvedServiceName);
   const bookingQuantity = Math.max(1, Math.round(Number(rawBookingQuantity ?? 1) || 1));
   if (bookingQuantity > bookingCapacity) {
@@ -888,6 +957,24 @@ export async function PATCH(request: NextRequest) {
   const hasDate = typeof body.date === 'string';
   const hasTime = typeof body.time === 'string';
   const hasNotes = body.notes !== undefined;
+
+  if (hasServiceName) {
+    const salonServiceRows = await sql`
+      SELECT services
+      FROM salons
+      WHERE CAST(id AS text) = ${salonId}
+      LIMIT 1
+    `;
+    const salonServices = normalizeServices(
+      (salonServiceRows[0] as Record<string, unknown> | undefined)?.services ?? [],
+    );
+    if (await isPackageNameUsedAsService(salonId, body.serviceName?.trim() ?? '', salonServices)) {
+      return NextResponse.json(
+        { error: 'Пакетът не може да бъде записан като услуга. Избери „Пилатес Реформър“ (или друг клас); кредитът се прилага отделно.' },
+        { status: 400 },
+      );
+    }
+  }
 
   // A package is tied to a real person by contact details. Do not let an
   // edit save a different name against that person's phone/email: that makes

@@ -33,6 +33,7 @@ import type { Locale } from '@/lib/i18n';
 import { resolveSalonLocale } from '@/lib/salon-locale';
 import { normalizeNotificationEmails } from '@/lib/notification-emails';
 import { ensureClientPackagesSchema } from '@/lib/client-packages';
+import { normalizePhoneForMatch } from '@/lib/salon-clients';
 
 export type { ServiceItem };
 export { normalizeServices };
@@ -58,6 +59,7 @@ export type BookingRecord = {
     totalSessions: number;
     usedSessions: number;
     remainingSessions: number;
+    isApplied?: boolean;
   } | null;
   notes: string | null;
   created_at: string;
@@ -347,12 +349,46 @@ export async function loadBookingsBySalonId(salonId: string, limit = 200): Promi
         totalSessions: Math.max(1, Number(usage.total_sessions) || 1),
         usedSessions: Math.max(0, Number(usage.used_sessions) || 0),
         remainingSessions: Math.max(0, Number(usage.remaining_sessions) || 0),
+        isApplied: true,
       },
     ]),
   );
 
+  const activePackages = await sql`
+    SELECT package_name, total_sessions, used_sessions, client_phone, client_email
+    FROM client_packages
+    WHERE salon_id = ${salonId}
+      AND expires_at >= CURRENT_DATE
+      AND used_sessions < total_sessions
+  `;
+  const activePackageByEmail = new Map<string, Record<string, unknown>>();
+  const activePackageByPhone = new Map<string, Record<string, unknown>>();
+  for (const pkg of activePackages as Record<string, unknown>[]) {
+    const email = String(pkg.client_email ?? '').trim().toLowerCase();
+    const phone = normalizePhoneForMatch(String(pkg.client_phone ?? ''));
+    if (email && !activePackageByEmail.has(email)) activePackageByEmail.set(email, pkg);
+    if (phone && !activePackageByPhone.has(phone)) activePackageByPhone.set(phone, pkg);
+  }
+
   return rows.map((booking) => ({
     ...booking,
-    package_usage: packageUsageByBookingId.get(String((booking as Record<string, unknown>).id ?? '')) ?? null,
+    package_usage: (() => {
+      const applied = packageUsageByBookingId.get(String((booking as Record<string, unknown>).id ?? ''));
+      if (applied) return applied;
+      const row = booking as Record<string, unknown>;
+      const email = String(row.client_email ?? '').trim().toLowerCase();
+      const phone = normalizePhoneForMatch(String(row.client_phone ?? ''));
+      const pkg = (email ? activePackageByEmail.get(email) : undefined) ?? (phone ? activePackageByPhone.get(phone) : undefined);
+      if (!pkg) return null;
+      const totalSessions = Math.max(1, Number(pkg.total_sessions) || 1);
+      const usedSessions = Math.min(totalSessions, Math.max(0, Number(pkg.used_sessions) || 0));
+      return {
+        packageName: String(pkg.package_name ?? ''),
+        totalSessions,
+        usedSessions,
+        remainingSessions: Math.max(0, totalSessions - usedSessions),
+        isApplied: false,
+      };
+    })(),
   })) as BookingRecord[];
 }
