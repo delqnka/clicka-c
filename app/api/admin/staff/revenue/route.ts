@@ -196,25 +196,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'За да се промени реалната цена на пакета, потвърдете промяната за целия пакет.' }, { status: 400 });
   }
 
-  const rows = await sql`
-    WITH selected AS (
-      SELECT u.package_id, cp.total_sessions
+  try {
+    // Keep lookup and update separate. The previous writable CTE returned a
+    // database 500 for some legacy package rows even though the package and
+    // the reservation existed.
+    const selected = await sql`
+      SELECT u.package_id::text AS package_id, cp.total_sessions
       FROM client_package_usages u
       INNER JOIN client_packages cp ON cp.id = u.package_id
-      WHERE u.salon_id = ${auth.salon.salonId} AND u.booking_id::text = ${bookingId}
+      WHERE u.salon_id = ${auth.salon.salonId}
+        AND u.booking_id::text = ${bookingId}
       LIMIT 1
-    ), updated AS (
-      UPDATE client_packages cp
-      SET price = ${creditValue} * selected.total_sessions,
-          updated_at = now()
-      FROM selected
-      WHERE cp.id = selected.package_id
-        AND cp.salon_id = ${auth.salon.salonId}
-      RETURNING cp.id
-    )
-    SELECT COUNT(*)::int AS updated FROM updated
-  ` as { updated: number | string }[];
-  const updated = Number(rows[0]?.updated ?? 0);
-  if (!updated) return NextResponse.json({ error: 'Не открихме пакетно посещение за тази резервация.' }, { status: 404 });
-  return NextResponse.json({ ok: true, updated });
+    ` as { package_id: string; total_sessions: number | string }[];
+    const packageRow = selected[0];
+    if (!packageRow) {
+      return NextResponse.json({ error: 'Не открихме пакетно посещение за тази резервация.' }, { status: 404 });
+    }
+    const totalSessions = Math.max(1, Number(packageRow.total_sessions) || 1);
+    const updated = await sql`
+      UPDATE client_packages
+      SET price = ${creditValue * totalSessions}, updated_at = now()
+      WHERE id = ${packageRow.package_id}::uuid
+        AND salon_id = ${auth.salon.salonId}
+      RETURNING id
+    `;
+    if (updated.length === 0) {
+      return NextResponse.json({ error: 'Пакетът не е намерен за този салон.' }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true, updated: 1 });
+  } catch (error) {
+    console.error('[staff revenue PATCH] package price update failed', { bookingId, error });
+    return NextResponse.json({ error: 'Цената не можа да се запази. Моля опитайте отново.' }, { status: 500 });
+  }
 }
