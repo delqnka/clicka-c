@@ -199,9 +199,9 @@ export async function PATCH(request: NextRequest) {
   const rows = await sql`
     WITH selected AS (
       SELECT u.package_id, cp.total_sessions
-      FROM client_package_usages
-      INNER JOIN client_packages cp ON cp.id = client_package_usages.package_id
-      WHERE client_package_usages.salon_id = ${auth.salon.salonId} AND booking_id::text = ${bookingId}
+      FROM client_package_usages u
+      INNER JOIN client_packages cp ON cp.id = u.package_id
+      WHERE u.salon_id = ${auth.salon.salonId} AND u.booking_id::text = ${bookingId}
       LIMIT 1
     ), updated AS (
       UPDATE client_packages cp

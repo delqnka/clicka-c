@@ -157,6 +157,23 @@ export async function insertBookingIfNoOverlap(
             ) > ${requestedStartMinutes}
           )
       ) + ${quantity} <= ${capacity}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM bookings b
+        WHERE b.salon_id = ${row.salonId}
+          AND b.date IN (${row.date}, ${legacyDate})
+          AND b.time = ${row.time}
+          AND (b.staff_member_id IS NOT DISTINCT FROM ${staffMemberId}::uuid)
+          AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
+          AND (
+            (${row.clientEmail} <> '' AND lower(trim(coalesce(b.client_email, ''))) = lower(trim(${row.clientEmail})))
+            OR (
+              ${row.clientPhone} <> ''
+              AND regexp_replace(regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '')
+                = regexp_replace(regexp_replace(${row.clientPhone}, '\\D', '', 'g'), '^(?:00359|359|0)', '')
+            )
+          )
+      )
       RETURNING id, manage_token
     `,
   ]);
