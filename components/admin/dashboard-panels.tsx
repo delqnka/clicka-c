@@ -793,7 +793,9 @@ function BookingCard({
               {bookingQuantity} {isEn ? 'beds' : 'легла'}
             </span>
           ) : null}
-          {Number.isFinite(Number(booking.service_price)) ? ` · ${formatSalonPrice(Number(booking.service_price))}` : ''}
+          {booking.package_usage?.isApplied && booking.package_usage.creditValue != null
+            ? ` · ${formatSalonPrice(Number(booking.package_usage.creditValue))} ${isEn ? '(package)' : '(по пакет)'}`
+            : Number.isFinite(Number(booking.service_price)) ? ` · ${formatSalonPrice(Number(booking.service_price))}` : ''}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
           <BookingPaymentBadge booking={booking} locale={locale} />

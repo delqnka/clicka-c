@@ -355,9 +355,11 @@ export async function GET(request: NextRequest) {
       cp.package_name,
       cp.total_sessions,
       cp.used_sessions,
-      GREATEST(0, cp.total_sessions - cp.used_sessions)::int AS remaining_sessions
+      GREATEST(0, cp.total_sessions - cp.used_sessions)::int AS remaining_sessions,
+      COALESCE(u.credit_value_snapshot, COALESCE(cp.price, def.price) / NULLIF(cp.total_sessions, 0)) AS credit_value
     FROM client_package_usages u
     INNER JOIN client_packages cp ON cp.id = u.package_id
+    LEFT JOIN client_package_definitions def ON def.id = cp.package_definition_id
     WHERE u.salon_id = ${salonId}
   `.catch(() => [] as Record<string, unknown>[]);
   const packageUsageByBookingId = new Map(
@@ -369,6 +371,7 @@ export async function GET(request: NextRequest) {
         usedSessions: Math.max(0, Number(usage.used_sessions) || 0),
         remainingSessions: Math.max(0, Number(usage.remaining_sessions) || 0),
         isApplied: true,
+        creditValue: usage.credit_value == null ? null : Number(usage.credit_value),
       },
     ]),
   );
