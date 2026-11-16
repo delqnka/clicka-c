@@ -53,9 +53,9 @@ export async function GET(request: NextRequest) {
       SELECT
         COUNT(*)::int AS booked_classes_count,
         COALESCE(SUM(GREATEST(1, COALESCE(b.booking_quantity, 1))), 0)::int AS booked_people_count,
-        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END), 0)::float AS booked_revenue,
-        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)), 0)::float AS booked_trainer_payout,
-        COUNT(*) FILTER (WHERE u.id IS NOT NULL AND (cp.price IS NULL OR cp.total_sessions <= 0))::int AS unpriced_package_bookings,
+        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(COALESCE(cp.price, def.price) / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END), 0)::float AS booked_revenue,
+        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(COALESCE(cp.price, def.price) / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)), 0)::float AS booked_trainer_payout,
+        COUNT(*) FILTER (WHERE u.id IS NOT NULL AND (COALESCE(cp.price, def.price) IS NULL OR cp.total_sessions <= 0))::int AS unpriced_package_bookings,
         COUNT(*) FILTER (
           WHERE
             lower(trim(coalesce(b.status, ''))) = 'completed'
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
               ELSE false
             END
         ), 0)::int AS completed_people_count,
-        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) FILTER (
+        COALESCE(SUM(CASE WHEN u.id IS NOT NULL THEN COALESCE(COALESCE(cp.price, def.price) / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) FILTER (
           WHERE
             lower(trim(coalesce(b.status, ''))) = 'completed'
             OR CASE
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
               ELSE false
             END
         ), 0)::float AS completed_revenue,
-        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)) FILTER (
+        COALESCE(SUM((CASE WHEN u.id IS NOT NULL THEN COALESCE(COALESCE(cp.price, def.price) / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5)) FILTER (
           WHERE
             lower(trim(coalesce(b.status, ''))) = 'completed'
             OR CASE
@@ -118,14 +118,21 @@ export async function GET(request: NextRequest) {
             'date', b.date,
             'time', b.time,
             'peopleCount', GREATEST(1, COALESCE(b.booking_quantity, 1)),
-            'revenue', CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END,
-            'trainerPayout', (CASE WHEN u.id IS NOT NULL THEN COALESCE(cp.price / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5),
+            'revenue', CASE WHEN u.id IS NOT NULL THEN COALESCE(COALESCE(cp.price, def.price) / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END,
+            'trainerPayout', (CASE WHEN u.id IS NOT NULL THEN COALESCE(COALESCE(cp.price, def.price) / NULLIF(cp.total_sessions, 0), 0) ELSE COALESCE(b.service_price, 0) * GREATEST(1, COALESCE(b.booking_quantity, 1)) END) * COALESCE(sm.trainer_payout_rate, 0.5),
             'trainerPayoutRate', COALESCE(sm.trainer_payout_rate, 0.5),
             'packageName', cp.package_name,
             'packageId', u.package_id,
-            'packagePrice', cp.price,
+            'packagePrice', COALESCE(cp.price, def.price),
             'packageSessions', cp.total_sessions,
-            'packagePriceMissing', (u.id IS NOT NULL AND (cp.price IS NULL OR cp.total_sessions <= 0)),
+            'packagePriceMissing', (u.id IS NOT NULL AND (COALESCE(cp.price, def.price) IS NULL OR cp.total_sessions <= 0)),
+            'packageCreditAvailable', (avail.id IS NOT NULL),
+            'availablePackageName', avail.package_name,
+            'availableCreditValue', CASE WHEN avail.price IS NOT NULL AND avail.total_sessions > 0 THEN avail.price / avail.total_sessions ELSE NULL END,
+            'packageHolderNeedsReview', (held.package_name IS NOT NULL),
+            'heldPackageName', held.package_name,
+            'heldPackageUsed', held.used_sessions,
+            'heldPackageTotal', held.total_sessions,
             'status', b.status
           )
           ORDER BY b.date ASC, b.time ASC, b.created_at ASC
@@ -133,6 +140,58 @@ export async function GET(request: NextRequest) {
       FROM bookings b
       LEFT JOIN client_package_usages u ON u.salon_id = b.salon_id AND u.booking_id::text = b.id::text
       LEFT JOIN client_packages cp ON cp.id = u.package_id
+      -- The real package price may live only on the catalog definition (older
+      -- client packages were stored without a copied price). Resolve it so the
+      -- payout is the package credit value, not the full service price.
+      LEFT JOIN client_package_definitions def ON def.id = cp.package_definition_id
+      -- When a past booking has no package credit at all but the client still
+      -- held an active, priced package with a free session, surface it so the
+      -- studio can apply the credit with one click instead of the trainer
+      -- silently being paid on the full service price.
+      LEFT JOIN LATERAL (
+        SELECT cp2.id, cp2.package_name, cp2.total_sessions,
+               COALESCE(cp2.price, d2.price) AS price
+        FROM client_packages cp2
+        LEFT JOIN client_package_definitions d2 ON d2.id = cp2.package_definition_id
+        WHERE u.id IS NULL
+          -- A package credit is per person. A multi-bed booking (one client
+          -- reserving several spots for friends) must never be one-click
+          -- credited to that one client's package.
+          AND COALESCE(b.booking_quantity, 1) <= 1
+          AND cp2.salon_id = b.salon_id
+          AND cp2.used_sessions < cp2.total_sessions
+          AND b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND b.date::date BETWEEN cp2.purchased_at::date AND cp2.expires_at
+          AND (
+            (regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','') <> ''
+              AND regexp_replace(regexp_replace(coalesce(cp2.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','')
+                = regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)',''))
+            OR (lower(trim(coalesce(b.client_email,''))) <> ''
+              AND lower(trim(coalesce(cp2.client_email,''))) = lower(trim(coalesce(b.client_email,''))))
+          )
+        ORDER BY cp2.expires_at ASC, cp2.created_at ASC
+        LIMIT 1
+      ) avail ON true
+      -- Client holds a package covering this date but it has NO free session
+      -- left (exhausted). There is nothing to auto-apply, so flag it for the
+      -- owner to review manually instead of silently billing the full price.
+      LEFT JOIN LATERAL (
+        SELECT cp3.package_name, cp3.total_sessions, cp3.used_sessions
+        FROM client_packages cp3
+        WHERE u.id IS NULL AND avail.id IS NULL AND COALESCE(b.booking_quantity, 1) <= 1
+          AND cp3.salon_id = b.salon_id
+          AND b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND b.date::date BETWEEN cp3.purchased_at::date AND cp3.expires_at
+          AND (
+            (regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','') <> ''
+              AND regexp_replace(regexp_replace(coalesce(cp3.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','')
+                = regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)',''))
+            OR (lower(trim(coalesce(b.client_email,''))) <> ''
+              AND lower(trim(coalesce(cp3.client_email,''))) = lower(trim(coalesce(b.client_email,''))))
+          )
+        ORDER BY cp3.expires_at DESC, cp3.created_at DESC
+        LIMIT 1
+      ) held ON true
       WHERE b.salon_id = sm.salon_id
         AND b.staff_member_id = sm.id
         AND b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'

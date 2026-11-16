@@ -236,7 +236,12 @@ export async function createClientPackage(input: {
       ${packageName},
       ${totalSessions},
       ${usedSessions},
-      ${input.price ?? null},
+      -- Inherit the catalog price when the caller did not supply one, so a
+      -- package created from a definition is never stored price-less.
+      COALESCE(
+        ${input.price ?? null},
+        (SELECT d.price FROM client_package_definitions d WHERE d.id = ${input.packageDefinitionId?.trim() || null}::uuid)
+      ),
       COALESCE(${input.validFrom?.trim() || null}::date, now()),
       COALESCE(${validTo}::date, (CURRENT_DATE + (${validityDays}::int * interval '1 day'))::date),
       ${input.source ?? 'admin'},
@@ -328,7 +333,8 @@ export async function consumePackageForCompletedBooking(input: {
       FROM pkg
       WHERE cp.id = pkg.id
         AND cp.used_sessions < cp.total_sessions
-      RETURNING cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at, cp.price
+      RETURNING cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at,
+        COALESCE(cp.price, (SELECT d.price FROM client_package_definitions d WHERE d.id = cp.package_definition_id)) AS price
     ),
     usage AS (
       INSERT INTO client_package_usages (
@@ -415,12 +421,13 @@ export async function linkExistingPackageCreditToBooking(input: {
       )
       SELECT
         ${input.salonId}, cp.id, ${input.bookingId}::uuid,
-        cp.package_name, cp.price, cp.total_sessions,
-        CASE WHEN cp.price IS NOT NULL AND cp.price >= 0 THEN cp.price / NULLIF(cp.total_sessions, 0) ELSE NULL END,
+        cp.package_name, COALESCE(cp.price, d.price), cp.total_sessions,
+        CASE WHEN COALESCE(cp.price, d.price) IS NOT NULL AND COALESCE(cp.price, d.price) >= 0 THEN COALESCE(cp.price, d.price) / NULLIF(cp.total_sessions, 0) ELSE NULL END,
         0.5,
-        CASE WHEN cp.price IS NOT NULL AND cp.price >= 0 THEN (cp.price / NULLIF(cp.total_sessions, 0)) * 0.5 ELSE NULL END
+        CASE WHEN COALESCE(cp.price, d.price) IS NOT NULL AND COALESCE(cp.price, d.price) >= 0 THEN (COALESCE(cp.price, d.price) / NULLIF(cp.total_sessions, 0)) * 0.5 ELSE NULL END
       FROM pkg
       INNER JOIN client_packages cp ON cp.id = pkg.id
+      LEFT JOIN client_package_definitions d ON d.id = cp.package_definition_id
       ON CONFLICT (salon_id, booking_id) DO NOTHING
       RETURNING package_id
     )
@@ -538,7 +545,16 @@ export async function updateClientPackage(input: {
       package_name = COALESCE(NULLIF(trim(${input.packageName ?? ''}), ''), package_name),
       total_sessions = ${totalSessions},
       used_sessions = ${usedSessions},
-      price = ${input.price ?? null},
+      -- Never blank a package's price. An edit that does not resend the price
+      -- (e.g. only adjusting credits) must keep the real price the salon set;
+      -- otherwise every financial view silently falls back to the full service
+      -- price. When the stored price is already missing, recover it from the
+      -- package catalog definition this package was created from.
+      price = COALESCE(
+        ${input.price ?? null},
+        client_packages.price,
+        (SELECT d.price FROM client_package_definitions d WHERE d.id = client_packages.package_definition_id)
+      ),
       expires_at = COALESCE(${input.validTo?.trim() || null}::date, expires_at),
       updated_at = now()
     WHERE id = ${input.packageId}::uuid

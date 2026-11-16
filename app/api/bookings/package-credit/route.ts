@@ -19,14 +19,24 @@ export async function POST(request: NextRequest) {
   if (!bookingId) return NextResponse.json({ error: 'Липсва резервация.' }, { status: 400 });
 
   const rows = await sql`
-    SELECT id, client_name, client_phone, client_email
+    SELECT id, client_name, client_phone, client_email, COALESCE(booking_quantity, 1) AS booking_quantity
     FROM bookings
     WHERE CAST(id AS text) = ${bookingId}
       AND salon_id = ${auth.salon.salonId}
     LIMIT 1
-  ` as { id: string; client_name: string; client_phone: string | null; client_email: string | null }[];
+  ` as { id: string; client_name: string; client_phone: string | null; client_email: string | null; booking_quantity: number | string }[];
   const booking = rows[0];
   if (!booking) return NextResponse.json({ error: 'Резервацията не е намерена.' }, { status: 404 });
+
+  // A package credit belongs to one person. A multi-bed booking (one client
+  // holding several spots for friends) must not draw a single credit for the
+  // whole group — each attendee needs their own booking and their own package.
+  if (Math.max(1, Math.round(Number(booking.booking_quantity) || 1)) > 1) {
+    return NextResponse.json(
+      { error: 'Тази резервация е за няколко места. Кредит се прилага на отделна резервация за един човек, не за цялата група.' },
+      { status: 409 },
+    );
+  }
 
   const packageUsage = await consumePackageForCompletedBooking({
     salonId: auth.salon.salonId,

@@ -46,6 +46,18 @@ type StaffRevenueBooking = {
   packagePrice?: number | null;
   packageSessions?: number | null;
   packagePriceMissing?: boolean;
+  /** No package credit was applied to this booking, yet the client held an
+   * active package with a free session at that date — the payout is currently
+   * the full service price. The studio can apply the credit with one click. */
+  packageCreditAvailable?: boolean;
+  availablePackageName?: string | null;
+  availableCreditValue?: number | null;
+  /** Client holds a package covering this date but it has no free session left
+   * (exhausted). Nothing to auto-apply — the owner reviews/edits it manually. */
+  packageHolderNeedsReview?: boolean;
+  heldPackageName?: string | null;
+  heldPackageUsed?: number | null;
+  heldPackageTotal?: number | null;
   status?: string | null;
 };
 
@@ -150,6 +162,70 @@ function PackageCreditValueEditor({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={() => void save()} disabled={busy} style={{ border: 'none', borderRadius: 6, background: '#1d4ed8', color: '#fff', fontSize: 12, fontWeight: 750, padding: '6px 9px', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1 }}>
           {busy ? (isEn ? 'Saving…' : 'Запазване…') : (isEn ? 'Save value' : 'Запази стойността')}
+        </button>
+        {error ? <span style={{ fontSize: 12, color: '#b91c1c' }}>{error}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+/** Shown when a booking has no package credit but the client held an active
+ * package at that date. One click deducts a credit and re-prices the visit to
+ * the package rate — this is the fix for a trainer being paid the full service
+ * price on what was really a package visit. */
+function ApplyPackageCreditButton({
+  booking,
+  salonSlug,
+  locale,
+  onApplied,
+}: {
+  booking: StaffRevenueBooking;
+  salonSlug: string;
+  locale: Locale;
+  onApplied: () => Promise<void> | void;
+}) {
+  const isEn = locale === 'en';
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (booking.packageId || !booking.packageCreditAvailable) return null;
+
+  const apply = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/bookings/package-credit?slug=${encodeURIComponent(salonSlug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      const text = await response.text();
+      let data: { error?: string } = {};
+      try { data = text ? JSON.parse(text) as { error?: string } : {}; } catch { /* keep status msg */ }
+      if (!response.ok) throw new Error(data.error || `Грешка (${response.status}).`);
+      await onApplied();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Грешка при прилагането.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const creditLabel = booking.availableCreditValue != null ? ` (${formatEuroAmount(booking.availableCreditValue)})` : '';
+  return (
+    <div style={{ display: 'grid', gap: 6, marginTop: 4, padding: 9, borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a' }}>
+      <span style={{ fontSize: 12, color: '#92400e', fontWeight: 700 }}>
+        {isEn
+          ? `Package credit not applied — the client holds an active package${booking.availablePackageName ? ` “${booking.availablePackageName}”` : ''}. The trainer is currently paid the full service price.`
+          : `Пакетен кредит не е приложен — клиентът има активен пакет${booking.availablePackageName ? ` „${booking.availablePackageName}“` : ''}. Сега треньорът се плаща по пълната цена на услугата.`}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => void apply()}
+          disabled={busy}
+          style={{ border: 'none', borderRadius: 6, background: '#b45309', color: '#fff', fontSize: 12, fontWeight: 750, padding: '6px 10px', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1 }}
+        >
+          {busy ? (isEn ? 'Applying…' : 'Прилагане…') : (isEn ? `Apply credit${creditLabel}` : `Приложи кредит${creditLabel}`)}
         </button>
         {error ? <span style={{ fontSize: 12, color: '#b91c1c' }}>{error}</span> : null}
       </div>
@@ -920,6 +996,27 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                         </>
                       )}
                     </div>
+                    <ApplyPackageCreditButton
+                      booking={booking}
+                      salonSlug={salonSlug}
+                      locale={locale}
+                      onApplied={async () => {
+                        await loadRevenue();
+                        setRevenueDetail(null);
+                      }}
+                    />
+                    {!booking.packageId && !booking.packageCreditAvailable && booking.packageHolderNeedsReview ? (
+                      <div style={{ display: 'grid', gap: 4, marginTop: 4, padding: 9, borderRadius: 8, background: '#fffbeb', border: '1px solid #fcd34d' }}>
+                        <span style={{ fontSize: 12, color: '#92400e', fontWeight: 750 }}>
+                          {isEn ? '⚠ Attention — check manually' : '⚠ Внимание — провери ръчно'}
+                        </span>
+                        <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.4 }}>
+                          {isEn
+                            ? `This client holds the package “${booking.heldPackageName ?? ''}”, but it has no free credit left (used ${booking.heldPackageUsed ?? 0}/${booking.heldPackageTotal ?? 0}). The visit is billed at the full price. If it should be covered by a package, edit the client's package (add a credit) in Clients, then apply the credit here.`
+                            : `Този клиент има пакет „${booking.heldPackageName ?? ''}“, но в него няма свободен кредит (използвани ${booking.heldPackageUsed ?? 0}/${booking.heldPackageTotal ?? 0}). Визитата се таксува по пълна цена. Ако трябва да е по пакет, редактирай пакета на клиента (добави кредит) в „Клиенти", след което приложи кредита тук.`}
+                        </span>
+                      </div>
+                    ) : null}
                     <PackageCreditValueEditor
                       booking={booking}
                       salonSlug={salonSlug}
