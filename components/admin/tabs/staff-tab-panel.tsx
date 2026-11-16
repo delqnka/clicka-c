@@ -954,7 +954,7 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
             style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 14px 42px rgba(0,0,0,0.18)' }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <div style={{ position: 'sticky', top: -18, zIndex: 2, background: '#fff', margin: '-18px -18px 12px', padding: '18px 18px 10px', borderTopLeftRadius: 16, borderTopRightRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: `1px solid ${ADMIN_T.border}` }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, color: ADMIN_T.text }}>{revenueDetail.title}</h3>
                 <p style={{ margin: '3px 0 0', fontSize: 12, color: ADMIN_T.muted }}>

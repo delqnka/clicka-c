@@ -1,7 +1,7 @@
 'use client';
 
 import { CalendarDays, Check, ChevronDown, Clock, CreditCard, Loader2, MapPin, Plus, User, Users, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type FocusEvent, type SetStateAction } from 'react';
 import { useT } from '@/lib/i18n-react';
 import { getClassSlotsForDateWithOverrides, normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot, type ClassScheduleOverride } from '@/lib/class-schedule';
 import {
@@ -139,6 +139,20 @@ const blackCtaShadow = 'shadow-[0_4px_14px_rgba(0,0,0,0.15)]';
 
 const fieldClass =
   `mt-1.5 block w-full min-w-0 max-w-full box-border rounded-2xl border border-black/[0.06] bg-white px-3.5 py-3 text-[16px] leading-tight text-[#111] touch-manipulation ${cardShadow} outline-none transition focus:border-[color:var(--salon-primary)]/40 focus:ring-2 focus:ring-[color:var(--salon-primary)]/12`;
+
+/** On mobile the on-screen keyboard covers fields near the bottom of the modal
+ * (e.g. email), forcing the person to scroll to see what they type. Once the
+ * keyboard has opened, scroll the focused field into the visible area. */
+function scrollFieldIntoView(event: FocusEvent<HTMLInputElement>) {
+  const el = event.currentTarget;
+  window.setTimeout(() => {
+    try {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } catch {
+      /* older browsers: scrollIntoView without options */
+    }
+  }, 300);
+}
 
 const SERVICE_DESCRIPTION_PREVIEW_WORDS = 14;
 
@@ -1481,6 +1495,7 @@ export function SalonBookingModal({
                       className={fieldClass}
                       value={clientName}
                       onChange={(e) => onClientNameChange(e.target.value)}
+                      onFocus={scrollFieldIntoView}
                       autoComplete="name"
                       required
                     />
@@ -1495,6 +1510,7 @@ export function SalonBookingModal({
                       className={fieldClass}
                       value={clientPhone}
                       onChange={(e) => onClientPhoneChange(e.target.value)}
+                      onFocus={scrollFieldIntoView}
                       autoComplete="tel"
                       inputMode="tel"
                       required
@@ -1512,6 +1528,7 @@ export function SalonBookingModal({
                       className={fieldClass}
                       value={clientEmail}
                       onChange={(e) => onClientEmailChange(e.target.value)}
+                      onFocus={scrollFieldIntoView}
                       required
                     />
                   </div>
@@ -1540,6 +1557,7 @@ export function SalonBookingModal({
                           className={fieldClass}
                           value={companion.name}
                           onChange={(e) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item))}
+                          onFocus={scrollFieldIntoView}
                           autoComplete="name"
                           required
                         />
@@ -1551,6 +1569,7 @@ export function SalonBookingModal({
                           className={fieldClass}
                           value={companion.phone}
                           onChange={(e) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, phone: e.target.value } : item))}
+                          onFocus={scrollFieldIntoView}
                           autoComplete="tel"
                           inputMode="tel"
                           required
@@ -1565,6 +1584,7 @@ export function SalonBookingModal({
                           className={fieldClass}
                           value={companion.email}
                           onChange={(e) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, email: e.target.value } : item))}
+                          onFocus={scrollFieldIntoView}
                           required
                         />
                       </div>
