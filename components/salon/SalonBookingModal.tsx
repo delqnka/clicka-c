@@ -89,6 +89,8 @@ type SalonBookingModalProps = {
   packageLookup?: ActivePackageLookup;
   /** Additional clients in the same capacity selection; each receives an individual booking. */
   companions?: BookingCompanion[];
+  /** Per-companion active-package lookup result, indexed like `companions`. */
+  companionLookups?: ActivePackageLookup[];
   onCompanionsChange?: Dispatch<SetStateAction<BookingCompanion[]>>;
   salonName: string;
   termsHref: string;
@@ -256,62 +258,34 @@ function ServiceDescription({ text, locale }: { text?: string; locale: string })
   );
 }
 
-function PackageChoice({
-  value,
-  onChange,
-  inputName,
+/** Package is detected automatically from the client's phone (or email) — the
+ * client never picks "I have / I don't have a package". This removes a
+ * confusing manual step and, crucially, makes it impossible for someone who
+ * holds a package to be booked at the full price: the server applies the
+ * credit whenever the phone matches an active package. */
+function PackageStatus({
   isEnglish,
   packageLookup,
   locale,
 }: {
-  value: boolean | null;
-  onChange: (value: boolean) => void;
-  inputName: string;
   isEnglish: boolean;
   packageLookup?: ActivePackageLookup;
   locale: string;
 }) {
   const packageInfo = packageLookup?.package;
-  const packageLocked = packageLookup?.status === 'found' && Boolean(packageInfo);
+  const status = packageLookup?.status ?? 'idle';
   const expiry = packageInfo?.expiresAt
     ? new Date(`${packageInfo.expiresAt.slice(0, 10)}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
+  if (status === 'idle') return null;
   return (
-    <fieldset className="space-y-2">
-      {packageLocked ? (
-        <p className="flex items-center gap-2 text-[13px] font-semibold text-[#486240]" role="status">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#607657] text-[12px] font-bold text-white" aria-hidden>✓</span>
-          {isEnglish ? 'Package confirmed' : 'Пакетът е потвърден'}
-        </p>
-      ) : (
-        <>
-          <legend className="text-[13px] font-semibold text-black">
-            {isEnglish ? 'Does this client have an active package?' : 'Има ли този клиент активен пакет?'}
-          </legend>
-          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={isEnglish ? 'Package choice' : 'Избор за пакет'}>
-            <label className={`flex min-h-16 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-2 focus-within:ring-black/30 ${value === true ? 'border-[#607657] bg-[#f1f5ef] text-[#243023]' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}>
-              <input type="radio" name={inputName} checked={value === true} onChange={() => onChange(true)} className="sr-only" />
-              <span className="text-[13px] font-semibold">{isEnglish ? 'I have a package' : 'Имам пакет'}</span>
-              <span className="mt-0.5 text-[11px] leading-snug text-black/45">
-                {isEnglish ? 'Use 1 session by phone or email' : 'Използвай 1 посещение по телефон или имейл'}
-              </span>
-            </label>
-          <label className={`flex min-h-16 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-2 focus-within:ring-black/30 ${value === false ? 'border-black bg-black text-white' : 'border-black/[0.10] bg-white text-black/75 hover:bg-black/[0.02]'}`}>
-            <input type="radio" name={inputName} checked={value === false} onChange={() => onChange(false)} className="sr-only" />
-            <span className="text-[13px] font-semibold">{isEnglish ? 'I do not have a package' : 'Нямам пакет'}</span>
-            <span className={`mt-0.5 text-[11px] leading-snug ${value === false ? 'text-white/70' : 'text-black/45'}`}>
-              {isEnglish ? 'Continue without using a session' : 'Продължи без използване на кредит'}
-            </span>
-          </label>
-          </div>
-        </>
-      )}
-      {packageLookup?.status === 'checking' ? (
+    <div className="space-y-2" aria-live="polite">
+      {status === 'checking' ? (
         <p className="rounded-xl bg-black/[0.035] px-3 py-2.5 text-[12px] font-medium text-black/60" role="status">
-          {isEnglish ? 'Checking your package…' : 'Проверяваме активния ви пакет…'}
+          {isEnglish ? 'Checking for an active package…' : 'Проверяваме за активен пакет…'}
         </p>
       ) : null}
-      {packageLookup?.status === 'found' && packageInfo ? (
+      {status === 'found' && packageInfo ? (
         <div className="rounded-xl border border-[#b9cbb1] bg-[#f1f6ef] px-3 py-2.5 text-[#243023]" role="status">
           <p className="text-[13px] font-semibold">
             {isEnglish ? `Active package: ${packageInfo.packageName}` : `Имате активен пакет „${packageInfo.packageName}“`}
@@ -322,26 +296,21 @@ function PackageChoice({
               : `Остават ${packageInfo.remainingSessions} от ${packageInfo.totalSessions} кредита${expiry ? ` · валиден до ${expiry}` : ''}.`}
           </p>
           <p className="mt-1 text-[12px] font-semibold leading-snug">
-            {isEnglish ? 'One credit will be used for this class.' : 'За този клас ще бъде отнет 1 кредит.'}
+            {isEnglish ? 'One credit will be used automatically for this class.' : 'За този клас автоматично ще бъде отнет 1 кредит.'}
           </p>
         </div>
       ) : null}
-      {packageLookup?.status === 'not_found' ? (
+      {status === 'not_found' ? (
         <p className="rounded-xl bg-black/[0.035] px-3 py-2.5 text-[12px] leading-snug text-black/60" role="status">
-          {isEnglish ? 'No active package was found for these details. This booking will continue without a credit.' : 'Не открихме активен пакет по тези данни. Резервацията ще продължи без кредит.'}
+          {isEnglish ? 'No active package for these details — the booking continues normally.' : 'Няма активен пакет по тези данни — резервацията продължава нормално.'}
         </p>
       ) : null}
-      {packageLookup?.status === 'error' ? (
+      {status === 'error' ? (
         <p className="rounded-xl bg-red-50 px-3 py-2.5 text-[12px] leading-snug text-red-700" role="alert">
           {isEnglish ? 'We could not check the package yet. Check the details or try again.' : 'Не успяхме да проверим пакета. Проверете данните или опитайте отново.'}
         </p>
       ) : null}
-      {value == null ? (
-        <p className="text-[12px] font-medium text-[#9c4221]" role="status">
-          {isEnglish ? 'Choose one option to continue.' : 'Избери една от опциите, за да продължиш.'}
-        </p>
-      ) : null}
-    </fieldset>
+    </div>
   );
 }
 
@@ -375,6 +344,7 @@ export function SalonBookingModal({
   usePackage = null,
   packageLookup,
   companions = [],
+  companionLookups = [],
   salonName,
   termsHref,
   privacyHref,
@@ -1546,10 +1516,7 @@ export function SalonBookingModal({
                     />
                   </div>
 
-                  <PackageChoice
-                    value={usePackage}
-                    onChange={(value) => onUsePackageChange?.(value)}
-                    inputName="primary-client-package"
+                  <PackageStatus
                     isEnglish={isEnglish}
                     packageLookup={packageLookup}
                     locale={locale}
@@ -1601,11 +1568,9 @@ export function SalonBookingModal({
                           required
                         />
                       </div>
-                      <PackageChoice
-                        value={companion.usePackage}
-                        onChange={(value) => onCompanionsChange?.((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, usePackage: value } : item))}
-                        inputName={`companion-${index}-package`}
+                      <PackageStatus
                         isEnglish={isEnglish}
+                        packageLookup={companionLookups?.[index]}
                         locale={locale}
                       />
                     </section>

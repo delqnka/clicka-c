@@ -155,6 +155,7 @@ export type UseBookingFlowReturn = {
   usePackage: boolean | null;
   setUsePackage: (v: boolean | null) => void;
   packageLookup: ActivePackageLookup;
+  companionLookups: ActivePackageLookup[];
   companions: BookingCompanion[];
   setCompanions: Dispatch<SetStateAction<BookingCompanion[]>>;
 

@@ -118,6 +118,7 @@ export function useBookingFlow({
   const [usePackage, setUsePackage] = useState<boolean | null>(null);
   const [packageLookup, setPackageLookup] = useState<ActivePackageLookup>({ status: 'idle', package: null });
   const [companions, setCompanions] = useState<BookingCompanion[]>([]);
+  const [companionLookups, setCompanionLookups] = useState<ActivePackageLookup[]>([]);
   const [payOnline, setPayOnline] = useState(false);
 
   // ── Staff (TEAM plan) ────────────────────────────────────────────────
@@ -363,6 +364,52 @@ export function useBookingFlow({
     };
   }, [api, bookingOpen, clientEmail, clientName, clientPhone, requestHeaders, slugPath]);
 
+  // Detect each companion's own active package (friends booked in the same
+  // slot). Display only — the server independently applies each participant's
+  // package by phone, so this never decides whether a credit is used.
+  useEffect(() => {
+    if (!bookingOpen) { setCompanionLookups([]); return; }
+    const controllers = companions.map(() => new AbortController());
+    const timers: number[] = [];
+    companions.forEach((person, index) => {
+      const name = person.name.trim();
+      const email = person.email.trim().toLowerCase();
+      const phoneDigits = person.phone.replace(/\D/g, '');
+      const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const setAt = (value: ActivePackageLookup) =>
+        setCompanionLookups((prev) => {
+          const next = prev.slice(0, companions.length);
+          next[index] = value;
+          return next;
+        });
+      if (!(name.length >= 2 && (phoneDigits.length >= 7 || hasValidEmail))) {
+        setAt({ status: 'idle', package: null });
+        return;
+      }
+      setAt({ status: 'checking', package: null });
+      const timer = window.setTimeout(async () => {
+        try {
+          const response = await fetch(`${api}${slugPath}/package-status`, {
+            method: 'POST', headers: requestHeaders, signal: controllers[index].signal,
+            body: JSON.stringify({ clientName: name, clientPhone: person.phone.trim(), clientEmail: email }),
+          });
+          if (!response.ok) throw new Error('Companion package lookup failed');
+          const result = (await response.json()) as { package?: ActivePackageLookup['package'] };
+          if (controllers[index].signal.aborted) return;
+          setAt(result.package ? { status: 'found', package: result.package } : { status: 'not_found', package: null });
+        } catch {
+          if (!controllers[index].signal.aborted) setAt({ status: 'error', package: null });
+        }
+      }, 450);
+      timers.push(timer);
+    });
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      controllers.forEach((c) => c.abort());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, bookingOpen, requestHeaders, slugPath, companions.map((c) => `${c.name}|${c.phone}|${c.email}`).join('~')]);
+
   useEffect(() => {
     setCompanions((current) => {
       const needed = Math.max(0, bookingQuantity - 1);
@@ -492,6 +539,7 @@ export function useBookingFlow({
     setNotes('');
     setUsePackage(null);
     setPackageLookup({ status: 'idle', package: null });
+    setCompanionLookups([]);
     setPayOnline(false);
     setBookingOpen(true);
     if (onEvent) onEvent('booking_started');
@@ -502,6 +550,7 @@ export function useBookingFlow({
     setBookingOpen(false);
     setUsePackage(null);
     setPackageLookup({ status: 'idle', package: null });
+    setCompanionLookups([]);
     setBookingSuccessDetails(null);
     setLockedService(false);
     setSelectedStaffMemberIdState(null);
@@ -561,8 +610,11 @@ export function useBookingFlow({
     if (!clientEmail.trim()) { setBookingError(t('booking.errors.noEmail')); return; }
     if (!selectedDate)       { setBookingError(t('booking.errors.noDate')); return; }
     if (!selectedTime)       { setBookingError(t('booking.errors.noTime')); return; }
-    if (usePackage == null || packageLookup.status === 'checking' || packageLookup.status === 'error' || companions.some((person) => person.usePackage == null)) {
-      setBookingError(locale.startsWith('bg') ? 'Избери дали всеки клиент има пакет.' : 'Choose whether each client has a package.');
+    // The package is detected automatically from the phone/email — no manual
+    // "I have / I don't have a package" step. Only wait while a lookup is still
+    // in flight so the detected package (and any deposit waiver) is settled.
+    if (packageLookup.status === 'checking' || packageLookup.status === 'error' || companionLookups.some((l) => l?.status === 'checking')) {
+      setBookingError(locale.startsWith('bg') ? 'Проверяваме за активен пакет — опитайте пак след момент.' : 'Checking for an active package — try again in a moment.');
       return;
     }
     if (companions.some((person) => !person.name.trim() || !person.phone.trim() || !person.email.trim())) {
@@ -679,7 +731,7 @@ export function useBookingFlow({
     clientPhone, setClientPhone,
     clientEmail, setClientEmail,
     notes, setNotes,
-    usePackage, setUsePackage, packageLookup, companions, setCompanions,
+    usePackage, setUsePackage, packageLookup, companionLookups, companions, setCompanions,
     staffMembers: effectiveStaffMembers, selectedStaffMemberId, setStaffMemberId,
     classTrainerFilterName, setClassTrainerFilterName,
     isSubmitting, bookingError, bookingSuccess, bookingSuccessDetails,
