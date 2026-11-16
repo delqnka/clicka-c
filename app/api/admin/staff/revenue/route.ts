@@ -129,10 +129,6 @@ export async function GET(request: NextRequest) {
             'packageCreditAvailable', (avail.id IS NOT NULL),
             'availablePackageName', avail.package_name,
             'availableCreditValue', CASE WHEN avail.price IS NOT NULL AND avail.total_sessions > 0 THEN avail.price / avail.total_sessions ELSE NULL END,
-            'packageHolderNeedsReview', (held.package_name IS NOT NULL),
-            'heldPackageName', held.package_name,
-            'heldPackageUsed', held.used_sessions,
-            'heldPackageTotal', held.total_sessions,
             'status', b.status
           )
           ORDER BY b.date ASC, b.time ASC, b.created_at ASC
@@ -172,26 +168,6 @@ export async function GET(request: NextRequest) {
         ORDER BY cp2.expires_at ASC, cp2.created_at ASC
         LIMIT 1
       ) avail ON true
-      -- Client holds a package covering this date but it has NO free session
-      -- left (exhausted). There is nothing to auto-apply, so flag it for the
-      -- owner to review manually instead of silently billing the full price.
-      LEFT JOIN LATERAL (
-        SELECT cp3.package_name, cp3.total_sessions, cp3.used_sessions
-        FROM client_packages cp3
-        WHERE u.id IS NULL AND avail.id IS NULL AND COALESCE(b.booking_quantity, 1) <= 1
-          AND cp3.salon_id = b.salon_id
-          AND b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'
-          AND b.date::date BETWEEN cp3.purchased_at::date AND cp3.expires_at
-          AND (
-            (regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','') <> ''
-              AND regexp_replace(regexp_replace(coalesce(cp3.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','')
-                = regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)',''))
-            OR (lower(trim(coalesce(b.client_email,''))) <> ''
-              AND lower(trim(coalesce(cp3.client_email,''))) = lower(trim(coalesce(b.client_email,''))))
-          )
-        ORDER BY cp3.expires_at DESC, cp3.created_at DESC
-        LIMIT 1
-      ) held ON true
       WHERE b.salon_id = sm.salon_id
         AND b.staff_member_id = sm.id
         AND b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'
