@@ -774,17 +774,24 @@ export default function AdminDashboardClient({
   }, [calendarCursor]);
   const clients = useMemo<ClientSummary[]>(() => {
     if (!clientsDataNeeded) return [];
+    const CANCELLED = ['cancelled', 'canceled', 'отказана', 'анулирана'];
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowMoment = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
     const map = new Map<string, ClientSummary>();
     for (const b of deferredBookings) {
       const status = String(b.status ?? '').trim().toLowerCase();
-      const countsAsVisit = status !== 'cancelled';
+      // A visit (and its spend) counts only once it has actually happened:
+      // not a cancelled booking, and not a still-upcoming reservation.
+      const visitMomentRaw = `${b.date}T${b.time || '00:00'}:00`;
+      const countsAsVisit = !CANCELLED.includes(status) && (status === 'completed' || visitMomentRaw <= nowMoment);
       const phone = String(b.client_phone ?? '').trim();
       const email = String(b.client_email ?? '').trim().toLowerCase();
       const name = String(b.client_name ?? '').trim();
       const key = email || phone || b.id;
       const spent = Number(b.service_price ?? 0) || 0;
       const quantity = Math.max(1, Number(b.booking_quantity ?? 1) || 1);
-      const visitMoment = `${b.date}T${b.time || '00:00'}:00`;
+      const visitMoment = visitMomentRaw;
       const existing = map.get(key);
       if (!existing) {
         map.set(key, {

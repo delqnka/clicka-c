@@ -39,9 +39,15 @@ export async function GET(request: NextRequest) {
         sc.phone,
         sc.email,
         sc.created_at,
-        COUNT(b.id)::int AS visits,
+        COUNT(b.id) FILTER (
+          WHERE lower(trim(coalesce(b.status, ''))) = 'completed'
+            OR (b.date ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (b.date::date < CURRENT_DATE OR (b.date::date = CURRENT_DATE AND substring(b.time from '^\\d{1,2}:\\d{2}')::time <= LOCALTIME)))
+        )::int AS visits,
         (
-          COALESCE(SUM(b.service_price), 0)
+          COALESCE(SUM(b.service_price) FILTER (
+            WHERE lower(trim(coalesce(b.status, ''))) = 'completed'
+              OR (b.date ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (b.date::date < CURRENT_DATE OR (b.date::date = CURRENT_DATE AND substring(b.time from '^\\d{1,2}:\\d{2}')::time <= LOCALTIME)))
+          ), 0)
           + COALESCE(package_spend.total_package_spent, 0)
         )::numeric AS total_spent,
         MAX(
