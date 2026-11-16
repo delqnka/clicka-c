@@ -52,12 +52,6 @@ type StaffRevenueBooking = {
   packageCreditAvailable?: boolean;
   availablePackageName?: string | null;
   availableCreditValue?: number | null;
-  /** Client holds a package covering this date but it has no free session left
-   * (exhausted). Nothing to auto-apply — the owner reviews/edits it manually. */
-  packageHolderNeedsReview?: boolean;
-  heldPackageName?: string | null;
-  heldPackageUsed?: number | null;
-  heldPackageTotal?: number | null;
   status?: string | null;
 };
 
@@ -1005,18 +999,6 @@ export function StaffTabPanel({ salonSlug, sitePublicUrl, initialStaff, salonSer
                         setRevenueDetail(null);
                       }}
                     />
-                    {!booking.packageId && !booking.packageCreditAvailable && booking.packageHolderNeedsReview ? (
-                      <div style={{ display: 'grid', gap: 4, marginTop: 4, padding: 9, borderRadius: 8, background: '#fffbeb', border: '1px solid #fcd34d' }}>
-                        <span style={{ fontSize: 12, color: '#92400e', fontWeight: 750 }}>
-                          {isEn ? '⚠ Attention — check manually' : '⚠ Внимание — провери ръчно'}
-                        </span>
-                        <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.4 }}>
-                          {isEn
-                            ? `This client holds the package “${booking.heldPackageName ?? ''}”, but it has no free credit left (used ${booking.heldPackageUsed ?? 0}/${booking.heldPackageTotal ?? 0}). The visit is billed at the full price. If it should be covered by a package, edit the client's package (add a credit) in Clients, then apply the credit here.`
-                            : `Този клиент има пакет „${booking.heldPackageName ?? ''}“, но в него няма свободен кредит (използвани ${booking.heldPackageUsed ?? 0}/${booking.heldPackageTotal ?? 0}). Визитата се таксува по пълна цена. Ако трябва да е по пакет, редактирай пакета на клиента (добави кредит) в „Клиенти", след което приложи кредита тук.`}
-                        </span>
-                      </div>
-                    ) : null}
                     <PackageCreditValueEditor
                       booking={booking}
                       salonSlug={salonSlug}
