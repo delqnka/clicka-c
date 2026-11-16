@@ -39,6 +39,8 @@ type ClientSummary = {
   lastVisit: string;
   lastBookingQuantity?: number;
   isNew?: boolean;
+  /** All name spellings for this one person (same phone/email). */
+  names?: string[];
   activePackage?: {
     id: string;
     clientName?: string | null;
@@ -3348,7 +3350,7 @@ export function ClientsPanel({
     const query = searchQuery.trim().toLocaleLowerCase();
     if (!query) return displayClients;
     return displayClients.filter((client) =>
-      [client.name, client.phone, client.email]
+      [client.name, client.phone, client.email, ...(client.names ?? [])]
         .filter(Boolean)
         .some((value) => String(value).toLocaleLowerCase().includes(query)),
     );
@@ -3798,6 +3800,14 @@ export function ClientsPanel({
                   <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#000', background: '#f5f5f5', borderRadius: 4, padding: '2px 6px', lineHeight: 1.4, userSelect: 'none', flexShrink: 0 }}>{isEn ? 'new' : 'нов'}</span>
                 )}
               </p>
+              {(() => {
+                const others = (client.names ?? []).filter((n) => n && n.toLocaleLowerCase('bg') !== client.name.toLocaleLowerCase('bg'));
+                return others.length > 0 ? (
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: T.subtle, overflowWrap: 'anywhere' }}>
+                    {isEn ? 'also: ' : 'също: '}{others.join(', ')}
+                  </p>
+                ) : null;
+              })()}
               <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
                 {client.phone || (isEn ? 'No phone' : 'Няма телефон')}
                 {client.email ? ` · ${client.email}` : ''}
@@ -3814,7 +3824,9 @@ export function ClientsPanel({
                     {isEn ? 'Package: ' : 'Пакет: '}
                     {client.activePackage.packageName}
                     {' · '}
-                    {client.activePackage.remainingSessions}/{client.activePackage.totalSessions}
+                    {isEn
+                      ? `${client.activePackage.remainingSessions}/${client.activePackage.totalSessions} left`
+                      : `остават ${client.activePackage.remainingSessions} от ${client.activePackage.totalSessions}`}
                     {' · '}
                     {isEn ? 'valid until ' : 'до '}
                     {new Date(`${normalizeDateKey(client.activePackage.expiresAt)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}
@@ -3920,22 +3932,27 @@ export function ClientsPanel({
                   </button>
                 ) : null}
               </div>
-              {client.packageHistory?.length ? (
-                <details style={{ marginTop: 10 }}>
-                  <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 750, color: '#111' }}>
-                    {isEn ? `Package history (${client.packageHistory.length})` : `История на пакетите (${client.packageHistory.length})`}
-                  </summary>
-                  <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                    {client.packageHistory.map((pkg) => (
-                      <div key={pkg.id} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '8px 10px', display: 'grid', gap: 3, fontSize: 12, color: '#111' }}>
-                        <strong>{pkg.packageName}</strong>
-                        <span>{isEn ? 'Purchased: ' : 'Закупен: '}{pkg.purchasedAt ? new Date(pkg.purchasedAt).toLocaleDateString(isEn ? 'en-US' : 'bg-BG') : '—'}</span>
-                        <span>{isEn ? 'Credits: ' : 'Кредити: '}{pkg.usedSessions}/{pkg.totalSessions} · {isEn ? 'valid to ' : 'валиден до '}{new Date(`${normalizeDateKey(pkg.expiresAt)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}{pkg.price != null ? ` · ${formatSalonPrice(pkg.price)}` : ''}</span>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
+              {(() => {
+                // Only PREVIOUS packages belong in the history. The package shown
+                // as active above must not be repeated here as a "duplicate".
+                const pastPackages = (client.packageHistory ?? []).filter((pkg) => pkg.id !== client.activePackage?.id);
+                return pastPackages.length ? (
+                  <details style={{ marginTop: 10 }}>
+                    <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 750, color: '#111' }}>
+                      {isEn ? `Package history (${pastPackages.length})` : `История на пакетите (${pastPackages.length})`}
+                    </summary>
+                    <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                      {pastPackages.map((pkg) => (
+                        <div key={pkg.id} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '8px 10px', display: 'grid', gap: 3, fontSize: 12, color: '#111' }}>
+                          <strong>{pkg.packageName}</strong>
+                          <span>{isEn ? 'Purchased: ' : 'Закупен: '}{pkg.purchasedAt ? new Date(pkg.purchasedAt).toLocaleDateString(isEn ? 'en-US' : 'bg-BG') : '—'}</span>
+                          <span>{isEn ? 'Used: ' : 'Използвани: '}{pkg.usedSessions}/{pkg.totalSessions} · {isEn ? 'valid to ' : 'валиден до '}{new Date(`${normalizeDateKey(pkg.expiresAt)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}{pkg.price != null ? ` · ${formatSalonPrice(pkg.price)}` : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ) : null;
+              })()}
             </div>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0, minWidth: 0 }}>
               <div style={{ textAlign: isMobile ? 'left' : 'right', minWidth: 0 }}>

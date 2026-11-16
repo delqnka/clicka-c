@@ -223,6 +223,9 @@ type ClientSummary = {
   lastVisit: string;
   lastBookingQuantity?: number;
   isNew?: boolean;
+  /** Every distinct spelling of this person's name seen across bookings and
+   * packages on the same phone/email — shown together so one person is one row. */
+  names?: string[];
   activePackage?: {
     id: string;
     clientName?: string | null;
@@ -265,7 +268,13 @@ function normalizeClientNameKey(value: string) {
 }
 
 function normalizeClientPhoneKey(value: string) {
-  return String(value ?? '').replace(/\D/g, '');
+  // Match Bulgarian local and international formats as one number, so
+  // "+359885..." and "0885..." resolve to the same client.
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.startsWith('00359')) return digits.slice(5);
+  if (digits.startsWith('359')) return digits.slice(3);
+  if (digits.startsWith('0')) return digits.slice(1);
+  return digits;
 }
 
 function clientsReferToSamePerson(a: ClientSummary, b: ClientSummary) {
@@ -301,6 +310,56 @@ function mergeBookingAndExtraClients(bookingClients: ClientSummary[], extraClien
   }
 
   return merged;
+}
+
+/** Primary identity for one person: phone (prefix-normalized) first, then email,
+ * then name. Keeps different people on a shared phone from being lost by also
+ * collecting every distinct name under that key. */
+function clientContactKey(client: ClientSummary) {
+  const phone = normalizeClientPhoneKey(client.phone);
+  if (phone) return `p:${phone}`;
+  const email = String(client.email ?? '').trim().toLowerCase();
+  if (email) return `e:${email}`;
+  return `n:${normalizeClientNameKey(client.name)}`;
+}
+
+function addDistinctName(names: string[], name: string | undefined) {
+  const trimmed = String(name ?? '').trim();
+  if (!trimmed || trimmed === 'Клиент') return names;
+  if (names.some((n) => n.toLocaleLowerCase('bg') === trimmed.toLocaleLowerCase('bg'))) return names;
+  return [...names, trimmed];
+}
+
+/** Collapses rows that are the same person (same phone/email) into one entry,
+ * keeping all their name spellings. Visits/spend take the most complete value
+ * rather than summing, so a partial and a full count do not double up. */
+function collapseClientsByContact(list: ClientSummary[]): ClientSummary[] {
+  const groups = new Map<string, ClientSummary>();
+  for (const client of list) {
+    const key = clientContactKey(client);
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, { ...client, names: addDistinctName([...(client.names ?? [])], client.name) });
+      continue;
+    }
+    existing.names = (client.names ?? [client.name]).reduce(addDistinctName, addDistinctName(existing.names ?? [], existing.name));
+    existing.visits = Math.max(existing.visits ?? 0, client.visits ?? 0);
+    existing.totalSpent = Math.max(existing.totalSpent ?? 0, client.totalSpent ?? 0);
+    if (!existing.phone && client.phone) existing.phone = client.phone;
+    if (!existing.email && client.email) existing.email = client.email;
+    if (!existing.activePackage && client.activePackage) existing.activePackage = client.activePackage;
+    if ((!existing.packageHistory || existing.packageHistory.length === 0) && client.packageHistory?.length) existing.packageHistory = client.packageHistory;
+    if (client.lastVisit && (!existing.lastVisit || client.lastVisit > existing.lastVisit)) {
+      existing.lastVisit = client.lastVisit;
+      existing.lastBookingQuantity = client.lastBookingQuantity;
+    }
+    // Representative name = the longest spelling (usually the full name).
+    if ((client.name?.length ?? 0) > (existing.name?.length ?? 0) && client.name && client.name !== 'Клиент') {
+      existing.name = client.name;
+    }
+    if (client.isNew && existing.visits === 0) existing.isNew = true;
+  }
+  return [...groups.values()];
 }
 
 type TopLevelTabId = (typeof TOP_LEVEL_TAB_IDS)[number];
@@ -715,17 +774,24 @@ export default function AdminDashboardClient({
   }, [calendarCursor]);
   const clients = useMemo<ClientSummary[]>(() => {
     if (!clientsDataNeeded) return [];
+    const CANCELLED = ['cancelled', 'canceled', 'отказана', 'анулирана'];
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowMoment = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
     const map = new Map<string, ClientSummary>();
     for (const b of deferredBookings) {
       const status = String(b.status ?? '').trim().toLowerCase();
-      const countsAsVisit = status !== 'cancelled';
+      // A visit (and its spend) counts only once it has actually happened:
+      // not a cancelled booking, and not a still-upcoming reservation.
+      const visitMomentRaw = `${b.date}T${b.time || '00:00'}:00`;
+      const countsAsVisit = !CANCELLED.includes(status) && (status === 'completed' || visitMomentRaw <= nowMoment);
       const phone = String(b.client_phone ?? '').trim();
       const email = String(b.client_email ?? '').trim().toLowerCase();
       const name = String(b.client_name ?? '').trim();
       const key = email || phone || b.id;
       const spent = Number(b.service_price ?? 0) || 0;
       const quantity = Math.max(1, Number(b.booking_quantity ?? 1) || 1);
-      const visitMoment = `${b.date}T${b.time || '00:00'}:00`;
+      const visitMoment = visitMomentRaw;
       const existing = map.get(key);
       if (!existing) {
         map.set(key, {
@@ -759,7 +825,7 @@ export default function AdminDashboardClient({
     [clients, hiddenClientKeys]
   );
   const mergedVisibleClients = useMemo(
-    () => mergeBookingAndExtraClients(visibleBookingClients, extraClients),
+    () => collapseClientsByContact(mergeBookingAndExtraClients(visibleBookingClients, extraClients)),
     [visibleBookingClients, extraClients]
   );
 
