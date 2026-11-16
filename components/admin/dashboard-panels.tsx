@@ -39,6 +39,8 @@ type ClientSummary = {
   lastVisit: string;
   lastBookingQuantity?: number;
   isNew?: boolean;
+  /** All name spellings for this one person (same phone/email). */
+  names?: string[];
   activePackage?: {
     id: string;
     clientName?: string | null;
@@ -3348,7 +3350,7 @@ export function ClientsPanel({
     const query = searchQuery.trim().toLocaleLowerCase();
     if (!query) return displayClients;
     return displayClients.filter((client) =>
-      [client.name, client.phone, client.email]
+      [client.name, client.phone, client.email, ...(client.names ?? [])]
         .filter(Boolean)
         .some((value) => String(value).toLocaleLowerCase().includes(query)),
     );
@@ -3798,6 +3800,14 @@ export function ClientsPanel({
                   <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#000', background: '#f5f5f5', borderRadius: 4, padding: '2px 6px', lineHeight: 1.4, userSelect: 'none', flexShrink: 0 }}>{isEn ? 'new' : 'нов'}</span>
                 )}
               </p>
+              {(() => {
+                const others = (client.names ?? []).filter((n) => n && n.toLocaleLowerCase('bg') !== client.name.toLocaleLowerCase('bg'));
+                return others.length > 0 ? (
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: T.subtle, overflowWrap: 'anywhere' }}>
+                    {isEn ? 'also: ' : 'също: '}{others.join(', ')}
+                  </p>
+                ) : null;
+              })()}
               <p style={{ margin: '4px 0 0', fontSize: 13, color: T.muted, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
                 {client.phone || (isEn ? 'No phone' : 'Няма телефон')}
                 {client.email ? ` · ${client.email}` : ''}
