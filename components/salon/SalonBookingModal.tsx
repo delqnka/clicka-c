@@ -1609,7 +1609,7 @@ export function SalonBookingModal({
         </div>
 
         {!bookingSuccess && !bookingSuccessDetails && (!classMode || step > 1) ? (
-          <div className={`relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-5 sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:pt-3 ${keyboardOpen || formFieldFocused ? 'max-sm:hidden' : ''}`}>
+          <div className={`relative z-[2] shrink-0 border-t border-black/[0.06] bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-5 sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:pt-3 ${keyboardOpen ? 'max-sm:hidden' : ''}`}>
             {hasServices ? (
               <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[12px] font-medium tabular-nums text-black/60 sm:hidden">
                 <span className="min-w-0 truncate">{Math.max(0, totalDuration)} {isEnglish ? 'min' : 'мин'}</span>
