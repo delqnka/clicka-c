@@ -226,11 +226,30 @@ export function getClassSlotsForDateWithOverrides(
 ): BookingClassSlot[] {
   const base = getClassSlotsForDate(schedule, date).slice();
   const overrides = normalizeClassScheduleOverrides(rawOverrides);
-  const withoutOriginals = base.filter((slot) => {
-    return !overrides.some((override) => (
-      override.originalDate === date && classSlotMatchesOverrideOriginal(slot, override)
+  const dateOverrides = overrides.filter((override) => override.originalDate === date);
+  const consumedBaseSlots = new Set<number>();
+
+  // A weekly timetable can be edited after a one-off class change was saved.
+  // In that case the old trainer/name no longer exactly matches the recurring
+  // row, but the override must still replace that occurrence instead of being
+  // rendered beside it. Prefer the exact identity; then fall back to the
+  // original time + class name, which is stable across trainer changes.
+  for (const override of dateOverrides) {
+    let index = base.findIndex((slot, candidateIndex) => (
+      !consumedBaseSlots.has(candidateIndex)
+      && classSlotMatchesOverrideOriginal(slot, override)
     ));
-  });
+    if (index === -1) {
+      index = base.findIndex((slot, candidateIndex) => (
+        !consumedBaseSlots.has(candidateIndex)
+        && slot.start === override.originalTime
+        && normalizeTrainerName(slot.className ?? '') === normalizeTrainerName(override.originalClassName)
+      ));
+    }
+    if (index !== -1) consumedBaseSlots.add(index);
+  }
+
+  const withoutOriginals = base.filter((_, index) => !consumedBaseSlots.has(index));
   const inserted = overrides
     .filter((override) => override.date === date && !override.isCancelled)
     .map((override): BookingClassSlot => ({
