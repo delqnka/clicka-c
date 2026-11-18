@@ -626,7 +626,6 @@ export default function AdminDashboardClient({
   const deferredServices = useDeferredValue(site.services);
   const deferredBookings = useDeferredValue(bookings);
   const deferredStatusFilter = useDeferredValue(statusFilter);
-  const deferredSelectedCalendarDate = useDeferredValue(selectedCalendarDate);
   const activeTopLevelTab = topLevelTabFor(activeTab);
 
   const isMobile = useIsMobileLayout();
@@ -716,10 +715,10 @@ export default function AdminDashboardClient({
       !bookingsUiActive
         ? ([] as BookingRecord[])
         :
-      deferredSelectedCalendarDate
-        ? filteredBookings.filter((b) => normalizeBookingDateKey(b.date) === deferredSelectedCalendarDate)
+      selectedCalendarDate
+        ? filteredBookings.filter((b) => normalizeBookingDateKey(b.date) === selectedCalendarDate)
         : filteredBookings,
-    [filteredBookings, deferredSelectedCalendarDate, bookingsUiActive]
+    [filteredBookings, selectedCalendarDate, bookingsUiActive]
   );
   const groupedVisibleBookings = useMemo(() => {
     if (!bookingsUiActive) {
