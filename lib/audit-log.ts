@@ -12,6 +12,7 @@ export type AuditAction =
   | 'booking_cancelled'
   | 'booking_status_changed'
   | 'site_settings_updated'
+  | 'schedule_updated'
   | 'domain_connected'
   | 'domain_disconnected'
   | 'image_uploaded'

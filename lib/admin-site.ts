@@ -71,6 +71,8 @@ export type BookingRecord = {
 
 export type AdminSitePayload = {
   slug: string;
+  /** Changes whenever the salon record changes. Used to reject stale schedule saves. */
+  scheduleRevision: string;
   language: Locale;
   name: string;
   category: string;
@@ -197,7 +199,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
       site_status, latitude, longitude,
       faq_items, faq_items_en, visitor_info, visitor_additional_info, venue_extras,
       stripe_account_id, stripe_charges_enabled,
-      ga4_id, meta_pixel_id, clarity_id
+      ga4_id, meta_pixel_id, clarity_id, updated_at
     FROM salons
     WHERE slug = ${slug}
     LIMIT 1
@@ -216,6 +218,7 @@ async function fetchAdminSiteDataBySlug(slug: string): Promise<AdminSitePayload 
 
   return {
     slug: String(row.slug ?? ''),
+    scheduleRevision: String(row.updated_at ?? ''),
     language,
     name: String(row.name ?? ''),
     category: String(row.category ?? ''),

@@ -5,6 +5,7 @@ import { loadAdminSiteDataBySlug, normalizeWorkingHours } from '@/lib/admin-site
 import { normalizeBookingBlocks } from '@/lib/booking-blocks';
 import { normalizeClassSchedule, validateClassSchedule } from '@/lib/class-schedule';
 import { deferRevalidateSalonPublicCache } from '@/lib/defer-revalidate-salon';
+import { writeAuditLog } from '@/lib/audit-log';
 
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug');
@@ -30,7 +31,7 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdminRequestAccess(request, slug);
   if (!auth.ok) return auth.response;
 
-  let body: { workingHours?: unknown; bookingBlocks?: unknown; classSchedule?: unknown; bookingAdvanceDays?: unknown; slotIntervalMin?: unknown };
+  let body: { workingHours?: unknown; bookingBlocks?: unknown; classSchedule?: unknown; bookingAdvanceDays?: unknown; slotIntervalMin?: unknown; scheduleRevision?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -58,7 +59,7 @@ export async function PATCH(request: NextRequest) {
   const slotIntervalMin = [15, 20, 30, 45, 60].includes(rawInterval) ? rawInterval : 30;
 
   const currentRows = await sql`
-    SELECT opening_hours
+    SELECT opening_hours, updated_at
     FROM salons
     WHERE slug = ${auth.salon.slug}
     LIMIT 1
@@ -67,6 +68,14 @@ export async function PATCH(request: NextRequest) {
     currentRows[0]?.opening_hours && typeof currentRows[0].opening_hours === 'object'
       ? (currentRows[0].opening_hours as Record<string, unknown>)
       : {};
+  const currentRevision = String(currentRows[0]?.updated_at ?? '');
+  const suppliedRevision = typeof body.scheduleRevision === 'string' ? body.scheduleRevision : '';
+  if (suppliedRevision && suppliedRevision !== currentRevision) {
+    return NextResponse.json(
+      { error: 'Графикът е променен от друго устройство. Обнови страницата и провери актуалните часове, преди да запазиш.' },
+      { status: 409 },
+    );
+  }
   const nextOpeningHours = {
     ...currentOpeningHours,
     booking_blocks: bookingBlocks,
@@ -75,14 +84,23 @@ export async function PATCH(request: NextRequest) {
     slot_interval_min: slotIntervalMin,
   };
 
-  await sql`
+  const updatedRows = await sql`
     UPDATE salons
     SET
       working_hours = ${JSON.stringify(workingHours)}::jsonb,
       opening_hours = ${JSON.stringify(nextOpeningHours)}::jsonb,
       updated_at = now()
     WHERE slug = ${auth.salon.slug}
+    RETURNING updated_at
   `;
+  const scheduleRevision = String(updatedRows[0]?.updated_at ?? '');
+  void writeAuditLog({
+    salonId: auth.salon.salonId,
+    ownerId: auth.session.ownerId,
+    action: 'schedule_updated',
+    detail: { previousRevision: currentRevision, scheduleRevision, classSlots: Object.values(classSchedule).flat().length },
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+  });
 
   deferRevalidateSalonPublicCache({
     slug: auth.salon.slug,
@@ -96,5 +114,6 @@ export async function PATCH(request: NextRequest) {
     classSchedule,
     bookingAdvanceDays,
     slotIntervalMin,
+    scheduleRevision,
   });
 }

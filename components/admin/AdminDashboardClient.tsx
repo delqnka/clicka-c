@@ -1576,6 +1576,7 @@ export default function AdminDashboardClient({
           classSchedule: site.classSchedule,
           bookingAdvanceDays: site.bookingAdvanceDays,
           slotIntervalMin: site.slotIntervalMin,
+          scheduleRevision: site.scheduleRevision,
         }),
       });
       const data = await guardResponse(res);
@@ -1586,6 +1587,7 @@ export default function AdminDashboardClient({
         classSchedule: data.classSchedule && typeof data.classSchedule === 'object' ? data.classSchedule as AdminSitePayload['classSchedule'] : prev.classSchedule,
         bookingAdvanceDays: typeof data.bookingAdvanceDays === 'number' ? data.bookingAdvanceDays : prev.bookingAdvanceDays,
         slotIntervalMin: typeof data.slotIntervalMin === 'number' ? data.slotIntervalMin : prev.slotIntervalMin,
+        scheduleRevision: typeof data.scheduleRevision === 'string' ? data.scheduleRevision : prev.scheduleRevision,
       }));
       setNotice(t('adminDashboard.notices.hoursSaved'));
     } catch (e) { handleErr(e); } finally { setBusyKey(''); }
