@@ -2732,6 +2732,7 @@ type PackageDefinition = {
   price: number | null;
   validityDays: number;
   serviceIds: string[];
+  imageUrl: string | null;
   isActive: boolean;
 };
 type PackageDraft = {
@@ -2742,6 +2743,7 @@ type PackageDraft = {
   price: string;
   validityDays: string;
   serviceIds: string[];
+  imageUrl: string;
   isActive: boolean;
 };
 
@@ -2754,6 +2756,7 @@ function packageToDraft(pkg?: PackageDefinition): PackageDraft {
     price: pkg?.price == null ? '' : String(pkg.price),
     validityDays: String(pkg?.validityDays ?? 30),
     serviceIds: pkg?.serviceIds ?? [],
+    imageUrl: pkg?.imageUrl ?? '',
     isActive: pkg?.isActive !== false,
   };
 }
@@ -2780,6 +2783,8 @@ export function PackagesPanel({
   const [packageDraft, setPackageDraft] = React.useState<PackageDraft>(() => packageToDraft());
   const [packageBusy, setPackageBusy] = React.useState(false);
   const [packageError, setPackageError] = React.useState('');
+  const [packageImageBusy, setPackageImageBusy] = React.useState(false);
+  const packageImageInputRef = React.useRef<HTMLInputElement | null>(null);
   const [importText, setImportText] = React.useState('');
   const [importBusy, setImportBusy] = React.useState<MembershipImportMode | null>(null);
   const [importResult, setImportResult] = React.useState<MembershipImportResult | null>(null);
@@ -2822,6 +2827,7 @@ export function PackagesPanel({
         price: packageDraft.price.trim() ? Math.max(0, Number(packageDraft.price) || 0) : null,
         validityDays: Math.max(1, Math.round(Number(packageDraft.validityDays) || 30)),
         serviceIds: packageDraft.serviceIds,
+        imageUrl: packageDraft.imageUrl.trim() || null,
         isActive: packageDraft.isActive,
       };
       const res = await fetch(`/api/admin/package-definitions?slug=${encodeURIComponent(slug)}`, {
@@ -2860,6 +2866,25 @@ export function PackagesPanel({
     } catch (err) {
       setPackages(previous);
       setPackageError(err instanceof Error ? err.message : (isEn ? 'Could not delete package.' : 'Пакетът не беше изтрит.'));
+    }
+  }
+
+  async function uploadPackageImage(file: File | null) {
+    if (!file) return;
+    setPackageImageBusy(true);
+    setPackageError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`/api/upload?slug=${encodeURIComponent(slug)}`, { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({})) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? (isEn ? 'Could not upload image.' : 'Снимката не беше качена.'));
+      setPackageDraft((draft) => ({ ...draft, imageUrl: String(data.url) }));
+    } catch (err) {
+      setPackageError(err instanceof Error ? err.message : (isEn ? 'Could not upload image.' : 'Снимката не беше качена.'));
+    } finally {
+      setPackageImageBusy(false);
+      if (packageImageInputRef.current) packageImageInputRef.current.value = '';
     }
   }
 
@@ -2958,6 +2983,61 @@ export function PackagesPanel({
 
           <div style={{ display: 'grid', gap: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 850, color: '#111' }}>
+              {isEn ? 'Package image' : 'Снимка на пакета'}
+            </div>
+            <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.45 }}>
+              {isEn
+                ? 'Shown on the public site for this package. If empty, a gallery image is used.'
+                : 'Показва се на публичния сайт за този пакет. Ако е празно, се използва снимка от галерията.'}
+            </div>
+            <input
+              ref={packageImageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              style={{ display: 'none' }}
+              onChange={(event) => void uploadPackageImage(event.target.files?.[0] ?? null)}
+            />
+            {packageDraft.imageUrl ? (
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={packageDraft.imageUrl}
+                  alt={isEn ? 'Package image' : 'Снимка на пакета'}
+                  style={{ width: 120, height: 96, objectFit: 'cover', borderRadius: 10, border: `1px solid ${T.border}` }}
+                />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    disabled={packageImageBusy}
+                    onClick={() => packageImageInputRef.current?.click()}
+                    style={{ border: `1px solid ${T.border}`, borderRadius: 8, background: '#fff', color: '#111', padding: '7px 11px', fontSize: 12, fontWeight: 700, cursor: packageImageBusy ? 'wait' : 'pointer' }}
+                  >
+                    {packageImageBusy ? (isEn ? 'Uploading…' : 'Качване…') : (isEn ? 'Change image' : 'Смени снимката')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={packageImageBusy}
+                    onClick={() => setPackageDraft((draft) => ({ ...draft, imageUrl: '' }))}
+                    style={{ border: '1px solid rgba(220,38,38,0.22)', borderRadius: 8, background: '#fff', color: '#B91C1C', padding: '7px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {isEn ? 'Remove image' : 'Премахни снимката'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={packageImageBusy}
+                onClick={() => packageImageInputRef.current?.click()}
+                style={{ justifySelf: 'start', border: `1px dashed ${T.border}`, borderRadius: 10, background: '#fff', color: '#111', padding: '10px 14px', fontSize: 12, fontWeight: 750, cursor: packageImageBusy ? 'wait' : 'pointer' }}
+              >
+                {packageImageBusy ? (isEn ? 'Uploading…' : 'Качване…') : (isEn ? 'Upload image' : 'Качи снимка')}
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 850, color: '#111' }}>
               {isEn ? 'Included services' : 'Включени услуги'}
             </div>
             {services.length === 0 ? (
@@ -3044,6 +3124,14 @@ export function PackagesPanel({
             return (
               <div key={pkg.id} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: isMobile ? 12 : 14, background: '#fff', display: 'grid', gap: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  {pkg.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={pkg.imageUrl}
+                      alt={pkg.name}
+                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 10, border: `1px solid ${T.border}`, flex: '0 0 auto' }}
+                    />
+                  ) : null}
                   <div style={{ display: 'grid', gap: 5, minWidth: 0, flex: '1 1 220px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <div style={{ fontSize: 15, fontWeight: 760, color: '#111', overflowWrap: 'anywhere' }}>{pkg.name}</div>

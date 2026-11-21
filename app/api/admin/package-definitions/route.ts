@@ -15,6 +15,7 @@ type PackageDefinitionBody = {
   price?: number | null;
   validityDays?: number;
   serviceIds?: string[];
+  imageUrl?: string | null;
   isActive?: boolean;
 };
 
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
     price: body.price == null ? null : Number(body.price),
     validityDays: Number(body.validityDays ?? 30),
     serviceIds: Array.isArray(body.serviceIds) ? body.serviceIds : [],
+    imageUrl: body.imageUrl ?? null,
     isActive: body.isActive !== false,
   });
   deferRevalidateSalonPublicCache({
@@ -85,6 +87,7 @@ export async function PATCH(request: NextRequest) {
     price: body.price == null ? null : Number(body.price),
     validityDays: Number(body.validityDays ?? 30),
     serviceIds: Array.isArray(body.serviceIds) ? body.serviceIds : [],
+    imageUrl: body.imageUrl ?? null,
     isActive: body.isActive !== false,
   });
   deferRevalidateSalonPublicCache({

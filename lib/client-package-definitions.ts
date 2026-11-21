@@ -10,6 +10,7 @@ export type ClientPackageDefinition = {
   price: number | null;
   validityDays: number;
   serviceIds: string[];
+  imageUrl: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -24,6 +25,7 @@ type PackageDefinitionRow = {
   price: number | string | null;
   validity_days: number;
   service_ids: unknown;
+  image_url: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -44,6 +46,7 @@ function rowToDefinition(row: PackageDefinitionRow): ClientPackageDefinition {
     price: row.price == null ? null : Math.max(0, Number(row.price) || 0),
     validityDays: Math.max(1, Math.round(Number(row.validity_days) || 30)),
     serviceIds: normalizeServiceIds(row.service_ids),
+    imageUrl: row.image_url ? String(row.image_url).trim() || null : null,
     isActive: row.is_active !== false,
     createdAt: String(row.created_at ?? ''),
     updatedAt: String(row.updated_at ?? ''),
@@ -62,10 +65,15 @@ export async function ensureClientPackageDefinitionsSchema() {
       price numeric,
       validity_days int NOT NULL DEFAULT 30,
       service_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+      image_url text,
       is_active boolean NOT NULL DEFAULT true,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
     )
+  `;
+  await sql`
+    ALTER TABLE client_package_definitions
+      ADD COLUMN IF NOT EXISTS image_url text
   `;
   await sql`
     CREATE UNIQUE INDEX IF NOT EXISTS client_package_definitions_salon_name_uniq
@@ -78,7 +86,7 @@ export async function listClientPackageDefinitions(salonId: string) {
   const rows = await sql`
     SELECT
       id, salon_id, name, description, total_sessions, price,
-      validity_days, service_ids, is_active, created_at, updated_at
+      validity_days, service_ids, image_url, is_active, created_at, updated_at
     FROM client_package_definitions
     WHERE salon_id = ${salonId}
     ORDER BY is_active DESC, created_at ASC
@@ -91,7 +99,7 @@ export async function getClientPackageDefinition(input: { salonId: string; id: s
   const rows = await sql`
     SELECT
       id, salon_id, name, description, total_sessions, price,
-      validity_days, service_ids, is_active, created_at, updated_at
+      validity_days, service_ids, image_url, is_active, created_at, updated_at
     FROM client_package_definitions
     WHERE salon_id = ${input.salonId}
       AND id = ${input.id}::uuid
@@ -110,6 +118,7 @@ export async function upsertClientPackageDefinition(input: {
   price?: number | null;
   validityDays: number;
   serviceIds: string[];
+  imageUrl?: string | null;
   isActive?: boolean;
 }) {
   await ensureClientPackageDefinitionsSchema();
@@ -118,6 +127,7 @@ export async function upsertClientPackageDefinition(input: {
   const totalSessions = Math.max(1, Math.round(Number(input.totalSessions) || 1));
   const validityDays = Math.max(1, Math.round(Number(input.validityDays) || 30));
   const serviceIds = normalizeServiceIds(input.serviceIds);
+  const imageUrl = input.imageUrl?.trim() || null;
 
   const rows = input.id
     ? await sql`
@@ -129,15 +139,16 @@ export async function upsertClientPackageDefinition(input: {
           price = ${input.price ?? null},
           validity_days = ${validityDays},
           service_ids = ${JSON.stringify(serviceIds)}::jsonb,
+          image_url = ${imageUrl},
           is_active = ${input.isActive !== false},
           updated_at = now()
         WHERE id = ${input.id}::uuid
           AND salon_id = ${input.salonId}
-        RETURNING id, salon_id, name, description, total_sessions, price, validity_days, service_ids, is_active, created_at, updated_at
+        RETURNING id, salon_id, name, description, total_sessions, price, validity_days, service_ids, image_url, is_active, created_at, updated_at
       `
     : await sql`
         INSERT INTO client_package_definitions (
-          salon_id, name, description, total_sessions, price, validity_days, service_ids, is_active
+          salon_id, name, description, total_sessions, price, validity_days, service_ids, image_url, is_active
         )
         VALUES (
           ${input.salonId},
@@ -147,6 +158,7 @@ export async function upsertClientPackageDefinition(input: {
           ${input.price ?? null},
           ${validityDays},
           ${JSON.stringify(serviceIds)}::jsonb,
+          ${imageUrl},
           ${input.isActive !== false}
         )
         ON CONFLICT (salon_id, (lower(trim(name)))) DO UPDATE SET
@@ -155,9 +167,10 @@ export async function upsertClientPackageDefinition(input: {
           price = EXCLUDED.price,
           validity_days = EXCLUDED.validity_days,
           service_ids = EXCLUDED.service_ids,
+          image_url = EXCLUDED.image_url,
           is_active = EXCLUDED.is_active,
           updated_at = now()
-        RETURNING id, salon_id, name, description, total_sessions, price, validity_days, service_ids, is_active, created_at, updated_at
+        RETURNING id, salon_id, name, description, total_sessions, price, validity_days, service_ids, image_url, is_active, created_at, updated_at
       `;
 
   if (rows.length === 0) throw new Error('Пакетът не е намерен.');
