@@ -193,6 +193,15 @@ function timeToMinutes(value: string): number | null {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
+// Chronological sort key that tolerates unpadded times (e.g. "7:40"), so a
+// morning class never sorts after an evening one the way a plain string
+// comparison would ("19:00" < "7:40" lexically).
+function timeSortKey(value: string): number {
+  const match = String(value ?? '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
 function minutesToTime(value: number): string {
   return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
 }
@@ -541,7 +550,7 @@ function buildDailyTimelineRows({
         isCancelled: true,
         override,
       })),
-  ].sort((a, b) => a.slot.start.localeCompare(b.slot.start));
+  ].sort((a, b) => timeSortKey(a.slot.start) - timeSortKey(b.slot.start));
 
   const rows: TimelineRow[] = [];
   for (const { slot: classSlot, isCancelled, override: cancelledOverride } of classSlots) {
@@ -1056,7 +1065,11 @@ export function BookingsPanel({
           beds: sortedRows.filter(isActiveBookingForCapacity).reduce((sum, booking) => sum + getBookingQuantity(booking), 0),
         };
       })
-      .sort((a, b) => `${a.date ?? ''} ${a.time}`.localeCompare(`${b.date ?? ''} ${b.time}`));
+      .sort((a, b) => {
+        const dateCompare = String(a.date ?? '').localeCompare(String(b.date ?? ''));
+        if (dateCompare !== 0) return dateCompare;
+        return timeSortKey(a.time) - timeSortKey(b.time);
+      });
   }, [panelVisibleBookings, locale, slotIntervalMin]);
   const dailyTimelineRows = React.useMemo(
     () =>
