@@ -4183,7 +4183,18 @@ export function ClientsPanel({
                     .filter((b) => !isCancelledStatus(b.status))
                     .slice()
                     .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
-                  const coveredIds = new Set(eligibleByDate.slice(0, creditsUsed).map((b) => b.id));
+                  // A session can only be covered if it falls inside a package's
+                  // lifetime (purchase → expiry) — never retroactively charged to
+                  // a package bought after the class took place.
+                  const windows = (state.packages ?? []).map((pkg) => ({
+                    from: String(pkg.purchased_at ?? '').slice(0, 10),
+                    to: String(pkg.expires_at ?? '').slice(0, 10),
+                  }));
+                  const inPackageWindow = (d: string) => windows.some((w) => (!w.from || d >= w.from) && (!w.to || d <= w.to));
+                  const coverable = windows.length
+                    ? eligibleByDate.filter((b) => inPackageWindow(String(b.date).slice(0, 10)))
+                    : eligibleByDate;
+                  const coveredIds = new Set(coverable.slice(0, creditsUsed).map((b) => b.id));
                   const packageNameForCredit = all.find((b) => b.by_package && b.package_name)?.package_name ?? null;
                   const upcoming = all
                     .filter((b) => !isCancelledStatus(b.status) && String(b.date) >= todayKey)
