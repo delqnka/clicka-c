@@ -77,6 +77,37 @@ type ExternalCalendarEventRow = {
   source: string;
 };
 
+type DossierBooking = {
+  id: string;
+  date: string;
+  time: string;
+  service_name: string | null;
+  status: string | null;
+  booking_quantity: number | null;
+  by_package: boolean;
+  package_name: string | null;
+};
+
+type DossierPackage = {
+  id: string;
+  package_name: string;
+  total_sessions: number;
+  used_sessions: number;
+  remaining_sessions: number;
+  price: number | null;
+  source: string | null;
+  purchased_at: string | null;
+  expires_at: string;
+  status: 'active' | 'expired' | 'used';
+};
+
+type ClientDossierState = {
+  loading: boolean;
+  error?: boolean;
+  bookings?: DossierBooking[];
+  packages?: DossierPackage[];
+};
+
 type BookingsPanelProps = {
   slug: string;
   isMobile: boolean;
@@ -3409,7 +3440,24 @@ export function ClientsPanel({
   const [activationError, setActivationError] = React.useState('');
   const [sortBy, setSortBy] = React.useState<ClientSort>('newest');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [dossierByKey, setDossierByKey] = React.useState<Record<string, ClientDossierState>>({});
   const frozenOrderRef = React.useRef<string[] | null>(null);
+
+  const loadDossier = React.useCallback(async (client: ClientSummary) => {
+    setDossierByKey((prev) => ({ ...prev, [client.key]: { loading: true } }));
+    try {
+      const res = await fetch(`/api/admin/clients/history?slug=${encodeURIComponent(slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, name: client.name, phone: client.phone, email: client.email }),
+      });
+      if (!res.ok) throw new Error('history failed');
+      const data = (await res.json()) as { bookings?: DossierBooking[]; packages?: DossierPackage[] };
+      setDossierByKey((prev) => ({ ...prev, [client.key]: { loading: false, bookings: data.bookings ?? [], packages: data.packages ?? [] } }));
+    } catch {
+      setDossierByKey((prev) => ({ ...prev, [client.key]: { loading: false, error: true } }));
+    }
+  }, [slug]);
   const [importOpen, setImportOpen] = React.useState(false);
   const [importText, setImportText] = React.useState('');
   const [importBusy, setImportBusy] = React.useState<MembershipImportMode | null>(null);
@@ -4072,6 +4120,78 @@ export function ClientsPanel({
                   </details>
                 ) : null;
               })()}
+              <details
+                style={{ marginTop: 10 }}
+                onToggle={(event) => {
+                  if ((event.currentTarget as HTMLDetailsElement).open && !dossierByKey[client.key]) {
+                    void loadDossier(client);
+                  }
+                }}
+              >
+                <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 800, color: '#111' }}>
+                  {isEn ? 'Dossier & history' : 'Досие и история'}
+                </summary>
+                {(() => {
+                  const state = dossierByKey[client.key];
+                  if (!state || state.loading) {
+                    return <p style={{ margin: '8px 0 0', fontSize: 12, color: T.muted }}>{isEn ? 'Loading…' : 'Зареждане…'}</p>;
+                  }
+                  if (state.error) {
+                    return <p style={{ margin: '8px 0 0', fontSize: 12, color: '#B91C1C' }}>{isEn ? 'Could not load history.' : 'Историята не можа да се зареди.'}</p>;
+                  }
+                  const all = state.bookings ?? [];
+                  const now = new Date();
+                  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                  const isCancelledStatus = (s: string | null) => ['cancelled', 'canceled', 'отказана', 'анулирана'].includes(String(s ?? '').trim().toLowerCase());
+                  const upcoming = all
+                    .filter((b) => !isCancelledStatus(b.status) && String(b.date) >= todayKey)
+                    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+                  const past = all.filter((b) => isCancelledStatus(b.status) || String(b.date) < todayKey);
+                  const fmtDate = (d: string) => new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const renderRow = (b: DossierBooking) => (
+                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px', borderBottom: `1px solid ${T.border}`, fontSize: 12 }}>
+                      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                        <strong>{fmtDate(b.date)}</strong> · {String(b.time ?? '').slice(0, 5)} · {b.service_name || (isEn ? 'Class' : 'Клас')}
+                      </span>
+                      <span style={{ flexShrink: 0, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        {isCancelledStatus(b.status) ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>{isEn ? 'Cancelled' : 'Отказана'}</span> : null}
+                        {b.by_package
+                          ? <span style={{ borderRadius: 999, background: '#ECFDF5', color: '#047857', padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>{isEn ? 'by package' : 'по пакет'}</span>
+                          : <span style={{ borderRadius: 999, background: '#F4F4F5', color: T.subtle, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>{isEn ? 'no credit' : 'без кредит'}</span>}
+                      </span>
+                    </div>
+                  );
+                  return (
+                    <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 800 }}>{isEn ? `Upcoming (${upcoming.length})` : `Предстоящи (${upcoming.length})`}</p>
+                        {upcoming.length ? <div>{upcoming.map(renderRow)}</div> : <p style={{ margin: '4px 0 0', fontSize: 12, color: T.muted }}>{isEn ? 'None' : 'Няма'}</p>}
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 800 }}>{isEn ? `Past (${past.length})` : `Минали (${past.length})`}</p>
+                        {past.length ? <div>{past.slice(0, 40).map(renderRow)}</div> : <p style={{ margin: '4px 0 0', fontSize: 12, color: T.muted }}>{isEn ? 'None' : 'Няма'}</p>}
+                      </div>
+                      {(state.packages ?? []).length ? (
+                        <div>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 800 }}>{isEn ? 'Packages' : 'Пакети'}</p>
+                          <div style={{ display: 'grid', gap: 4, marginTop: 4 }}>
+                            {(state.packages ?? []).map((pkg) => (
+                              <div key={pkg.id} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                                  <strong>{pkg.package_name}</strong> · {pkg.used_sessions}/{pkg.total_sessions} · {isEn ? 'to ' : 'до '}{fmtDate(pkg.expires_at)}{pkg.source === 'online' ? ' · online' : ''}
+                                </span>
+                                <span style={{ flexShrink: 0, fontWeight: 700, color: pkg.status === 'active' ? '#047857' : pkg.status === 'used' ? '#92400E' : T.subtle }}>
+                                  {pkg.status === 'active' ? (isEn ? 'active' : 'активен') : pkg.status === 'used' ? (isEn ? 'used up' : 'изхабен') : (isEn ? 'expired' : 'изтекъл')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
+              </details>
             </div>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'center' : 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0, minWidth: 0 }}>
               <div style={{ textAlign: isMobile ? 'left' : 'right', minWidth: 0 }}>
