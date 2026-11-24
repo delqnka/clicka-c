@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveSalonBySlugOrHost } from '@/lib/admin-auth';
-import { findActiveClientPackage } from '@/lib/client-packages';
+import { findActiveClientPackage, findExhaustedClientPackage } from '@/lib/client-packages';
 import { getBrowserHost } from '@/lib/domain-routing';
 import { verifyApiKey } from '@/lib/public-api-auth';
 
@@ -63,5 +63,16 @@ export async function POST(
     clientEmail,
   });
 
-  return NextResponse.json({ package: activePackage }, { headers: PUBLIC_CORS });
+  // Only look for a used-up package when there is no credit-bearing one, so the
+  // form can warn the client to buy a new one instead of silently charging.
+  const exhaustedPackage = activePackage
+    ? null
+    : await findExhaustedClientPackage({
+        salonId: auth.salonId,
+        clientName,
+        clientPhone,
+        clientEmail,
+      });
+
+  return NextResponse.json({ package: activePackage, exhaustedPackage }, { headers: PUBLIC_CORS });
 }

@@ -109,6 +109,42 @@ export async function findActiveClientPackage(input: {
   };
 }
 
+/** Finds a still-valid package whose credits are all used up, so the public
+ * booking form can tell the client to buy a new one. Only consulted when no
+ * active (credit-bearing) package was found. */
+export async function findExhaustedClientPackage(input: {
+  salonId: string;
+  clientName?: string | null;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+}): Promise<{ packageName: string; totalSessions: number; expiresAt: string } | null> {
+  await ensureClientPackagesSchema();
+  const email = input.clientEmail?.trim().toLowerCase() || '';
+  const phoneDigits = normalizePhoneForMatch(input.clientPhone);
+  if (!email && !phoneDigits) return null;
+
+  const rows = await sql`
+    SELECT cp.package_name, cp.total_sessions, cp.expires_at::text AS expires_at
+    FROM client_packages cp
+    WHERE cp.salon_id = ${input.salonId}
+      AND cp.expires_at >= CURRENT_DATE
+      AND cp.used_sessions >= cp.total_sessions
+      AND (
+        (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${phoneDigits})
+        OR (${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
+      )
+    ORDER BY cp.expires_at DESC, cp.created_at DESC
+    LIMIT 1
+  ` as { package_name: string; total_sessions: number; expires_at: string }[];
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    packageName: String(row.package_name ?? ''),
+    totalSessions: Math.max(1, Number(row.total_sessions) || 1),
+    expiresAt: String(row.expires_at ?? ''),
+  };
+}
+
 export async function ensureClientPackagesSchema() {
   await ensureSalonClientsSchema();
   await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;

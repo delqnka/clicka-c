@@ -314,6 +314,20 @@ function PackageStatus({
           </p>
         </div>
       ) : null}
+      {status === 'exhausted' && packageInfo ? (
+        <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2.5 text-[#92400E]" role="status">
+          <p className="text-[13px] font-semibold">
+            {isEnglish
+              ? `No credits left in your package „${packageInfo.packageName}“`
+              : `Нямате оставащ кредит в пакета „${packageInfo.packageName}“`}
+          </p>
+          <p className="mt-1 text-[12px] leading-snug">
+            {isEnglish
+              ? `All ${packageInfo.totalSessions} credits are used. Please buy a new package — the booking continues without a credit.`
+              : `Всичките ${packageInfo.totalSessions} кредита са изхабени. Моля, купете нов пакет — резервацията продължава без кредит.`}
+          </p>
+        </div>
+      ) : null}
       {status === 'not_found' ? (
         <p className="rounded-xl bg-black/[0.035] px-3 py-2.5 text-[12px] leading-snug text-black/60" role="status">
           {isEnglish ? 'No active package for these details — the booking continues normally.' : 'Няма активен пакет по тези данни — резервацията продължава нормално.'}

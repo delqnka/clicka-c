@@ -25,7 +25,9 @@ export type BookingCompanion = {
 
 /** A read-only preview shown before a reservation consumes a package session. */
 export type ActivePackageLookup = {
-  status: 'idle' | 'checking' | 'found' | 'not_found' | 'error';
+  // 'exhausted' — a package exists and is still valid, but every credit is
+  // used up, so the client is told to buy a new one before this booking.
+  status: 'idle' | 'checking' | 'found' | 'not_found' | 'exhausted' | 'error';
   package: {
     packageName: string;
     totalSessions: number;

@@ -341,11 +341,26 @@ export function useBookingFlow({
           body: JSON.stringify({ clientName: normalizedName, clientPhone: clientPhone.trim(), clientEmail: normalizedEmail }),
         });
         if (!response.ok) throw new Error('Package lookup failed');
-        const result = (await response.json()) as { package?: ActivePackageLookup['package'] };
+        const result = (await response.json()) as {
+          package?: ActivePackageLookup['package'];
+          exhaustedPackage?: { packageName: string; totalSessions: number; expiresAt: string } | null;
+        };
         if (controller.signal.aborted) return;
         if (result.package) {
           setPackageLookup({ status: 'found', package: result.package });
           setUsePackage(true);
+        } else if (result.exhaustedPackage) {
+          setPackageLookup({
+            status: 'exhausted',
+            package: {
+              packageName: result.exhaustedPackage.packageName,
+              totalSessions: result.exhaustedPackage.totalSessions,
+              usedSessions: result.exhaustedPackage.totalSessions,
+              remainingSessions: 0,
+              expiresAt: result.exhaustedPackage.expiresAt,
+            },
+          });
+          setUsePackage(false);
         } else {
           setPackageLookup({ status: 'not_found', package: null });
           setUsePackage(false);
