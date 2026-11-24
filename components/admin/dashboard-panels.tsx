@@ -8,6 +8,7 @@ import type { BookingBlock } from '@/lib/booking-blocks';
 import { getClassSlotsForDateWithOverrides, normalizeClassScheduleOverrides, normalizeTrainerName, type BookingClassSchedule, type BookingClassSlot, type ClassScheduleOverride } from '@/lib/class-schedule';
 import type { StaffMember } from '@/lib/staff-members';
 import { formatSalonPrice } from '@/lib/salon-currency';
+import { transliterateBgLatin } from '@/lib/translit';
 import type { Locale } from '@/lib/i18n';
 
 type BookingStatus = BookingRecord['status'];
@@ -1119,17 +1120,17 @@ export function BookingsPanel({
     [addClientSortMode, clients],
   );
   const filteredAddClientOptions = React.useMemo(() => {
-    const query = addClientSearch.trim().toLocaleLowerCase();
+    const query = transliterateBgLatin(addClientSearch.trim());
     if (!query) return sortedAddClientOptions;
     return sortedAddClientOptions
       .filter((client) =>
         [client.name, client.phone, client.email]
           .filter(Boolean)
-          .some((value) => String(value).toLocaleLowerCase().includes(query)),
+          .some((value) => transliterateBgLatin(String(value)).includes(query)),
       )
       .sort((a, b) => {
-        const aName = a.name.toLocaleLowerCase();
-        const bName = b.name.toLocaleLowerCase();
+        const aName = transliterateBgLatin(a.name);
+        const bName = transliterateBgLatin(b.name);
         const aStarts = aName.startsWith(query) ? 1 : 0;
         const bStarts = bName.startsWith(query) ? 1 : 0;
         if (aStarts !== bStarts) return bStarts - aStarts;
@@ -3448,12 +3449,12 @@ export function ClientsPanel({
   }, [clients, sortedClients]);
 
   const filteredClients = React.useMemo(() => {
-    const query = searchQuery.trim().toLocaleLowerCase();
+    const query = transliterateBgLatin(searchQuery.trim());
     if (!query) return displayClients;
     return displayClients.filter((client) =>
       [client.name, client.phone, client.email, ...(client.names ?? [])]
         .filter(Boolean)
-        .some((value) => String(value).toLocaleLowerCase().includes(query)),
+        .some((value) => transliterateBgLatin(String(value)).includes(query)),
     );
   }, [displayClients, searchQuery]);
 

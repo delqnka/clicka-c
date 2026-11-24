@@ -59,6 +59,7 @@ const OnboardingChecklist = dynamic(
 import type { AdminSalonOffer } from '@/lib/salon-offers';
 import { newEmptyOffer } from '@/lib/salon-offers';
 import { LazySalonOffersSection } from '@/components/admin/lazy-admin-tabs';
+import { clientNameKey } from '@/lib/translit';
 import type { AdminSitePayload, BookingRecord, WorkingHours } from '@/lib/admin-site';
 import type { BookingBlock } from '@/lib/booking-blocks';
 import { getT, type Locale } from '@/lib/i18n';
@@ -263,24 +264,9 @@ type GoogleBusinessCandidate = {
   businessStatus: string;
 };
 
-// Bulgarian Cyrillic -> Latin, so a client written "Ваня Александрова" and
-// "Vanya Aleksandrova" collapses to the same key regardless of script.
-const CYRILLIC_TO_LATIN: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ж: 'zh', з: 'z', и: 'i',
-  й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's',
-  т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sht',
-  ъ: 'a', ь: 'y', ю: 'yu', я: 'ya',
-};
-
-function normalizeClientNameKey(value: string) {
-  const lowered = String(value ?? '').trim().toLocaleLowerCase('bg');
-  const transliterated = Array.from(lowered)
-    .map((ch) => CYRILLIC_TO_LATIN[ch] ?? ch)
-    .join('');
-  // Keep only letters/digits so spacing, punctuation and script differences
-  // ("vanya aleksandrova" vs "Ваня Александрова") never split one person.
-  return transliterated.replace(/[^a-z0-9]/g, '');
-}
+// "Ваня Александрова" and "Vanya Aleksandrova" collapse to the same key
+// regardless of script, spacing or punctuation (see lib/translit).
+const normalizeClientNameKey = clientNameKey;
 
 function normalizeClientPhoneKey(value: string) {
   // Match Bulgarian local and international formats as one number, so
