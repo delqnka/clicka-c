@@ -3933,11 +3933,28 @@ export function ClientsPanel({
                     {isEn ? 'valid until ' : 'до '}
                     {new Date(`${normalizeDateKey(client.activePackage.expiresAt)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG')}
                   </span>
-                ) : (
-                  <span style={{ display: 'inline-flex', borderRadius: 999, background: '#f4f4f5', color: T.subtle, padding: '4px 9px', fontSize: 12, fontWeight: 600 }}>
-                    {isEn ? 'No active package' : 'Няма активен пакет'}
-                  </span>
-                )}
+                ) : (() => {
+                  // No active package: if the client has one that is fully
+                  // used up, flag it loudly so the studio can offer a new one.
+                  const usedUp = (client.packageHistory ?? [])
+                    .filter((pkg) => pkg.status === 'used' || (Number(pkg.remainingSessions) || 0) <= 0)
+                    .sort((a, b) => String(b.purchasedAt ?? b.expiresAt ?? '').localeCompare(String(a.purchasedAt ?? a.expiresAt ?? '')))[0];
+                  if (usedUp) {
+                    return (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 999, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', padding: '4px 9px', fontSize: 12, fontWeight: 800 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', flexShrink: 0 }} />
+                        {isEn
+                          ? `Credits used up: ${usedUp.packageName} · ${usedUp.usedSessions}/${usedUp.totalSessions} · offer a new package`
+                          : `Изхабени кредити: ${usedUp.packageName} · ${usedUp.usedSessions}/${usedUp.totalSessions} · предложи нов пакет`}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span style={{ display: 'inline-flex', borderRadius: 999, background: '#f4f4f5', color: T.subtle, padding: '4px 9px', fontSize: 12, fontWeight: 600 }}>
+                      {isEn ? 'No active package' : 'Няма активен пакет'}
+                    </span>
+                  );
+                })()}
                 {client.activePackage?.purchasedAt ? (
                   <span style={{ fontSize: 12, color: T.muted }}>
                     {isEn ? 'Purchased: ' : 'Закупен: '}

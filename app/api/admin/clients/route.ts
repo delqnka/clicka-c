@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
        AND lower(trim(coalesce(b.status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
        AND (
          (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(b.client_email)) = lower(trim(sc.email)))
-         OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+         OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = regexp_replace(regexp_replace(sc.phone, '\\D', '', 'g'), '^(?:00359|359)?0*', ''))
          OR lower(trim(b.client_name)) = lower(trim(sc.name))
        )
       LEFT JOIN LATERAL (
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         WHERE cp.salon_id = sc.salon_id
           AND (
             (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(cp.client_email)) = lower(trim(sc.email)))
-            OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+            OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = regexp_replace(regexp_replace(sc.phone, '\\D', '', 'g'), '^(?:00359|359)?0*', ''))
           )
       ) package_spend ON true
       LEFT JOIN LATERAL (
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         WHERE cp.salon_id = sc.salon_id
           AND (
             (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(cp.client_email)) = lower(trim(sc.email)))
-            OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+            OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = regexp_replace(regexp_replace(sc.phone, '\\D', '', 'g'), '^(?:00359|359)?0*', ''))
             OR lower(trim(cp.client_name)) = lower(trim(sc.name))
           )
           AND cp.expires_at >= CURRENT_DATE
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
           WHERE cp.salon_id = sc.salon_id
             AND (
               (sc.email IS NOT NULL AND sc.email <> '' AND lower(trim(cp.client_email)) = lower(trim(sc.email)))
-              OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g') = regexp_replace(sc.phone, '\\D', '', 'g'))
+              OR (sc.phone IS NOT NULL AND sc.phone <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = regexp_replace(regexp_replace(sc.phone, '\\D', '', 'g'), '^(?:00359|359)?0*', ''))
               OR lower(trim(cp.client_name)) = lower(trim(sc.name))
             )
         ) history
