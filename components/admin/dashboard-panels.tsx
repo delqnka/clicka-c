@@ -84,8 +84,10 @@ type DossierBooking = {
   service_name: string | null;
   status: string | null;
   booking_quantity: number | null;
+  booked_at: string | null;
   by_package: boolean;
   package_name: string | null;
+  credit_used_at: string | null;
 };
 
 type DossierPackage = {
@@ -4176,9 +4178,15 @@ export function ClientsPanel({
                   const past = all.filter((b) => isCancelledStatus(b.status) || String(b.date) < todayKey);
                   const fmtDate = (d: string) => new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
                   const renderRow = (b: DossierBooking) => (
-                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px', borderBottom: `1px solid ${T.border}`, fontSize: 12 }}>
+                    <div key={b.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '6px 8px', borderBottom: `1px solid ${T.border}`, fontSize: 12 }}>
                       <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                         <strong>{fmtDate(b.date)}</strong> · {String(b.time ?? '').slice(0, 5)} · {b.service_name || (isEn ? 'Class' : 'Клас')}
+                        {b.booked_at ? (
+                          <span style={{ display: 'block', marginTop: 1, color: T.subtle, fontWeight: 500 }}>
+                            {isEn ? 'booked ' : 'записана '}{fmtDate(b.booked_at)}
+                            {b.by_package && b.package_name ? ` · ${isEn ? 'credit from ' : 'кредит от '}${b.package_name}` : ''}
+                          </span>
+                        ) : null}
                       </span>
                       <span style={{ flexShrink: 0, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                         {isCancelledStatus(b.status) ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>{isEn ? 'Cancelled' : 'Отказана'}</span> : null}

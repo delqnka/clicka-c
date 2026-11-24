@@ -34,8 +34,10 @@ export async function POST(request: NextRequest) {
       b.service_name,
       b.status,
       b.booking_quantity,
+      b.created_at::text AS booked_at,
       (u.booking_id IS NOT NULL) AS by_package,
-      u.package_name_snapshot AS package_name
+      u.package_name_snapshot AS package_name,
+      u.used_at::text AS credit_used_at
     FROM bookings b
     LEFT JOIN client_package_usages u ON u.booking_id::text = b.id::text
     WHERE b.salon_id = ${salonId}
