@@ -5,13 +5,18 @@ function toTitleCase(str: string): string {
   return str.trim().replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }
 
-/** Compares Bulgarian local and international phone formats as one number. */
+/** Compares Bulgarian local and international phone formats as one number.
+ * Strips the country code (00359 / 359) and then every leading zero, so
+ * "+359885…", "0885…" and even a mistyped "00885…" all resolve to the same
+ * national number. */
 export function normalizePhoneForMatch(value?: string | null): string {
   const digits = String(value ?? '').replace(/\D/g, '');
-  if (digits.startsWith('00359')) return digits.slice(5);
-  if (digits.startsWith('359')) return digits.slice(3);
-  if (digits.startsWith('0')) return digits.slice(1);
-  return digits;
+  const national = digits.startsWith('00359')
+    ? digits.slice(5)
+    : digits.startsWith('359')
+      ? digits.slice(3)
+      : digits;
+  return national.replace(/^0+/, '');
 }
 
 export async function upsertSalonClient(
@@ -31,7 +36,7 @@ export async function upsertSalonClient(
     WHERE salon_id = ${salonId}
       AND (
         (${normalizedPhone} <> ''
-          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${normalizedPhone})
+          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${normalizedPhone})
         OR (${normalizedPhone} = '' AND ${fields.email?.trim().toLowerCase() || ''} <> ''
           AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''})
         OR (${normalizedPhone} = '' AND ${fields.email?.trim().toLowerCase() || ''} = ''
@@ -40,7 +45,7 @@ export async function upsertSalonClient(
     ORDER BY
       CASE
         WHEN ${normalizedPhone} <> ''
-          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${normalizedPhone} THEN 0
+          AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${normalizedPhone} THEN 0
         WHEN ${normalizedPhone} = '' AND ${fields.email?.trim().toLowerCase() || ''} <> ''
           AND lower(trim(coalesce(email, ''))) = ${fields.email?.trim().toLowerCase() || ''} THEN 1
         ELSE 2

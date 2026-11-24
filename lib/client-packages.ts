@@ -63,12 +63,12 @@ export async function findActiveClientPackage(input: {
     FROM salon_clients
     WHERE salon_id = ${input.salonId}
       AND (
-        (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
+        (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${phoneDigits})
         OR (${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email})
       )
     ORDER BY
       CASE
-        WHEN ${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits} THEN 0
+        WHEN ${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${phoneDigits} THEN 0
         WHEN ${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(email, ''))) = ${email} THEN 1
         ELSE 2
       END,
@@ -85,7 +85,7 @@ export async function findActiveClientPackage(input: {
       AND cp.expires_at >= CURRENT_DATE
       AND cp.used_sessions < cp.total_sessions
       AND (
-        (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
+        (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${phoneDigits})
         OR (${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
       )
     ORDER BY cp.expires_at ASC, cp.created_at ASC
@@ -317,7 +317,7 @@ export async function consumePackageForCompletedBooking(input: {
             ${packageId}::uuid IS NULL
             AND (
               (${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
-              OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
+              OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${phoneDigits})
               OR lower(trim(cp.client_name)) = lower(trim(${name}))
             )
           )
@@ -402,7 +402,7 @@ export async function linkExistingPackageCreditToBooking(input: {
         )
         AND (
           (${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
-          OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '') = ${phoneDigits})
+          OR (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${phoneDigits})
         )
         AND NOT EXISTS (
           SELECT 1 FROM client_package_usages u

@@ -159,9 +159,9 @@ export async function GET(request: NextRequest) {
           AND b.date ~ '^\\d{4}-\\d{2}-\\d{2}$'
           AND b.date::date BETWEEN cp2.purchased_at::date AND cp2.expires_at
           AND (
-            (regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','') <> ''
-              AND regexp_replace(regexp_replace(coalesce(cp2.client_phone,''),'\\D','','g'),'^(?:00359|359|0)','')
-                = regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359|0)',''))
+            (regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359)?0*','') <> ''
+              AND regexp_replace(regexp_replace(coalesce(cp2.client_phone,''),'\\D','','g'),'^(?:00359|359)?0*','')
+                = regexp_replace(regexp_replace(coalesce(b.client_phone,''),'\\D','','g'),'^(?:00359|359)?0*',''))
             OR (lower(trim(coalesce(b.client_email,''))) <> ''
               AND lower(trim(coalesce(cp2.client_email,''))) = lower(trim(coalesce(b.client_email,''))))
           )

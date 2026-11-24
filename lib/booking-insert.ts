@@ -169,8 +169,8 @@ export async function insertBookingIfNoOverlap(
             (${row.clientEmail} <> '' AND lower(trim(coalesce(b.client_email, ''))) = lower(trim(${row.clientEmail})))
             OR (
               ${row.clientPhone} <> ''
-              AND regexp_replace(regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359|0)', '')
-                = regexp_replace(regexp_replace(${row.clientPhone}, '\\D', '', 'g'), '^(?:00359|359|0)', '')
+              AND regexp_replace(regexp_replace(coalesce(b.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '')
+                = regexp_replace(regexp_replace(${row.clientPhone}, '\\D', '', 'g'), '^(?:00359|359)?0*', '')
             )
           )
       )

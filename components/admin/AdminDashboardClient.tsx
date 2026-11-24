@@ -263,18 +263,36 @@ type GoogleBusinessCandidate = {
   businessStatus: string;
 };
 
+// Bulgarian Cyrillic -> Latin, so a client written "Ваня Александрова" and
+// "Vanya Aleksandrova" collapses to the same key regardless of script.
+const CYRILLIC_TO_LATIN: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ж: 'zh', з: 'z', и: 'i',
+  й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's',
+  т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sht',
+  ъ: 'a', ь: 'y', ю: 'yu', я: 'ya',
+};
+
 function normalizeClientNameKey(value: string) {
-  return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const lowered = String(value ?? '').trim().toLocaleLowerCase('bg');
+  const transliterated = Array.from(lowered)
+    .map((ch) => CYRILLIC_TO_LATIN[ch] ?? ch)
+    .join('');
+  // Keep only letters/digits so spacing, punctuation and script differences
+  // ("vanya aleksandrova" vs "Ваня Александрова") never split one person.
+  return transliterated.replace(/[^a-z0-9]/g, '');
 }
 
 function normalizeClientPhoneKey(value: string) {
   // Match Bulgarian local and international formats as one number, so
-  // "+359885..." and "0885..." resolve to the same client.
+  // "+359885...", "0885..." and a mistyped "00885..." resolve to the same
+  // client. Strip the country code, then every leading zero.
   const digits = String(value ?? '').replace(/\D/g, '');
-  if (digits.startsWith('00359')) return digits.slice(5);
-  if (digits.startsWith('359')) return digits.slice(3);
-  if (digits.startsWith('0')) return digits.slice(1);
-  return digits;
+  const national = digits.startsWith('00359')
+    ? digits.slice(5)
+    : digits.startsWith('359')
+      ? digits.slice(3)
+      : digits;
+  return national.replace(/^0+/, '');
 }
 
 function clientsReferToSamePerson(a: ClientSummary, b: ClientSummary) {
