@@ -4172,30 +4172,46 @@ export function ClientsPanel({
                   const now = new Date();
                   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                   const isCancelledStatus = (s: string | null) => ['cancelled', 'canceled', 'отказана', 'анулирана'].includes(String(s ?? '').trim().toLowerCase());
+                  // Attribute the credits by session date, so "без кредит" always
+                  // lands on the LATEST sessions — never an earlier one just
+                  // because a later class happened to be booked (and credited)
+                  // first. The number of covered sessions equals the credits
+                  // actually consumed; only which sessions are shown as covered
+                  // is re-ordered chronologically.
+                  const creditsUsed = all.filter((b) => b.by_package).length;
+                  const eligibleByDate = all
+                    .filter((b) => !isCancelledStatus(b.status))
+                    .slice()
+                    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+                  const coveredIds = new Set(eligibleByDate.slice(0, creditsUsed).map((b) => b.id));
+                  const packageNameForCredit = all.find((b) => b.by_package && b.package_name)?.package_name ?? null;
                   const upcoming = all
                     .filter((b) => !isCancelledStatus(b.status) && String(b.date) >= todayKey)
                     .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
                   const past = all.filter((b) => isCancelledStatus(b.status) || String(b.date) < todayKey);
                   const fmtDate = (d: string) => new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString(isEn ? 'en-US' : 'bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
-                  const renderRow = (b: DossierBooking) => (
+                  const renderRow = (b: DossierBooking) => {
+                    const covered = coveredIds.has(b.id);
+                    return (
                     <div key={b.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '6px 8px', borderBottom: `1px solid ${T.border}`, fontSize: 12 }}>
                       <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                         <strong>{fmtDate(b.date)}</strong> · {String(b.time ?? '').slice(0, 5)} · {b.service_name || (isEn ? 'Class' : 'Клас')}
                         {b.booked_at ? (
                           <span style={{ display: 'block', marginTop: 1, color: T.subtle, fontWeight: 500 }}>
                             {isEn ? 'booked ' : 'записана '}{fmtDate(b.booked_at)}
-                            {b.by_package && b.package_name ? ` · ${isEn ? 'credit from ' : 'кредит от '}${b.package_name}` : ''}
+                            {covered && (b.package_name ?? packageNameForCredit) ? ` · ${isEn ? 'credit from ' : 'кредит от '}${b.package_name ?? packageNameForCredit}` : ''}
                           </span>
                         ) : null}
                       </span>
                       <span style={{ flexShrink: 0, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                         {isCancelledStatus(b.status) ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>{isEn ? 'Cancelled' : 'Отказана'}</span> : null}
-                        {b.by_package
+                        {covered
                           ? <span style={{ borderRadius: 999, background: '#ECFDF5', color: '#047857', padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>{isEn ? 'by package' : 'по пакет'}</span>
                           : <span style={{ borderRadius: 999, background: '#F4F4F5', color: T.subtle, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>{isEn ? 'no credit' : 'без кредит'}</span>}
                       </span>
                     </div>
-                  );
+                    );
+                  };
                   return (
                     <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>
                       <div>
