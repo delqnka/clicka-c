@@ -1694,7 +1694,34 @@ export function BookingsPanel({
             {(() => {
               const selectedClient = clients.find((client) => client.key === addDraft.clientKey);
               const activePackage = selectedClient?.activePackage;
-              if (!activePackage || activePackage.remainingSessions <= 0) return null;
+              if (!activePackage || activePackage.remainingSessions <= 0) {
+                // No usable credit — warn the studio to sell a new package now.
+                const usedUp = (selectedClient?.packageHistory ?? [])
+                  .filter((pkg) => pkg.status === 'used' || (Number(pkg.remainingSessions) || 0) <= 0)
+                  .sort((a, b) => String(b.purchasedAt ?? b.expiresAt ?? '').localeCompare(String(a.purchasedAt ?? a.expiresAt ?? '')))[0];
+                if (!usedUp) return null;
+                return (
+                  <div
+                    role="status"
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                      border: '1px solid #FDE68A', borderRadius: 10,
+                      padding: '9px 10px', background: '#FFFBEB', color: '#92400E',
+                      fontSize: 12, fontWeight: 700,
+                    }}
+                  >
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', marginTop: 4, flexShrink: 0 }} />
+                    <span>
+                      {isEn ? 'No credits left for this client.' : 'Този клиент няма оставащ кредит.'}
+                      <span style={{ display: 'block', marginTop: 2, fontWeight: 600 }}>
+                        {isEn
+                          ? `${usedUp.packageName} is used up (${usedUp.usedSessions}/${usedUp.totalSessions}) — offer a new package today.`
+                          : `Пакетът „${usedUp.packageName}“ е изхабен (${usedUp.usedSessions}/${usedUp.totalSessions}) — предложи нов пакет днес.`}
+                      </span>
+                    </span>
+                  </div>
+                );
+              }
               return (
                 <label
                   style={{
