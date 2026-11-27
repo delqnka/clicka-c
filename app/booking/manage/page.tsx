@@ -3,6 +3,16 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+type ClassSlot = {
+  time: string;
+  end: string;
+  className: string;
+  trainer: string;
+  capacity: number;
+  spotsLeft: number;
+  available: boolean;
+};
+
 type CancelPolicy = {
   summary: string;
   policyHours: number;
@@ -90,7 +100,40 @@ function ManageBookingContent() {
   const [showReschedule, setShowReschedule] = useState(false);
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
+  const [newTrainer, setNewTrainer] = useState('');
   const [rescheduleError, setRescheduleError] = useState('');
+
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [classBased, setClassBased] = useState<boolean | null>(null);
+  const [slots, setSlots] = useState<ClassSlot[]>([]);
+
+  const loadSlots = useCallback(async (date: string) => {
+    if (!date || !id || !token) return;
+    setSlotsLoading(true);
+    setNewTime('');
+    setNewTrainer('');
+    setRescheduleError('');
+    try {
+      const res = await fetch(
+        `/api/bookings/manage?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&date=${encodeURIComponent(date)}`,
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setClassBased(null);
+        setSlots([]);
+        setRescheduleError(data.error || 'Грешка при зареждане на часовете.');
+        return;
+      }
+      setClassBased(Boolean(data.classBased));
+      setSlots(Array.isArray(data.slots) ? data.slots : []);
+    } catch {
+      setClassBased(null);
+      setSlots([]);
+      setRescheduleError('Грешка при зареждане на часовете.');
+    } finally {
+      setSlotsLoading(false);
+    }
+  }, [id, token]);
 
   const loadBooking = useCallback(async () => {
     if (!id || !token) {
@@ -118,7 +161,7 @@ function ManageBookingContent() {
   const handleReschedule = async () => {
     setRescheduleError('');
     if (!newDate || !newTime) {
-      setRescheduleError('Изберете дата и час.');
+      setRescheduleError(classBased ? 'Изберете дата и клас от графика.' : 'Изберете дата и час.');
       return;
     }
     setRescheduling(true);
@@ -128,7 +171,12 @@ function ManageBookingContent() {
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'reschedule', newDate, newTime }),
+          body: JSON.stringify({
+            action: 'reschedule',
+            newDate,
+            newTime,
+            ...(classBased && newTrainer ? { newTrainer } : {}),
+          }),
         },
       );
       const data = await res.json();
@@ -264,15 +312,67 @@ function ManageBookingContent() {
                       type="date"
                       value={newDate}
                       min={new Date().toISOString().slice(0, 10)}
-                      onChange={(e) => setNewDate(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewDate(value);
+                        setNewTime('');
+                        setNewTrainer('');
+                        setClassBased(null);
+                        setSlots([]);
+                        if (value) void loadSlots(value);
+                      }}
                       style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
                     />
-                    <input
-                      type="time"
-                      value={newTime}
-                      onChange={(e) => setNewTime(e.target.value)}
-                      style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
-                    />
+
+                    {!newDate ? null : slotsLoading ? (
+                      <p style={{ margin: 0, fontSize: 13, color: '#666' }}>Зареждане на часовете...</p>
+                    ) : classBased === false ? (
+                      <input
+                        type="time"
+                        value={newTime}
+                        onChange={(e) => setNewTime(e.target.value)}
+                        style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
+                      />
+                    ) : slots.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: 13, color: '#666' }}>Няма класове на избраната дата. Моля изберете друг ден.</p>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {slots.map((slot) => {
+                          const selected = newTime === slot.time && newTrainer === slot.trainer;
+                          const label = [slot.className, slot.trainer].filter(Boolean).join(' · ');
+                          return (
+                            <button
+                              key={`${slot.time}-${slot.trainer}`}
+                              type="button"
+                              disabled={!slot.available}
+                              onClick={() => { setNewTime(slot.time); setNewTrainer(slot.trainer); setRescheduleError(''); }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                padding: '10px 14px',
+                                borderRadius: 10,
+                                border: selected ? '2px solid #000' : '1px solid #ddd',
+                                background: slot.available ? (selected ? '#F3F4F6' : '#fff') : '#F3F4F6',
+                                color: slot.available ? '#000' : '#9CA3AF',
+                                fontSize: 14,
+                                textAlign: 'left',
+                                cursor: slot.available ? 'pointer' : 'not-allowed',
+                              }}
+                            >
+                              <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ fontWeight: 700 }}>{slot.time}{slot.end ? `–${slot.end}` : ''}</span>
+                                {label ? <span style={{ fontSize: 12, color: slot.available ? '#666' : '#9CA3AF' }}>{label}</span> : null}
+                              </span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: slot.available ? '#16a34a' : '#dc2626' }}>
+                                {slot.available ? `Свободни: ${slot.spotsLeft}` : 'Няма места'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                     {rescheduleError ? (
                       <p style={{ margin: 0, fontSize: 13, color: '#dc2626' }}>{rescheduleError}</p>
                     ) : null}
