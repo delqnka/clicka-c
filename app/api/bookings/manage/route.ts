@@ -2,7 +2,16 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { ensureBookingsSchema } from '@/lib/ensure-bookings-schema';
-import { isCancelledStatus, bookingStartMinutesFromTimeString, formatLegacyDateDMY } from '@/lib/booking-time';
+import { isCancelledStatus, bookingStartMinutesFromTimeString, formatLegacyDateDMY, parseTimeToMinutes } from '@/lib/booking-time';
+import {
+  normalizeClassSchedule,
+  getClassSlotsForDate,
+  getClassSlotsForDateWithOverrides,
+  normalizeTrainerName,
+  type BookingClassSlot,
+} from '@/lib/class-schedule';
+import { listClassScheduleOverrides } from '@/lib/class-schedule-overrides';
+import { getStaffMembers } from '@/lib/staff-members';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { runAfterResponse } from '@/lib/run-after-response';
 import { sendBookingCancellationEmails } from '@/lib/booking-cancellation-notifications';
@@ -50,6 +59,7 @@ type BookingRow = {
   payment_status: string;
   amount_paid: number | null;
   stripe_checkout_session_id: string | null;
+  booking_quantity: number | null;
 };
 
 async function loadBookingByToken(
@@ -65,6 +75,7 @@ async function loadBookingByToken(
   telegramChatId: string;
   stripeAccountId: string | null;
   servicesJson: unknown;
+  openingHours: unknown;
 } | null> {
   await ensureBookingsSchema();
 
@@ -75,10 +86,10 @@ async function loadBookingByToken(
       b.id, b.salon_id, b.client_name, b.client_phone, b.client_email,
       b.service_name, b.service_price, b.service_duration,
       b.date, b.time, b.status, b.notes, b.manage_token, b.staff_member_id,
-      b.payment_status, b.amount_paid, b.stripe_checkout_session_id,
+      b.payment_status, b.amount_paid, b.stripe_checkout_session_id, b.booking_quantity,
       s.name AS salon_name, s.slug AS salon_slug, s.telegram_chat_id,
       s.email AS salon_email, s.owner_name AS salon_owner_name, s.language,
-      s.stripe_account_id, s.services AS services_json
+      s.stripe_account_id, s.services AS services_json, s.opening_hours AS opening_hours
     FROM bookings b
     JOIN salons s ON CAST(s.id AS text) = b.salon_id
     WHERE b.id = ${bookingId}
@@ -95,6 +106,7 @@ async function loadBookingByToken(
     telegram_chat_id: string | null;
     stripe_account_id: string | null;
     services_json: unknown;
+    opening_hours: unknown;
   };
   return {
     booking: row,
@@ -106,7 +118,31 @@ async function loadBookingByToken(
     telegramChatId: String(row.telegram_chat_id ?? '').trim(),
     stripeAccountId: row.stripe_account_id ?? null,
     servicesJson: row.services_json,
+    openingHours: row.opening_hours,
   };
+}
+
+/**
+ * Resolve the active class timetable for a salon on a given date (recurring
+ * schedule + one-off overrides). Returns an empty array when the salon is not
+ * class-based for that day, in which case free time selection is allowed.
+ */
+async function resolveClassSlotsForDate(
+  salonId: string,
+  openingHours: unknown,
+  date: string,
+): Promise<BookingClassSlot[]> {
+  const classSchedule = normalizeClassSchedule(
+    openingHours && typeof openingHours === 'object'
+      ? (openingHours as Record<string, unknown>).class_schedule
+      : null,
+  );
+  if (Object.keys(classSchedule).length === 0) return [];
+  const overrides = await listClassScheduleOverrides(salonId, date, date).catch(() => []);
+  const effective = overrides.length > 0
+    ? { [String(new Date(`${date}T12:00:00`).getDay())]: getClassSlotsForDateWithOverrides(classSchedule, date, overrides) }
+    : classSchedule;
+  return getClassSlotsForDate(effective, date);
 }
 
 export async function GET(request: NextRequest) {
@@ -122,7 +158,60 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Резервацията не е намерена.' }, { status: 404 });
   }
 
-  const { booking, salonName, servicesJson } = result;
+  const { booking, salonName, servicesJson, openingHours } = result;
+
+  // When a `date` query param is present the client is asking which class slots
+  // are bookable on that day (used by the reschedule picker). For class-based
+  // salons we return the active timetable with remaining capacity; for free-slot
+  // salons we return `classBased: false` so the UI falls back to free time entry.
+  const slotsDate = request.nextUrl.searchParams.get('date');
+  if (slotsDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(slotsDate)) {
+      return NextResponse.json({ error: 'Невалидна дата.' }, { status: 400 });
+    }
+    const classSlots = await resolveClassSlotsForDate(booking.salon_id, openingHours, slotsDate);
+    if (classSlots.length === 0) {
+      return NextResponse.json({ date: slotsDate, classBased: false, slots: [] });
+    }
+
+    const staff = await getStaffMembers(booking.salon_id).catch(() => []);
+    const legacyDate = formatLegacyDateDMY(slotsDate) ?? slotsDate;
+    const activeBookings = await sql`
+      SELECT time, service_duration, booking_quantity, staff_member_id
+      FROM bookings
+      WHERE salon_id = ${booking.salon_id}
+        AND date IN (${slotsDate}, ${legacyDate})
+        AND CAST(id AS text) <> CAST(${booking.id} AS text)
+        AND lower(trim(coalesce(status, ''))) NOT IN ('cancelled', 'canceled', 'отказана', 'анулирана')
+    ` as Array<{ time: string; service_duration: number | null; booking_quantity: number | null; staff_member_id: string | null }>;
+
+    const slots = classSlots.map((slot) => {
+      const trainerStaff = staff.find((m) => normalizeTrainerName(m.name) === normalizeTrainerName(slot.trainer));
+      const used = activeBookings.reduce((sum, row) => {
+        if ((parseTimeToMinutes(row.time) ?? -1) !== (parseTimeToMinutes(slot.start) ?? -2)) return sum;
+        // A booking belongs to this slot's class when it shares the trainer, or
+        // when either side is unassigned (legacy / solo bookings).
+        const sameTrainer =
+          !trainerStaff ||
+          row.staff_member_id == null ||
+          String(row.staff_member_id) === String(trainerStaff.id);
+        if (!sameTrainer) return sum;
+        return sum + Math.max(1, Number(row.booking_quantity ?? 1) || 1);
+      }, 0);
+      const spotsLeft = Math.max(0, slot.capacity - used);
+      return {
+        time: slot.start,
+        end: slot.end,
+        className: slot.className ?? '',
+        trainer: slot.trainer,
+        capacity: slot.capacity,
+        spotsLeft,
+        available: spotsLeft > 0,
+      };
+    });
+
+    return NextResponse.json({ date: slotsDate, classBased: true, slots });
+  }
 
   // Resolve cancellation policy for this service
   const services = parseSalonServices(servicesJson);
@@ -176,7 +265,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Липсват параметри.' }, { status: 400 });
   }
 
-  let body: { action: string; newDate?: string; newTime?: string };
+  let body: { action: string; newDate?: string; newTime?: string; newTrainer?: string };
   try {
     body = await request.json();
   } catch {
@@ -188,7 +277,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Резервацията не е намерена.' }, { status: 404 });
   }
 
-  const { booking, salonName, salonEmail, salonOwnerName, telegramChatId, stripeAccountId, servicesJson, language } = result;
+  const { booking, salonName, salonEmail, salonOwnerName, telegramChatId, stripeAccountId, servicesJson, language, openingHours } = result;
 
   if (isCancelledStatus(booking.status) || booking.status === 'completed') {
     return NextResponse.json({ error: 'Резервацията не може да бъде променена.' }, { status: 400 });
@@ -348,17 +437,52 @@ export async function PATCH(request: NextRequest) {
     const oldDate = booking.date;
     const oldTime = booking.time;
     const legacyNewDate = formatLegacyDateDMY(newDate) ?? newDate;
-    const requestedStart = bookingStartMinutesFromTimeString(newTime);
-    const requestedEnd = requestedStart + Math.max(5, booking.service_duration || 30);
-    const staffMemberId = booking.staff_member_id ?? null;
 
+    // For class-based salons the new time must match an active class on that day,
+    // exactly like a fresh booking does. This closes the gap where the manage
+    // page let clients pick any arbitrary time of the day.
+    const classSlots = await resolveClassSlotsForDate(booking.salon_id, openingHours, newDate);
+    let newStaffMemberId = booking.staff_member_id ?? null;
+    let newDuration = Math.max(5, booking.service_duration || 30);
+    let slotCapacity = 1;
+
+    if (classSlots.length > 0) {
+      const requestedTrainer = normalizeTrainerName(body.newTrainer);
+      const matchingSlots = classSlots.filter((slot) => slot.start === newTime);
+      const classSlot = requestedTrainer
+        ? matchingSlots.find((slot) => normalizeTrainerName(slot.trainer) === requestedTrainer)
+        : matchingSlots[0];
+      if (!classSlot) {
+        return NextResponse.json(
+          { error: 'Избраният час не е част от активния график. Моля изберете час от графика.' },
+          { status: 400 },
+        );
+      }
+      const staff = await getStaffMembers(booking.salon_id).catch(() => []);
+      const matchedStaff = staff.find(
+        (member) => normalizeTrainerName(member.name) === normalizeTrainerName(classSlot.trainer),
+      );
+      if (matchedStaff) newStaffMemberId = matchedStaff.id;
+      const slotDuration = (parseTimeToMinutes(classSlot.end) ?? 0) - (parseTimeToMinutes(classSlot.start) ?? 0);
+      if (slotDuration > 0) newDuration = Math.max(5, slotDuration);
+      slotCapacity = Math.max(1, classSlot.capacity);
+    }
+
+    const requestedStart = bookingStartMinutesFromTimeString(newTime);
+    const requestedEnd = requestedStart + newDuration;
+    const staffMemberId = newStaffMemberId;
+    const bookingQuantity = Math.max(1, Number(booking.booking_quantity ?? 1) || 1);
+
+    // Capacity-aware availability: a class with N places stays bookable until
+    // the booked quantity reaches N. For free-slot salons slotCapacity is 1, so
+    // any overlapping booking still blocks the move exactly as before.
     const updated = await sql`
       UPDATE bookings
-      SET date = ${newDate}, time = ${newTime}
+      SET date = ${newDate}, time = ${newTime}, staff_member_id = ${staffMemberId}::uuid, service_duration = ${newDuration}
       WHERE id = ${id}
         AND status NOT IN ('cancelled', 'completed')
-        AND NOT EXISTS (
-          SELECT 1
+        AND (
+          SELECT COALESCE(SUM(GREATEST(1, COALESCE(b.booking_quantity, 1))), 0)
           FROM bookings b
           WHERE b.salon_id = ${booking.salon_id}
             AND CAST(b.id AS text) <> CAST(${id} AS text)
@@ -383,7 +507,7 @@ export async function PATCH(request: NextRequest) {
                 ) + GREATEST(5, COALESCE(b.service_duration, 30))
               ) > ${requestedStart}
             )
-        )
+        ) + ${bookingQuantity} <= ${slotCapacity}
       RETURNING id
     `;
 
