@@ -514,25 +514,10 @@ export async function POST(request: NextRequest) {
     }
   }
   const bookingId = crypto.randomUUID();
-  let selectedPackage: Awaited<ReturnType<typeof findActiveClientPackage>> = null;
-  // Public bookings cannot bypass an active package: the server, not the
-  // browser toggle, is authoritative for whether a credit must be used.
-  // Admin-created reservations retain the explicit override for corrections.
-  if (!isAdminCreate || requestedPackage) {
-    selectedPackage = await findActiveClientPackage({
-      salonId,
-      clientName,
-      clientPhone,
-      clientEmail: normalizedClientEmail,
-    });
-    if (requestedPackage && !selectedPackage) {
-      return NextResponse.json(
-        { error: 'Не открихме активен пакет с това име, телефон или имейл. Проверете данните или изберете друг начин на плащане.' },
-        { status: 400 },
-      );
-    }
-  }
-  const shouldUsePackage = requestedPackage || (!isAdminCreate && Boolean(selectedPackage));
+  // The booked service must be resolved before picking a package, so a package
+  // is only applied when it actually covers that service. Populated from the
+  // class slot / matched service below, then used for package eligibility.
+  let bookedServiceId: string | null = null;
   let resolvedServiceName = String(serviceName).trim();
   let priceValue =
     servicePrice != null && Number.isFinite(Number(servicePrice)) ? Number(servicePrice) : null;
@@ -646,6 +631,7 @@ export async function POST(request: NextRequest) {
       : null;
     if (classSlotService) {
       resolvedServiceName = classSlotService.name;
+      bookedServiceId = classSlotService.id ?? null;
       priceValue = Number.isFinite(Number(classSlotService.price)) ? Number(classSlotService.price) : priceValue;
     } else if (classSlot.className?.trim()) {
       resolvedServiceName = classSlot.className.trim();
@@ -657,9 +643,13 @@ export async function POST(request: NextRequest) {
       }) ?? salonServices.find((service) => Math.max(1, Number(service.capacity ?? 1) || 1) > 1);
       if (likelyClassService) {
         resolvedServiceName = likelyClassService.name;
+        bookedServiceId = likelyClassService.id ?? null;
         priceValue = Number.isFinite(Number(likelyClassService.price)) ? Number(likelyClassService.price) : priceValue;
       }
     }
+    // Fall back to the class slot's own service id even when the service is no
+    // longer in the salon catalog, so package eligibility still has an id.
+    if (!bookedServiceId && classSlot.serviceId) bookedServiceId = classSlot.serviceId;
     if (classSlot.price != null) priceValue = classSlot.price;
   }
   if (isBlockedForStartTime(bookingBlocks, date, time, durationValue ?? 30)) {
@@ -700,6 +690,31 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // Package selection runs here, once the booked service is fully resolved, so
+  // a credit is only drawn from a package that actually covers this service.
+  if (!bookedServiceId && matchedService?.id) bookedServiceId = matchedService.id;
+  let selectedPackage: Awaited<ReturnType<typeof findActiveClientPackage>> = null;
+  // Public bookings cannot bypass an active package: the server, not the
+  // browser toggle, is authoritative for whether a credit must be used.
+  // Admin-created reservations retain the explicit override for corrections.
+  if (!isAdminCreate || requestedPackage) {
+    selectedPackage = await findActiveClientPackage({
+      salonId,
+      clientName,
+      clientPhone,
+      clientEmail: normalizedClientEmail,
+      serviceId: bookedServiceId,
+    });
+    if (requestedPackage && !selectedPackage) {
+      return NextResponse.json(
+        { error: 'Не открихме активен пакет, който покрива тази услуга, с това име, телефон или имейл. Проверете данните или изберете друг начин на плащане.' },
+        { status: 400 },
+      );
+    }
+  }
+  const shouldUsePackage = requestedPackage || (!isAdminCreate && Boolean(selectedPackage));
+
   const bookingCapacity = classSlotCapacity ?? resolveBookingCapacity(salonServices, resolvedServiceName);
   const bookingQuantity = Math.max(1, Math.round(Number(rawBookingQuantity ?? 1) || 1));
   if (bookingQuantity > bookingCapacity) {
