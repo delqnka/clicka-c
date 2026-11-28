@@ -50,11 +50,21 @@ export async function findActiveClientPackage(input: {
   clientName?: string | null;
   clientPhone?: string | null;
   clientEmail?: string | null;
+  /**
+   * The id of the service being booked. When provided, a package only pays for
+   * the booking if its definition covers that service (its `service_ids`); a
+   * definition with no services, or a package with no definition, is
+   * unrestricted. When omitted/empty (e.g. the package-status lookup, which has
+   * no service context) no service filter is applied. This stops a Reformer
+   * package from being spent on a Mat Pilates class.
+   */
+  serviceId?: string | null;
 }): Promise<ClientPackageUsageSummary | null> {
   await ensureClientPackagesSchema();
   const email = input.clientEmail?.trim().toLowerCase() || '';
   const phoneDigits = normalizePhoneForMatch(input.clientPhone);
   if (!email && !phoneDigits) return null;
+  const serviceId = input.serviceId?.trim() || '';
 
   // A phone number is a stronger identifier than email: family members can
   // share an inbox. Only fall back to email when no usable phone was entered.
@@ -81,12 +91,24 @@ export async function findActiveClientPackage(input: {
   const rows = await sql`
     SELECT cp.id, cp.package_name, cp.total_sessions, cp.used_sessions, cp.expires_at::text AS expires_at
     FROM client_packages cp
+    LEFT JOIN client_package_definitions d ON d.id = cp.package_definition_id
     WHERE cp.salon_id = ${input.salonId}
       AND cp.expires_at >= CURRENT_DATE
       AND cp.used_sessions < cp.total_sessions
       AND (
         (${phoneDigits} <> '' AND regexp_replace(regexp_replace(coalesce(cp.client_phone, ''), '\\D', '', 'g'), '^(?:00359|359)?0*', '') = ${phoneDigits})
         OR (${phoneDigits} = '' AND ${email} <> '' AND lower(trim(coalesce(cp.client_email, ''))) = ${email})
+      )
+      AND (
+        -- No service context (e.g. the package-status lookup): keep legacy
+        -- behaviour and do not filter by service.
+        ${serviceId} = ''
+        -- Unrestricted package: no definition, or a definition that covers every service.
+        OR cp.package_definition_id IS NULL
+        OR d.service_ids IS NULL
+        OR jsonb_array_length(COALESCE(d.service_ids, '[]'::jsonb)) = 0
+        -- Otherwise the booked service must be one the package covers.
+        OR d.service_ids @> to_jsonb(${serviceId}::text)
       )
     ORDER BY cp.expires_at ASC, cp.created_at ASC
     LIMIT 2
