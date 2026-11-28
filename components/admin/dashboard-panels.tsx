@@ -3473,7 +3473,12 @@ export function ClientsPanel({
   const frozenOrderRef = React.useRef<string[] | null>(null);
 
   const loadDossier = React.useCallback(async (client: ClientSummary) => {
-    setDossierByKey((prev) => ({ ...prev, [client.key]: { loading: true } }));
+    // Keep showing already-loaded data while refetching, so reopening the
+    // dossier refreshes silently instead of flashing a loading state.
+    setDossierByKey((prev) => {
+      const existing = prev[client.key];
+      return { ...prev, [client.key]: existing?.bookings ? existing : { loading: true } };
+    });
     try {
       const res = await fetch(`/api/admin/clients/history?slug=${encodeURIComponent(slug)}`, {
         method: 'POST',
@@ -3484,7 +3489,11 @@ export function ClientsPanel({
       const data = (await res.json()) as { bookings?: DossierBooking[]; packages?: DossierPackage[] };
       setDossierByKey((prev) => ({ ...prev, [client.key]: { loading: false, bookings: data.bookings ?? [], packages: data.packages ?? [] } }));
     } catch {
-      setDossierByKey((prev) => ({ ...prev, [client.key]: { loading: false, error: true } }));
+      // Keep stale data visible on a failed refetch; only show an error on first load.
+      setDossierByKey((prev) => {
+        const existing = prev[client.key];
+        return { ...prev, [client.key]: existing?.bookings ? existing : { loading: false, error: true } };
+      });
     }
   }, [slug]);
   const [importOpen, setImportOpen] = React.useState(false);
@@ -4152,7 +4161,9 @@ export function ClientsPanel({
               <details
                 style={{ marginTop: 10 }}
                 onToggle={(event) => {
-                  if ((event.currentTarget as HTMLDetailsElement).open && !dossierByKey[client.key]) {
+                  // Refetch every time the dossier is opened so edits made
+                  // elsewhere (e.g. a credit applied) show without a full reload.
+                  if ((event.currentTarget as HTMLDetailsElement).open) {
                     void loadDossier(client);
                   }
                 }}
